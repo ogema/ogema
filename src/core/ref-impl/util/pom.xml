@@ -1,0 +1,94 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>util</artifactId>
+    <packaging>bundle</packaging>
+
+    <name>OGEMA ref-impl :: util</name>
+    <url>http://www.ogema-source.net</url>
+
+    <parent>
+        <groupId>org.ogema.ref-impl</groupId>
+        <artifactId>ref-impl</artifactId>
+        <version>2.0.1</version>
+    </parent>
+  
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+  
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Export-Package>
+                            org.ogema.tools.impl,
+                            org.ogema.util,
+                            org.ogema.serialization,
+                            org.ogema.serialization.*,
+                        </Export-Package>
+                        <Import-Package>
+                            org.ogema.service.webresourcemanager;resolution:=optional,*
+                        </Import-Package>
+                        <!-- need dynamic import to resolve input data classes during deserialization -->
+                        <DynamicImport-Package>*</DynamicImport-Package>
+                    </instructions>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-scr-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+    
+    <dependencies>
+        <dependency>
+            <groupId>org.ogema.core</groupId>
+            <artifactId>api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.compendium</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>internal-api</artifactId>
+        </dependency>
+<!--        <dependency>
+            <groupId>org.ogema.service</groupId>
+            <artifactId>ogema-gui</artifactId>
+        </dependency>
+-->
+        <dependency>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-core-lgpl</artifactId>
+            <version>1.9.13</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-mapper-lgpl</artifactId>
+            <version>1.9.13</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-xc</artifactId>
+            <version>1.9.13</version>
+        </dependency>
+        <!-- Test-only dependencies -->
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>ogema-exam-base</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

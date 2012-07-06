@@ -1,0 +1,205 @@
+uninstall 65 66
+install reference:file:C:/Users/spogacar/Documents/NetBeansProjects/ogema/src/core/ref-impl/frameworkadministration/target/classes
+install reference:file:C:/Users/spogacar/Documents/NetBeansProjects/ogema/src/core/ref-impl/framework-gui/target/classes
+start 82 83
+
+START OGEMA without Secutrity
+org.ogema.launcher.OgemaLauncher
+-cfg config\config.xml -p config\ogema.properties -clean -v -o
+C:\Users\spogacar\Documents\NetBeansProjects\ogema\rundirs\default
+
+BUILD OGEMA with Secutrity
+Main Class:
+org.ogema.launcher.OgemaLauncher
+
+Arguments:
+--verbose -cfg config\config.xml -p config\ogema.properties -c -clean -o -b
+
+Working Directory:
+C:\Users\spogacar\Documents\NetBeansProjects\ogema\rundirs\default
+
+VM Options:
+-none-
+
+
+START OGEMA with Secutrity
+Main Class:
+org.ogema.launcher.OgemaLauncher
+
+Arguments:
+--verbose -cfg config\config.xml -p config\ogema.properties -c -clean --use-rundir-only --security --refresh-timeout 1
+
+Working Directory:
+C:\Users\spogacar\Documents\NetBeansProjects\ogema\rundirs\default
+
+VM Options:
+-Djava.security.policy=all.policy -Dorg.ogema.security=on
+
+
+BUILD AND START OGEMA with Security IN CYGWIN
+cd /cygdrive/c/Users/spogacar/Documents/NetBeansProjects/ogema/rundirs/default
+java -jar ../ogema-launcher/ogema-launcher-1.2.1.jar -b
+java -Djava.security.policy=config/all.policy -Dorg.ogema.security=on -jar ../ogema-launcher/ogema-launcher-1.2.1.jar --verbose -cfg config/config.xml -p config/ogema.properties -c -clean --use-rundir-only --security config/ogema.policy --refresh-timeout 1
+
+
+
+
+
+
+[
+	{
+		"time": "1900-01-01T00:00:00.000Z",
+		"cosphi": 1,
+		"current": 24,
+		"$$hashKey": "04A"
+	},
+	{
+		"time": "1900-01-01T01:00:00.000Z",
+		"cosphi": 1,
+		"current": 2,
+		"$$hashKey": "04B"
+	},
+	{
+		"time": "1900-01-01T02:00:00.000Z",
+		"cosphi": 1,
+		"current": 10,
+		"$$hashKey": "04C"
+	},
+	{
+		"time": "1900-01-01T03:00:00.000Z",
+		"cosphi": 1,
+		"current": 2,
+		"$$hashKey": "04D"
+	},
+	{
+		"time": "1900-01-01T04:00:00.000Z",
+		"cosphi": 1,
+		"current": 2,
+		"$$hashKey": "04E"
+	}
+]
+
+editUsername:master
+
+userData:{"name":"master","credentials":{"ogemaRole":"naturalUser","URPid":"80","password":"master"}}
+
+userPolicies:
+
+{
+    "user": "master",
+    "permissionsAndCondition": [
+        {
+            "name": "urps",
+            "mode": "allow",
+            "condition": {
+                "type": "org.osgi.service.condpermadmin.BundleLocationCondition",
+                "file": "file:./ogema/users/*"
+            },
+            "permissions": [
+                {
+                    "permissionName": "org.osgi.framework.PackagePermission",
+                    "resourcePath": "org.ogema.accesscontrol",
+                    "actions": "import"
+                },
+                {
+                    "permissionName": "org.osgi.framework.PackagePermission",
+                    "resourcePath": "org.osgi.*",
+                    "actions": "import"
+                },
+                {
+                    "permissionName": "org.osgi.framework.ServicePermission",
+                    "resourcePath": "org.ogema.accesscontrol.UserRightsProxy",
+                    "actions": "register"
+                },
+                {
+                    "permissionName": "org.osgi.framework.ServicePermission",
+                    "resourcePath": "org.ogema.core.application.Application",
+                    "actions": "register"
+                },
+                {
+                    "permissionName": "org.osgi.framework.ServicePermission",
+                    "resourcePath": "org.ogema.accesscontrol.PermissionManager",
+                    "actions": "get"
+                }
+            ]
+        },
+        {
+            "name": "basic import rights ogema",
+            "mode": "allow",
+            "condition": null,
+            "permissions": [
+                {
+                    "permissionName": "org.osgi.framework.PackagePermission",
+                    "resourcePath": "org.ogema.core.*",
+                    "actions": "import"
+                },
+                {
+                    "permissionName": "org.osgi.framework.PackagePermission",
+                    "resourcePath": "org.joda.time",
+                    "actions": "import"
+                }
+            ]
+        },
+        {
+            "name": "basic import rights",
+            "mode": "allow",
+            "condition": null,
+            "permissions": [
+                {
+                    "permissionName": "org.osgi.framework.PackagePermission",
+                    "resourcePath": "org.osgi.*",
+                    "actions": "import"
+                },
+                {
+                    "permissionName": "org.osgi.framework.PackagePermission",
+                    "resourcePath": "javax.*",
+                    "actions": "import"
+                },
+                {
+                    "permissionName": "org.osgi.framework.PackagePermission",
+                    "resourcePath": "org.slf4j",
+                    "actions": "import"
+                },
+                {
+                    "permissionName": "org.osgi.framework.PackagePermission",
+                    "resourcePath": "org.xml.*",
+                    "actions": "import"
+                },
+                {
+                    "permissionName": "org.osgi.framework.PackagePermission",
+                    "resourcePath": "org.w3c.*",
+                    "actions": "import"
+                }
+            ]
+        },
+        {
+            "name": "felix property access",
+            "mode": "allow",
+            "condition": null,
+            "permissions": [
+                {
+                    "permissionName": "java.util.PropertyPermission",
+                    "resourcePath": "org.apache.felix.*",
+                    "actions": "read"
+                }
+            ]
+        },
+        {
+            "name": "master-resource-access",
+            "mode": "allow",
+            "condition": {
+                "type": "org.osgi.service.condpermadmin.BundleLocationCondition",
+                "file": "file:./ogema/users/master/*"
+            },
+            "permissions": [
+                {
+                    "permissionName": "org.ogema.accesscontrol.ResourcePermission",
+                    "resourcePath": "path=*",
+                    "actions": "read,write"
+                }
+            ]
+        }
+    ]
+}
+
+userPermittedApps: {"user":"master","permittedApps":["ALL APPS"]}

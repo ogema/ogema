@@ -1,0 +1,62 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<html>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Device Configurator</title>
+<script src='../js/libs_plugins/jquery-1.11.1.min.js'></script>
+<script src='../js/libs_plugins/jquery-ui-1.11.1.custom/jquery-ui.min.js'></script>
+<script src='../js/main.js'></script>
+<script src="../dist/jstree.min.js"></script>
+<link rel='stylesheet' href='../js/libs_plugins/jquery-ui-1.11.1.custom/jquery-ui.min.css'>
+<link rel='stylesheet' href='../CSS/main.css'>
+<link rel="stylesheet" href="../dist/themes/default/style.min.css" />
+</head>
+
+<body>
+	<div id='wrapper'>
+		<h1 id='headline'>OGEMA 2.0 Device Configurator</h1>
+		<div id='LLDrivers'></div>
+		<div id='LLDrivers_Content'>
+			<h1 id='devicesHead' class='tabsHeadline' onclick='showTab("devices")'>Devices</h1>
+			<div id='devices' class='tabs'></div>
+			<h1 id='channelsHead' class='tabsHeadline' onclick='showTab("channels")'>Channels</h1>
+			<div id='channels' class='tabs'></div>
+			<h1 id='deviceScanHead' class='tabsHeadline' onclick='showTab("deviceScan")'>Device Scan</h1>
+			<div id='deviceScan' class='tabs'></div>
+			<h1 id='cacheDevicesHead' class='tabsHeadline' onclick='showTab("cacheDevices")'>Caching Devices</h1>
+			<div id='cacheDevices' class='tabs'></div>
+		</div>
+		<div id='divResources'>
+			<h1 id='resourcesHead' class='LL_tabsHeadline' onclick='showTab("resources")'>Resources</h1>
+			<div id='resources' class='tabs'>
+				<p class="head"	style="font-size: 0.9em; padding-left: 10px; border-left: 10px solid #124791; padding-top: 0px; padding-bottom: 0px; cursor: pointer;">
+					<strong>Resources</strong> <br /> 
+				</p>
+				<div class='part'>
+					<div id='jsTree_Resources'></div>
+				</div>
+				<div id='dialog_Resources' style='display: none'></div>
+		    </div>
+		</div>
+	</div>
+</body>
+
+</html>

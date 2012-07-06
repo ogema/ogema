@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!--
+Example document for the OGEMA 2.0 REST XML schema.
+-->
+<og:resource
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:og='http://www.ogema-source.net/REST'
+    xsi:schemaLocation='http://www.ogema-source.net/REST Ogema.xsd'>
+    
+    <name>Switch</name>
+    <type>org.ogema.core.model.commonactors.ElSwitch</type>
+    <path>Switch</path>
+    
+    <resource>
+        <name>stateFB</name>
+        <type>org.ogema.core.model.commonactors.FeedbackBoolean</type>
+        <path>Switch/stateFB</path>
+        <resource xsi:type="og:BooleanResource">
+            <name>feedback</name>
+            <type>org.ogema.core.model.simple.BooleanResource</type>
+            <value>false</value>
+        </resource>
+    </resource>
+    <resource xsi:type="og:FloatResource">
+        <name>ratedSwitchingCurrent</name>
+        <type>org.ogema.core.model.simple.FloatResource</type>
+        
+        <resource xsi:type="og:FloatSchedule">
+            <name>switchSchedule</name>
+            <type>org.ogema.schedule.Schedule</type>
+            <entry>
+                <time>0</time>
+                <value>42</value>
+            </entry>
+            <entry>
+                <time>1</time>
+                <value>43</value>
+            </entry>
+        </resource>
+        
+        <value>47.11</value>
+        
+    </resource>
+    <resourcelink>
+        <link>x/y/z</link>
+        <type>org.ogema.core.model.commonactors.TextDisplay</type>
+        <name>z</name>
+    </resourcelink>
+    
+</og:resource>

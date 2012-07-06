@@ -1,0 +1,165 @@
+/**
+ * This file is part of OGEMA.
+ *
+ * OGEMA is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * OGEMA is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.ogema.persistence.impl.mem;
+
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.ogema.core.model.Resource;
+import org.ogema.core.resourcemanager.InvalidResourceTypeException;
+import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
+import org.ogema.persistence.ResourceDB;
+import org.ogema.resourcetree.TreeElement;
+import org.slf4j.Logger;
+
+/**
+ * 
+ * @author jlapp
+ */
+public class MemoryResourceDB implements ResourceDB {
+
+	final AtomicInteger TYPE_IDS = new AtomicInteger(0);
+	final Map<Class<? extends Resource>, Integer> types = new HashMap<>();
+	final Map<String, MemoryTreeElement> resources = new HashMap<>();
+	final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+
+	@Override
+	public Class<? extends Resource> addOrUpdateResourceType(Class<? extends Resource> type)
+			throws ResourceAlreadyExistsException, InvalidResourceTypeException {
+		synchronized (types) {
+			Integer typeId = types.get(type);
+			if (typeId == null) {
+				typeId = TYPE_IDS.incrementAndGet();
+				types.put(type, typeId);
+			}
+			return type;
+		}
+	}
+
+	@Override
+	public Collection<Class<?>> getTypeChildren(String name) throws InvalidResourceTypeException {
+		try {
+			Class<?> type = Class.forName(name);
+			List<Class<?>> rval = new ArrayList<>();
+			for (Method m : type.getMethods()) {
+				if (Resource.class.isAssignableFrom(m.getReturnType())) {
+                    @SuppressWarnings("unchecked")
+                    Class<? extends Resource> childType = (Class<? extends Resource>) m.getReturnType();
+					rval.add(childType);
+				}
+			}
+			return rval;
+		} catch (ClassNotFoundException cnfe) {
+			throw new InvalidResourceTypeException("Could not find the required resource type.");
+		}
+	}
+
+	@Override
+    @SuppressWarnings("unchecked")
+	public boolean hasResourceType(String name) {
+		try {
+			Class<?> type = Class.forName(name);
+			if (!Resource.class.isAssignableFrom(type)) {
+				return false;
+			}
+			return types.containsKey((Class<? extends Resource>) type);
+		} catch (ClassNotFoundException cnfe) {
+			return false;
+		}
+	}
+
+	@Override
+	public List<Class<? extends Resource>> getAllResourceTypesInstalled() {
+		List<Class<? extends Resource>> rval = new ArrayList<>(types.size());
+		rval.addAll(types.keySet());
+		return rval;
+	}
+
+	@Override
+	public TreeElement addResource(String name, Class<? extends Resource> type, String appID)
+			throws ResourceAlreadyExistsException, InvalidResourceTypeException {
+		if (resources.containsKey(name)) {
+			throw new ResourceAlreadyExistsException("resource '" + name + "' already exists");
+		}
+		MemoryTreeElement el = new MemoryTreeElement(name, type, null);
+		el.setAppID(appID);
+		resources.put(name, el);
+		return el;
+	}
+
+	@Override
+	public void deleteResource(TreeElement elem) {
+        if (!elem.isToplevel()){
+            throw new UnsupportedOperationException("delete only implemented for top level resources");
+        }
+		synchronized (resources) {
+			for (Map.Entry<String, MemoryTreeElement> e : resources.entrySet()) {
+				if (e.getValue() == elem) {
+					resources.remove(e.getKey());
+					break;
+				}
+			}
+		}
+	}
+
+	@Override
+	public boolean hasResource(String name) {
+		return resources.containsKey(name);
+	}
+
+	@Override
+	public TreeElement getToplevelResource(String name) throws InvalidResourceTypeException {
+		TreeElement el = resources.get(name);
+		return el;
+	}
+
+	@Override
+	public List<TreeElement> getAllToplevelResources() {
+		List<TreeElement> rval = new ArrayList<>(resources.size());
+		synchronized (resources) {
+            rval.addAll(resources.values());
+			return rval;
+		}
+	}
+
+	@Override
+	public void finishTransaction() {
+		throw new UnsupportedOperationException("Not supported yet."); // To change body of generated methods, choose
+																		// Tools | Templates.
+	}
+
+	@Override
+	public void startTransaction() {
+		throw new UnsupportedOperationException("Not supported yet."); // To change body of generated methods, choose
+																		// Tools | Templates.
+	}
+
+    @Override
+    public boolean isDBReady() {
+        return true;
+    }
+
+	@Override
+	public TreeElement getByID(int id) {
+		return null;
+	}
+}

@@ -1,0 +1,76 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.ogema.drivers</groupId>
+		<artifactId>ogema-drivers</artifactId>
+		<version>2.0.1</version>
+	</parent>
+	<artifactId>knx-js-gui</artifactId>
+	<packaging>bundle</packaging>
+
+	<name>OGEMA Drivers :: KNX GUI JS</name>
+	<description>Graphical User Interface for the KNX driver (Javascript-based)</description>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-scr-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+				<configuration>
+                    <instructions>
+                        <Embed-Dependency>
+                            gson;scope=compile|runtime;inline=false
+                        </Embed-Dependency>
+                    </instructions>
+                    <unpackBundle>true</unpackBundle>
+                </configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.compendium</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.felix</groupId>
+			<artifactId>org.apache.felix.scr.annotations</artifactId>
+		</dependency>
+		<dependency>
+            <groupId>org.ogema.core</groupId>
+            <artifactId>api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.core</groupId>
+            <artifactId>models</artifactId>
+        </dependency>
+        <dependency>
+        	<groupId>org.ogema.ref-impl</groupId>
+        	<artifactId>util</artifactId>
+        </dependency>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>servlet-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+			<version>2.3</version>
+		</dependency>
+		<dependency>
+			<groupId>org.ogema.drivers</groupId>
+			<artifactId>knx</artifactId>
+			<version>2.0.1</version>
+		</dependency>
+	</dependencies>
+</project>

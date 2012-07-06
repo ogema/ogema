@@ -1,0 +1,175 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<body>
+	<link rel="stylesheet"
+		href="mainpage_files/jquery-ui-1.10.4.custom/css/black-tie/jquery-ui-1.10.4.custom.css">
+	<link rel="stylesheet" href="mainpage_files/stylesheet.css">
+	<script src="jquery-1.11.0.js"></script>
+	<script
+		src="mainpage_files/jquery-ui-1.10.4.custom/js/jquery-ui-1.10.4.custom.min.js"></script>
+	<script src="mainpage_files/jsMain.js"></script>
+	<script src="dist/jstree.js"></script>
+	<link rel="stylesheet" href="dist/themes/default/style.min.css" />
+	<!-- 	<link rel="icon" href="img/icon.png" type="image/x-icon"> -->
+	<title>OGEMA Admin Center</title>
+</body>
+
+<body id="mainpageBody">
+
+	<div id="header"></div>
+	<div id="wrap">
+
+		<h1 id="heading">
+			<strong style="font-size: 1.4em;">Admin Area</strong> <br> <em>Manage your OGEMA system</em>
+		</h1>
+
+		<div id="pre">
+<!-- 			<p>Das OGEMA 2.0 - Framework bietet Ihnen auf dieser -->
+<!-- 				Benutzeroberfläche eine Vielzahl an Steuerungsmöglichkeiten, um Ihr -->
+<!-- 				System individuell anpassen zu können. Wählen Sie dazu einen -->
+<!-- 				Optionsbereich.</p> -->
+
+		</div>
+		<br>
+
+		<div id="app">
+			<p class="head"
+				style="font-size: 0.9em; padding-left: 10px; border-left: 10px solid #124791; padding-top: 0px; padding-bottom: 0px; cursor: pointer; margin-bottom: 2px;">
+				<strong>Bundle Management</strong> <br /> Installation of Bundles
+				on your OGEMA System.
+			</p>
+			<div class="part">
+				<h1
+					style="position: relative; top: 5px; padding: 5px; font-size: 17px; font-weight: normal; border-bottom: 1px solid #124791; margin-bottom: 0px;">
+					Choose the Way to Install Bundles</h1>
+				<br>
+				<div id='wrapContents'>
+
+					<!----------------Eingabe------------------>
+					<div class="content" id="content1">
+						<!-- 					<h3>Suche nach Appstores</h3> -->
+
+						<div class="innerContent">
+							<!-- 						<p>Search for an appstore please. Type in or ask the server.</p> -->
+							<form action="apps.html" method="get">
+								<input type="text" id="store" name="store"
+									value="enter an appstore..."
+									onfocus="if (this.value == 'enter an appstore...') {this.value = '';}"
+									onblur="if (this.value == '') {this.value = 'enter an appstore...'; changeTextColor(); }"
+									onkeyup="changeTextColor()" style="color: #C2C2C2;"> <img
+									id="button" src="img/button.png">
+								<!-- 								<input type="submit" -->
+								<!-- 								value="Search"> -->
+							</form>
+							<div id=wrapArrow></div>
+							<ul id="menu">
+								<!------- li elements of server ------->
+							</ul>
+						</div>
+					</div>
+					<div class="content" id="content2">
+						<!-- 					<h3>Upload eigener Bundles</h3> -->
+
+						<div class="innerContent">
+							<!-- 						<p> -->
+							<!-- 							If you want to install a local app, choose from your file system:<br> -->
+							<!-- 						</p> -->
+
+							<button id='initUp' type='button' onclick="openUploader()">Upload</button>
+
+							<div id="diaUpload" title="Uploader">
+								<form action="" method="post" enctype="multipart/form-data">
+									<br>
+									<div id="wrapUpload">
+
+										<div id="wrapFiles"></div>
+										<input name="file" type="file" id="fileA"
+											onchange="fileChange();" /> <input name="upload"
+											value="Upload" type="button" onclick="uploadFile();" /> <input
+											name="abort" value="Stop" type="button"
+											onclick="uploadAbort();" />
+									</div>
+								</form>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!----------------ENDE Eingabe------------------>
+			</div>
+		</div>
+
+		<br>
+
+		<div id="systemApps">
+			<p class="head"
+				style="font-size: 0.9em; padding-left: 10px; border-left: 10px solid #124791; padding-top: 0px; padding-bottom: 0px; cursor: pointer;">
+				<strong>Current Bundles</strong> <br /> Look up installed Bundles.
+			</p>
+			<div class="part" id="sysApps">
+				<h1>Current Bundles on your OGEMA System</h1>
+				<div id="sortableApps">
+					<!-- the system apps come into here, after GET -->
+				</div>
+				<div id="buttonSet">
+					<button id="showInfo" type="button" onclick="showAppInfo()">Information</button>
+					<button id="update" type="button" onclick="updateApp()">Update</button>
+					<button id="setPerms" type="button" onclick="setPerms()">Edit</button>
+					<button id="webResources" type="button"
+						onclick="showWebResources()">Webresources</button>
+					<button id="deleteApp" type="button" onclick="deleteApp()">Deinstall</button>
+				</div>
+			</div>
+
+<!-- 			Dialog -->
+			<div id="appDisplay" title="App Information"></div>
+			<div id="webResourceDisplay" title="Webressourcen">
+				<div id="treeWebRes"></div>
+			</div>
+			<div id="editWebResources" title="Edit Resources"></div>
+		</div>
+
+		<br>
+
+		<div id="security">
+			<p class="head"
+				style="font-size: 0.9em; padding-left: 10px; border-left: 10px solid #124791; padding-top: 0px; padding-bottom: 0px; cursor: pointer;">
+				<strong>Security</strong> <br /> Check your Security.
+			</p>
+			<div class="part"></div>
+		</div>
+		<br>
+
+		<div id="log">
+			<p class="head"
+				style="font-size: 0.9em; padding-left: 10px; border-left: 10px solid #124791; padding-top: 0px; padding-bottom: 0px; cursor: pointer;">
+				<strong>Log</strong> <br /> Log Information.
+			</p>
+			<div class="part"></div>
+		</div>
+
+
+	</div>
+	<div id="footer">
+		<div id="contact">Contact</div>
+		<div id="ogema">
+			<a href="http://ogema.org/" target="_blank">OGEMA Website</a>
+		</div>
+	</div>
+</body>

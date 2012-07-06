@@ -1,0 +1,9 @@
+{
+    "list": [
+        {"name": "Nutzer 01"}, 
+        {"name": "Nutzer 02"}, 
+        {"name": "Nutzer 03"},
+        {"name": "Nutzer 04"},
+        {"name": "Nutzer 05"} 
+        ]
+}

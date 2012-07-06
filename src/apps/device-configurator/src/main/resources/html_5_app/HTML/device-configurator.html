@@ -1,0 +1,56 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>OGEMA 2.0 Device Configurator</title>
+
+<script src="../js/libs_plugins/jquery-1.10.2.js"></script>
+<script src="../js/device-configurator.js"></script>
+
+<script>
+$(document).ready(function(){
+	 
+	$.get("/servlet/showCC?hlDriverId=2&deviceAddress=5");
+	$.get("/servlet/readC?hlDriverId=2&interfaceId=3&deviceAddress=6&channelAddress=8");
+	$.get("/servlet/sendF?llDriverId=2&hexframe=0xA3");
+	$.get("/servlet/showCD?llDriverId=2&portName=name&deviceAddress=4&clusterId=id4");
+	$.get("/servlet/showDD?llDriverId=2&interfaceId=4&deviceAddress=6");
+	$.get("/servlet/showACC?llDriverId=4");
+	$.get("/servlet/showH?llDriverId=4");
+	$.get("/servlet/showN?llDriverId=4");
+	$.get("/servlet/showAllHLDrivers");
+	$.get("/servlet/showAllLLDrivers");
+		
+	$.post("/servlet/createC?hldriver=2",{config_data:'{"configuration":[{"interfaceId":"4","deviceAddress":"3","channelAddress":"5","timeout":"4000","resourceName":"name"}]}'});
+	$.post("/servlet/writeC?hldriver=2",{config_data:'{"configuration":[{"interfaceId":"4","deviceAddress":"3","channelAddress":"5","writeValue":"value"}]}'});
+	$.post("/servlet/deleteC?hlDriverID=2",{config_data:'{"configuration":[{"interfaceId":"4"}, {"deviceAddress":"3"}, {"channelAddress":"5"}]}'});
+	$.post("/servlet/addC?llDriverId=4&hardwareIdentifier=4");
+	$.post("/servlet/addCVP?llDriverId=4&portName=name");
+	
+});
+</script>
+</head>
+
+<body>
+</body>
+
+</html>

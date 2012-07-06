@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<!-- Parent-POM: OGEMA master pom with project-wide settings -->
+	<parent>
+		<groupId>org.ogema</groupId>
+		<artifactId>ogema</artifactId>
+		<version>2.0.1</version>
+	</parent>
+
+	<!-- Note that groupId and version are inherited from the parent pom.xml 
+		unless explicitly overwritten here -->
+	<groupId>org.ogema.drivers</groupId>
+	<artifactId>ogema-drivers</artifactId>
+	<packaging>pom</packaging>
+	<name>OGEMA Drivers</name>
+
+	<!-- Sub-projects (i.e. the OGEMA Applications): Try to keep alphabetical 
+		order. -->
+	<modules>
+		<module>dlms</module>
+		<module>drs485de-driver</module>
+		<module>generic-xbee-zb</module>
+		<module>generic-zb</module>
+		<module>hm-hl-driver</module>
+		<module>homematic-driver</module>
+		<module>iec61850</module>
+		<module>knx-driver</module>
+		<module>knx-js-gui</module>
+		<module>mbus</module>
+		<module>modbus-driver</module>
+		<module>modbustcp</module>
+		<module>wmbus</module>
+		<module>xbee-driver</module>
+		<module>../external/rxtx</module>
+	</modules>
+
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.felix</groupId>
+					<artifactId>maven-bundle-plugin</artifactId>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+	</build>
+</project>

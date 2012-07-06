@@ -1,0 +1,61 @@
+/**
+ * This file is part of OGEMA.
+ *
+ * OGEMA is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * OGEMA is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.ogema.serialization.schedules;
+
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlType;
+
+import org.ogema.core.channelmanager.measurements.Quality;
+import org.ogema.core.channelmanager.measurements.Value;
+import org.ogema.core.model.Resource;
+
+import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
+
+import org.ogema.serialization.jaxb.SampledTime;
+import org.ogema.serialization.SerializationStatus;
+
+/**
+ */
+@XmlAccessorType(XmlAccessType.PROPERTY)
+@XmlRootElement(name = "time-schedule", namespace = NS_OGEMA_REST)
+@XmlType(name = "TimeSchedule", namespace = NS_OGEMA_REST)
+public class TimeSchedule extends JaxbSchedule<Float> {
+
+	public TimeSchedule() {
+		throw new UnsupportedOperationException("Useless constructor, just to make JAXB happy.");
+	}
+
+	public TimeSchedule(Resource res, SerializationStatus serMan) {
+		super(res, serMan);
+	}
+
+	public TimeSchedule(Resource res, SerializationStatus serMan, long start, long end) {
+		super(res, serMan, start, end);
+	}
+
+	@Override
+	SampledTime createValue(long time, Quality quality, Value value) {
+		SampledTime sf = new SampledTime();
+		sf.setTime(time);
+		sf.setQuality(quality);
+		sf.setValue(value);
+		return sf;
+	}
+
+}

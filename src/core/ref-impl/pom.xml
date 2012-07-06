@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.ogema.core</groupId>
+		<artifactId>ogema-core</artifactId>
+		<version>2.0.1</version>
+	</parent>
+
+	<groupId>org.ogema.ref-impl</groupId>
+	<artifactId>ref-impl</artifactId>
+	<name>OGEMA Core :: ref-impl</name>
+
+	<packaging>pom</packaging>
+
+	<description>
+		OGEMA-2.0 reference implementation by Fraunhofer Society.
+	</description>
+	<url>http://www.ogema-source.net</url>
+    
+    <dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.ogema.ref-impl</groupId>
+				<artifactId>ogema-exam-base</artifactId>
+				<version>2.0.1</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<!-- Subprojects: Please try to keep them in alphabetical order -->
+	<modules>
+		<module>administration</module>
+		<module>app-manager</module>
+		<module>channel-manager</module>
+		<module>frameworkadministration</module>
+        <module>framework-gui</module>
+		<module>hardware-manager</module>
+		<module>hardware-manager-rpi</module>
+		<module>internal-api</module>
+		<module>ogema-exam-base</module>
+		<module>ogema-logger</module>
+		<module>permission-admin</module>
+		<module>persistence</module>
+		<module>resource-access-advanced</module>
+		<module>resource-manager</module>
+		<module>rest</module>
+		<module>security</module>
+        <module>security-tests/ogema-exam-security</module>
+		<module>recordeddata-slotsdb</module>
+		<module>util</module>
+		<module>user-rights-proxy</module>
+    </modules>
+</project>

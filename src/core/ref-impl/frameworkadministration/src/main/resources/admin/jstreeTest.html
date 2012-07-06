@@ -1,0 +1,208 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+	<title>jsTree</title>
+	<meta name="viewport" content="width=device-width" />
+	<!--[if lt IE 9]><script src="http://static.jstree.com/3.0.0/assets/html5.js"></script><![endif]-->
+	
+	<meta name="robots" content="index,follow" />
+	<link rel="stylesheet" href="http://static.jstree.com/3.0.0/assets/bootstrap/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="http://static.jstree.com/3.0.0/assets/dist/themes/default/style.min.css" />
+	<link rel="stylesheet" href="http://static.jstree.com/3.0.0/assets/docs.css" />
+	<!--[if lt IE 9]><script src="http://static.jstree.com/3.0.0/assets/respond.js"></script><![endif]-->
+	
+	<link rel="icon" href="http://static.jstree.com/3.0.0/assets/favicon.ico" type="image/x-icon" />
+	<link rel="apple-touch-icon-precomposed" href="http://static.jstree.com/3.0.0/assets/apple-touch-icon-precomposed.png" />
+	<script>window.$q=[];window.$=window.jQuery=function(a){window.$q.push(a);};</script>
+<link rel="alternate" type="application/rss+xml" title="RSS 2.0" href="/feed.xml" /><script>WR = "/";</script><link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="Search jstree API"></head>
+<body>
+	<header id="head">
+		<div class="container">
+			<div class="row">
+				<div class="col-md-3 col-sm-12">
+					<h1 id="logo"><a href="http://jstree.com">jsTree - jQuery tree plugin<span>3.0.0</span></a></h1>
+				</div>
+				<div class="col-md-6 col-sm-8">
+					<nav>
+						<ul class="nav nav-pills" id="menu"><li><a href="/"><i class="glyphicon glyphicon-home"></i> Home</a></li><li class="active"><a href="/demo"><i class="glyphicon glyphicon-flash"></i> Demo</a></li><li><a href="/api"><i class="glyphicon glyphicon-cog"></i> API</a></li><li><a href="/plugins"><i class="glyphicon glyphicon-link"></i> Plugins</a></li></ul>
+					</nav>
+				</div>
+				<div class="col-md-3 col-sm-4">
+					<form role="search">
+						<input type="text" id="srch" class="form-control" placeholder="API search" />
+					</form>
+				</div>
+			</div>
+		</div>
+	</header>
+	<div class="container" id="content">
+		<div class="row page" id="demo" style="display:block;">
+			<div class="col-md-12">
+				<h3>Basic AJAX demo</h3>
+				<div class="row">
+					<div class="col-md-4 col-sm-8 col-xs-8">
+						<button type="button" class="btn btn-success btn-sm" onclick="demo_create();"><i class="glyphicon glyphicon-asterisk"></i> Create</button>
+						<button type="button" class="btn btn-warning btn-sm" onclick="demo_rename();"><i class="glyphicon glyphicon-pencil"></i> Rename</button>
+						<button type="button" class="btn btn-danger btn-sm" onclick="demo_delete();"><i class="glyphicon glyphicon-remove"></i> Delete</button>
+					</div>
+					<div class="col-md-2 col-sm-4 col-xs-4" style="text-align:right;">
+						<input type="text" value="" style="box-shadow:inset 0 0 4px #eee; width:120px; margin:0; padding:6px 12px; border-radius:4px; border:1px solid silver; font-size:1.1em;" id="demo_q" placeholder="Search" />
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-md-12">
+						<div id="jstree_demo" class="demo" style="margin-top:1em; min-height:200px;"></div>
+						<script>
+						function demo_create() {
+							var ref = $('#jstree_demo').jstree(true),
+								sel = ref.get_selected();
+							if(!sel.length) { return false; }
+							sel = sel[0];
+							sel = ref.create_node(sel, {"type":"file"});
+							if(sel) {
+								ref.edit(sel);
+							}
+						};
+						function demo_rename() {
+							var ref = $('#jstree_demo').jstree(true),
+								sel = ref.get_selected();
+							if(!sel.length) { return false; }
+							sel = sel[0];
+							ref.edit(sel);
+						};
+						function demo_delete() {
+							var ref = $('#jstree_demo').jstree(true),
+								sel = ref.get_selected();
+							if(!sel.length) { return false; }
+							ref.delete_node(sel);
+						};
+						$(function () {
+							var to = false;
+							$('#demo_q').keyup(function () {
+								if(to) { clearTimeout(to); }
+								to = setTimeout(function () {
+									var v = $('#demo_q').val();
+									$('#jstree_demo').jstree(true).search(v);
+								}, 250);
+							});
+
+							$('#jstree_demo')
+								.jstree({
+									"core" : {
+										"animation" : 0,
+										"check_callback" : true,
+										"themes" : { "stripes" : true },
+										'data' : {
+											'url' : 'https://localhost:8443/install/resourceperm',
+											'data' : function (node) {
+												return { 'id' : node.id };
+											}
+										}
+									},
+									"types" : {
+										"#" : { "max_children" : 1, "max_depth" : 4, "valid_children" : ["root"] },
+										"root" : { "icon" : "/static/3.0.0/assets/images/tree_icon.png", "valid_children" : ["default"] },
+										"default" : { "valid_children" : ["default","file"] },
+										"file" : { "icon" : "glyphicon glyphicon-file", "valid_children" : [] }
+									},
+									"plugins" : [ "contextmenu", "dnd", "search", "state", "types", "wholerow" ]
+								});
+						});
+						</script>
+					</div>
+					<div class="col-md-12">
+						<p style="text-align:center; padding-top:1em;">
+							<button class="btn btn-info" onclick="$(this).blur().parent().next().slideToggle(); return false;">show the complete code</button>
+						</p>
+						<pre style="margin-top:1em; display:none;"><code>$('#jstree_demo').jstree({
+  "core" : {
+    "animation" : 0,
+    "check_callback" : true,
+    "themes" : { "stripes" : true },
+    'data' : {
+      'url' : function (node) {
+        return node.id === '#' ?
+          'ajax_demo_roots.json' : 'ajax_demo_children.json';
+      },
+      'data' : function (node) {
+        return { 'id' : node.id };
+      }
+    }
+  },
+  "types" : {
+    "#" : {
+      "max_children" : 1, 
+      "max_depth" : 4, 
+      "valid_children" : ["root"]
+    },
+    "root" : {
+      "icon" : "/static/3.0.0/assets/images/tree_icon.png",
+      "valid_children" : ["default"]
+    },
+    "default" : {
+      "valid_children" : ["default","file"]
+    },
+    "file" : {
+      "icon" : "glyphicon glyphicon-file",
+      "valid_children" : []
+    }
+  },
+  "plugins" : [
+    "contextmenu", "dnd", "search",
+    "state", "types", "wholerow"
+  ]
+});</code></pre>
+					</div>
+				</div>
+				<div class="row" style="margin-top:2em;">
+					<div class="col-md-12">
+						<div class="alert alert-block alert-info" style="text-align:center;">You can see the code of the following demos in the <code>demo</code> folder of the download</div>
+					</div>
+				</div>
+				<div class="row" style="margin-top:2em;">
+					<div class="col-md-12">
+						<h3>Filebrowser demo</h3>
+						<iframe src="/demo_filebrowser/index.php" style="border:0; display:block; height:450px; width:100%; border-radius:5px; box-shadow:0 0 5px #CCCCCC; padding:10px;" frameborder="0"></iframe>
+					</div>
+				</div>
+				<div class="row" style="margin-top:2em;">
+					<div class="col-md-12">
+						<h3>Database demo</h3>
+						<iframe src="/demo_sitebrowser/index.php" style="border:0; display:block; height:450px; width:100%; border-radius:5px; box-shadow:0 0 5px #CCCCCC; padding:10px;" frameborder="0"></iframe>
+					</div>
+				</div>
+			</div>
+		<p style="text-align:center; margin-top:2em;"><a href="http://old.jstree.com">click here for the old site (v.1)</a></p><div style="margin-top:4em; text-align:center; border-bottom:40px solid white;" class="hidden-sm hidden-xs"><script type="text/javascript">google_ad_client = "pub-3390774673776502";/* 728x90, created 9/28/09 */google_ad_slot = "0034777413";google_ad_width = 728;google_ad_height = 90;</script><script type="text/javascript" src="http://pagead2.googlesyndication.com/pagead/show_ads.js"></script></div></div>
+	</div>
+	<a class="hidden-xs hidden-sm" href="https://github.com/vakata/jstree"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_left_green_007200.png" alt="Fork me on GitHub"></a>
+	<script src="http://static.jstree.com/3.0.0/assets/jquery-1.10.2.min.js"></script>
+	<script src="http://static.jstree.com/3.0.0/assets/jquery.address-1.6.js"></script>
+	<script src="http://static.jstree.com/3.0.0/assets/vakata.js"></script>
+	<script src="http://static.jstree.com/3.0.0/assets/dist/jstree.min.js"></script>
+	<script src="/static/site.js"></script>
+	<script>$.each($q,function(i,f){$(f)});$q=null;</script>
+</body>
+</html>

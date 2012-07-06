@@ -1,0 +1,189 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<div class="building col-sm-12 well well-sm">
+    <div class="spinner" ng-show="loading">
+        LOADING ....            
+    </div>
+    <div ng-hide="loading">
+        <div class="row">
+            <div class="col-md-12">
+                <h3>
+                    Logger Configuration
+                </h3>
+            </div>
+        </div>            
+        <table class="table table-striped">
+            <tr>
+                <td>
+                    Log File Path:
+                </td>
+                <td>
+                    {{logFilePath}}
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    File Size:
+                </td>
+                <td>
+                    <a href="#" editable-text="sizeFile.value" buttons="no" onaftersave="postSingleValue('sizeFile','value' ,$data)">
+                        {{sizeFile.value|filesize}} 
+                    </a> 
+                    <span ng-if="sizeFile.msgType == 'ERROR'" class="msg error vanish">{{sizeFile.msg}}</span>
+                    <span ng-if="sizeFile.msgType == 'SUCCESS'" class="msg success vanish">{{sizeFile.msg}}</span>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    Cache Size:
+                </td>
+                <td>
+                    <a href="#" editable-text="sizeCache.value" buttons="no" onaftersave="postSingleValue('sizeCache','value' ,$data)">
+                        {{sizeCache.value|filesize}} 
+                    </a> 
+                    <span ng-if="sizeCache.msgType == 'ERROR'" class="msg error vanish">{{cacheSize.msg}}</span>
+                    <span ng-if="sizeCache.msgType == 'SUCCESS'" class="msg success vanish">{{cacheSize.msg}}</span>
+
+                </td>
+            </tr>
+        </table>
+        <table>
+            <tr>
+                <td>
+                    <div class="well well-sm">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <input type="search" ng-model="logFilter" class="form-control" placeholder="filter loggers..." />
+                                Result: {{(loggers| filter: {name:logFilter}).length}} out of {{loggers.length}}
+                            </div>
+                            <div class="col-sm-6">
+                                <button class="btn btn-success pull-right" ng-click="showCache()">Show Cache</button>
+                                <!--pagination total-items="filteredList.length" items-per-page="itemsPerPage" ng-model="currentPage" ng-change="pageChanged()"  class="pagination-sm" previous-text="&lsaquo;" next-text="&rsaquo;" first-text="&laquo;" last-text="&raquo;"></pagination-->
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                &nbsp;
+                            </div></div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <table class="table table-striped">
+                                    <tr>
+                                        <th width="5%">
+                                            <span class="info">&nbsp;<br/></span> #
+                                        </th>                                   
+                                        <th width="35%">
+                                            <span class="info">&nbsp;<br/></span>  Logger Name
+                                        </th>
+                                        <th width="20%">
+                                            <span class="info">LogLevel:<br/></span> File
+                                        </th>
+                                        <th width="20%">
+                                            <span class="info">LogLevel:<br/></span> Cache
+                                        </th>
+                                        <th width="20%" colspan="2">
+                                            <span class="info">LogLevel:<br/></span> Console
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2">
+                                            Bulk change <span class="info">change all filtered Loggers</span>
+                                        </td>
+                                        <td>
+                                            <a href="#" editable-select="bulk.file" buttons="no" e-ng-options="s.value as s.text for s in logLevelsBulk" >
+                                                {{ bulk.file}}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a href="#" editable-select="bulk.cache" buttons="no" e-ng-options="s.value as s.text for s in logLevelsBulk">
+                                                {{ bulk.cache}}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a href="#" editable-select="bulk.console"  buttons="no" e-ng-options="s.value as s.text for s in logLevelsBulk">
+                                                {{ bulk.console}}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-success btn-xs" ng-click="sendBulkChange();">
+                                                <span class="glyphicon glyphicon-ok"></span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr ng-repeat="logger in loggers| filter:logFilter">
+                                        <td>
+                                            {{$index + 1}}
+                                        </td>                                    
+                                        <td>
+                                            {{logger.name}}
+                                        </td>
+
+                                        <td>
+                                            <a href="#" editable-select="logger.file" buttons="no" e-ng-options="s.value as s.text for s in logLevels"  onaftersave="postSingleValue(logger.name,'file' ,$data)">
+                                                {{ logger.file}}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a href="#" editable-select="logger.cache" buttons="no" e-ng-options="s.value as s.text for s in logLevels" onaftersave="postSingleValue(logger.name,'cache' ,$data)">
+                                                {{ logger.cache}}
+                                            </a>
+                                        </td>
+                                        <td colspan="2">
+                                            <a href="#" editable-select="logger.console"  buttons="no" e-ng-options="s.value as s.text for s in logLevels" onaftersave="postSingleValue(logger.name,'console' ,$data)">
+                                                {{ logger.console}}
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<script type="text/ng-template" id="showCache">
+    <div class="modal-header">
+    <h3 class="modal-title">Show Cache</h3>
+    </div>
+    <div class="modal-body">
+    <!--div class="row">
+    <div class="col-sm-12">
+    <input type="search" ng-model="cacheFilter" class="form-control" placeholder="filter cache..." />
+    </div>
+    </div-->
+    <div class="row">
+    <div class="col-sm-12">
+    <textarea class="showCache" ng-model="showCache" ng-trim="false"></textarea>
+    </div>
+    </div>
+    </div>
+    <div class="modal-footer">
+    <div class="row">
+    <div class="col-md-6">
+    <!--button class="btn btn-success pull-left" ng-click="loadCache()"><span class="glyphicon glyphicon-refresh"></span> Reload Cache</button-->
+    </div>
+    <div class="col-md-6">
+    <button class="btn btn-primary" ng-click="ok()">Close</button>
+    </div>
+    </div>
+    </div>
+</script>

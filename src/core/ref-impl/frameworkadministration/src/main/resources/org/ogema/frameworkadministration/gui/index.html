@@ -1,0 +1,141 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!doctype html>
+<html lang="de" ng-app="ngOGFrAdminApp">
+<head>
+  <meta charset="utf-8">
+  <title>OGEMA: Framework Administration</title>
+  <link href="libs/bootstrap/css/bootstrap.css" rel="stylesheet" type="text/css"/>
+  <link href="libs/angular-ui-ng-grid/ng-grid.min.css" rel="stylesheet" type="text/css"/>
+  <link href="libs/angular-loading-bar/loading-bar.css" rel="stylesheet" type="text/css"/>
+  <link href="libs/angular-xeditable-0.1.8/css/xeditable.css" rel="stylesheet" type="text/css"/>
+  <link href="libs/angular-tree-control/css/tree-control-attribute.css" rel="stylesheet" type="text/css"/>
+  <link href="libs/highlight/styles/github.css" rel="stylesheet" type="text/css"/>
+  <link href="libs/angular-busy/angular-busy.css" rel="stylesheet" type="text/css"/>
+  <link rel="stylesheet" href="css/app.css"/>
+  <link rel="icon" href="favicon.ico">
+  <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+</head>
+<body>
+    <div class="container">
+        <div class="row" ng-controller="NavigationCtrl">
+            <div class="col-sm-12">
+                <nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+  <div class="container">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+        <a class="" href="#"><img id="logo" src="./img/svg/ogema.svg"></a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav">
+        <li ng-class="{ active: isActive('/applications')}"><a href="#/applications">App Management</a></li>
+        <li ng-class="{ active: isActive('/users')}"><a href="#/users">User Administration</a></li>
+        <li ng-class="{ active: isActive('/resources')}"><a href="#/resources">Resource View</a></li>
+        <li ng-class="{ active: isActive('/loggers')}"><a href="#/loggers">Logger Configuration</a></li>
+
+        <!--li><a href="#">Link</a></li-->
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <!--li><a href  ng-click="showModalHelp()"><span class="glyphicon glyphicon-info-sign"></span> Help</a></li-->
+        <li><a href  ng-click="showModalLogout()"><span class="glyphicon glyphicon-off"></span> Logout</a></li>
+      </ul>
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
+          
+            </div>
+        </div>
+        <div class="row" ng-view>
+
+        </div>
+    </div>
+  <script src="libs/angular-file-upload/dist/angular-file-upload-shim.min.js" type="text/javascript"></script>
+  <script src="libs/moment.min.js" type="text/javascript"></script>
+  <script src="libs/jquery/jquery-2.1.1.js" type="text/javascript"></script>
+  <script src="libs/bootstrap/js/bootstrap.min.js" type="text/javascript"></script>
+  <script src="libs/highlight/highlight.pack.js" type="text/javascript"></script>
+  <script src="libs/angular/angular.js" type="text/javascript"></script>
+  <script src="libs/angular/angular-touch.min.js" type="text/javascript"></script>
+  <script src="libs/angular/angular-route.js" type="text/javascript"></script>
+  <script src="libs/angular/angular-sanitize.min.js" type="text/javascript"></script>
+  <script src="libs/angular/i18n/angular-locale_de-de.js" type="text/javascript"></script>
+  <script src="libs/angular-ui-ng-grid/ng-grid-2.0.11.min.js" type="text/javascript"></script>
+  <script src="libs/angular-loading-bar/loading-bar.js" type="text/javascript"></script>
+  <script src="libs/angular-ui-bootstrap/ui-bootstrap.js" type="text/javascript"></script>
+  <script src="libs/angular-ui-bootstrap/ui-bootstrap-tpls.js" type="text/javascript"></script>
+  <script src="libs/angular-xeditable-0.1.8/js/xeditable.min.js" type="text/javascript"></script>
+  <script src="libs/angular-tree-control/angular-tree-control.js" type="text/javascript"></script>
+  <script src="libs/angular-highlightjs/angular-highlightjs.min.js" type="text/javascript"></script>
+  <script src="libs/angular-file-upload/dist/angular-file-upload.min.js" type="text/javascript"></script>
+  <script src="app/app.js" type="text/javascript"></script>
+  <script src="app/services.js" type="text/javascript"></script>
+  <script src="app/controllers.js" type="text/javascript"></script>
+  <script src="app/controllers/applications.js" type="text/javascript"></script>
+  <script src="app/controllers/loggers.js" type="text/javascript"></script>
+  <script src="app/controllers/users.js" type="text/javascript"></script>
+  <script src="app/controllers/resources.js" type="text/javascript"></script>
+  <script src="app/filters.js" type="text/javascript"></script>
+  <script src="app/directives.js" type="text/javascript"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  
+  
+<script type="text/ng-template" id="modalLogout">
+   <div class="modal-header">
+    <h3 class="modal-title">Logout</h3>
+    </div>
+    <div class="modal-body">
+    <p>
+    Do you really want to logout from this System?</b>
+    </p>
+    </div>  
+    <div class="modal-footer">
+    <button class="btn btn-danger" ng-click="ok()">Logout</button>
+    <button class="btn btn-primary" ng-click="cancel()">Close</button>
+    </div>
+</script>
+  
+ <script type="text/ng-template" id="modalHelp">
+    <div class="modal-header">
+    <h3 class="modal-title">Help</h3>
+    </div>
+    <div class="modal-body">
+    <p>
+    ...
+    </p>
+    
+    </div>  
+    <div class="modal-footer">
+    <button class="btn btn-primary" ng-click="cancel()">Ok</button>
+    </div>
+ </script>
+  
+</body>
+</html>

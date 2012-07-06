@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>ref-impl</artifactId>
+        <groupId>org.ogema.ref-impl</groupId>
+        <version>2.0.1</version>
+    </parent>
+
+    <artifactId>ogema-logger</artifactId>
+    <name>OGEMA ref-impl :: ogema-logger</name>
+
+    <description>
+        Reference implementation of the OGEMA 2.0 logger by Fraunhofer Society.
+    </description>
+    <url>http://www.ogema-source.net</url>
+    
+
+    <packaging>bundle</packaging>
+  
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-scr-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Embed-Dependency>logback-*;inline=true</Embed-Dependency>
+                        <Import-Package>
+                            javax.jms;resolution:=optional,
+                            javax.mail;resolution:=optional,
+                            javax.mail.internet;resolution:=optional,
+                            org.codehaus.commons.compiler;resolution:=optional,
+                            org.codehaus.janino;resolution:=optional,
+                            org.ogema.accesscontrol;resolution:=optional,
+                            sun.reflect;resolution:=optional,
+                            groovy.lang;resolution:=optional,
+                            org.codehaus.*;resolution:=optional,
+                            *
+                        </Import-Package>
+                        <Export-Package>
+                            org.slf4j.impl;-split-package:=first
+                        </Export-Package>
+                    </instructions>
+                    <unpackBundle>true</unpackBundle>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+        
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.ogema.ref-impl</groupId>
+                <artifactId>ogema-logger</artifactId>
+                <version>2.0.1</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>ch.qos.logback</groupId>
+                        <artifactId>logback-classic</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    
+    <dependencies>
+        <dependency>
+            <groupId>org.ogema.core</groupId>
+            <artifactId>api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.core</groupId>
+            <artifactId>models</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.compendium</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.0.10</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>1.0.10</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.scr.annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-api</artifactId>
+            <version>1.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    
+</project>

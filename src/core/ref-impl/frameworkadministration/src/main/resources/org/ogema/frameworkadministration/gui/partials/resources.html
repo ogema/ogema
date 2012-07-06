@@ -1,0 +1,124 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<div class="building col-sm-12 well well-sm">
+    <div class="row">
+        <div class="col-md-12">
+            <h3>
+                Ressource View
+            </h3>
+        </div>
+    </div>
+    <div class="tree col-sm-6">
+        <div class="row">
+            <div class="col-md-12">
+                <h4> Accessinformations for the OGEMA REST-Interface</h4>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <label> Username</label>
+                <input type="text" class="form-control" ng-model="restUser"> 
+            </div>
+            <div class="col-md-6">
+                <label> Password</label>
+                <input type="text" class="form-control" ng-model="restPwd">
+            </div>
+        </div>
+        <div class="row">            
+            <div class="col-md-12">
+                <label>REST-Url</label>
+                <input type="text" class="form-control" ng-model="restPath"><br/>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <label> Filter for Resource Names </label>
+                <input type="text" class="form-control" ng-model="searchText"><br/>
+                <div ng-if="treeDataTotal.length > 0">
+                    Results: {{(treeData| filter: {name:searchText}).length}} out of {{treeDataTotal.length}}<br/>
+                </div>
+                <div ng-if="treeDataTotal.length <= 0">
+                    An Error occured! No Data found.
+                </div>
+                <p>ResourceTree <button ng-click="getAllResources()" type="button" class="btn btn-xs"><span class="glyphicon glyphicon-refresh"></span>  </button></p>
+                <div treecontrol  class="tree-classic" tree-model="treeData" options="treeOptions" order-by="name" on-selection="showSelected(node)" selected-node="node1">
+                    {{node.name|| "ResourceLink:"}} {{node.value|| node.resourcelink.name || " "}} 
+                </div>
+            </div>
+        </div>        
+
+    </div>
+    <div class="tree col-sm-6">
+        <h4> Details </h4>
+        <tabset>
+            <tab>
+                <tab-heading>
+                    TableView
+                </tab-heading>
+                <div class="scrollPanel" ng-if="tableData.length > 0">
+                    <table class="table">
+                        <tr>
+                            <th>Variable</th>
+                            <th>Value</th>
+                        </tr>
+                        <tr ng-repeat="data in tableData">
+                            <td>
+                                {{data.name}}
+                            </td>
+                            <td>
+                                {{data.value}}
+                            </td>
+                            <!--td ng-if="data.name != 'value' && data.name != 'active' ">
+                                {{data.value}}
+                            </td>
+                            <td ng-if="data.name == 'value' || data.name == 'active' ">
+                                <a href="#" editable-text="data.value" buttons="no" onaftersave="postSingleValue(data.value,'value' ,$data)">
+                                {{data.value}}
+                                 </a> 
+                            </td-->
+
+                        </tr>
+                    </table>
+                </div>
+                <div class="scrollPanel" ng-if="tableData.length == 0">
+                    <p>
+                        No Information available, please select a Node in the tree.
+                    </p>
+                </div>
+
+            </tab>  
+            <tab>
+                <tab-heading>
+                    JSON
+                </tab-heading>
+                <div class="scrollPanel" ng-if="tableData.length > 0">
+                    <div class="objectView" hljs source="jsonData" language="json"></div>
+                </div>
+                <div ng-if="tableData.length == 0">
+                    <p>
+                        No Information available, please select a Node in the tree.
+                    </p>
+                </div>
+            </tab>
+        </tabset>
+
+
+
+    </div>
+</div>

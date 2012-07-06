@@ -1,0 +1,569 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.ogema</groupId>
+    <artifactId>ogema</artifactId>
+    <version>2.0.1</version>
+    <packaging>pom</packaging>
+    <name>OGEMA</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven-source-plugin.version>2.2.1</maven-source-plugin.version>
+        <maven-javadoc-plugin.version>2.9.1</maven-javadoc-plugin.version>
+    </properties>
+
+	<repositories>
+		<repository>
+			<snapshots />
+			<releases>
+				<enabled>false</enabled>
+			</releases>
+			<id>ogema-snapshots</id>
+			<name>ogema-snapshots</name>
+			<url>https://www.ogema-source.net/artifactory/libs-snapshot</url>
+		</repository>
+		<repository>
+			<releases />
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>ogema-releases</id>
+			<name>ogema-releases</name>
+			<url>https://www.ogema-source.net/artifactory/libs-release</url>
+		</repository>
+		<repository>
+			<releases />
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>external-opensource</id>
+			<name>external-opensource</name>
+			<url>https://www.ogema-source.net/artifactory/external-opensource</url>
+		</repository>
+	</repositories>
+    <distributionManagement>
+        <repository>
+            <id>ogema-releases</id>
+            <name>Internal Releases</name>
+            <url>https://www.ogema-source.net/artifactory/libs-release-local</url>
+        </repository>
+        <snapshotRepository>
+            <id>ogema-snapshots</id>
+            <name>Internal Snapshots</name>
+            <url>https://www.ogema-source.net/artifactory/libs-snapshot-local</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <pluginRepositories>
+        <!-- Repository for the Header Tool -->
+        <pluginRepository>
+            <id>mc-release</id>
+            <name>Local Maven repository of releases</name>
+            <url>http://mc-repo.googlecode.com/svn/maven2/releases</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <!-- Dependency Management: These are project-global settings for default 
+    versions. -->
+    <dependencyManagement>
+        <dependencies>
+
+            <!-- OSGi -->
+            <dependency>
+                <groupId>org.osgi</groupId>
+                <artifactId>org.osgi.core</artifactId>
+                <version>4.3.1</version>
+            </dependency>
+            <dependency>
+                <groupId>org.osgi</groupId>
+                <artifactId>org.osgi.compendium</artifactId>
+                <version>4.3.1</version>
+            </dependency>
+
+            <!-- OGEMA API -->
+            <dependency>
+                <groupId>org.ogema.core</groupId>
+                <artifactId>api</artifactId>
+                <version>2.0.1</version>
+            </dependency>
+            <dependency>
+                <groupId>org.ogema.core</groupId>
+                <artifactId>models</artifactId>
+                <version>2.0.1</version>
+            </dependency>
+
+	    <!-- OGEMA Reference Implementation -->
+            <dependency>
+                <groupId>org.ogema.ref-impl</groupId>
+                <artifactId>internal-api</artifactId>
+                <version>2.0.1</version>
+            </dependency>
+            <dependency>
+                <groupId>org.ogema.ref-impl</groupId>
+                <artifactId>persistence</artifactId>
+                <version>2.0.1</version>
+            </dependency>
+            <dependency>
+                <groupId>org.ogema.ref-impl</groupId>
+                <artifactId>util</artifactId>
+                <version>2.0.1</version>
+            </dependency>
+
+            <!-- OGEMA Tools and Services -->
+            <dependency>
+                <groupId>org.ogema.tools</groupId>
+                <artifactId>memory-timeseries</artifactId>
+                <version>2.0.1</version>
+            </dependency>
+	    <dependency>
+                <groupId>org.ogema.tools</groupId>
+                <artifactId>ogema-gui</artifactId>
+                <version>2.0.1-SNAPSHOT</version>
+            </dependency>
+
+            <!-- Others -->
+            <dependency>
+                <groupId>javax.servlet</groupId>
+                <artifactId>servlet-api</artifactId>
+                <version>2.4</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>org.apache.felix.scr.annotations</artifactId>
+                <version>1.9.8</version>
+            </dependency>
+
+        </dependencies>
+    </dependencyManagement>
+
+    <modules>
+        <module>apps</module>
+        <module>archetypes</module>
+        <module>core</module>
+        <module>drivers</module>
+        <module>tools</module>
+        <module>external/org.apache.felix.useradmin.filestore</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+                <version>2.1</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.servicemix.tooling</groupId>
+                <artifactId>depends-maven-plugin</artifactId>
+                <version>1.2</version>
+                <executions>
+                    <execution>
+                        <id>generate-depends-file</id>
+                        <goals>
+                            <goal>generate-depends-file</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Release Plugin usage: mvn release:prepare mvn release:perform alternatively (with dryRun): mvn release:prepare -DdryRun=true mvn release:clean -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-release-plugin</artifactId>
+				<version>2.3.2</version>
+				<configuration>
+					<executions>
+						<execution>
+							<id>prepare</id>
+							<goals>
+								<goal>prepare</goal>
+							</goals>
+							<configuration>
+								<preparationGoals>verify</preparationGoals>
+								<pomFileName>src/pom.xml</pomFileName>
+							</configuration>
+						</execution>
+
+						<execution>
+							<id>perform</id>
+							<goals>
+								<goal>perform</goal>
+							</goals>
+							<configuration>
+								<goals>deploy</goals>
+								<pomFileName>src/pom.xml</pomFileName>
+							</configuration>
+						</execution>
+					</executions>
+				</configuration>
+			</plugin>
+        </plugins>
+        <pluginManagement>
+            <plugins>
+                <!-- execution order: run scr before manifest and manifest before tests, 
+                so that pax exam can use the manifest -->
+                <plugin>
+                    <groupId>org.apache.felix</groupId>
+                    <artifactId>maven-scr-plugin</artifactId>
+                    <version>1.17.0</version>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}</outputDirectory>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>generate-scr-scrdescriptor</id>
+                            <phase>process-classes</phase>
+                            <goals>
+                                <goal>scr</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.felix</groupId>
+                    <artifactId>maven-bundle-plugin</artifactId>
+                    <extensions>true</extensions>
+                    <version>2.3.7</version>
+                    <executions>
+                        <execution>
+                            <id>bundle-manifest</id>
+                            <phase>generate-test-sources</phase>
+                            <goals>
+                                <goal>manifest</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <source>1.7</source>
+                        <target>1.7</target>
+                        <showDeprecation>true</showDeprecation>
+                        <showWarnings>true</showWarnings>
+                        <compilerArgs>
+                            <arg>-Xlint</arg>
+                        </compilerArgs>
+                    </configuration>
+                </plugin>
+                <!--This plugin's configuration is used to store Eclipse m2e settings 
+                only. It has no influence on the Maven build itself. -->
+                <plugin>
+                    <groupId>org.eclipse.m2e</groupId>
+                    <artifactId>lifecycle-mapping</artifactId>
+                    <version>1.0.0</version>
+                    <configuration>
+                        <lifecycleMappingMetadata>
+                            <pluginExecutions>
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>org.apache.felix</groupId>
+                                        <artifactId>maven-scr-plugin</artifactId>
+                                        <versionRange>[1.0.0,)</versionRange>
+                                        <goals>
+                                            <goal>scr</goal>
+                                        </goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <execute>
+                                            <runOnIncremental>true</runOnIncremental>
+                                        </execute>
+                                    </action>
+                                </pluginExecution>
+
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>org.apache.felix</groupId>
+                                        <artifactId>maven-bundle-plugin</artifactId>
+                                        <versionRange>[0.0,)</versionRange>
+                                        <goals>
+                                            <goal>generate-test-sources</goal>
+                                            <goal>manifest</goal>
+                                        </goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <execute>
+                                            <runOnIncremental>true</runOnIncremental>
+                                        </execute>
+                                    </action>
+                                </pluginExecution>
+
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>org.apache.servicemix.tooling</groupId>
+                                        <artifactId>depends-maven-plugin</artifactId>
+                                        <versionRange>[0.0,)</versionRange>
+                                        <goals>
+                                            <goal>generate-depends-file</goal>
+                                        </goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <ignore />
+                                    </action>
+                                </pluginExecution>
+
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>com.googlecode.maven-java-formatter-plugin</groupId>
+                                        <artifactId>maven-java-formatter-plugin</artifactId>
+                                        <versionRange>[0.0,)</versionRange>
+                                        <goals>
+                                            <goal>format</goal>
+                                        </goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <ignore />
+                                    </action>
+                                </pluginExecution>
+
+                                <!-- maven-license-plugin shouldn't be executed from eclipse-mvn 
+                                build -> start from console explicitly if needed: mvn find:find license:format 
+                                OR mvn license:format -Dlicense.header=path/to/header.txt -->
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>com.mycila.maven-license-plugin</groupId>
+                                        <artifactId>maven-license-plugin</artifactId>
+                                        <versionRange>[1.0,)</versionRange>
+                                        <goals>
+                                            <goal>check</goal>
+                                            <goal>format</goal>
+                                            <goal>remove</goal>
+                                        </goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <ignore />
+                                    </action>
+                                </pluginExecution>
+
+                            </pluginExecutions>
+                        </lifecycleMappingMetadata>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>com.googlecode.maven-java-formatter-plugin</groupId>
+                    <artifactId>maven-java-formatter-plugin</artifactId>
+                    <version>0.3.1</version>
+                    <configuration>
+                        <configFile>${format.file}</configFile>
+                        <encoding>UTF-8</encoding>
+                        <lineEnding>LF</lineEnding>
+                        <excludes>
+                            <exclude>**/src/test/**</exclude>
+                        </excludes>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>format</goal>
+                            </goals>
+                            <phase>validate</phase>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- Plugin for automatic addition of header to java, html, jsp, .. files. -->
+                <plugin>
+                    <groupId>com.mycila.maven-license-plugin</groupId>
+                    <artifactId>maven-license-plugin</artifactId>
+                    <version>1.9.0</version>
+                    <configuration>
+                        <header>${license.header}</header>
+                        <properties>
+                            <year>2014</year>
+                            <email>info@ogema.net</email>
+                        </properties>
+                        <!-- Encoding is actually unused, see http://code.google.com/p/maven-license-plugin/issues/detail?id=115 
+                        which is not yet patched in the released versions (up to 1.10.0b1). The license 
+                        plugin will always use the platform encoding when reading the license file, 
+                        which is usually cp1251 on windows. To override the platform encoding used 
+                        in maven the system property 'file.encoding' must be set in the environment 
+                        variable JAVA_TOOL_OPTIONS. set JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 -->
+                        <encoding>UTF-8</encoding>
+
+                        <includes>
+                            <include>src/**</include>
+                            <include>web/**</include>
+                        </includes>
+                        <excludes>
+                        	<exclude>lib/**</exclude>
+                        	<exclude>libs/**</exclude>
+                            <exclude>target/**</exclude>
+                            <exclude>**/*.txt</exclude>
+                            <exclude>**/data/**</exclude>
+                            <exclude>**/MANIFEST.MF</exclude>
+                            <exclude>**/.project</exclude>
+                            <exclude>**/.settings</exclude>
+                            <exclude>**/.classpath</exclude>
+                            <exclude>**/*.log</exclude>
+                            <exclude>**/jquery*.js</exclude>
+                            <!-- for now don't add header to any js or css file because there 
+                            are a lot of external files we're using where our header would be added ... -->
+                            <exclude>**/*.js</exclude>
+                            <exclude>**/*.json</exclude>
+                            <exclude>**/*.map</exclude>
+                            <exclude>**/*.css</exclude>
+                            <exclude>**/*.psd</exclude>
+                            <exclude>**/*.mp4</exclude>
+                            <exclude>**/*.csv</exclude>
+                            <exclude>**/*.svg</exclude>
+                            <exclude>**/*.ini</exclude>
+                            <exclude>**/*.properties</exclude>
+                            <exclude>**/*.uml</exclude>
+                            <exclude>**/*.umlcd</exclude>
+                            <exclude>**/*.eot</exclude>
+                            <exclude>**/*.ttf</exclude>
+                            <exclude>**/*.woff</exclude>
+                            <exclude>external/**</exclude>
+                        </excludes>
+                        <useDefaultExcludes>true</useDefaultExcludes>
+                        <strictCheck>true</strictCheck>
+                        <failIfMissing>true</failIfMissing>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>format</goal>
+                            </goals>
+                            <!-- don't execute this plugin automatically -> need to be invoked 
+                            explicitly: mvn license:[goal] [goal] := check, format or remove -->
+                            <phase>validate</phase>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- Source Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>${maven-source-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>attach-sources</id>
+                            <goals>
+                                <goal>jar-no-fork</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- Javadoc Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>${maven-javadoc-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <goals>
+                                <goal>jar</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>2.17</version>
+                    <configuration>
+                        <argLine>-ea</argLine>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <profiles>
+        <!-- Use this profile to generate license header -> usage: mvn -Pgenerate-license-header -->
+        <profile>
+            <id>license</id>
+            <build>
+                <defaultGoal>validate</defaultGoal>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.goldin</groupId>
+                        <artifactId>find-maven-plugin</artifactId>
+                        <version>0.2.5</version>
+                        <executions>
+                            <execution>
+                                <id>find-notice-file</id>
+                                <configuration>
+                                    <propertyName>license.header</propertyName>
+                                    <file>extra/license/header.txt</file>
+                                </configuration>
+                                <goals>
+                                    <goal>find</goal>
+                                </goals>
+                                <phase>validate</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.mycila.maven-license-plugin</groupId>
+                        <artifactId>maven-license-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Use this profile to format src files -> usage: mvn -Pformat-src-files -->
+        <profile>
+            <id>format</id>
+            <build>
+                <defaultGoal>validate</defaultGoal>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.goldin</groupId>
+                        <artifactId>find-maven-plugin</artifactId>
+                        <version>0.2.5</version>
+                        <executions>
+                            <execution>
+                                <id>find-formatter-file</id>
+                                <configuration>
+                                    <propertyName>format.file</propertyName>
+                                    <file>extra/eclipse-formatter/ogema-eclipse-formatter.xml</file>
+                                </configuration>
+                                <goals>
+                                    <goal>find</goal>
+                                </goals>
+                                <phase>validate</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.googlecode.maven-java-formatter-plugin</groupId>
+                        <artifactId>maven-java-formatter-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Use this profile to install/deploy a project with sources and javadocs. 
+        usage: mvn -Pgenerate-sources-and-javadocs deploy -->
+        <profile>
+            <id>generate-sources-and-javadocs</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                    </plugin>
+                    <!-- Javadoc Plugin -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

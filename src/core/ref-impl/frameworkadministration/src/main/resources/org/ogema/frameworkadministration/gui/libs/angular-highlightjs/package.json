@@ -1,0 +1,29 @@
+{
+  "name": "angular-highlightjs",
+  "version": "0.3.0",
+  "description": "AngularJS directive for syntax highlighting with highlight.js",
+  "main": "index.js",
+  "directories": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pc035860/angular-highlightjs.git"
+  },
+  "keywords": [
+    "angularjs",
+    "highlight.js",
+    "angular-highlightjs"
+  ],
+  "author": "Robin Fan",
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "devDependencies": {
+    "grunt": "~0.4.1",
+    "grunt-contrib-uglify": "~0.4.0",
+    "grunt-contrib-jshint": "~0.10.0",
+    "grunt-contrib-watch": "~0.6.0",
+    "grunt-contrib-connect": "~0.7.0"
+  }
+}

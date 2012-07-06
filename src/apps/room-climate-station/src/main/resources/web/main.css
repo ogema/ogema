@@ -1,0 +1,129 @@
+@charset "utf-8";
+	 
+body {
+    background-color:rgba(90,220,240,0.08)
+} 
+
+a#back:hover { 
+	margin-top:950px;  box-shadow:5px 5px 5px rgba(179, 179, 179, 1); border:5px solid rgba(179, 179, 179, .9);}
+
+a#back:active { 
+	margin-left:302px; margin-top:952px; margin-bottom:0px;
+	box-shadow:3px 3px 3px  rgba(179, 179, 179, 1); border:5px solid rgba(179, 179, 179, .9);}
+
+body {
+	   font-family: arial,sans-serif;
+	}
+
+a.button {
+	font-weight: bold;  box-shadow:7px 7px 7px rgba(179, 179, 179, 1);
+  	display:block; width:200px; padding:40px 0px;
+  	text-align:center; text-decoration:none; float:left; border-radius:15px;  text-shadow: 1px 1px 0 rgba(255,255,255,.6); 
+  	font-family: 'Arial', sans-serif; font-size:22px;}
+	
+a.button:hover {}
+		 
+a.button:active { 
+	box-shadow:4px 4px 4px rgba(104, 104, 104, 1);}	
+	
+a.buttonRed:link, a.buttonRed:visited {
+ 	color:rgba(255,51,51,.7);  border:3px solid rgba(255,51,51,.6);
+	} 
+  	
+	
+a.buttonRed:hover {
+	box-shadow:7px 7px 7px rgba(104, 104, 104, 1);
+ 	color:rgba(255,51,51,1);
+	border-color:rgba(255,51,51,.7)}
+	
+a.buttonRed:active {
+	color:rgba(255,51,51,.9);box-shadow:4px 4px 4px rgba(104, 104, 104, 1);}
+	
+a.buttonGreen:link, a.buttonGreen:visited {
+	border:3px solid rgba(128,171,68,.8); 
+ 	color:rgba(128,171,68,.8);}
+	
+a.buttonGreen:hover {
+	border-color:rgba(128,171,68,.9);
+	color:rgba(128,171,68,1);
+	box-shadow:7px 7px 7px rgba(104, 104, 104, 1);} 
+ 	
+	
+a.buttonGreen:active {
+ 	box-shadow:4px 4px 4px rgba(104, 104, 104, 1);
+}
+  	
+a.buttonYellow:link, a.buttonYellow:visited {
+	border:4px solid rgba(251, 227, 59,1); 
+ 	color:rgba(251, 227, 59,1);}
+	
+a.buttonYellow:hover {
+	color:#FFCC00;
+	box-shadow:7px 7px 7px rgba(104, 104, 104, 1); 
+ 	border-color:#FFCC00;}
+	
+a.buttonYellow:active {
+	box-shadow:4px 4px 4px rgba(104, 104, 104, 1) }
+	
+a#KITCHEN {
+	margin-left:100px; margin-top:30px; }
+a#KITCHEN:active {
+	margin-left:103px; margin-top:33px; margin-right:-3px; margin-bottom:-3px;} 
+	
+a#DINING{
+	margin-left:40px;  margin-top:30px;}
+a#DINING:active{margin-left:43px; margin-top:33px; margin-bottom:-3px;}
+		
+a#LIVING{
+	margin-left:100px;  margin-top:40px; clear:left;}
+a#LIVING:active {margin-left:103px;  margin-top:43px; margin-right:-3px; margin-bottom:-3px;}
+	
+a#BEDROOM{ 
+	margin-left:40px;  margin-top:40px;}
+a#BEDROOM:active {
+	margin-left:43px;margin-top:43px;margin-bottom:-3px;} 
+	
+a#OUTSIDE{
+	margin-left:100px;  margin-top:40px; clear:left;}
+a#OUTSIDE:active {
+	margin-left:103px;  margin-top:43px; margin-right:-3px;}
+
+a#BATH_index{
+	margin-left:100px;  margin-top:40px; clear:left;}
+a#BATH_index:active {margin-left:103px;  margin-top:43px; margin-right:-3px; margin-bottom:-3px;}
+	
+a#BATH{ 
+	margin-left:40px;  margin-top:40px;}
+a#BATH:active {
+	margin-left:43px;margin-top:43px;margin-bottom:-3px;} 
+	
+
+a#config:link,#config:visited {
+	width: 180px;
+	margin-left: 250px;
+	margin-top: 545px;
+	margin-bottom: 2px;
+	display: block;
+	padding: 10px;
+	border-radius: 6px;
+	border: 2px solid #CCC;
+	color: grey;
+	box-shadow: 2px 2px 2px rgba(179, 179, 179, .6);
+	text-align: center;
+	font-family: 'Arial', sans-serif;
+	font-size: 12px;
+	text-decoration: none;
+}
+
+a#config:hover {
+	box-shadow: 2px 2px 2px rgba(179, 179, 179, 1);
+	border: 2px solid rgba(179, 179, 179, .9);
+}
+
+a#config:active {
+	margin-left: 252px;
+	margin-top: 547px;
+	margin-bottom: 0px;
+	box-shadow: 1px 1px 1px rgba(179, 179, 179, 1);
+	border: 2px solid rgba(179, 179, 179, .9);
+}	

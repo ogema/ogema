@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<webresourceManagerDAO>
+    <webresourceManagerDO>
+        <app>Zentralbemi-User</app>
+        <password>P53PwNb1</password>
+        <role>ADMIN</role>
+        <username>bemi0001</username>
+    </webresourceManagerDO>
+    <webresourceManagerDO>
+        <app>Zentralbemi-User</app>
+        <password>P53PwNb2</password>
+        <role>USER</role>
+        <username>bemi0002</username>
+    </webresourceManagerDO>
+</webresourceManagerDAO>

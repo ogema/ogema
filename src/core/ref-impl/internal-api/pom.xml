@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.ogema.ref-impl</groupId>
+		<artifactId>ref-impl</artifactId>
+		<version>2.0.1</version>
+	</parent>
+
+	<artifactId>internal-api</artifactId>
+	<name>OGEMA ref-impl :: API</name>
+
+	<description>
+        Internal API of the OGEMA 2.0 reference implementation by Fraunhofer Society.
+	</description>
+	<url>http://www.ogema-source.net</url>
+
+	<packaging>bundle</packaging>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-scr-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+				<extensions>true</extensions>
+				<configuration>
+					<instructions>
+						<!-- Explicit export required, since wildcard org.ogema.* will cause 
+							the bundle plugin to include classes from the core API bundle and export 
+							them again from this bundle. -->
+						<Export-Package>
+							org.ogema.accesscontrol,
+							org.ogema.events,
+							org.ogema.exceptionmanager,
+							org.ogema.persistence,
+							org.ogema.resourcetree,
+							org.ogema.recordeddata,
+                            org.ogema.timer,
+                            org.ogema.driverconfig
+						</Export-Package>
+						<DynamicImport-Package>*</DynamicImport-Package>
+					</instructions>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.ogema.core</groupId>
+			<artifactId>api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.ogema.core</groupId>
+			<artifactId>models</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.compendium</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.felix</groupId>
+			<artifactId>org.apache.felix.scr.annotations</artifactId>
+		</dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>ogema-exam-base</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20070829</version>
+        </dependency>
+	</dependencies>
+</project>

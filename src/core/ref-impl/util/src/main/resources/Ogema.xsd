@@ -1,0 +1,616 @@
+<?xml version="1.0"?>
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://www.ogema-source.net/REST"
+           xmlns:og="http://www.ogema-source.net/REST">
+
+    <xs:element name="resource" type="og:Resource" />
+
+    <xs:group name="CommonResourceElements">
+        <xs:sequence>
+            <xs:element name="name" type="xs:string" maxOccurs="1" minOccurs="1">
+                <xs:annotation>
+                    <xs:documentation xml:lang="en">
+                        The name of the resource, as returned by
+                        Resource.getName(). Even write requests sent to REST must
+                        contain this field with a matching entry.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="type" type="xs:string" maxOccurs="1" minOccurs="1">
+                <xs:annotation>
+                    <xs:documentation xml:lang="en">
+                        Resource type. Same as Resource.getResourceType(). 
+                        Even write requests sent to REST must contain this field with a matching entry.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="path" type="xs:string" maxOccurs="1" minOccurs="0">
+                <xs:annotation>
+                    <xs:documentation xml:lang="en">
+                        Complete path of the resource, i.e. "toplevelname/subname1/.../parentname".
+                        This is always included in responses. In messages sent to the framework, this field is ignored.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="decorating" type="xs:boolean" maxOccurs="1" minOccurs="0">
+                <xs:annotation>
+                    <xs:documentation xml:lang="en">
+                        True if the resource is a decorator, false if element of the data model.
+                        Optional for sending data to REST, always included in responses.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="active" type="xs:boolean" maxOccurs="1" minOccurs="0">
+                <xs:annotation>
+                    <xs:documentation xml:lang="en">
+                        True if the resource is active, false if not.
+                        In write requests to the REST interface, this can be used to activate or deactivate a resource active-state 
+                        (default if not included in message: Leave status unchanged). Always included in response by framework.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="referencing" type="xs:anyURI" maxOccurs="1" minOccurs="0">
+                <xs:annotation>
+                    <xs:documentation xml:lang="en">
+                        Field only exists if the resource is a reference. This references to
+                        the "true" location of the resource. 
+                        In a POST request, using this field can be used to create a reference to
+                        instead of a "real" subresource.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:group ref="og:subresources" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:group>
+	
+    <xs:complexType name="Resource">
+        <xs:annotation>
+            <xs:documentation xml:lang="en">
+                Common basis class for a resource. All resources
+                are either primitive (FloatResource, BooleanResource, ...) or
+                non-primitive (type Resource) or schedules (FloatSchedule, ...). 
+                This defines common entries that all resources can have. The same
+                xml structures are used for PUT/POST and GET commands. Therefore,
+                few of the fields are defined as required, allowing PUT/POST commands
+                to be reduced to the minimum amount of information. For GET requests,
+                however, OGEMA should send as complete documents as possible.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:group ref="og:CommonResourceElements" />
+    </xs:complexType>
+
+    <xs:group name="subresources">
+        <xs:choice>
+            <xs:element type="og:Resource" name="resource">
+                <xs:annotation>
+                    <xs:documentation xml:lang="en">
+                        A subresource of the resource. Write requests to REST can add any number or sub-resources if
+                        they shall be written in the same write transaction. Framework responses always contain all
+                        non-schedule subresources that are active and are not contained in the response anywhere else
+                        (to avoid infinite-sized response messages in case of cross-references creating a subresource-loop).
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element type="og:ResourceLink" name="resourcelink">
+                <xs:annotation>
+                    <xs:documentation xml:lang="en">
+                        A link to a sub-resource. In write requests to the REST interface, these are ignored (for having
+                        no sensible meaning). Read requests may, under certain conditions, return a sub-resource as a
+                        link rather than embedding it into as return message. These conditions are:
+                        - Resource is a schedule: Being potentially large, schedules have to be addressed explicitly.
+                        - Resource is inactive: The existance of the resource is shown, but its content is probably 
+                        not interesting, anyways.
+                        - The resource is already contained in other parts of the same message. This scenario can occur
+                        due to referencing, especially when references create cyclic loops. This is case is mostly a
+                        safeguard. It guarantees that the resource information is somewhere in the message. But is does
+                        not define where exactly it will be found. 
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+        </xs:choice>
+    </xs:group>
+	
+    <xs:complexType name="ResourceLink">
+        <xs:annotation>
+            <xs:documentation xml:lang="en">
+                A link to another resource. This is used in the users' entry pages, for adding
+                sub-resources as references and possibly for terminating loop sequences of sub-resources.
+            </xs:documentation>
+        </xs:annotation>
+		
+        <xs:sequence>
+            <xs:element name="link" type="xs:anyURI" minOccurs="1" maxOccurs="1">
+                <xs:annotation>
+                    <xs:documentation>URI of the sub-resource, relative to the location
+                        of the top-level
+                        resources.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="type" type="xs:string" minOccurs="1" maxOccurs="1">
+                <xs:annotation>
+                    <xs:documentation>Type of the sub-resource. Must equal
+                        sub-resource's type field.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="name" type="xs:string" minOccurs="1" maxOccurs="1">
+                <xs:annotation>
+                    <xs:documentation>Name of the sub-resource. Must equal
+                        sub-resource's name field.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="ResourceList">
+        <xs:annotation>
+            <xs:documentation>Representation of an OGEMA ResourceList.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element name="elementType" type="xs:string" maxOccurs="1" minOccurs="1">
+                        <xs:annotation>
+                            <xs:documentation>OGEMA resource type of this list's elements.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+    <!-- Primitive Resources -->
+	
+    <xs:complexType name="BooleanResource">
+        <xs:annotation>
+            <xs:documentation>Representation for an OGEMA primitive
+                BooleanResource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element name="value" type="xs:boolean" maxOccurs="1" minOccurs="1">
+                        <xs:annotation>
+                            <xs:documentation>Actual value of the primitive resource.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="FloatResource">
+        <xs:annotation>
+            <xs:documentation>Representation for an OGEMA primitive
+                FloatResource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element name="value" type="xs:float" maxOccurs="1" minOccurs="1">
+                        <xs:annotation>
+                            <xs:documentation>Actual value of the resource.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                    <xs:element name="unit" type="xs:string" maxOccurs="1" minOccurs="0">
+                        <xs:annotation>
+                            <xs:documentation>Physical unit of the value.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="IntegerResource">
+        <xs:annotation>
+            <xs:documentation>Representation for an OGEMA primitive
+                IntegerResource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element name="value" type="xs:int" maxOccurs="1" minOccurs="1">
+                        <xs:annotation>
+                            <xs:documentation>Actual value of the resource.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="OpaqueResource">
+        <xs:annotation>
+            <xs:documentation>Representaion for an OGEMA primitive
+                OpaqueResource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element name="value" type="xs:base64Binary" maxOccurs="1" minOccurs="1">
+                        <xs:annotation>
+                            <xs:documentation>The byte array of the resource, encoded as a
+                                base64Binary string.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="StringResource">
+        <xs:annotation>
+            <xs:documentation>Representation for an OGEMA primitive
+                StringResource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element name="value" type="xs:string" maxOccurs="1" minOccurs="1">
+                        <xs:annotation>
+                            <xs:documentation>Actual value of the resource.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="TimeResource">
+        <xs:annotation>
+            <xs:documentation>Representation for an OGEMA primitive TimeResource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element name="value" type="xs:long" maxOccurs="1" minOccurs="1">
+                        <xs:annotation>
+                            <xs:documentation>Actual value of the resource.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+
+
+
+    <!-- Sampled Values and their specializations -->
+    
+    <xs:simpleType name="quality">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="GOOD"/>
+            <xs:enumeration value="BAD"/>
+        </xs:restriction>
+    </xs:simpleType>
+	
+    <xs:complexType name="SampledValue" abstract="true">
+        <xs:annotation>
+            <xs:documentation xml:lang="en">
+                XML representation of an OGEMA SampledValue data type.
+                This is the base class for more specialized SampledValues.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:sequence>
+            <xs:element name="time" type="xs:long" maxOccurs="1" minOccurs="1">
+                <xs:annotation>
+                    <xs:documentation>
+                        Timestamp for the entry, defined as ms since 1.1.1970.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="quality" type="og:quality" maxOccurs="1" minOccurs="0">
+                <xs:annotation>
+                    <xs:documentation>
+                        Optional indicator for the quality of the value. In case of a statistical value,
+                        this is defined as the square root of the statistical variance. Otherwise,
+                        it is anolgously defined as an expected inaccurancy. Exact values are
+                        indicated by this being zero, "bad" values by this being positive infinity.
+                        If quality is not indicated, the value is considered to be perfect.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="value" type="xs:anyType">
+                <xs:annotation>
+                    <xs:documentation>
+                        The value of this sample, concrete type will be set in
+                        SampledValue sub types derived by restriction.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+
+	
+    <xs:complexType name="SampledBoolean">
+        <xs:annotation>
+            <xs:documentation>Representation for boolean-typed SampledValue
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="og:SampledValue">
+                <xs:sequence>
+                    <xs:element name="time" type="xs:long" maxOccurs="1" minOccurs="1" />
+                    <xs:element name="quality" type="og:quality" maxOccurs="1" minOccurs="0" />
+                    <xs:element name="value" type="xs:boolean" maxOccurs="1" minOccurs="1" />
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="SampledFloat">
+        <xs:annotation>
+            <xs:documentation>Representation for float-typed SampledValue 
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="og:SampledValue">
+                <xs:sequence>
+                    <xs:element name="time" type="xs:long" maxOccurs="1" minOccurs="1" />
+                    <xs:element name="quality" type="og:quality" maxOccurs="1" minOccurs="0" />
+                    <xs:element name="value" type="xs:float" maxOccurs="1" minOccurs="1" />
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="SampledInteger">
+        <xs:annotation>
+            <xs:documentation>Representation for integer-typed SampledValue
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="og:SampledValue">
+                <xs:sequence>
+                    <xs:element name="time" type="xs:long" maxOccurs="1" minOccurs="1" />
+                    <xs:element name="quality" type="og:quality" maxOccurs="1" minOccurs="0" />
+                    <xs:element name="value" type="xs:int" maxOccurs="1" minOccurs="1" />
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="SampledOpaque">
+        <xs:annotation>
+            <xs:documentation>Representation for opaque-typed SampledValues
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="og:SampledValue">
+                <xs:sequence>
+                    <xs:element name="time" type="xs:long" maxOccurs="1" minOccurs="1" />
+                    <xs:element name="quality" type="og:quality" maxOccurs="1" minOccurs="0" />
+                    <xs:element name="value" type="xs:base64Binary" maxOccurs="1" minOccurs="1">
+                        <xs:annotation>
+                            <xs:documentation>The byte array of the resource, encoded as a
+                                base64Binary string.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="SampledString">
+        <xs:annotation>
+            <xs:documentation>Representation for string-typed SampledValue
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="og:SampledValue">
+                <xs:sequence>
+                    <xs:element name="time" type="xs:long" maxOccurs="1" minOccurs="1" />
+                    <xs:element name="quality" type="og:quality" maxOccurs="1" minOccurs="0" />
+                    <xs:element name="value" type="xs:string" maxOccurs="1" minOccurs="1" />
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="SampledTime">
+        <xs:annotation>
+            <xs:documentation>Representation for SampledValue representing a time.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="og:SampledValue">
+                <xs:sequence>
+                    <xs:element name="time" type="xs:long" maxOccurs="1" minOccurs="1" />
+                    <xs:element name="quality" type="og:quality" maxOccurs="1" minOccurs="0" />
+                    <xs:element name="value" type="xs:long" maxOccurs="1" minOccurs="1" />
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+
+    <!-- Schedules -->
+    
+    <xs:group name="CommonScheduleElements">
+        <xs:sequence>
+            <xs:group ref="og:CommonResourceElements" />
+            <xs:element name="lastUpdateTime" type="xs:long" minOccurs="0" maxOccurs="1" />
+            <xs:element name="lastCalculationTime" type="xs:long" minOccurs="0" maxOccurs="1" />
+            <xs:element name="start" type="xs:long" minOccurs="0" maxOccurs="1" default="0" >
+                <xs:annotation>
+                    <xs:documentation>Optional for documents that are sent to an
+                    OGEMA instance: Values in this schedule will replace schedule values
+                    in the range [start, end)</xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="end" type="xs:long" minOccurs="0" maxOccurs="1" default="9223372036854775807" >
+            <xs:annotation>
+                <xs:documentation>Optional for documents that are sent to an
+                    OGEMA instance: Values in this schedule will replace schedule values
+                    in the range [start, end)</xs:documentation>
+                </xs:annotation>
+            </xs:element>
+        </xs:sequence>
+    </xs:group>
+    
+    <xs:complexType name="ScheduleResource" abstract="true">
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element name="interpolationMode" type="xs:string" minOccurs="0" maxOccurs="1" />
+                    <xs:element name="lastUpdateTime" type="xs:long" minOccurs="0" maxOccurs="1" />
+                    <xs:element name="lastCalculationTime" type="xs:long" minOccurs="0" maxOccurs="1" />
+                    <xs:element name="start" type="xs:long" minOccurs="0" maxOccurs="1" default="0" />
+                    <xs:element name="end" type="xs:long" minOccurs="0" maxOccurs="1" default="9223372036854775807" />
+                    <xs:element name="entry" type="og:SampledValue" minOccurs="1" maxOccurs="unbounded">
+                        <xs:annotation>
+                            <xs:documentation>An entry in the schedule.</xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="BooleanSchedule">
+        <xs:annotation>
+            <xs:documentation>
+                A schedule of boolean values. Note that internally OGEMA does not know typed
+                schedules, but the appropriate schedule type can be inferred from schedules
+                always decorating a primitive resource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="og:ScheduleResource">
+                <xs:sequence>
+                    <xs:group ref="og:CommonScheduleElements" />
+                    <xs:element name="entry" type="og:SampledBoolean" maxOccurs="unbounded" minOccurs="1"/>
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="FloatSchedule">
+        <xs:annotation>
+            <xs:documentation>
+                A schedule of floating point values. Note that internally OGEMA does not know typed
+                schedules, but the appropriate schedule type can be inferred from schedules
+                always decorating a primitive resource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="og:ScheduleResource">
+                <xs:sequence>
+                    <xs:group ref="og:CommonScheduleElements" />
+                    <xs:element name="entry" type="og:SampledFloat" maxOccurs="unbounded" minOccurs="1"/>
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="IntegerSchedule">
+        <xs:annotation>
+            <xs:documentation>
+                A schedule of integer values. Note that internally OGEMA does not know typed
+                schedules, but the appropriate schedule type can be inferred from schedules
+                always decorating a primitive resource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="og:ScheduleResource">
+                <xs:sequence>
+                    <xs:group ref="og:CommonScheduleElements" />
+                    <xs:element name="entry" type="og:SampledInteger" maxOccurs="unbounded" minOccurs="1"/>
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="OpaqueSchedule">
+        <xs:annotation>
+            <xs:documentation>
+                A schedule of Opaque resources (arbitrary byte arrays). Note that internally OGEMA does not know typed
+                schedules, but the appropriate schedule type can be inferred from schedules
+                always decorating a primitive resource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="og:ScheduleResource">
+                <xs:sequence>
+                    <xs:group ref="og:CommonScheduleElements" />
+                    <xs:element name="entry" type="og:SampledOpaque" maxOccurs="unbounded" minOccurs="1"/>
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+
+	
+    <xs:complexType name="StringSchedule">
+        <xs:annotation>
+            <xs:documentation>
+                A schedule of Strings. Note that internally OGEMA does not know typed
+                schedules, but the appropriate schedule type can be inferred from schedules
+                always decorating a primitive resource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="og:ScheduleResource">
+                <xs:sequence>
+                    <xs:group ref="og:CommonScheduleElements" />
+                    <xs:element name="entry" type="og:SampledString" maxOccurs="unbounded" minOccurs="1"/>
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+	
+    <xs:complexType name="TimeSchedule">
+        <xs:annotation>
+            <xs:documentation>
+                A schedule of time values. Note that internally OGEMA does not know typed
+                schedules, but the appropriate schedule type can be inferred from schedules
+                always decorating a primitive resource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="og:ScheduleResource">
+                <xs:sequence>
+                    <xs:group ref="og:CommonScheduleElements" />
+                    <xs:element name="entry" type="og:SampledTime" maxOccurs="unbounded" minOccurs="1"/>
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+
+</xs:schema>

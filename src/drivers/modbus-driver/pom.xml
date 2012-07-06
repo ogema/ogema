@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.ogema.drivers</groupId>
+        <artifactId>ogema-drivers</artifactId>
+        <version>2.0.1</version>
+    </parent>
+
+    <artifactId>modbus</artifactId>
+    <name>OGEMA Drivers :: Modbus Driver</name>
+
+    <description>
+        
+    </description>
+
+    <url>https://www.ogema-source.net/wiki</url>
+
+    <packaging>bundle</packaging>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.ogema.core</groupId>
+			<artifactId>api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.compendium</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.wimpi</groupId>
+			<artifactId>jamod</artifactId>
+			<version>1.2</version>
+		</dependency>
+	</dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Embed-Dependency>jamod</Embed-Dependency>
+                    </instructions>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-scr-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

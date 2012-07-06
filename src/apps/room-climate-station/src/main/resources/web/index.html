@@ -1,0 +1,77 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Rooms</title>
+<script src="lib/jquery-1.7.min.js"></script>
+
+<link rel="stylesheet" type="text/css" href="main.css">
+<script>
+$(document).ready(function(){
+	var priorK = 1;
+    var priorE = 1;
+	setPriority();
+	function setPriority(){
+ 				 if (priorK == 2) {
+				   $("#button00").addClass("buttonYellow");
+				 }else if (priorK == 3 || priorK == 4 ){
+				   $("#button00").addClass("buttonRed");
+				 }else {
+				   $("#button00").addClass("buttonGreen");
+				 }
+				 //set color of frame = priority for the room
+				 if (priorE == 2) {
+					$("#button01").addClass("buttonYellow");
+				 }else if (priorE == 3 || priorE == 4 ){
+					 $("#button01").addClass("buttonRed");
+				 }else {
+					 $("#button01").addClass("buttonGreen");
+				 }
+}
+//	 setInterval(function(){
+//					   $.getJSON("/climate_station_servlet/getData", function(data) {
+//									 priorK = data[0].Priority;
+//									 priorE = data[1].Priority;
+//									 //set color of frame = priority for the room
+//									 setPriority();
+//					  }); 
+//	},10000);
+});
+</script>
+</head>
+<body>
+
+	<h1 style="padding-left: 150px">Room Climate Station</h1>
+	<a href="room.html?roomId=KITCHEN" id="KITCHEN"
+		class="button buttonGreen">KÜCHE</a>
+	<a href="room.html?roomId=DINING" id="DINING"
+		class="button buttonGreen">ESSZIMMER</a>
+	<a href="room.html?roomId=LIVING" id="LIVING"
+		class="button buttonGreen">WOHNZIMMER</a>
+	<a href="room.html?roomId=BEDROOM" id="BEDROOM"
+		class="button buttonGreen">SCHLAFZIMMER</a>
+	<!--<a href="room.html?roomId=OUTSIDE" id="OUTSIDE" class="button buttonGreen">OUTSIDE</a>-->
+	<a href="room.html?roomId=BATH" id="BATH_index" 
+		class="button buttonGreen">BADEZIMMER</a>
+	<a href="main-config.html" id="config">Verbindung Raum-Ressourcen</a>
+
+
+</body>
+</html>

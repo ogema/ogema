@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>ogema-drivers</artifactId>
+        <groupId>org.ogema.drivers</groupId>
+        <version>2.0.1</version>
+    </parent>
+
+    <artifactId>knx</artifactId>
+    <version>2.0.1</version>
+    <packaging>bundle</packaging>
+
+    <repositories>
+        <repository>
+            <url>https://www.ogema-source.net/artifactory/external-opensource</url>
+            <name>external</name>
+            <id>iwes-external-opensource</id>
+        </repository>
+    </repositories>
+
+    <name>OGEMA Drivers :: KNX</name>
+    <description>Implementation of the KNX-Driver as a unified high-level plus low-level driver</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.ogema.core</groupId>
+            <artifactId>api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.compendium</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.scr.annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jdom</groupId>
+            <artifactId>jdom2</artifactId>
+            <version>2.0.3</version>
+        </dependency>
+        <dependency>
+            <groupId>at.tuwien.calimero</groupId>
+            <artifactId>calimero</artifactId>
+            <version>2.0a4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.core</groupId>
+            <artifactId>models</artifactId>
+            <version>2.0.1</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Embed-Dependency>
+                            jdom2;scope=compile|runtime,
+                            calimero;scope=compile|runtime,
+                            javax.validation;scope=compile|runtime
+                        </Embed-Dependency>
+                        <Embed-Directory>lib</Embed-Directory>
+                        <Import-Package>!org.jaxen.*,org.jdom2.*,tuwien.auto.calimero.*,javax.validation.*,*</Import-Package>
+                    </instructions>
+                    <unpackBundle>true</unpackBundle>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-scr-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

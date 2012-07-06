@@ -1,0 +1,496 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<div class="building col-sm-12 well well-sm">
+    <div class="row">
+        <div class="col-md-12">
+            <h3>
+                App Management
+            </h3>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="row">
+                <div class="col-sm-6">
+                    <input type="search" ng-model="q" class="form-control" placeholder="filter applications..." />
+                </div>
+                <div class="col-sm-6">
+
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12" >
+                    <h2>Applications</h2>
+                    <div class="appContainer" ng-repeat="app in applications| filter:q" ng-mouseenter="app.displayButtons = true" ng-mouseleave="app.displayButtons = false">
+                        <div class="applogoarea" ng-if="app.hasWebResources == true && app.id">                           
+                            <a href ng-click="openApp(app)">
+                                <img class="applogo" src="/install/installedapps?action=getIcon&app={{app.id}}"/> 
+                            </a>   
+                        </div>
+                        <div class="applogoarea" ng-if="app.hasWebResources == false && app.id">                           
+                            <img class="applogo" src="/install/installedapps?action=getIcon&app={{app.id}}"/>  
+                        </div>
+                        <div class="bundleShortInfos">
+                            <b>  {{app.metainfo.Bundle_Name}} </b><br/>
+                            <span class="appversion">
+                                {{app.metainfo.Bundle_Version}} 
+                            </span> 
+                            <div class="appdescription">
+                                {{app.metainfo.Bundle_Description}}
+                            </div>
+                        </div>
+                        <div class="appbuttons" ng-show="app.displayButtons" >
+                            <button type="button" title="Show App Info" ng-click="showBundleInfo(app)" class="btn btn-success btn-xs">
+                                <span class="glyphicon glyphicon-info-sign"></span>    
+                            </button>
+                            <button type="button" title="Update" ng-click="updateBundle(app)" class="btn btn-success btn-xs">
+                                <span class="glyphicon glyphicon-refresh"></span>    
+                            </button>
+                            <!--button type="button" title="edit App" ng-click="editBundle(app)" class="btn btn-success btn-xs">
+                                <span class="glyphicon glyphicon-pencil"></span>    
+                            </button-->
+                            <!-- button ng-if="app.hasWebResources == true" type="button" title="show web resources" ng-click="showWebResources(app)" class="btn btn-success btn-xs">
+                                <span class="glyphicon glyphicon-list-alt"></span>    
+                            </button -->
+                            <button type="button" title="Delete"  ng-click="uninstallApp(app)" class="btn btn-success btn-xs">
+                                <span class="glyphicon glyphicon-trash"></span>    
+                            </button>
+                        </div>
+                    </div>
+                    <button class="btn-success appContainer addApp"   ng-click="installAppFromAppstore('localAppDirectory')">
+                        <div class="applogoarea">
+                            <img class="applogo" src="./img/svg/addappicon.svg" alt=""/> 
+                        </div>
+                        <div class="bundleShortInfos" >
+                            <b>  Install new Application</b><br/>
+                            <div class="appdescription">
+                                Upload and install a new Application either from a local File or your local Appstore.
+                            </div>
+                        </div>
+                    </button>   
+
+                </div>
+            </div>
+        </div>
+    </div>    
+
+    {{selected}}
+</div>
+
+<script type="text/ng-template" id="uninstallApp">
+    <div class="modal-header">
+    <h3 class="modal-title">Uninstall Application</h3>
+    </div>
+    <div class="modal-body">
+    <p>
+    Do you really want to ininstall the App:<br/><b> {{uninstallApp.name}}</b>
+    </p>
+    <button class="btn btn-danger" ng-click="doDelete()">YES, I WANT TO UNINSTALL THIS APP</button>
+    <p>
+    {{status}}
+    </p>
+    </div>  
+    <div class="modal-footer">
+    <button class="btn btn-primary" ng-click="cancel()">Close</button>
+    </div>
+</script>
+
+<script type="text/ng-template" id="editBundle">
+    <div class="modal-header">
+    <h3 class="modal-title">Edit Permissions: {{editBundle.name}}</h3>
+    </div>
+    <div class="modal-body">
+
+    <accordion>
+    <accordion-group ng-repeat="policy in status.policies" >
+    <accordion-heading  ng-class="policy.delete ? 'danger' : ''">
+    {{policy.uniqueName}}
+    <button class="btn btn-xs pull-right" href ng-click="policy.delete = !policy.delete" ng-class="policy.delete ? 'btn-success' : 'btn-danger'"><span class="glyphicon" ng-class="policy.delete ? 'glyphicon-ok' : 'glyphicon-trash'"></span></button>
+    <button class="btn btn-link btn-xs pull-right" ng-click="togglePolicyMode(policy)">
+    <span class="glyphicon glyphicon-ok-circle  glyph-permitted" ng-if="policy.mode == 'allow'"> ALLOW </span>
+    <span class="glyphicon glyphicon-ban-circle glyph-notpermitted" ng-if="policy.mode != 'allow'"> DENY </span>     
+    </button>
+    </accordion-heading>
+    <table class="table table-bordered policies">
+    <tr class="headline"  ng-if="policy.permissions.length > 0">                
+    <th colspan="4">
+    Permissions
+    </th>
+    </tr>
+    <tr class="miniheadline"  ng-if="policy.permissions.length > 0">                
+    <th> Type </th>
+    <th> Filter </th>
+    <th colspan="2"> Actions </th>
+    </tr>
+    <tr ng-repeat="permission in policy.permissions"  ng-if="policy.permissions.length > 0" ng-class="{delete: permission.delete == true}">
+    <td>
+    <a href buttons="no" editable-text="permission.type" >{{ permission.type || 'empty' }}</a>
+    </td>      
+    <td>
+    <a href buttons="no" editable-text="permission.filter" >{{ permission.filter || 'empty' }}</a>
+    </td>
+    <td colspan="2">
+    <a href buttons="no" editable-text="permission.actions" >{{ permission.actions || 'empty' }}</a>
+    </td>
+    <!--td width="10%">
+    <button class="btn btn-xs" href ng-click="$scope.toggleDeletePermission(permission)" ng-class="permission.delete ? 'btn-danger' : 'btn - success'"><span class="glyphicon" ng-class="permission.delete ? 'glyphicon-trash' : 'glyphicon - ok'"></span></button>
+    </td-->
+    </tr>
+    <tr class="headline" ng-if="policy.conditions.length > 0">                
+    <th colspan="4">
+    Conditions
+    </th>
+    </tr>
+    <tr class="miniheadline"  ng-if="policy.conditions.length > 0">                
+    <th> Type </th>
+    <th> Arg1 </th>
+    <th colspan="2"> Arg2 </th>
+    </tr>
+    <tr ng-repeat="condition in policy.conditions" ng-if="policy.conditions.length > 0">
+    <td>
+    <a href buttons="no" editable-text="condition.type">{{ condition.type || 'empty' }}</a>
+    </td>      
+    <td>
+    <a href buttons="no" editable-text="condition.arg1">{{ condition.arg1 || 'empty' }}</a>
+    </td>
+    <td colspan="2">
+    <a href buttons="no" editable-text="condition.arg2">{{ condition.arg2 || 'empty' }}</a>
+    </td>
+    </tr>           
+    </table> 
+    </accordion-group>
+    </accordion>
+    <div>
+    ADD NEW PERMISSION
+    </div>
+
+    </div>  
+    <div class="modal-footer">
+    <button class="btn btn-primary" ng-click="ok()">Save changes</button>
+    <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
+    </div>
+</script>
+
+<script type="text/ng-template" id="showBundleInfo">
+    <div class="modal-header">
+    <h3 class="modal-title">Application Info: {{infoBundle.name}}</h3>
+    </div>
+    <div class="modal-body">
+    <accordion>
+    <accordion-group  is-open="true">
+    <accordion-heading>
+    General Info
+    </accordion-heading>
+    <table class="table table-bordered table-striped">
+    <tr>
+    <th>
+    Name
+    </th>
+    <th>
+    Content
+    </th>
+    </tr>
+    <tr>
+    <td>
+    Name
+    </td>
+    <td>
+    {{infoBundle.name}}
+    </td>
+    </tr>
+    <tr>
+    <td>
+    ID
+    </td>
+    <td>
+    {{infoBundle.id}}
+    </td>
+    </tr>
+    <tr ng-repeat="(key, value) in infoBundle.metainfo">
+    <td>
+    {{key}}
+    </td>
+    <td ng-if="key == 'Bnd_LastModified'">
+    {{value| date:'yyyy-MM-dd HH:mm:ss Z'}}
+    </td>
+    <td ng-if="key != 'Bnd_LastModified'">
+    {{value}}
+    </td>
+    </tr>
+    </table>
+    </accordion-group>
+    <accordion-group>
+    <accordion-heading>
+    App Permissions
+    </accordion-heading>
+
+    <table class="table table-bordered policies">
+    <tr  ng-repeat-start="policy in status.policies" >
+    <th colspan="3">
+    {{policy.uniqueName}} 
+    <span class="glyphicon glyphicon-ok-circle  glyph-permitted pull-right" ng-if="policy.mode == 'allow'"> ALLOW </span>
+    <span class="glyphicon glyphicon-ban-circle glyph-notpermitted pull-right" ng-if="policy.mode != 'allow'"> DENY </span>  
+
+    </th>
+    </tr>
+    <tr class="headline"  ng-if="policy.permissions.length > 0">                
+    <th colspan="3">
+    Permissions
+    </th>
+    </tr>
+    <tr class="miniheadline"  ng-if="policy.permissions.length > 0">                
+    <th> Type </th>
+    <th> Filter </th>
+    <th> Actions </th>
+    </tr>
+    <tr ng-repeat="permission in policy.permissions"  ng-if="policy.permissions.length > 0">
+    <td>
+    {{ permission.type}}
+    </td>      
+    <td>
+    {{ permission.filter}} 
+    </td>
+    <td>
+    {{ permission.actions}}
+    </td>
+    </tr>
+    <tr class="headline" ng-if="policy.conditions.length > 0">                
+    <th colspan="3">
+    Conditions
+    </th>
+    </tr>
+    <tr class="miniheadline"  ng-if="policy.conditions.length > 0">                
+    <th> Type </th>
+    <th> Arg1 </th>
+    <th> Arg2 </th>
+    </tr>
+    <tr ng-repeat="condition in policy.conditions" ng-if="policy.conditions.length > 0">
+    <td>
+    {{ condition.type}}
+    </td>      
+    <td>
+    {{ condition.arg1}}
+    </td>
+    <td>
+    {{ condition.arg2}}
+    </td>
+    </tr>    
+    <tr  ng-repeat-end="policy in status.policies" >
+    <th colspan="3"> </th>
+    </tr>
+    </table> 
+    </accordion-group>
+    </accordion>
+
+
+    </accordion-group>
+    </accordion>
+    <div>
+    </div>
+    </div>
+    <div class="modal-footer">
+    <button class="btn btn-primary" ng-click="ok()">Close</button>
+    </div>
+</script>
+
+<script type="text/ng-template" id="updateBundle">
+    <div class="modal-header">
+    <h3 class="modal-title">Update Application</h3>
+    </div>
+    <div class="modal-body">
+    <p>
+    {{updateBundle.name}}
+    </p>
+    {{status}}
+    </div>
+    <div class="modal-footer">
+    <button class="btn btn-primary" ng-click="ok()">Close</button>
+    </div>
+</script>
+
+<script type="text/ng-template" id="installAppFromAppstore">
+    <div class="modal-header">
+    <h3 class="modal-title">Install App from AppStore</h3>
+    </div>
+    <div class="modal-body">
+    <p>
+    Please select App from local Appstore
+    </p>
+    <p>
+    <input type="search" ng-model="q" class="form-control" placeholder="filter files..." />
+    </p>
+    <div class="scrollpane">
+    <button class="btn btn-default fileListItem" ng-repeat="app in apps|filter:q" ng-click="setPermissions(AppStore, app.name)">
+    <img ng-if="app.iconBase64 == null" class="fileListItemLogo" src="./img/svg/appdefaultlogo.svg" alt=""/>
+    <img ng-if="app.iconBase64 !== null" class="fileListItemLogo" src="data:image/{{app.type}};base64, {{app.iconBase64}}" alt="{{app.name}}"/>
+    {{app.name}}
+    </button>
+    </div>
+    <div class="row">
+    <div class="col-md-12">
+    &nbsp;
+    </div>
+    </div>
+    <div class="row">
+    <div class="col-md-12">
+    <h4>Upload new App to local Appstore</h4>
+    <div class="row">
+    <div class="col-md-4">
+    <span class="btn btn-success btn-file"><i class="glyphicon glyphicon-floppy-open"></i> Upload File <input type="file" ng-file-select="onFileSelect($files)"></span>
+
+    </div>
+    <div class="col-md-8">
+    <progressbar class="progress-striped active" ng-if="showProgressbar == true" value="uploadValue" type="{{uploadType}}"><i ng-show="uploadAction">{{uploadActionMsg}}</i></progressbar>
+    </div>
+    </div>
+
+    </div>
+    </div>
+    <div class="modal-footer">
+    <button class="btn btn-primary" ng-click="ok()">Close</button>
+    </div>
+</script>
+
+
+<script type="text/ng-template" id="setPermissions">
+    <div class="modal-header">
+    <h3 class="modal-title">Set Permissions</h3>
+    </div>
+    <div class="modal-body">
+    <p>
+    Please set the Permissions for {{permissionsForApp}}
+    </p>
+    <p>
+    <input type="search" ng-model="perm" class="form-control" placeholder="filter permissions..." />
+    </p>    
+    <div class="checkbox">
+    <label>
+    <input type="checkbox" ng-model="permissions.checkAll"> Accept all Permissions
+    </label>
+    </div>
+
+    <table class="table table-bordered permissions" ng-class="{accepted: permissions.checkAll == true}">
+    <tr ng-repeat-start="permission in permissions.localePerms|filter:perm" class="headline"  ng-class="{accepted: permission.checked == true}">                
+    <td colspan="6">
+    <div class="checkbox-inline">
+    <label>
+    <input type="checkbox" ng-model="permission.checked"  /> {{permission.name}}
+    </label>
+    </div>
+    </td>
+    </tr>
+    <tr ng-class="{accepted: permission.checked == true}">
+    <td colspan="2">
+    <button class="btn btn-link" ng-click="togglePermissionMode(permission)">
+    <span class="glyphicon glyphicon-ok-circle  glyph-permitted" ng-if="permission.mode == 'ALLOW'"> </span>
+    <span class="glyphicon glyphicon-ban-circle glyph-notpermitted" ng-if="permission.mode != 'ALLOW'"> </span>                   
+    </button>
+    </td>      
+    <td colspan="2">
+    <label class="control-label">
+    Filter:
+    </label>
+    <a href buttons="no" editable-text="permission.filter">{{ permission.filter || 'empty' }}</a>
+
+    </td>
+    <td colspan="2">
+    <label class="control-label">
+    Action:
+    </label>
+    <a href buttons="no" editable-text="permission.action">{{ permission.action || 'empty' }}</a>
+    </td>
+    </tr>
+    <tr  ng-class="{accepted: permission.checked == true}" ng-repeat-end>
+    <td colspan="3">
+    <label class="control-label">
+    Condition:
+    </label>
+    <a href buttons="no" editable-text="permission.condition">{{ permission.condition || 'empty' }}</a>
+    </td>
+    <td colspan="3">
+    <label class="control-label">
+    ConditionArgs:
+    </label>
+    <a href buttons="no" editable-text="permission.conditionArgs">{{ permission.conditionArgs || 'empty' }}</a>
+    </td>
+    </tr>
+    </div>            
+    </table>    
+    <h4>Add new Permission</h4>
+    <table class="table table-bordered permissions" >
+    <tr class="headline">                
+    <td colspan="5">
+    <div class="checkbox-inline">
+    <label>
+    <input type="checkbox" ng-model="newpermission.checked"  /> <a href buttons="no" editable-text="newpermission.name">{{ newpermission.name || 'empty' }}</a>
+    </label>
+    </div>
+    </td>
+    <td>
+    <button class="btn btn-xs btn-success pull-right" href ng-click="addNewPermission(newpermission)""><span class="glyphicon glyphicon-plus"></span></button>
+    </td>
+    </tr>
+    <tr>
+    <td colspan="2">
+    <button class="btn btn-link" ng-click="togglePermissionMode(newpermission)">
+    <span class="glyphicon glyphicon-ok-circle  glyph-permitted" ng-if="newpermission.mode == 'ALLOW'"> </span>
+    <span class="glyphicon glyphicon-ban-circle glyph-notpermitted" ng-if="newpermission.mode != 'ALLOW'"> </span>
+    </button>
+    </td>      
+    <td colspan="2">
+    <label class="control-label">
+    Filter:
+    </label>
+    <a href buttons="no" editable-text="newpermission.filter">{{ newpermission.filter || 'empty' }}</a>
+
+    </td>
+    <td colspan="2">
+    <label class="control-label">
+    Action:
+    </label>
+    <a href buttons="no" editable-text="newpermission.action">{{ newpermission.action || 'empty' }}</a>
+    </td>
+    </tr>
+    <tr ng-repeat-end>
+    <td colspan="3">
+    <label class="control-label">
+    Condition:
+    </label>
+    <a href buttons="no" editable-text="newpermission.condition">{{ newpermission.condition || 'empty' }}</a>
+    </td>
+    <td colspan="3">
+    <label class="control-label">
+    ConditionArgs:
+    </label>
+    <a href buttons="no" editable-text="newpermission.conditionArgs">{{ newpermission.conditionArgs || 'empty' }}</a>
+    </td>
+    </tr>
+    </div>            
+    </table> 
+
+
+
+    </div>
+
+    <div class="modal-footer">
+    <button class="btn btn-success" ng-click="setAppPermissions(permissions)">Save Changes</button>
+    <button class="btn btn-primary" ng-click="ok()">Close</button>
+    </div>
+</script>
+

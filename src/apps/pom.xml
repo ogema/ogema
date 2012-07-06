@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<!-- Parent-POM: OGEMA master pom with project-wide settings -->
+	<parent>
+		<groupId>org.ogema</groupId>
+		<artifactId>ogema</artifactId>
+		<version>2.0.1</version>
+	</parent>
+
+	<groupId>org.ogema.apps</groupId>
+	<artifactId>ogema-apps</artifactId>
+	<packaging>pom</packaging>
+	<name>OGEMA Applications</name>
+
+	<!-- Sub-projects: OGEMA Applications (in alphabetical order) -->
+	<modules>
+		<module>channel-mapper</module>
+		<module>common-services</module>
+		<module>coolspace-controller</module>
+		<module>device-configurator</module>
+		<module>drs485de-console</module>
+		<module>graphvis-generator</module>
+		<module>resource-combiner</module>
+		<module>room-climate-station</module>
+		<module>simulated-freezer</module>
+                <module>log-data-visualization</module>
+	</modules>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+</project>

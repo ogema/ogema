@@ -1,0 +1,6 @@
+(org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+
+#(org.ogema.accesscontrol.ResourcePermission "path=*" "read,write")
+(org.ogema.accesscontrol.ResourcePermission "type=org.ogema.model.devices.whitegoods.CoolingDevice" "read,write")

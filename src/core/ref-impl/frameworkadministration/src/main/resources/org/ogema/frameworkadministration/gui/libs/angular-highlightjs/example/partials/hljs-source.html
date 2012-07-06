@@ -1,0 +1,39 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<h3>hljs + source</h3>
+<blockquote>
+  <code>source</code> directive connects the highlight content with <code>hljs</code>.
+</blockquote>
+<hr>
+
+<p>Click on the button will drop the page source into <code>$scope.subSource</code>, and triggers <code>hljs</code> directive to display the highlighted <code>$scope.subSource</code>.</p>
+
+<!-- buttons for put/clear $scope.subSource content -->
+<button class="btn btn-primary show-source" ng-click="toggleSource('subSource')" ng-show="!subSource">put $scope.subSource</button>
+<button class="btn btn-primary show-source" ng-click="toggleSource('subSource')" ng-show="subSource">clear $scope.subSource</button>
+<div ng-show="subSource">
+  <br>
+  <!-- hljs connected with $scope.subSource -->
+  <div hljs source="subSource"></div>
+</div>
+
+<hr>
+<p>Demostrates the <code>source</code> expression evaluation.</p>
+<!-- hljs connected with independent string -->
+<div hljs source="'<html><head><body></body></head></html>'"></div>

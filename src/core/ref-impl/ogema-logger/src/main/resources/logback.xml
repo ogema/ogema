@@ -1,0 +1,55 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!-- This is the logback configuration for the OGEMA default logger
+ implementation. Message patterns, file names and sizes may be freely customized.
+ -->
+<configuration debug="false"> 
+	<logger level="ERROR" name="org.ops4j.pax"/> 
+	<logger level="ERROR" name="org.apache.wicket"/> 
+	<logger level="ERROR" name="org.eclipse"/>
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender"> 
+    <encoder>
+      <pattern>%logger{36}/%thread %-5level: - %msg%n</pattern>
+    </encoder>
+  </appender>
+  
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <rollingPolicy
+      class="org.ogema.impl.logging.HousekeepingPolicy">
+      <fileNamePattern>${ogema.logging.dir:-data/log}/ogema_%d{yyyy-MM-dd-HH}_%03i.log</fileNamePattern>
+      <maxFileSize>1000KB</maxFileSize>
+      <maxTotalSize>20MB</maxTotalSize>
+    </rollingPolicy>
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %logger{36} [%thread] %-5level - %msg%n</pattern>
+    </encoder>
+  </appender>
+  
+  <appender name="CACHE" class="org.ogema.impl.logging.CacheAppender">
+    <pattern>%d{HH:mm:ss.SSS} %logger{36} [%thread] %-5level - %msg%n</pattern>
+    <filename>${ogema.logging.dir:-data/log}/cache_%d{yyyy-MM-dd-HH-mm.ss.SSS}.log</filename>
+    <size>1MB</size>
+  </appender>
+  
+  <root level="debug">
+    <appender-ref ref="CONSOLE" />
+    <appender-ref ref="FILE" />
+    <appender-ref ref="CACHE" />
+  </root>
+</configuration>

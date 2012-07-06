@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.ogema.ref-impl</groupId>
+        <artifactId>ref-impl</artifactId>
+        <version>2.0.1</version>
+    </parent>
+
+    <artifactId>app-manager</artifactId>
+    <name>OGEMA ref-impl :: app-manager</name>
+
+    <description>
+        Application Manager Package of the OGEMA reference implementation by Fraunhofer Society.
+    </description>
+
+    <url>http://www.ogema-source.net</url>
+    
+    <packaging>bundle</packaging>
+	
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-scr-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+    
+    <repositories>
+        <repository>
+            <id>iwes-external-opensource</id>
+            <url>https://www.ogema-source.net/artifactory/external-opensource/</url>
+        </repository>
+    </repositories>
+  
+    <dependencies>
+        <dependency>
+            <groupId>org.ogema.core</groupId>
+            <artifactId>api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.compendium</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>internal-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>util</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.scr.annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>resource-manager</artifactId>
+            <version>2.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>resource-access-advanced</artifactId>
+            <version>2.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.2</version>
+        </dependency>
+	<!-- Test dependencies -->
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>ogema-exam-base</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>channel-manager</artifactId>
+            <version>2.0.1</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    
+</project>

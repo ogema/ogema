@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<psf version="2.0">
+<provider id="org.eclipse.egit.core.GitProvider">
+<project reference="1.0,ssh://git@nat6.bouncezone.de/ogema,repository_cleanup,src/apps/cogen-demo"/>
+<project reference="1.0,ssh://git@nat6.bouncezone.de/ogema,repository_cleanup,src/apps/heatpump-demo"/>
+<project reference="1.0,ssh://git@nat6.bouncezone.de/ogema,repository_cleanup,src/apps/listener-demo"/>
+<project reference="1.0,ssh://git@nat6.bouncezone.de/ogema,repository_cleanup,src/core/api"/>
+<project reference="1.0,ssh://git@nat6.bouncezone.de/ogema,repository_cleanup,src/core/app-manager"/>
+<project reference="1.0,ssh://git@nat6.bouncezone.de/ogema,repository_cleanup,src/core/refImpl"/>
+<project reference="1.0,ssh://git@nat6.bouncezone.de/ogema,repository_cleanup,src/core/models"/>
+<project reference="1.0,ssh://git@nat6.bouncezone.de/ogema,repository_cleanup,src/core/resource-manager"/>
+<project reference="1.0,ssh://git@nat6.bouncezone.de/ogema,repository_cleanup,src/drivers/heatpump-driver"/>
+</provider>
+</psf>

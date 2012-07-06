@@ -1,0 +1,58 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<title>Room</title>
+<script src="rooms.js"></script>
+<script src="lib/jquery-1.7.min.js"></script>
+<script>
+new room();
+</script>
+<link rel="stylesheet" type="text/css" href="rooms.css">
+
+<body onload="draw()">
+
+
+<h1 id="room">Room</h1>
+
+<canvas id="veil" width="600" height="420" style="border:none;">
+Your browser does not support the HTML5 canvas tag.
+</canvas>
+
+<canvas id="temperatureIn" width="240" height="180" style="border:none;">
+Your browser does not support the HTML5 canvas tag.
+</canvas>
+
+<canvas id="temperatureOut" width="240" height="180" style="border:none;">
+Your browser does not support the HTML5 canvas tag.
+</canvas>
+
+<canvas id="humidityIn" width="240" height="180" style="border:none;">
+Your browser does not support the HTML5 canvas tag.
+</canvas>
+
+<canvas id="humidityOut" width="240" height="180" style="border:none;">
+Your browser does not support the HTML5 canvas tag.
+</canvas>
+
+<div id = "message">
+</div>
+
+<div id = "links">
+</div>
+
+</body>

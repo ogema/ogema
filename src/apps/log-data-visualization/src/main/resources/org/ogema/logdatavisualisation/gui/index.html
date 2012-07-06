@@ -1,0 +1,81 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+
+    <head>
+        <link href="examples.css" rel="stylesheet" type="text/css">
+        <script src="jquery/jquery-1.11.1.min.js"></script>
+        <script src="jquery/jquery.flot.min.js"></script>
+        <script src="jquery/jquery.flot.selection.min.js"></script>
+        <script src="jquery/jquery.flot.time.min.js"></script>
+        <script src ="graph.js"></script>
+        <script src ="jquery-ui.min.js"></script>
+
+        <title>Log Data Visualization</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    
+    <body>
+        
+        <div id="header">
+            <h2>Time Series Visualization</h2>
+	</div>
+
+        <div id="content">
+            
+            <!-- Button bar -->
+            <div class="demo-container" style="height:auto;">
+                <div id="radio">
+                    <input type="radio" id="resourceData" name="radio" checked="checked">
+                    <label for="resourceData" title="view Resource Loggdata in Diagram">
+                        Resource Logdata</label>
+                    <input type="radio" id="sheduleData" name="radio">
+                    <label for="sheduleData" title="view Schedule Values in Diagram">
+                        Schedule Values</label>
+                    <div style="float:right">
+                        <a id="csvDownloadButton" title="Click to download the displayed Data as CSV File">
+                            <img alt="icon" src="download-icon.svg"/>
+                            CSV Download</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main Plot Area -->
+            <div class="demo-container">
+                <div id="placeholder" class="demo-placeholder" style="float:left; width:675px;"></div>
+                <div style="float:right">
+                    <p id="choices" style="width:135px;"></p>
+                </div>
+            </div>
+            
+            <!-- Overview Area -->
+            <div class="demo-container" style="height:250px;">
+                <div id="overview" class="demo-placeholder"></div>
+            </div>
+	</div>
+    </body>
+</html>
+</html>

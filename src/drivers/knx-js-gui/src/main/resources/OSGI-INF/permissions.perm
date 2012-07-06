@@ -1,0 +1,12 @@
+(org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.osgi.framework.ServicePermission "org.ogema.driver.knxdriver.KNXdriverI" "get")
+
+(org.osgi.framework.PackagePermission "javax.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.driver.knxdriver" "import")
+(org.osgi.framework.PackagePermission "org.ogema.driver.knxdriver.gui" "exportonly")
+
+# FIXME: just for now ... remove reflection permissions when toJson is implemented in ogema-ref-impl:util
+(java.lang.reflect.ReflectPermission "suppressAccessChecks")
+(java.lang.RuntimePermission "accessDeclaredMembers")

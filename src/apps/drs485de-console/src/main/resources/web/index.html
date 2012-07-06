@@ -1,0 +1,231 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html>
+	<head>
+		<meta charset="UTF-8">
+
+		<title>OGEMA 2.0 Web Interface</title>
+
+		<!-- Mobile viewport optimized -->
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+		
+		<!-- reset.css is a CSS file that makes browsers render all elements more consistently and in line with modern standards -->
+		<link rel="stylesheet" href="css/reset.css">
+		
+		<!-- Site-specific stylesheet -->
+		<link rel="stylesheet" href="css/style.css">
+		
+		<!-- JavaScript at the bottom for fast page loading -->
+		
+		<!-- favicon -->
+		<link rel="shortcut icon" href="images/favicon.ico" type="image/x-icon" /> 
+		
+	</head>
+	
+    <body>
+		<div id="left">
+			<div id="logo"></div>
+
+			<!-- Creating menu on the left to switch between views -->
+			<div id="menu">
+				<ul>
+											<li>
+							<a href="javascript:loadView('view1')">
+								DRS485DE
+							</a>
+						</li>
+									</ul>
+			</div>
+		</div>
+			
+		<div id="right">
+			<div class="center">
+								<div id="view1" class="page hasChildren">
+	
+
+		
+		
+<div id="frame1" class="hasChildren  widthParent heightDP" data-width="parent" data-height="175">
+
+		
+		
+<table class="element  widthParent heightParent hasChildren" data-width="parent" data-height="parent">
+
+<tr class="hasChildren">
+
+<td class="hasChildren">
+<div class="label element" id="label1" data-width="content" data-height="content">DRS485DE Meter</div><div class="label element" id="label2" data-width="content" data-height="content">Loading...</div>
+		
+		
+<div class="round shadow">
+	<div id="chart1" class=" widthParent heightDP" data-width="parent" data-height="80">Loading...</div>
+</div></td>
+</tr>
+</table></div>
+
+</div>
+	
+							</div>
+		</div>
+		
+		<!-- Include local jQuery copy -->
+		<script src="js/libs/jquery-1.7.min.js"></script>
+		<!-- External JavaScript libraries and dependencies -->
+		<!-- Defer script loading (if supported) until body is parsed and rendered -->
+		<!-- ExplorerCanvas brings the HTML5 canvas tag functionality to Internet Explorer  -->
+		<script src="js/libs/excanvas.compiled.js"></script>
+		<!-- Flot is a pure Javascript plotting library for jQuery -->
+		<script src="js/libs/jquery.flot.js"></script>
+		<!-- jQuery Timers is a high level abstraction of setTimeout and setInterval -->
+		<script src="js/jquery.timers.js"></script>
+		<!--  JavaScript implementation of a Hashtable (needed by NumberFormatter) -->
+		<script src="js/libs/jshashtable-2.1.js"></script>
+		<!-- JavaScript implementation of Java's NumberFormatter Class -->
+		<script src="js/jquery.numberformatter.js"></script>
+		<!-- Updating, managing and providing the data for switches, charts and labels -->
+		<script src="js/jsonAdapter.js"></script>
+		<!-- Miscellaneous helper functions -->
+		<script src="js/script.js"></script>
+		<!-- JavaScript to update labels with remote source -->
+		<script src="js/label.js"></script>
+		<!-- JavaScript to get and set the toggle state -->
+		<script src="js/toggle.js"></script> 
+			
+			
+		<script type="text/javascript">
+			/* Fix width and height of the created elements */
+			bootstrap();
+			
+			/* Global variable pointing to the JSON data */
+	/*		url = '${properties.getProperty("data.url")}'; */
+			/* Array with name of the remote source and reference to the corresponding chart */
+			graphSource = new Array();
+			
+			/* Array with name of the remote source and reference to the corresponding vertical bar chart */
+			barVerticalSource = new Array();
+			
+			/* Array with name of the remote source and reference to the corresponding horizontal bar chart */
+			barHorizontalSource = new Array();
+			
+			/* Array with name of the remote source and reference to the corresponding label */
+			labelSource = new Array();
+			
+			/* Array with name of the remote source and reference to the corresponding toggle */
+			toggleSource = new Array();
+			
+			/* Array with keys and corresponding Servlet URLs */
+			keyServletURLs = new Array();
+			
+			/* Array with canvas context elements */
+			canvas_ctx = new Array();
+			
+			
+							
+
+
+
+plot = $.plot($("#chart1"),
+	   [ { data: []}], {
+		   series: {
+		   		color: '#009474',
+		   					   		lines: { show: true, fill: 
+			   					   			false },
+			   					   		points: { show: false}
+			   			   },
+			grid: { color: 'black', borderWidth: 0 },
+             yaxis: {
+              min: 0.000, 
+             	max: 5000.000,
+             	ticks: function tickGenerator(axis) {
+    var res = [], i = axis.min;
+    var step = (axis.max-axis.min)/10;
+    do {
+      var v = i * step;
+      res.push(v);
+      ++i;
+    } while (v < axis.max);
+    
+    return res;
+  },
+             	              		position: 'left',
+              		labelUnit: 'Wh'
+              	             },
+             xaxis: {tickSize: 1,
+                min: 0,
+                max:  1440, labelUnit: "", 
+                ticks: function minTickGenerator(axis) {
+    var res = [], i = axis.min;
+    do {
+      var v = i * 60;  
+      res.push([v, i+"h"]);
+      ++i;
+    } while (v <= axis.max);
+    
+    return res;
+  },
+                
+              show:true },        lines: {show: true, lineWidth: 1},
+        points: {show: true,radius: 1}
+             
+		 });
+
+graphSource.push(["current_drs485de", plot, 1.0, 1440]);
+keyServletURLs.push("current_drs485de");
+keyServletURLs.push("/drs485de/getGraphData");
+																									
+
+
+
+label = new Label('label2', 'Wh','#0.000');  
+labelSource.push(["current_drs485de", label, 1.0, 1]);
+
+keyServletURLs.push("current_drs485de");
+keyServletURLs.push("/drs485de/getGraphData");																		    	    			
+	        adapter = new JSONAdapter();
+			adapter.setHashmapSize(1440);  
+		    adapter.setKeyServletURLArray(keyServletURLs);  
+		 
+			/* Closures are called every x ms to update data, redraw charts and labels;  updateGraph(), ... located in script.js */  
+	        $(document).everyTime(60000, function() {
+
+                /* Update data from sensors and switches with jsonAdapter */
+                adapter.update();	
+                
+                  /* Call update routine for each label */
+		        for(j = 0; j < labelSource.length; j++) {
+		          updateLabel(labelSource[j]);   /*  nested array, entry in labelSource looks like this ["wind", label, 1.0, 1]  */
+		        }
+		        
+                /* Call update routine for each chart */
+		        for(j = 0; j < graphSource.length; j++) {
+		          updateGraph(graphSource[j]);  /*  nested array, entry in graphSource looks like this ["wind", plot, 1.0, 1000]  */
+		        }
+	       
+	        });
+	         
+			
+			/* Show first page by "setting" it active. Hide all other pages by "setting" them inactive */
+		    $('.page').addClass('inactive');
+			$('.page:first').removeClass('inactive');
+			$('.page:first').addClass('active');
+		
+		</script>
+
+	</body>
+</html>

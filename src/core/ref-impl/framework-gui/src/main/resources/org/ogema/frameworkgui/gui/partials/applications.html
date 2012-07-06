@@ -1,0 +1,122 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<div class="building col-sm-12 well well-sm">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="row">
+                <div class="col-sm-6">
+                    <input type="search" ng-model="q" class="form-control" placeholder="filter applications..." />
+                </div>
+                <div class="col-sm-6">
+
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <h2>Applications</h2>
+                    <div class="appContainer" ng-repeat="app in applications| filter:q" ng-click="openApp(app)">
+                        <div class="applogoarea">
+                                <img class="applogo" src="/apps/ogema/framework/gui/installedapps?action=getIcon&id={{app.id}}"/> 
+                        </div>
+                        <div class="bundleShortInfos">
+                            <b>  {{app.metainfo.Bundle_Name}} </b><br/>
+                            <span class="appversion">
+                                {{app.metainfo.Bundle_Version}} 
+                            </span> 
+                            <div class="appdescription">
+                                {{app.metainfo.Bundle_Description}}
+                            </div>
+                        </div>
+                    </div>                  
+                </div>
+            </div>
+        </div>
+    </div>    
+
+    {{selected}}
+</div>
+
+<script type="text/ng-template" id="showBundleInfo">
+<div class="modal-header">
+    <h3 class="modal-title">Application Info</h3>
+</div>
+<div class="modal-body">
+    <div >
+        <table class="table">
+            <tr>
+                <th>
+                    Name
+                </th>
+                <th>
+                    Content
+                </th>
+            </tr>
+            <tr>
+                <td>
+                    Name
+                </td>
+                <td>
+                    {{infoBundle.name}}
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    ID
+                </td>
+                <td>
+                    {{infoBundle.id}}
+                </td>
+            </tr>
+            <tr ng-repeat="(key, value) in infoBundle.metainfo">
+                <td>
+                    {{key}}
+                </td>
+                <td ng-if="key == 'Bnd_LastModified'">
+                    {{value| date:'yyyy-MM-dd HH:mm:ss Z'}}
+                </td>
+                <td ng-if="key != 'Bnd_LastModified'">
+                    {{value}}
+                </td>
+            </tr>
+        </table>
+
+        <p>
+            {{status}}
+        </p>
+    </div>
+</div>
+<div class="modal-footer">
+    <button class="btn btn-primary" ng-click="ok()">Close</button>
+</div>
+</script>
+
+<script type="text/ng-template" id="updateBundle">
+    <div class="modal-header">
+    <h3 class="modal-title">Update Application</h3>
+    </div>
+    <div class="modal-body">
+    <p>
+    {{updateBundle.name}}
+    </p>
+    {{status}}
+    </div>
+    <div class="modal-footer">
+    <button class="btn btn-primary" ng-click="ok()">Close</button>
+    </div>
+</script>

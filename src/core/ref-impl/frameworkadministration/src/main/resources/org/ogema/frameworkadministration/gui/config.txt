@@ -1,0 +1,4 @@
+console: 
+install reference:file:C:/Users/spogacar/Documents/NetBeansProjects/ogema/src/core/ref-impl/frameworkadministration/target/classes
+Console:Bundle ID: XY
+start XY

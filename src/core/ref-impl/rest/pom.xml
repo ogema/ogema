@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>ref-impl</artifactId>
+        <groupId>org.ogema.ref-impl</groupId>
+        <version>2.0.1</version>
+    </parent>
+
+    <artifactId>rest</artifactId>
+    <name>OGEMA ref-impl :: REST</name>
+
+    <description>
+        Reference implementation of the OGEMA 2.0 REST interface by Fraunhofer Society.
+    </description>
+    <url>http://www.ogema-source.net</url>
+    
+    <packaging>bundle</packaging>
+    
+    <properties>
+        <exam.version>3.4.0</exam.version>
+    </properties>
+  
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-scr-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <JAX-RS-Alias>/example</JAX-RS-Alias>
+                        <JAX-RS-Classes>org.ogema.rest.Example</JAX-RS-Classes>
+                        <Export-Package>
+                            org.ogema.rest
+                        </Export-Package>
+                        <!-- need dynamic import to resolve input data classes during deserialization -->
+                        <DynamicImport-Package>*</DynamicImport-Package>
+                        <Service-Component>OSGI-INF/*xml</Service-Component>
+                    </instructions>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+    
+    <dependencies>
+        <dependency>
+            <groupId>org.ogema.core</groupId>
+            <artifactId>api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.core</groupId>
+            <artifactId>models</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.compendium</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.scr.annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-api</artifactId>
+            <version>1.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient-osgi</artifactId>
+            <version>4.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>util</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>ogema-exam-base</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>joox</artifactId>
+            <version>1.2.0</version>
+        </dependency>
+    </dependencies>
+    
+</project>

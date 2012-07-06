@@ -1,0 +1,126 @@
+/**
+ * This file is part of OGEMA.
+ *
+ * OGEMA is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * OGEMA is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.ogema.core.model;
+
+import java.util.List;
+
+import org.ogema.core.model.array.FloatArrayResource;
+
+/**
+ * Resource type containing a list of separate child resources. In contrast to
+ * the SimpleArrayResources each entry of the list is a resource in its own
+ * right (in the SimpleArrayResources entries in the array are mere values).<br>
+ * All resources within the list are of type T or types inherited from T. This
+ * type is returned by {@link getElementType}. Elements of the array may be
+ * resources located in the array or references to resources located somewhere
+ * else.<br>
+ * All methods of {@link org.ogema.core.model.Resource} affect the list
+ * considering the elements of the list as children of the ResourceList.<br>
+ * For arrays of simple resources usually the respective array type shall be
+ * used. As an exception also an array of e.g. FloatResources grouped into a
+ * ResourceList can be used in case every single float value in the array shall
+ * have its own decorator, e.g. a schedule. This is not possible using
+ * {@link FloatArrayResource}.<br>
+ *
+ * @param <T> Type of this array's elements.
+ */
+/*
+ * TODO Adding optional elements and decorators is forwarded to all direct
+ * children, but not to decorators.
+ */
+public interface ResourceList<T extends Resource> extends Resource {
+
+	/**
+	 * Get all elements of the list. The sequence of the elements is determined
+	 * by the sequence of adding the elements. This is the same as calling
+	 * {@link org.ogema.core.model.Resource#getSubResources}({@link getElementType()},
+	 * false)
+	 *
+	 * @return list of elements in the list (direct subresources and
+	 * references).
+	 */
+	List<T> getAllElements();
+
+	/**
+	 * Get number of elements in the list.
+	 *
+	 * @return
+	 */
+	int size();
+
+	/**
+	 * Add reference to the list. This will add the reference as a decorator
+	 * with an automatically generated name and return the decorator.
+	 *
+	 * @param reference The element to add to this array.
+	 * @throws IllegalArgumentException if the type of reference is incompatible
+	 * with this array's type.
+	 */
+	void add(T reference);
+
+	/**
+	 * Add direct child resource as element of the list
+	 *
+	 * @return reference to new element child resource
+	 */
+	T add();
+
+	/**
+	 * Remove element from the list. If the element is a reference, only the
+	 * reference is deleted, if it is a direct subresource, the entire resource
+	 * is deleted. If a resource is referenced more than once, all references
+	 * are deleted. If the resource is direct subresource, but also a reference,
+	 * the direct subresouce as well as the references are deleted.
+	 *
+	 * @param element
+	 * @throws IllegalStateException if this array's element type has not been
+	 * set.
+	 */
+	void remove(T element);
+
+	/**
+	 * Get resource type of all elements of the list. Note: {@link Resource#getResourceType()
+	 * } returns ResourceList, not the type of the elements of the list.
+	 *
+	 * @return The type of this ResourceList's elements.
+	 */
+	Class<T> getElementType();
+
+	/**
+	 * Set type of resources in the list (relevant for lists added as decorator
+	 * only)
+	 *
+	 * @param resType resource type for all resources in the list. Must be set
+	 * for decorators before the first element is accessed.<br>
+	 * The method may only be called once for decorating lists and may not be
+	 * called for other lists at all, otherwise an {@link IllegalStateException}
+	 * is thrown.
+	 * @throws IllegalStateException if the type of this ResourceList elements
+	 * has already been set.
+	 */
+	void setElementType(Class<? extends Resource> resType);
+
+	/**
+	 * Tests whether this list contains a given resource by comparing resource
+	 * locations (see
+	 * {@link Resource#equalsLocation(org.ogema.core.model.Resource)}).
+	 *
+	 * @param resource Resource to search for.
+	 * @return {@code true} if this list contains the given resource.
+	 */
+	boolean contains(Resource resource);
+}

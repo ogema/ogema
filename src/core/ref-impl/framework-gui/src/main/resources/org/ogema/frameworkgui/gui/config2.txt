@@ -1,0 +1,47 @@
+install reference:file:C:/Users/spogacar/Documents/NetBeansProjects/ogema/src/core/ref-impl/frameworkadministration/target/classes
+
+
+org.ogema.launcher.OgemaLauncher
+-config config/config.ini -clean -v -o
+C:\Users\spogacar\Documents\NetBeansProjects\sysbatt\sysbatt-rundir
+-Dcom.tc.productkey.path=terracotta-license.key 
+
+org.ogema.launcher.OgemaLauncher
+-cfg config\config.xml -p config\ogema.properties -clean -v -o
+C:\Users\spogacar\Documents\NetBeansProjects\ogema\rundirs\default
+
+C:\Users\spogacar\Documents\NetBeansProjects\sysbatt\sysbatt-rundir\java -jar ../../ogema-launcher-1.2.1/target/ogema-launcher-1.2.1.jar -clean
+
+
+[
+	{
+		"time": "1900-01-01T00:00:00.000Z",
+		"cosphi": 1,
+		"current": 24,
+		"$$hashKey": "04A"
+	},
+	{
+		"time": "1900-01-01T01:00:00.000Z",
+		"cosphi": 1,
+		"current": 2,
+		"$$hashKey": "04B"
+	},
+	{
+		"time": "1900-01-01T02:00:00.000Z",
+		"cosphi": 1,
+		"current": 10,
+		"$$hashKey": "04C"
+	},
+	{
+		"time": "1900-01-01T03:00:00.000Z",
+		"cosphi": 1,
+		"current": 2,
+		"$$hashKey": "04D"
+	},
+	{
+		"time": "1900-01-01T04:00:00.000Z",
+		"cosphi": 1,
+		"current": 2,
+		"$$hashKey": "04E"
+	}
+]

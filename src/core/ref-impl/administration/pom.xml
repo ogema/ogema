@@ -1,0 +1,79 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<artifactId>administration</artifactId>
+	<packaging>bundle</packaging>
+
+	<name>OGEMA ref-impl :: administration</name>
+	<url>http://www.ogema-source.net</url>
+
+	<parent>
+		<groupId>org.ogema.ref-impl</groupId>
+		<artifactId>ref-impl</artifactId>
+		<version>2.0.1</version>
+	</parent>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+	<!-- XXX hack! remove when AccessManager is available as service -->
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+				<extensions>true</extensions>
+				<configuration>
+					<instructions>
+						<Export-Package>org.ogema.impl.administration</Export-Package>
+                        <Import-Package>org.apache.felix.service.command;resolution:=optional,*</Import-Package>
+					</instructions>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-scr-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+	<dependencies>
+		<dependency>
+			<groupId>org.ogema.core</groupId>
+			<artifactId>api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.compendium</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.ogema.ref-impl</groupId>
+			<artifactId>internal-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.googlecode.json-simple</groupId>
+			<artifactId>json-simple</artifactId>
+			<version>1.1.1</version>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.11</version>
+			<scope>test</scope>
+		</dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>ogema-exam-base</artifactId>
+        </dependency>
+	 <dependency>
+	  <groupId>org.apache.felix</groupId>
+	  <artifactId>org.apache.felix.gogo.runtime</artifactId>
+	  <version>0.12.1</version>
+	 </dependency>
+	</dependencies>
+</project>

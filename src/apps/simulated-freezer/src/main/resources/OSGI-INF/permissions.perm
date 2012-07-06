@@ -1,0 +1,5 @@
+(org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+
+(org.ogema.accesscontrol.ResourcePermission "path=SimulatedFreezer*,type=org.ogema.model.devices.whitegoods.CoolingDevice" "read,write,addsub,create,activity,delete")

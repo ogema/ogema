@@ -1,0 +1,54 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>ng-grid workbench</title>
+    <link rel="stylesheet" type="text/css" href="../lib/bootstrap/css/bootstrap.css" />
+    <link rel="stylesheet" type="text/css" href="../ng-grid.css" />
+	
+    <script type="text/javascript" src="largeLoad.js"></script>
+    <script type="text/javascript" src="largeTestData.js"></script>
+    <script type="text/javascript" src="../lib/jquery-1.9.1.js"></script>
+    <script type="text/javascript" src="../lib/jquery-ui-1.9.1.custom.min.js"></script>
+    <script type="text/javascript" src="../lib/angular.js"></script>
+    <script type="text/javascript" src="../lib/bootstrap/js/bootstrap.js"></script>
+    <script type="text/javascript" src="../build/ng-grid.debug.js"></script>
+    <script type="text/javascript" src="main.js"></script>
+    <script>
+        angular.module('myApp',['ngGrid']);
+    </script>
+</head>
+    <body ng-app="myApp" ng-controller="userController">
+        <div style="width: 800px; height: 400px;" ng-grid="gridOptions2">
+        </div>
+		<div>{{mySelections2}}</div>
+        <button ng-click="changeData()">pop</button>
+        
+        <button ng-click="resetData()">reset</button>
+        <button ng-click="spliceData()">splice</button>
+        <button ng-click="modifyData()">modify</button>
+        <button ng-click="setSelection()">set Selection</button>
+
+        <!--        <div style="margin: 10px;  width: 600px; height: 400px;" ng-grid="gridOptions2">
+                    </div>
+            <span>mySelections2: {{mySelections2 | json}}</span>-->
+    </body>
+</html>

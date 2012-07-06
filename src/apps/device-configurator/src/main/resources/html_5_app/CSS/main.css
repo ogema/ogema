@@ -1,0 +1,280 @@
+body {
+	height: 100.3%;
+	font-family: Verdana, sans-serif;
+	background: #596778;
+	padding: 0;
+	margin: 0;
+	overflow: auto;
+}
+
+#headline {
+	text-align:center;
+}
+
+div#wrapper {
+	width: 60%;
+	margin: 0 auto;
+	min-height: 100%;
+	background-color: white;
+	padding: 50px 20px;
+}
+
+div.tabs {
+	margin: 0 auto;
+	padding: 10px;
+	border: 1px solid black;
+	display: none;
+	border-bottom-right-radius: 5px;
+	border-bottom-left-radius: 5px;
+	font-size: 0.9em;
+}
+
+h1.tabsHeadline {
+	display: none;
+	font-size: 1em;
+	font-weight: normal;
+	margin-bottom: 0px;
+	cursor: pointer;
+	background-color: #222D6B;
+	color: white;
+	padding: 10px;
+	border-radius: 5px;
+}
+
+h1.tabsHeadline:hover {
+	background-color: #3A416B;
+}
+
+h1.tabsHeadline:active {
+	background-color: #737A9E;
+}
+
+h1.tabsHeadline.active {
+	border-top-left-radius: 5px;
+	border-top-right-radius: 5px;
+	border-bottom-right-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+h1.LL_tabsHeadline {
+	display: block;
+	font-size: 1em;
+	font-weight: normal;
+	margin-bottom: 0px;
+	cursor: pointer;
+	background-color: #222D6B;
+	color: white;
+	padding: 10px;
+	border-radius: 5px;
+	font-size: 1em;
+}
+
+h1.LL_tabsHeadline:hover {
+	background-color: #3A416B;
+}
+
+h1.LL_tabsHeadline:active {
+	background-color: #737A9E;
+}
+
+h1.LL_tabsHeadline.active {
+	border-top-left-radius: 5px;
+	border-top-right-radius: 5px;
+	border-bottom-right-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+.driverChosen {
+	font-size: 1em;
+	font-weight: bold !important;
+	margin-bottom: 0px;
+	cursor: pointer;
+	color: white;
+	padding: 20px 10px !important;
+	border-radius: 5px;
+	display: block !important;
+	background: grey !important;
+}
+
+h1.driverChosen:hover {
+	background-color: grey;
+}
+
+h1.driverChosen:active {
+	background-color: grey;
+}
+
+div#buttonSet {
+	width: 612px;
+	margin: 10px auto;
+}
+
+button {
+	background-color: #363636;
+	color: white;
+	width: 150px;
+	height: 35px;
+	margin: 5px auto;
+	border: none;
+	border-radius: 5px;
+	font: "Arial", sans-serif;
+	font-size: 1em;
+	cursor: pointer;
+}
+
+button:hover {
+	background-color: #454545;
+}
+
+button:active {
+	background-color: #707070;
+}
+
+
+button:disabled {
+	background-color: #cccccc;
+	color: white;
+	width: 150px;
+	height: 35px;
+	margin: 5px auto;
+	border: none;
+	border-radius: 5px;
+	font: "Arial", sans-serif;
+	font-size: 1em;
+	cursor: none;
+}
+
+.headDevices {
+	font-size: 1em;
+	font-weight: normal;
+	margin-bottom: 0px;
+	cursor: pointer;
+	background-color: #50556E;
+	color: white;
+	padding: 10px;
+	border-radius: 5px;
+	text-align: center;
+}
+
+.headDevices.active {
+	border-bottom-right-radius: 0px;
+	border-bottom-left-radius: 0px;
+}
+
+.headDevices:hover {
+	background-color: #6E7185;
+}
+
+.headDevices:active {
+	background-color: #8E91A3;
+}
+
+.contentDevices {
+	display: none;
+	border: 1px solid black;
+	border-bottom-right-radius: 5px;
+	border-bottom-left-radius: 5px;
+	padding: 10px;
+}
+
+.devEndpoints {
+	padding: 10px;
+	background-color: #C5D3E3;
+	margin-top: 10px;
+}
+
+.devEndpoints button {
+	margin-left: 10px;
+}
+
+.technology {
+	margin-bottom: 30px;
+}
+
+.technology:last-child {
+	margin-bottom: 10px;
+}
+
+.techHead {
+	font-weight: bold;
+	color: black;
+	display: block;
+	width: 90%;
+	margin: 5px auto;
+	text-align: center;
+}
+
+.generalInformation {
+	background-color: #E3E3E3;
+	padding: 10px;
+}
+
+.detailInformation {
+	text-align: center;
+	padding: 10px;
+	background-color: #E3E3E3;
+	margin-bottom: 10px;
+}
+
+.detailInformation button {
+	margin: 5px 10px;
+}
+
+.ui-dialog-content {
+	padding: 1px !important;
+	font-family: arial, sans-serif;
+}
+
+.deviceInfo {
+	background-color: #C5D3E3;
+	padding: 10px;
+	margin: 20px 0px;
+	border-top: 1px solid black;
+	border-bottom: 1px solid black;
+	font-size: 0.9em;
+}
+
+.buttonSet {
+	padding: 0px 5px;
+}
+
+.buttonSet span {
+	display: block;
+	width: 90%;
+	margin: 0 auto;
+	padding: 0px;
+}
+
+.buttonSet button {
+	width: 24%;
+	font-family: arial, sans-serif;
+	font-size: 0.9em;
+}
+
+/* UI selectmenu for HLdrivers */
+label {
+	display: block;
+	margin: 30px 0 0 0;
+}
+
+select {
+	width: 200px;
+}
+
+.overflow {
+	height: 30px;
+}
+
+.ui-selectmenu-menu .ui-menu {
+	height: 100px;
+	overflow-y: auto;
+}
+
+.ui-selectmenu-button span.ui-selectmenu-text {
+	overflow: auto !important;
+	font-size: 0.9em !important;
+}
+
+.ui-menu .ui-menu-item {
+	font-size: 0.8em !important;
+}

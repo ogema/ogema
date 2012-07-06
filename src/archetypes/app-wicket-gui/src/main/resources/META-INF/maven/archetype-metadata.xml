@@ -1,0 +1,61 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<archetype-descriptor
+	xmlns="http://maven.apache.org/plugins/maven-archetype-plugin/archetype-descriptor/1.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/plugins/maven-archetype-plugin/archetype-descriptor/1.0.0 http://maven.apache.org/xsd/archetype-descriptor-1.0.0.xsd"
+	name="ogema-app">
+
+	<fileSets>
+		<fileSet filtered="true" packaged="true">
+			<directory>src/main/java</directory>
+			<includes>
+				<include>**/*.java</include>
+			</includes>
+		</fileSet>
+		<fileSet filtered="true" packaged="true">
+			<directory>src/main/resources</directory>
+			<includes>
+				<include>**/*.html</include>
+				<include>**/*.jpg</include>
+			</includes>
+		</fileSet>
+
+		<fileSet filtered="true" packaged="true">
+			<directory>src/test/java</directory>
+			<includes>
+				<include>**/*.java</include>
+			</includes>
+		</fileSet>
+		
+		<fileSet>
+			<directory>src/test/resources</directory>
+		</fileSet>
+		
+		<fileSet>
+			<directory>src/main/resources/OSGI-INF</directory>
+		</fileSet>
+		
+	</fileSets>
+	 
+	<requiredProperties>
+		<requiredProperty key="app-name"/>
+	</requiredProperties>
+	
+</archetype-descriptor>

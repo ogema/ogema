@@ -1,0 +1,30 @@
+allow { (java.io.FilePermission "<<ALL FILES>>" "read,write,delete,readlink,execute") } "test-exam-io"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "mvn:*"] (java.security.AllPermission) } "test-exam"
+#allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (java.security.AllPermission) } "exam-probe"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "link:classpath:*"] (java.security.AllPermission) } "exam-runtime"
+#
+#
+# probe allowed services:
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register") } "probe-register-application"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.osgi.framework.ServicePermission "org.ogema.service.webresourcemanager.ComponentProvider" "register") } "probe-register-gui"
+# probe allowed imports:
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.osgi.framework.PackagePermission "org.apache.wicket" "import") (org.osgi.framework.PackagePermission "org.apache.wicket.*" "import") } "probe-import-wicket"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.osgi.framework.PackagePermission "org.ogema.core.*" "import")(org.osgi.framework.PackagePermission "org.ogema.exam.*" "import")} "probe-import-ogema"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.osgi.framework.PackagePermission "*" "import,export")} "probe-import-test"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.osgi.framework.PackagePermission "org.ogema.service.*" "import") } "probe-import-ogema-services"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.osgi.framework.PackagePermission "org.ogema.model.*" "import") } "probe-import-ogema-models"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.osgi.framework.PackagePermission "org.ogema.tools.*" "import") } "probe-import-ogema-tools"
+# probe allowed resources:
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.ogema.accesscontrol.ResourcePermission "path=ExamProbe*,type=org.ogema.model.locations.Room" "read,write,addsub,create,activity,delete")} "probe-resource-permissions"
+#
+#
+# basic package imports
+allow { (org.osgi.framework.PackagePermission "org.osgi.*" "import") (org.osgi.framework.PackagePermission "javax.*" "import") (org.osgi.framework.PackagePermission "org.slf4j" "import") (org.osgi.framework.PackagePermission "org.xml.*" "import") (org.osgi.framework.PackagePermission "org.w3c.*" "import") } "basic import rights"
+allow { (org.osgi.framework.PackagePermission "org.ogema.core.*" "import") (org.osgi.framework.PackagePermission "org.joda.time" "import") } "basic import rights ogema"
+allow { (java.util.PropertyPermission "org.apache.felix.*" "read") } "felix property access"
+#
+# user rights proxies:
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "file:./ogema/users/*"] (org.osgi.framework.PackagePermission "org.ogema.accesscontrol" "import") (org.osgi.framework.PackagePermission "org.osgi.*" "import") (org.osgi.framework.ServicePermission "org.ogema.accesscontrol.UserRightsProxy" "register") (org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register") (org.osgi.framework.ServicePermission "org.ogema.accesscontrol.PermissionManager" "get")} "urps"
+#
+# rest permissions
+#allow { [org.osgi.service.condpermadmin.BundleLocationCondition "file:./ogema/users/master/*"] (org.ogema.accesscontrol.ResourcePermission "path=*" "read,write") } "master-resource-access"

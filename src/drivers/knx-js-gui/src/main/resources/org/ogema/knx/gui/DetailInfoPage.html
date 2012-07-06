@@ -1,0 +1,47 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+</head>
+<body>
+	<wicket:panel>
+	Typ:
+	<label wicket:id="type">type</label>
+		<br /> Value:
+	<label wicket:id="value">value</label>
+		<a href="#" wicket:id="on-button">on</a>
+		<a href="#" wicket:id="off-button">off</a>
+		<form wicket:id="form">
+			<table cellpadding="5">
+				<tr>
+					<td width="240">
+					<!-- 	<div wicket:id="slider"></div> -->
+					</td>
+					<td width="100"><span wicket:id="label" id="label"></span></td>
+				</tr>
+			</table>
+			<div wicket:id="feedback" style="width: 360px;"></div>
+		</form>
+		<a wicket:id="delete"><img wicket:id="delete_img" width="25%"
+			height="25%" border="0" alt="delete"></a>
+	</wicket:panel>
+</body>
+</html>

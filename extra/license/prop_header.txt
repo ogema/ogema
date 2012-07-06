@@ -1,0 +1,9 @@
+Copyright 2009 - ${year}
+
+Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
+
+Fraunhofer IIS
+Fraunhofer ISE
+Fraunhofer IWES
+
+All Rights reserved
