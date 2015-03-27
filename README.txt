@@ -20,7 +20,7 @@ Quick Start
 	- mvn clean install -DskipTests
 	- mvn test
 
-2) Get the run directory from our demokit -> http://www.ogema.org/
+2) Get the run directory from our demokit -> http://www.ogema-source.net/demokit.zip
 
 3) Go to the demokit rundirectory and simply execute the start.sh (for bash compatible shells) script or the start.cmd (Windows shell)
 
