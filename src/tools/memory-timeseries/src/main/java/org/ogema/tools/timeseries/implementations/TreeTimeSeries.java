@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,6 +17,7 @@ package org.ogema.tools.timeseries.implementations;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.SortedSet;
@@ -48,7 +48,7 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 	private final NavigableSet<SampledValue> m_values = new TreeSet<>();
 	private InterpolationFunction m_interpolationFunction = new NoInterpolation();
 	private InterpolationMode m_interpolationMode = InterpolationMode.NONE;
-	private long m_lastCalculationTime = 0;
+	private Long m_lastCalculationTime = null;
 
 	public TreeTimeSeries(Class<? extends Value> valueType) {
 		this.m_type = valueType;
@@ -76,11 +76,8 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 		return values.isEmpty() ? null : values.first();
 	}
 
-	/**
-	 * Returns a reference to the values defining this. Would be a const-reference if Java supported it.
-	 */
 	protected SortedSet<SampledValue> getValues() {
-		return m_values;
+		return Collections.unmodifiableSortedSet(m_values);
 	}
 
 	/**
@@ -110,11 +107,35 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 
 	@Override
 	final public SampledValue getValue(long time) {
+        if (!isInsideTimeSeriesRange(time)){
+            return null;
+        }
 		final SampledValue pivot = new SampledValue(null, time, Quality.GOOD);
 		final SampledValue left = m_values.floor(pivot);
 		final SampledValue right = m_values.ceiling(pivot);
 		return m_interpolationFunction.interpolate(left, right, time, m_type);
 	}
+    
+        /**
+         * Checks if a given timestamp is in the range generally covered by the 
+         * schedule (irrespective of the value qualities).
+         */
+    private boolean isInsideTimeSeriesRange(long timestamp){
+        if (m_values.isEmpty()) return false;
+        final long tmin = m_values.first().getTimestamp();
+        final long tmax = m_values.last().getTimestamp();
+        switch (m_interpolationMode) {
+            case NEAREST:
+                return true; // since there is at least one point there is alwayst a nearest one.
+            case STEPS:
+                return (timestamp>=tmin);
+            case NONE:
+            case LINEAR:                
+                return ((timestamp>=tmin) && (timestamp<=tmax));
+            default:
+                throw new UnsupportedOperationException("Unsupported interpolation mode encountered: "+m_interpolationMode.toString());
+        }
+    }
 
 	@Override
 	final public SampledValue getNextValue(long time) {
@@ -314,7 +335,7 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 
 	@Override
 	public Long getTimeOfLatestEntry() {
-		return new Long(-1);
+		return null;
 	}
 
     @Override

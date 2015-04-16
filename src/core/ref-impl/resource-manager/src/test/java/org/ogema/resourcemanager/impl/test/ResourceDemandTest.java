@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -29,11 +28,16 @@ import org.junit.Before;
 
 import org.junit.Test;
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.SimpleResource;
 import org.ogema.core.model.simple.BooleanResource;
+import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.exam.TestApplication;
 import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.devices.whitegoods.CoolingDevice;
+import org.ogema.model.sensors.GenericFloatSensor;
+import org.ogema.model.sensors.Sensor;
+import org.ogema.model.sensors.TemperatureSensor;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 
@@ -244,4 +248,45 @@ public class ResourceDemandTest extends OsgiTestBase {
 		assertTrue(l.awaitUnavailable());
 		resAcc.removeResourceDemand(CoolingDevice.class, l);
 	}
+        
+   	@Test
+	public void listeningToGenericSensorsWorks() throws Exception {
+		final CountDownLatch availableCount = new CountDownLatch(1);
+
+		ResourceDemandListener<Sensor> l = new ResourceDemandListener<Sensor>() {
+
+			@Override
+            public void resourceAvailable(Sensor sensor) {
+                SimpleResource reading = sensor.reading();
+                /*
+                * explicit cast to super types to check correct class generation (synthetic methods)
+                */
+                FloatResource fr = ((TemperatureSensor)sensor).reading();
+                FloatResource fr2 = ((GenericFloatSensor)sensor).reading();
+                if (!reading.isActive()) {
+                    //XXX it's unspecified whether it should be active at this point
+                    //fail("TemperatureSensor::reading was not active");
+                }
+
+                availableCount.countDown();
+            }
+
+			@Override
+			public void resourceUnavailable(Sensor resource) {
+				fail("unexpected method call");
+			}
+		};
+
+		resAcc.addResourceDemand(Sensor.class, l);
+
+                TemperatureSensor sensor = resMan.createResource(newResourceName(), TemperatureSensor.class);
+                sensor.reading().create();
+                
+		sensor.activate(true);
+		assertTrue("available not called", availableCount.await(20, TimeUnit.SECONDS));
+
+                resAcc.removeResourceDemand(Sensor.class, l);
+                sensor.delete();
+	}
+
 }

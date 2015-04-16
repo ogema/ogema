@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -372,8 +371,9 @@ public class DeviceReaderThread extends Thread {
 			}
 
 			/* call value changed listeners */
-			if ((oldValue == null) || (!channelData.getSampledValue().getValue().equals(oldValue.getValue()))
-					|| (!channelData.getSampledValue().getQuality().equals(oldValue.getQuality()))) {
+			SampledValue v = channelData.getSampledValue();
+			if ((oldValue == null) || (v.getValue() != null && (!v.equals(oldValue.getValue())))
+					|| (!v.getQuality().equals(oldValue.getQuality()))) {
 				List<WeakReference<ChannelEventListener>> changedEventListeners = changedListeners.get(channelLocator);
 
 				if (changedEventListeners != null) {

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -24,7 +23,6 @@ import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.ByteArrayValue;
 import org.ogema.core.channelmanager.measurements.Value;
-import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.units.ElectricCurrentResource;
 import org.ogema.core.model.units.EnergyResource;
@@ -34,7 +32,7 @@ import org.ogema.core.model.units.VoltageResource;
 import org.ogema.core.recordeddata.RecordedDataConfiguration;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
-import org.ogema.core.resourcemanager.ResourceListener;
+import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.driver.hmhl.Constants;
 import org.ogema.driver.hmhl.Converter;
 import org.ogema.driver.hmhl.HM_hlConfig;
@@ -48,7 +46,7 @@ import org.ogema.model.sensors.ElectricPowerSensor;
 import org.ogema.model.sensors.ElectricVoltageSensor;
 import org.ogema.model.sensors.EnergyAccumulatedSensor;
 
-public class PowerMeter extends HM_hlDevice implements ResourceListener {
+public class PowerMeter extends HM_hlDevice implements ResourceValueListener<BooleanResource> {
 
 	private byte random = (byte) 0x01;
 
@@ -101,8 +99,8 @@ public class PowerMeter extends HM_hlDevice implements ResourceListener {
 			long err = Converter.toLong(msg[3]);
 			timedon = ((err & 0x40) > 0) ? "running" : "off";
 
-			System.out.println("State: " + state_str);
-			System.out.println("Timed-on: " + timedon);
+			//			System.out.println("State: " + state_str);
+			//			System.out.println("Timed-on: " + timedon);
 		}
 		else if (msgtype == 0x5E || msgtype == 0x5F) {
 			// The Metering Story
@@ -113,17 +111,17 @@ public class PowerMeter extends HM_hlDevice implements ResourceListener {
 			float frequence = ((float) Converter.toLong(msg[10])) / 100 + 50;
 			boolean boot = (Converter.toLong(msg, 0, 3) & 0x800000) > 0;
 
-			System.out.println("Energy Counter: " + eCnt + " Wh");
+			//			System.out.println("Energy Counter: " + eCnt + " Wh");
 			eRes.setValue(eCnt);
-			System.out.println("Power: " + power + " W");
+			//			System.out.println("Power: " + power + " W");
 			pRes.setValue(power);
-			System.out.println("Current: " + current + " mA");
+			//			System.out.println("Current: " + current + " mA");
 			iRes.setValue(current);
-			System.out.println("Voltage: " + voltage + " V");
+			//			System.out.println("Voltage: " + voltage + " V");
 			vRes.setValue(voltage);
-			System.out.println("Frequence: " + frequence + " Hz");
+			//			System.out.println("Frequence: " + frequence + " Hz");
 			fRes.setValue(frequence);
-			System.out.println("Boot: " + boot);
+			//			System.out.println("Boot: " + boot);
 		}
 
 	}
@@ -150,15 +148,15 @@ public class PowerMeter extends HM_hlDevice implements ResourceListener {
 		 */
 		// Create top level resource
 		SingleSwitchBox powerMeter = resourceManager.createResource(hm_hlConfig.resourceName, SingleSwitchBox.class);
-		powerMeter.activate(true);
+		//powerMeter.activate(true);
 
 		// The on/off switch
 		onOff = (BooleanResource) powerMeter.onOffSwitch().stateControl().create();
-		onOff.activate(true);
+//		onOff.activate(true);
 		onOff.requestAccessMode(AccessMode.SHARED, AccessPriority.PRIO_HIGHEST);
 
 		isOn = (BooleanResource) powerMeter.onOffSwitch().stateFeedback().create();
-		isOn.activate(true);
+//		isOn.activate(true);
 		isOn.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		// The connection attribute and its children, current, voltage, power,
@@ -168,37 +166,38 @@ public class PowerMeter extends HM_hlDevice implements ResourceListener {
 
 		ElectricCurrentSensor iSens = conn.currentSensor().create();
 		iRes = iSens.reading().create();
-		iRes.activate(true);
-		iRes.setValue(0);
+//		iRes.activate(true);
+		//		iRes.setValue(0);
 		iRes.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		ElectricVoltageSensor vSens = (ElectricVoltageSensor) conn.voltageSensor().create();
 		vRes = (VoltageResource) vSens.reading().create();
-		vRes.activate(true);
-		vRes.setValue(0);
+//		vRes.activate(true);
+		//		vRes.setValue(0);
 		vRes.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		ElectricPowerSensor pSens = (ElectricPowerSensor) conn.powerSensor().create();
 		pRes = (PowerResource) pSens.reading().create();
-		pRes.activate(true);
-		pRes.setValue(0);
+//		pRes.activate(true);
+		//		pRes.setValue(0);
 		pRes.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		ElectricFrequencySensor fSens = (ElectricFrequencySensor) conn.frequencySensor().create();
 		fRes = (FrequencyResource) fSens.reading().create();
-		fRes.activate(true);
-		fRes.setValue(0);
+//		fRes.activate(true);
+		//		fRes.setValue(0);
 		fRes.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		// Add accumulated energy attribute
 		EnergyAccumulatedSensor energy = powerMeter.electricityConnection().energySensor().create();
 		eRes = (EnergyResource) energy.reading().create();
-		eRes.activate(true);
-		eRes.setValue(0);
+//		eRes.activate(true);
+		//		eRes.setValue(0);
 		eRes.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
+		powerMeter.activate(true);
 
 		// Add listener to register on/off commands
-		onOff.addResourceListener(this, false);
+		onOff.addValueListener(this, true);
 
 		// Get state
 		ChannelLocator locator = this.commandChannel.get("COMMAND:01");
@@ -227,7 +226,7 @@ public class PowerMeter extends HM_hlDevice implements ResourceListener {
 	}
 
 	@Override
-	public void resourceChanged(Resource res) {
+	public void resourceChanged(BooleanResource resource) {
 
 		// Here the on/off command channel should be written
 		// Currently only 1 channel for everything
@@ -244,5 +243,6 @@ public class PowerMeter extends HM_hlDevice implements ResourceListener {
 		// Get state
 		writeToChannel(locator, "010E" + "A0" + "01"); // Syntax: Commando +
 		// Flag + Type
+
 	}
 }

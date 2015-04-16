@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -45,6 +44,7 @@ public class MemoryTreeElement implements TreeElement {
     private boolean decorating = false;
     private boolean array = false;
     private final Class<? extends Resource> type;
+    private Class<? extends Resource> listType;
     private final TreeElement parent;
     private final String name;
     private final int resId;
@@ -64,11 +64,10 @@ public class MemoryTreeElement implements TreeElement {
         this.decorating = decorating;
 
         if (ResourceList.class.isAssignableFrom(type)){
-            this.type = findElementTypeOnParent();
+            listType = findElementTypeOnParent();
             array = true;
-        } else {
-            this.type = type;
         }
+        this.type = type;
     }
     
     @SuppressWarnings("unchecked")
@@ -258,21 +257,34 @@ public class MemoryTreeElement implements TreeElement {
 	public String getPath() {
 		StringBuilder sb = new StringBuilder(getName());
         for (TreeElement e = getParent(); e != null; e = e.getParent()){
-            sb.insert(0, ".").insert(0, e.getName());
+            sb.insert(0, "/").insert(0, e.getName());
         }
         return sb.toString();
 	}
 
 	@Override
 	public Class<? extends Resource> getResourceListType() {
-		// TODO Auto-generated method stub
-		return null;
+		return listType;
 	}
 
 	@Override
 	public void setResourceListType(Class<? extends Resource> cls) {
+		listType = cls;		
+	}
+
+	@Override
+	public void setLastModified(long time) {
+	}
+
+	@Override
+	public long getLastModified() {
+		return -1;
+	}
+
+	@Override
+	public String getLocation() {
 		// TODO Auto-generated method stub
-		
+		return null;
 	}
 
 }

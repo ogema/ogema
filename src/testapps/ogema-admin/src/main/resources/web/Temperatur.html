@@ -1,0 +1,208 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!---Die Maus ist am Fraunhofer--->
+<HTML>
+<HEAD>
+<TITLE>Temperatur</TITLE>
+<!--<SCRIPT language="javascript" src="switch.js" type="text/javascript"></SCRIPT>--->
+<SCRIPT language="javascript" src="maus.js" type="text/javascript"></SCRIPT>
+<SCRIPT type="application/javascript">
+
+
+function init() {
+
+zoomx=1;
+zoomy=1;
+zoomp=1;
+zoomi=1;
+
+
+canvas = document.getElementById("mycanvas"); 
+context1 = canvas.getContext("2d");
+
+canvas.width=visibleW;
+canvas.height=visibleH;
+	
+bild.src = "./images/mausfieber.jpg"; 	
+	
+bild.onload=function () {	
+
+w=bild.width;
+h=bild.height;
+
+if(visibleW<=w || visibleH<=h)
+{
+
+	zoomx=visibleW/w;
+	zoomy=visibleH/(2*h);
+	
+	if (zoomx>zoomy)
+		{ zoomp=zoomy;
+	}
+	else
+	{  zoomp=zoomx;
+	}
+
+}
+breite=(visibleW-bild.width*zoomp)/2;
+
+
+context1.save()
+context1.scale(zoomp,zoomp)
+context1.drawImage(bild,breite/zoomp,Ytop/zoomp);
+context1.restore()
+
+//instrdrawn=true;
+
+}
+try{
+	xml= new XMLHttpRequest();
+	
+	
+   
+//canvas.addEventListener("click", canvasOnClick, false);
+ myTimer = setInterval(actualize, 1000); 
+
+  
+				}catch(e){
+				
+				alert(e.toString());
+				}
+}
+
+
+
+function actualize() {
+if(inited){
+	if((xml.readyState >= 4)||(xml.readyState == 0)){
+		xml.open("GET", "/maus",true);
+		xml.onreadystatechange = process;
+		xml.send();
+		}
+	}
+}
+
+function process(){
+	if ( xml.readyState == 4) {
+		data = xml.responseText;
+		var json = eval('('+data+')');
+		
+			
+
+
+	watt=json.powerValues[TEMP_IN]; // dies wird jenach Ger�te gewechselt.
+	temp_out=json.powerValues[TEMP_OUT]; 
+	
+	if(visibleW<=w || visibleH<=h)
+{
+
+	
+	schreibY=(visibleH-(bild.height*zoomp)-Ytop)/2;
+	schreibY2=schreibY+(bild.height*zoomp)+Ytop;
+	schreibX=canvas.width/2;
+	squareY=(visibleH-(bild.height*zoomp)-Ytop);
+	breite1=(visibleW-(bild.width*zoomp))/2;
+	var new1=(zoomp*bild.height)+Ytop;
+	
+	
+	context1.clearRect(0,new1,visibleW,squareY);
+	context1.font = "40px Arial";
+	context1.fillStyle='black';
+	context1.textAlign = "center";
+	context1.fillText(watt/10+"�C\t\t\t"+temp_out/10+"�C",schreibX,schreibY2,(zoomp*bild.width));
+	
+	} else {
+	
+	schreibY=(visibleH-bild.height-Ytop)/2;
+	schreibY2=schreibY+bild.height+Ytop;
+	schreibX=canvas.width/2;
+	squareY=(visibleH-bild.height-Ytop);
+	
+	context1.clearRect(0,bild.height+Ytop,visibleW,squareY);
+	
+	
+	context1.font = "80px Arial";
+	context1.fillStyle='black';
+	context1.textAlign = "center";
+	context1.fillText(watt/10+"�C\t\t\t\t\t\t"+temp_out/10+"�C",schreibX,schreibY2,bild.width);
+	
+	
+	}
+	}
+	}
+
+
+
+</SCRIPT>
+<style>
+
+.buttonOverCanvas {
+position: absolute;
+bottom:3%;
+left: 40%;
+
+
+}
+</style>
+
+</HEAD>
+
+<BODY>
+<canvas id="mycanvas"></canvas>
+
+<a href="maushaus.html"><button id="switchButton" type="button" class="buttonOverCanvas" style="height: 75px; width:225px;" value="Zur&uuml;ck">
+<font size="6"><b>Zur&uuml;ck</b></font></button></a>
+
+<!--- <center></center>---->
+
+<SCRIPT type="application/javascript">
+
+var xml;
+var watt;
+var bild = new Image();	
+
+var canvas;
+var context1;
+var visibleW=parseInt(window.innerWidth);
+var visibleH=parseInt(window.innerHeight);
+
+var zoomx;
+var zoomy;
+var zoomp;
+var zoomi;
+var scale;
+var instrdrawn=false;
+var w;
+var h;
+
+var myTimer;
+var inited = false;			
+var breite;
+var breite1;
+var Ytop=40;
+var schreibY;
+var schreibY2;
+var schreibX;
+var squareY;
+
+init(); 
+inited = true; 
+
+</SCRIPT>
+</BODY>
+</HTML>

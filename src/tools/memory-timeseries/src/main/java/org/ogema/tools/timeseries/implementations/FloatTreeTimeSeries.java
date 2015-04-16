@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -38,7 +37,7 @@ import org.ogema.tools.memoryschedules.tools.TimeSeriesMerger;
 /**
  * Implementation for the FloatTimeSeries internally using a tree structure for
  * storing data.
- * 
+ *
  * @author Timo Fischer, Fraunhofer IWES
  */
 public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeries {
@@ -67,8 +66,8 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 	}
 
 	/**
-	 * Apply the bi-linear operator on all points of this. Second operator input is taken from values.
-	 * Store the values in this.
+	 * Apply the bi-linear operator on all points of this. Second operator input
+	 * is taken from values. Store the values in this.
 	 */
 	protected void applyBilinearOperator(BilinearSampledValueOperator operator, FloatTimeSeries values) {
         final FloatTimeSeries factors = new FloatTreeTimeSeries(values); // hidden double-synchronization.
@@ -91,7 +90,8 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 
 	/**
 	 * Apply an operator V->V to all points in this time series.
-	 * @param factor 
+	 *
+	 * @param factor
 	 */
 	protected void applyLinearOperator(LinearSampledValueOperator operator) {
         final SortedSet<SampledValue> values = getValues();
@@ -233,8 +233,8 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 	}
 
 	/**
-	 * Sets the values of the result such that the resulting function is a point-wise
-	 * absolute magnitude copy of this.
+	 * Sets the values of the result such that the resulting function is a
+	 * point-wise absolute magnitude copy of this.
 	 */
 	private FloatTimeSeries getAbsoluteLinear(final FloatTimeSeries result) {
 		result.setInterpolationMode(InterpolationMode.LINEAR);

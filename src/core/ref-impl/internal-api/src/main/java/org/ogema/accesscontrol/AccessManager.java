@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +15,9 @@
  */
 package org.ogema.accesscontrol;
 
+import static java.lang.System.getProperty;
 import java.util.List;
+import java.util.Map;
 
 import org.ogema.core.application.AppID;
 import org.ogema.core.security.AppPermission;
@@ -67,25 +68,39 @@ public interface AccessManager {
 	public List<String> getAllUsers();
 
 	/**
-	 * Extend the authorization of the given user by the rights to access resources of the given app.
+	 * Extend the authorization of the given user by the rights to access the web resources of the app specified by its
+	 * AppPreperties.
 	 * 
 	 * @param user
 	 *            Name of the user it's rights are extended.
-	 * @param app
-	 *            The id string of the application whose resources will be accessible for the user or any other
-	 *            description of a role (e.g. ogema resource name) that the user should have.
+	 * @param props
+	 *            A set of properties related to the application that should be granted to access to.
+	 * 
 	 */
-	public void addPermission(String user, String app);
+	public void addPermission(String user, AppPermissionFilter props);
+
+	/**
+	 * Extend the authorization of the given user by the rights to access the web resources of apps specified each by an
+	 * entry of the list of AppPermissionFilter.
+	 * 
+	 * @param user
+	 *            Name of the user it's rights are extended.
+	 * @param props
+	 *            A list of AppPermissionFilter where each of them contains a set of properties related to an
+	 *            application that should be granted to access to.
+	 * 
+	 */
+	public void addPermission(String user, List<AppPermissionFilter> props);
 
 	/**
 	 * Remove the authorization of the given user to access resources of the given app.
 	 * 
 	 * @param user
 	 *            Name of the user it's access rights are changed.
-	 * @param permission
-	 *            The app it's resources will be no longer accessible for the user.
+	 * @param properites
+	 *            The applications properties it's resources will be no longer accessible for the user.
 	 */
-	public void removePermission(String user, AppID app);
+	public void removePermission(String user, AppPermissionFilter properties);
 
 	/**
 	 * Change the persistently stored password information of the natural user.
@@ -107,16 +122,16 @@ public interface AccessManager {
 	 * @param value
 	 *            The value of the credential to be set.
 	 */
-	public void setCredetials(String user, String credential, String value);
+	public void setCredential(String user, String credential, String value);
 
 	/**
 	 * Get a list of all applications their registered resources are accessible partially or entirely by the given user.
 	 * 
 	 * @param user
 	 *            Name of the user.
-	 * @return List of application id strings or null if the user is not permitted any application
+	 * @return List of AppID objects of the permitted apps
 	 */
-	public List<String> getAppsPermitted(String user);
+	public List<AppID> getAppsPermitted(String user);
 
 	/**
 	 * Check if the user has permission to access (web)resources of the application specified by its given AppID
@@ -197,7 +212,7 @@ public interface AccessManager {
 	 *            role name describing the the protected resource.
 	 * @return true if the user is permitted to access the resource specified with the role name, false otherwise.
 	 */
-	public boolean checkPermission(String userName, String roleName);
+	// public boolean checkPermission(String userName, String roleName);
 
 	/**
 	 * Get the UserRightsProxy object linked to the given user.
@@ -250,4 +265,22 @@ public interface AccessManager {
 	 * @return true if the user is a natural person, false otherwise
 	 */
 	public boolean isNatural(String user);
+
+	/**
+	 * Checks if the user has unrestricted access to the web interfaces of all apps.
+	 *
+	 * @param user
+	 *            the user name.
+	 * @return true, if the user is permitted to access all apps, or false, otherwise.
+	 */
+	public boolean isAllAppsPermitted(String user);
+
+	/**
+	 * Checks if the user has access to the web interfaces of any app.
+	 *
+	 * @param user
+	 *            the user name.
+	 * @return true, if the user is not permitted to access any app or false, otherwise.
+	 */
+	public boolean isNoAppPermitted(String user);
 }

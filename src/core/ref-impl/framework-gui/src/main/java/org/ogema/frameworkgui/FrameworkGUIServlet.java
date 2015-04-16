@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,6 +21,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.ogema.accesscontrol.SessionAuth;
 import org.ogema.frameworkgui.utils.BundleIcon;
 
 /**
@@ -53,6 +53,8 @@ public class FrameworkGUIServlet extends HttpServlet {
 		String path = req.getPathInfo();
 		String action = req.getParameter("action");
 
+		// System.out.println(req.getUserPrincipal().getName());
+
 		if ("logout".equals(action)) {
 			req.getSession().invalidate();
 			resp.sendRedirect("/ogema/login");
@@ -60,9 +62,14 @@ public class FrameworkGUIServlet extends HttpServlet {
 			return;
 		}
 
+		SessionAuth sesAuth = (SessionAuth) req.getSession().getAttribute("ogemaAuth");
+		String user = null;
+		if (sesAuth != null) // if security is disabled sesAuth is null
+			user = sesAuth.getUsr().getName();
+
 		if ("/installedapps".equals(path)) {
 			if ("listAll".equals(action)) {
-				StringBuffer sb = controller.appsList2JSON();
+				StringBuffer sb = controller.appsList2JSON(user);
 				String data = sb.toString();
 				printResponse(resp, data);
 			}

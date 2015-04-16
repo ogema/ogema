@@ -1,0 +1,230 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:wicket="http://wicket.sourceforge.net/" xml:lang="en" lang="en">
+<head>
+<wicket:head>
+	<title>Resources Table Viewer</title>
+</wicket:head>
+</head>
+<body>
+	<wicket:panel>
+		<form wicket:id="form">
+			<table class="table table-striped">
+				<tr>
+					<td><b><span wicket:id="menuSelectionLabel"></span></b></td>
+					<td><span wicket:id="resourcesNumberLabel"></span></td>
+					<td></td>
+				</tr>
+				<tr>
+					<td><select wicket:id="menuSelection"></select></td>
+					<td><span wicket:id="resourcesNumber"></span></td>
+					<td><button wicket:id="updateButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="updateButtonLabel"></span>
+						</button></td>
+				</tr>
+			</table>
+
+			<div wicket:id="feedback"></div>
+
+			<table wicket:id="importContainer" class="table table-striped">
+				<h4>
+					<span wicket:id="importHeader" />
+				</h4>
+				<tr>
+				</tr>
+				<!-- <tr>
+					<td>Select file format:</td>
+					<td><select wicket:id="fileFormatChoice" /></td>
+				</tr>  -->
+				<tr>
+					<td><span wicket:id="importFileLabel"></span></td>
+					<td></td>
+					<td><span wicket:id="downloadFileLabel"></span></td>
+				</tr>
+				<tr>
+					<td><input wicket:id="fileUpload" size="25" type="file" /> <input
+						type="submit" value="Upload" /></td>
+					<td></td>
+					<td><input type="button" wicket:id="downloadLink"
+						value="Download resources table" class="btn btn-success" /></td>
+				</tr>
+			</table>
+			<div wicket:id="orderingContainer">
+				<h4>
+					<span wicket:id="orderingHeader" />
+				</h4>
+				<table class="table table-striped">
+					<tr>
+						<td><span wicket:id="orderingsLabel"></span> <br><br>
+									<div wicket:id="orderings">
+
+										<select multiple="multiple">
+											<option>option1</option>
+											<option>option2</option>
+											<option>option3</option>
+										</select>
+									</div></td>
+						<td></td>
+						<td><span wicket:id="invertedOrderingsLabel"></span> <br><br>
+									<div wicket:id="invertedOrderings">
+
+										<select multiple="multiple">
+											<option>option1</option>
+											<option>option2</option>
+											<option>option3</option>
+										</select>
+									</div></td>
+					</tr>
+					<tr>
+						<span> </span>
+					</tr>
+					<tr>
+					</tr>
+					<tr>
+						<td>
+							<table>
+								<tr>
+									<td><span wicket:id="settingsTypeLabel"></span></td>
+									<td><span wicket:id="longResTypeNamesLabel"></span></td>
+								</tr>
+								<tr>
+									<td><select wicket:id="settingsTypeField"></select></td>
+									<td><input type="checkbox" wicket:id="longResTypeNames" />
+									</td>
+								</tr>
+							</table>
+						</td>
+						<td></td>
+						<td>
+							<table>
+								<tr>
+									<td><span wicket:id="showSubResourcesLabel"></span></td>
+									<!--  <td></td> -->
+								</tr>
+								<tr>
+									<td><input type="checkbox" wicket:id="showSubResources" />
+									</td>
+									<td><button wicket:id="orderingsSaveButton" type="submit"
+											class="btn btn-success">
+											<span wicket:id="orderingButtonLabel"></span>
+										</button></td>
+								</tr>
+							</table>
+
+						</td>
+					</tr>
+				</table>
+
+			</div>
+			<table wicket:id="creationContainer" class="table table-striped">
+				<h4>
+					<span wicket:id="creationHeader" />
+				</h4>
+				<tr>
+					<td><span wicket:id="creationNameLabel"></span></td>
+					<td><span wicket:id="creationTypeLabel"></span></td>
+					<td><span wicket:id="creationParentLabel"></span></td>
+					<td><span wicket:id="creationReferenceLabel"></span></td>
+					<td><span wicket:id="creationValueLabel"></span></td>
+					<td><span wicket:id="creationActiveLabel"></span></td>
+					<td></td>
+				</tr>
+				<tr>
+					<td><input type="text" wicket:id="creationName"
+						class="input-medium search-query" /></td>
+					<td><input type="text" wicket:id="creationType"
+						class="input-medium search-query" style="width: 250px" /></td>
+					<td><select wicket:id="creationParent" /></td>
+					<td><select wicket:id="creationReference" /></td>
+					<td><input type="text" wicket:id="creationValue"
+						class="input-medium search-query" /></td>
+					<td><input type="checkbox" wicket:id="creationActiveCheckbox" /></td>
+					<td><button wicket:id="createButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="createButtonLabel"></span>
+						</button></td>
+				</tr>
+			</table>
+			<table wicket:id="manipulationContainer" class="table table-striped">
+				<h4>
+					<span wicket:id="manipulationHeader" />
+				</h4>
+				<tr>
+					<td><span wicket:id="manipulationResourceLabel"></span></td>
+					<td></td>
+					<td><span wicket:id="manipulationValueLabel"></span></td>
+					<td></td>
+					<td><span wicket:id="manipulateActivationLabel" /></td>
+
+				</tr>
+				<tr>
+					<td><select wicket:id="manipulationResource" /></td>
+					<td></td>
+					<td><input type="text" wicket:id="manipulationValueField"
+						class="input-medium search-query" /></td>
+					<td></td>
+					<td>
+						<button wicket:id="manipulateActivationToggler" type="submit"
+							class="btn btn-success">
+							<span wicket:id="manipulateActivationTogglerLabel"></span>
+						</button>
+					</td>
+				</tr>
+				<tr>
+					<td><span wicket:id="manipulationResTypeLabel"></span></td>
+					<td></td>
+					<td>
+						<button wicket:id="sendManipulationValues" type="submit"
+							class="btn btn-success">
+							<span wicket:id="sendManipulationValuesLabel"></span>
+						</button>
+					</td>
+					<td></td>
+					<td></td>
+				</tr>
+			</table>
+		</form>
+		<br><br>
+				<form wicket:id="displayResourcesForm">
+					<h4>
+						<span wicket:id="displayHeader" />
+					</h4>
+					<div wicket:id="informationBox">
+						<table class="table table-striped">
+							<tr>
+								<th>Path</th>
+								<th>Resource Type</th>
+								<th>Active</th>
+								<th>Location</th>
+								<th>Reference</th>
+								<th>Value</th>
+								<th># Subresources</th>
+							</tr>
+							<tr wicket:id="rows">
+								<td wicket:id="dataRow"></td>
+							</tr>
+						</table>
+					</div>
+				</form>
+	</wicket:panel>
+</body>
+</html>

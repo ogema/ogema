@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,6 +21,7 @@ import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.ChannelConfigurationException;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
+import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.measurements.ByteArrayValue;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
@@ -61,16 +61,23 @@ public class ColorDimmableLight extends Generic_ZbDevice implements ResourceList
 	private Generic_ZbConfig moveToColorCmdConfig;
 	private Generic_ZbConfig onLevelCmdConfig;
 
+	private String deviceName;
+
 	public ColorDimmableLight(Generic_ZbDriver driver, ApplicationManager appManager, Generic_ZbConfig config) {
 		super(driver, appManager, config);
 	}
 
-	public ColorDimmableLight(Generic_ZbDriver driver, ApplicationManager appManager, DeviceLocator deviceLocator) {
+	public ColorDimmableLight(Generic_ZbDriver driver, ApplicationManager appManager, DeviceLocator deviceLocator,
+			String name) {
 		super(driver, appManager, deviceLocator);
+		deviceName = name;
 		addMandatoryChannels();
 	}
 
 	private void addMandatoryChannels() {
+		if (deviceName != null)
+			generic_ZbConfig.resourceName = deviceName;
+
 		offCmdConfig = new Generic_ZbConfig();
 		offCmdConfig.interfaceId = generic_ZbConfig.interfaceId;
 		offCmdConfig.deviceAddress = generic_ZbConfig.interfaceId;
@@ -109,7 +116,7 @@ public class ColorDimmableLight extends Generic_ZbDevice implements ResourceList
 		onOffConfig.deviceAddress = generic_ZbConfig.interfaceId;
 		onOffConfig.deviceId = Constants.COLOR_DIMMABLE_LIGHT;
 		onOffConfig.channelAddress = Constants.ON_OFF_ATTR_ADDRESS;
-		onOffConfig.timeout = 10000;
+		onOffConfig.timeout = 2000;
 		onOffConfig.resourceName = generic_ZbConfig.resourceName;
 		onOffConfig.resourceName += "_OnOffAttribute"; // In case of several devices with the same
 		// resourceName
@@ -132,7 +139,7 @@ public class ColorDimmableLight extends Generic_ZbDevice implements ResourceList
 		onLevelCmdConfig.deviceAddress = generic_ZbConfig.interfaceId;
 		onLevelCmdConfig.deviceId = Constants.COLOR_DIMMABLE_LIGHT;
 		onLevelCmdConfig.channelAddress = Constants.ONLEVEL_ATTR_ADDRESS;
-		onLevelCmdConfig.timeout = 3200; // Not necessary because it's hard coded for Commands
+		onLevelCmdConfig.timeout = 2500; // Not necessary because it's hard coded for Commands
 		onLevelCmdConfig.resourceName = generic_ZbConfig.resourceName;
 
 		onLevelCmdConfig.resourceName += "_OnLevel";
@@ -183,6 +190,7 @@ public class ColorDimmableLight extends Generic_ZbDevice implements ResourceList
 		intensity.addResourceListener(this, false);
 		light.addStructureListener(this);
 
+		updateOnOffFeedback();
 	}
 
 	@Override
@@ -250,6 +258,7 @@ public class ColorDimmableLight extends Generic_ZbDevice implements ResourceList
 					}
 				}
 			}
+			updateOnOffFeedback();
 		}
 		if (resource.equals(intensity)) {
 			Integer intensityInt = (int) (intensity.getValue() * 255);
@@ -269,19 +278,33 @@ public class ColorDimmableLight extends Generic_ZbDevice implements ResourceList
 		// TODO add color resource
 	}
 
+	private void updateOnOffFeedback() {
+		SampledValueContainer onoffState = channelAccess.readUnconfiguredChannel(onOffConfig.chLocator);
+		Value v = onoffState.getSampledValue().getValue();
+		if (v != null) {
+			isOn.setValue(v.getBooleanValue());
+		}
+	}
+
 	@Override
 	public void updateChannelValue(String chAddr, Value value) {
 		try {
 			switch (chAddr) {
 			case Constants.ON_OFF_ATTR_ADDRESS:
 				SampledValue onoffState = channelAccess.getChannelValue(onOffConfig.chLocator);
-				isOn.setValue(onoffState.getValue().getBooleanValue());
+				Value v = onoffState.getValue();
+				if (v != null) {
+					isOn.setValue(v.getBooleanValue());
+				}
 				break;
 			case Constants.ONLEVEL_ATTR_ADDRESS:
 				SampledValue onlevel = channelAccess.getChannelValue(onLevelCmdConfig.chLocator);
-				float intens = onlevel.getValue().getFloatValue();
-				intens /= 255.0f;
-				onIntensity.setValue(intens);
+				v = onlevel.getValue();
+				if (v != null) {
+					float intens = v.getFloatValue();
+					intens /= 255.0f;
+					onIntensity.setValue(intens);
+				}
 				break;
 			default:
 				break;

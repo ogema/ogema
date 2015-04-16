@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -38,7 +37,7 @@ public class Activator implements BundleActivator {
 		serviceRegistration = context.registerService(Application.class.getName(), application, null);
 		shell = new ShellCommands(driver, context);
 		running = true;
-		new Thread(new Runnable() {
+		Thread scan = new Thread(new Runnable() {
 
 			@Override
 			public void run() {
@@ -54,15 +53,17 @@ public class Activator implements BundleActivator {
 						running = false;
 					try {
 						Thread.sleep(17000);
-						logger.info("Device scan started ...");
+						logger.debug("Device scan started ...");
 						shell.deviceScan(null);
-						logger.info(".. device scan finished.");
+						logger.debug(".. device scan finished.");
 					} catch (Throwable e) {
 						e.printStackTrace();
 					}
 				}
 			}
-		}).start();
+		});
+		scan.setName("generic-zb-hld-scanDevices");
+		scan.start();
 
 	}
 

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,6 +15,7 @@
  */
 package org.ogema.resourcemanager.impl.test;
 
+import java.util.concurrent.CountDownLatch;
 import org.ogema.exam.StructureTestListener;
 import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertFalse;
@@ -24,6 +24,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
+import org.ogema.core.model.units.PowerResource;
+import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.REFERENCE_ADDED;
 import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.REFERENCE_REMOVED;
 import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.RESOURCE_ACTIVATED;
@@ -32,7 +34,9 @@ import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.RE
 import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.RESOURCE_DELETED;
 import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.SUBRESOURCE_ADDED;
 import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.SUBRESOURCE_REMOVED;
+import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.model.actors.OnOffSwitch;
+import org.ogema.model.sensors.PowerSensor;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 
@@ -423,6 +427,48 @@ public class ResourceStructureListenerTest extends OsgiTestBase {
 		sw2.ratedValues().upperLimit().activate(true);
 
 		assertFalse("received event from wrong resource", l.awaitEvent(RESOURCE_ACTIVATED));
+	}
+
+	@Test
+	public void settingAReferenceCausesNoSpuriousResourceCreatedCallbacks() throws InterruptedException {
+		final PowerResource f = resMan.createResource(newResourceName(), PowerResource.class);
+		final CountDownLatch createdCallbackReceived = new CountDownLatch(1);
+
+		ResourceStructureListener l = new ResourceStructureListener() {
+
+			@Override
+			public void resourceStructureChanged(ResourceStructureEvent event) {
+				if (event.getType() == RESOURCE_CREATED) {
+					System.err.printf("bad RESOURCE_CREATED callback: %s%n", event.getSource());
+					createdCallbackReceived.countDown();
+				}
+			}
+		};
+		f.addStructureListener(l);
+
+		PowerSensor sens = resMan.createResource(newResourceName(), PowerSensor.class);
+
+		sens.reading().setAsReference(f);
+
+		assertFalse("received faulty RESOURCE_CREATED callback!", createdCallbackReceived.await(3, TimeUnit.SECONDS));
+	}
+
+	@Test
+	public void deactivatingReferenceCausesCallbackOnReferencedResource() throws InterruptedException {
+		final PowerResource f = resMan.createResource(newResourceName(), PowerResource.class);
+		PowerSensor sens = resMan.createResource(newResourceName(), PowerSensor.class);
+		sens.reading().setAsReference(f);
+
+		f.activate(true);
+		assertTrue(sens.reading().isActive());
+
+		StructureTestListener l = new StructureTestListener();
+		f.addStructureListener(l);
+
+		sens.reading().deactivate(true);
+
+		assertFalse(f.isActive());
+		assertTrue(l.awaitEvent(RESOURCE_DEACTIVATED));
 	}
 
 }

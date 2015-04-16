@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +19,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.ogema.core.application.AppID;
+
 /**
  *
  * @author tgries
@@ -29,7 +30,7 @@ public class UserJsonPermittedApps implements Serializable {
 	private static final long serialVersionUID = 4590072284091784714L;
 
 	private String user;
-	private List<String> permittedApps = new ArrayList<String>();
+	private List<AppID> permittedApps = new ArrayList<AppID>();
 
 	public String getUser() {
 		return user;
@@ -39,11 +40,11 @@ public class UserJsonPermittedApps implements Serializable {
 		this.user = user;
 	}
 
-	public List<String> getPermittedApps() {
+	public List<AppID> getPermittedApps() {
 		return permittedApps;
 	}
 
-	public void setPermittedApps(List<String> permittedApps) {
+	public void setPermittedApps(List<AppID> permittedApps) {
 		this.permittedApps = permittedApps;
 	}
 

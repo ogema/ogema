@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -49,7 +48,10 @@ public class Endpoint {
 	}
 
 	public short getProfileId() {
-		return profileId;
+		if (profileId == (short) 0xc05e) // see ZigBee Document 11-0037-10 page 80 section 8.1.4
+			return (short) 0x0104;
+		else
+			return profileId;
 	}
 
 	public SimpleDescriptor getSimpleDescriptor() {

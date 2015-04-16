@@ -1,0 +1,73 @@
+<!--
+
+    Copyright 2009 - 2014
+
+    Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
+
+    Fraunhofer IIS
+    Fraunhofer ISE
+    Fraunhofer IWES
+
+    All Rights reserved
+
+-->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Küche 2 </title>
+<script src="../js/my_js2.js"></script>
+<script src="../js/jquery.min.js"></script>
+<script src="../js/jquery-1.10.2.js"></script>
+<script>
+
+var tAussen, fAussen, tInnen, fInnen;
+	$(document).ready(function(){
+	var myVar = setInterval(function(){
+	//		  $(document).everyTime(3000, function() {
+		
+					   $.getJSON("/climate_station_servlet/getArduinoData", function(data) {
+							
+						   
+									 tAussen = Math.round(data[0].RTemp);
+									 fAussen = data[0].RH;
+									 
+									 tInnen = Math.round(data[3].RTemp);
+									 fInnen = data[3].RH;
+									 
+					  }); 
+		
+//	});
+
+	},3000);
+    var myVar1 = setInterval(function(){draw()},2000);	
+});
+
+</script>
+
+<link rel="stylesheet" type="text/css" href="../css/my_style2.css">
+
+</head>
+
+<body onload="draw();">
+<h2 id="wohnzimmer">Wohnzimmer</h2>
+
+<canvas id="myCanvas" width="680" height="400" style="border:none;"><!--1px solid lightgrey;-->
+Your browser does not support the HTML5 canvas tag.
+</canvas>
+
+<img id="rechtehand" src="../images/rechtehand.png" height="0.1" width="0.1">
+<img id="linkehand" src="../images/linkehand.png" height="0.1" width="0.1">
+
+<a href="Zimmeruebersicht.html" id="back">Zimmerübersicht</a> 
+<a href="Wohnzimmer.html" id="ansicht">Ansicht wechseln</a> 
+
+
+
+
+
+
+
+
+</body>
+</html>

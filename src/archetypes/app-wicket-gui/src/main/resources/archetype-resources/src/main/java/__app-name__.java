@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,8 +25,9 @@ import org.ogema.core.application.TimerListener;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.ResourceAccess;
+import org.ogema.core.resourcemanager.pattern.ResourcePatternAccess;
 
-@Component(specVersion = "1.1", immediate=true)
+@Component(specVersion = "1.2", immediate=true)
 @Service(Application.class)
 public class ${app-name} implements Application {
 
@@ -35,6 +35,8 @@ public class ${app-name} implements Application {
 	protected ApplicationManager appMan;
 	protected ResourceManagement resMan;
 	protected ResourceAccess resAcc;
+        private ResourcePatternAccess patAcc;
+        private static ${app-name} instance;
 
 
 	@Override
@@ -42,11 +44,12 @@ public class ${app-name} implements Application {
 		this.appMan = appManager;
 		this.logger = appManager.getLogger();
 		this.resMan = appManager.getResourceManagement();
-		this.resAcc = appManager.getResourceAccessManager();
+		this.resAcc = appManager.getResourceAccess();
+                this.patAcc = appManager.getResourcePatternAccess();
+                ${app-name}.instance = this;
 		
 		// Create a task to be invoked periodically.
 		appManager.createTimer(3000l, timerListener);
-
 		logger.debug("{} started", getClass().getName());
 	}
 
@@ -62,4 +65,8 @@ public class ${app-name} implements Application {
 			logger.info("Timer elapsed!");
 		}
 	};
+
+    public static ${app-name} getInstance(){
+        return ${app-name}.instance;
+    }
 }

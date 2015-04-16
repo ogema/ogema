@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -19,7 +18,6 @@ package org.ogema.resourcemanager.impl;
 import org.ogema.resourcemanager.impl.transaction.TransactionImpl;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
@@ -35,6 +33,7 @@ import org.ogema.core.administration.RegisteredAccessModeRequest;
 import org.ogema.core.administration.RegisteredResourceDemand;
 import org.ogema.core.administration.RegisteredResourceListener;
 import org.ogema.core.administration.RegisteredStructureListener;
+import org.ogema.core.administration.RegisteredValueListener;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
@@ -47,7 +46,6 @@ import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceException;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.Transaction;
 import org.ogema.resourcemanager.impl.model.ResourceFactory;
@@ -91,7 +89,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		this.accessedResources = new HashSet<>();
 		this.structureListeners = new HashSet<>();
 		this.resourceDemands = new HashSet<>();
-		logger = org.slf4j.LoggerFactory.getLogger("resource-manager-" + appMan.getAppID().getBundle().getBundleId());
+		logger = org.slf4j.LoggerFactory.getLogger("org.ogema.core.resourcemanager-" + app.getClass().getName());
 	}
 
 	public void close() {
@@ -126,7 +124,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		 */
 		ResourceAccessRights access = getAccessRights(el);
 
-		if (System.getSecurityManager() != null) {
+		if (System.getSecurityManager() != null && logger.isDebugEnabled()) {
 			logger.debug("{}@{} (created by {}): read={}, write={}, add={}, create={}, delete={}", app.getClass()
 					.getSimpleName(), path, el.getAppID(), access.isReadPermitted(), access.isWritePermitted(), access
 					.isAddsubPermitted(), access.isCreatePermitted(), access.isDeletePermitted());
@@ -135,7 +133,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		if (!access.isReadPermitted()) {
 			throw new SecurityException(String.format(
 					"You do not have permission to read the resource at %s, location %s", path, getLocationElement(el)
-							.getPath().replace(".", "/")));
+							.getPath()));
 		}
 
 		Class<? extends Resource> type = el.getType();
@@ -149,6 +147,9 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	}
 
 	protected Class<? extends FloatResource> determineUnitResourceType(TreeElement el) {
+		while (el.isReference()) {
+			el = el.getReference();
+		}
 		TreeElement parent = el.getParent();
 		if (parent == null || el.isDecorator()) {
 			return FloatResource.class;
@@ -359,7 +360,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 			if (!access.isReadPermitted()) {
 				continue;
 			}
-			if (resourceType == null || resourceType.isAssignableFrom(type)) {
+			if (resourceType == null || (type != null && resourceType.isAssignableFrom(type))) {
 				result.add((T) getResource("/" + top.getName()));
 			}
 		}
@@ -392,8 +393,26 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 
 	public List<RegisteredResourceListener> getResourceListeners() {
 		checkAdminPermission();
-		return Arrays.asList(registeredListeners.keySet().toArray(
-				new RegisteredResourceListener[registeredListeners.keySet().size()]));
+		List<RegisteredResourceListener> registeredResourceListeners = new ArrayList<>(registeredListeners.size());
+		for (ResourceListenerRegistration rlr : registeredListeners.keySet().toArray(
+				new ResourceListenerRegistration[registeredListeners.keySet().size()])) {
+			if (!(rlr instanceof ValueListenerRegistration)) {
+				registeredResourceListeners.add(rlr);
+			}
+		}
+		return registeredResourceListeners;
+	}
+
+	public List<RegisteredValueListener> getValueListeners() {
+		checkAdminPermission();
+		List<RegisteredValueListener> registeredResourceListeners = new ArrayList<>(registeredListeners.size());
+		for (ResourceListenerRegistration rlr : registeredListeners.keySet().toArray(
+				new ResourceListenerRegistration[registeredListeners.keySet().size()])) {
+			if (rlr instanceof RegisteredValueListener) {
+				registeredResourceListeners.add((RegisteredValueListener) rlr);
+			}
+		}
+		return registeredResourceListeners;
 	}
 
 	public List<RegisteredAccessModeRequest> getAccessRequests() {

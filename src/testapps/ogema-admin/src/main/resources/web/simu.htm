@@ -1,0 +1,262 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+﻿<SCRIPT language="javascript" src="maus.js" type="text/javascript"></SCRIPT>
+<SCRIPT language="javascript" src="barGraph.js" type="text/javascript"></SCRIPT>
+<SCRIPT language="javascript" src="multiBarGraph.js"
+	type="text/javascript"></SCRIPT>
+<SCRIPT language="javascript" src="battery.js" type="text/javascript"></SCRIPT>
+<SCRIPT language="javascript" src="tacho_integral.js" type="text/javascript"></SCRIPT>
+<SCRIPT language="javascript" src="pic.js" type="text/javascript"></SCRIPT>
+<SCRIPT type="application/javascript">
+			
+function actualize() {
+	if(all_inited && ((get.readyState >= 4)||(get.readyState == 0))){
+		//get.open("GET", "/simu",true);
+		get.open("GET", "/rest/top1/sub1/sub2"+"?param1="+otusr+"&param2="+otpwd,true);
+		get.onreadystatechange = process;
+		get.send();
+		}
+}
+
+function rgShadow(json,ctx)
+{
+		var sumprd=json.powerValues[SOLAR]+json.powerValues[WIND]+json.powerValues[BIKE1]+json.powerValues[BIKE2]
+		var sumcon=json.powerValues[LIGHT]+json.powerValues[AIR]+json.powerValues[FRIDGE]
+		if(sumcon>sumprd)
+			ctx.fillStyle=red
+		else
+			ctx.fillStyle=green
+		ctx.clearRect(0,30,480,560)
+		ctx.fillRect(0,30,480,560)
+}
+
+function rgBar(json,ctx)
+{
+		var sumprd=json.powerValues[SOLAR]+json.powerValues[WIND]+json.powerValues[BIKE1]+json.powerValues[BIKE2]
+		var sumcon=json.powerValues[LIGHT]+json.powerValues[AIR]+json.powerValues[FRIDGE]
+
+		var x=ctx.canvas.width*.1
+		var y=ctx.canvas.height-100
+		var barW=ctx.canvas.width*.8
+		var wCon
+		var wPrd
+if(sumcon+sumprd==0)
+{wCon=0
+wPrd=0}else{
+wCon=barW*(sumcon/(sumcon+sumprd))
+wPrd=barW*(sumprd/(sumcon+sumprd))}
+		
+		ctx.clearRect(0,y,ctx.canvas.width,90)
+		ctx.fillStyle='red'
+		ctx.fillRect(x,y,wCon,40)
+		ctx.fillStyle='green'
+		ctx.fillRect(x,y+50,wPrd,40)
+}
+
+function process(){
+	if ( get.readyState == 4) {
+		data = get.responseText;
+                var json;
+		if(data=="")
+			return;
+                        try{
+		json = eval('('+data+')');}catch(e){return;}
+		//graph.setValue(json.powerValues[2]);
+		//multigraph.setValue(json.powerValues);
+		argArr[0]=json.powerValues[SOLAR]
+		argArr[1]=json.powerValues[WIND]
+		argArr[2]=json.powerValues[BIKE2]
+		argArr[3]=json.powerValues[BIKE1]
+		multigraphPrd.setValue(argArr)
+		
+		argArr[0]=json.powerValues[LIGHT]
+		argArr[1]=json.powerValues[AIR]
+		argArr[2]=json.powerValues[FRIDGE]
+		multigraphCon.setValue(argArr)
+
+		bat1.repaint(json.powerValues[BATTERY])
+
+		//instr1.animate(json.powerValues[BIKE1])
+		//instr2.animate(json.powerValues[BIKE2])
+		instr1.setValue(json.powerValues[BIKE1])
+		instr2.setValue(json.powerValues[BIKE2])
+		
+		//rgShadow(json,context00o)
+		rgBar(json,context00o)
+	}
+	if ( post.readyState == 4) {
+		data = post.responseText;
+		var json = eval('('+data+')');
+	}
+}
+function openbikes(){
+self.location.href="./bikes.htm"
+}
+</SCRIPT>
+<style>
+.overlappedcanvas {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
+.grid00 {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
+.grid01 {
+	position: absolute;
+	top: 0px;
+	left: 480px;
+}
+
+.grid02 {
+	position: absolute;
+	top: 0px;
+	left: 960px;
+}
+
+.grid10 {
+	position: absolute;
+	top: 540px;
+	left: 0px;
+}
+
+.grid11 {
+	position: absolute;
+	top: 540px;
+	left: 480px;
+}
+
+.grid12 {
+	position: absolute;
+	top: 540px;
+	left: 960px;
+}
+</style>
+<!--<BODY>-->
+<!--body style="overflow: hidden;" onkeydown="openbikes()"-->
+<canvas id="canvas00u" width="480" height="540" class="grid00"></canvas>
+<canvas id="canvas00o" width="480" height="540"
+	style="border-bottom: 1px solid blue;" class="grid00"></canvas>
+<canvas id="canvas01u" width="480" height="540" class="grid01"></canvas>
+<canvas id="canvas01o" width="480" height="540"
+	style="border-bottom: 1px solid blue;" class="grid01"></canvas>
+<canvas id="canvas02" width="960" height="540"
+	style="border-bottom: 1px solid blue; border-left: 1px solid blue;"
+	class="grid02"></canvas>
+<CANVAS id="canvas10u" width="480" height="540" class="grid10"></CANVAS>
+<CANVAS id="canvas10o" width="480" height="540"
+	style="border-top: 1px solid blue;" class="grid10"></CANVAS>
+<canvas id="canvas11u" width="480" height="540" class="grid11"></canvas>
+<canvas id="canvas11o" width="480" height="540"
+	style="border-top: 1px solid blue;" class="grid11"></canvas>
+<canvas id="canvas12" width="960" height="540"
+	style="border-top: 1px solid blue; border-left: 1px solid blue;"
+	class="grid12"></canvas>
+
+
+<SCRIPT type="application/javascript">
+var get,post;
+
+var canvas00u,canvas00o,canvas01u,canvas01o,canvas02,canvas10u,canvas10o,canvas11u,canvas11o,canvas12;
+var	context00u,context00o,context01u,context01o,context02,context10u,context10o,context11u,context11o,context12;
+
+var bat1;
+var instr1,instr2;
+var myTimer;
+var all_inited=false
+init();
+var producer,consumer
+var argArr
+
+var red='rgba(255,0,0,0.2)'
+var green='rgba(0,255,127,0.2)'
+
+function init(){
+	argArr=new Array(8)
+	get= new XMLHttpRequest();
+
+
+	post= new XMLHttpRequest();
+	canvas00u = document.getElementById("canvas00u"); 
+	canvas00o = document.getElementById("canvas00o"); 
+	canvas01u = document.getElementById("canvas01u"); 
+	canvas01o = document.getElementById("canvas01o"); 
+	canvas02 = document.getElementById("canvas02"); 
+	canvas10u = document.getElementById("canvas10u"); 
+	canvas10o = document.getElementById("canvas10o"); 
+	canvas11u = document.getElementById("canvas11u"); 
+	canvas11o = document.getElementById("canvas11o"); 
+	canvas12 = document.getElementById("canvas12"); 
+
+	context00u = canvas00u.getContext("2d");
+	context00o = canvas00o.getContext("2d");
+	context01u = canvas01u.getContext("2d");
+	context01o = canvas01o.getContext("2d");
+	context02 = canvas02.getContext("2d");
+	context10u = canvas10u.getContext("2d");
+	context10o = canvas10o.getContext("2d");
+	context11u = canvas11u.getContext("2d");
+	context11o = canvas11o.getContext("2d");
+	context12 = canvas12.getContext("2d");
+
+
+var iconsPrd = new Array(4);
+var iconsCon = new Array(3);
+
+iconsPrd[0]="images/maussonne_small.jpg"
+iconsPrd[1]="images/mauswind_small.jpg"
+iconsPrd[2]="images/elefantrad_small.jpg"
+iconsPrd[3]="images/mausfahrrad_I_small.jpg"
+
+iconsCon[0]="images/mauslicht_small.jpg"
+iconsCon[1]="images/mausfaecher_small.jpg"
+iconsCon[2]="images/mausfriert_small.jpg"
+
+multigraphPrd=new multiBarGraph(canvas02,4,100,iconsPrd,"Energieerzeuger",150);
+var arr=[10,40,100,75,100,30]
+
+multigraphCon=new multiBarGraph(canvas12,3,100,iconsCon,"Energieverbraucher",150);
+var arr=[10,40,100,75,100,30]
+
+
+	bat1=new battery(canvas01u,canvas01o,100,"Energiespeicher"); //100% enspricht 13,8V, 0% 11,2V
+
+	instr1=new integral(context11u,context11o,0, 200, 0, 0,"./images/tacho-0w-200w.gif","images/mausfahrrad_I_small.jpg","Die Maus",1);
+function create_instr2(){
+	if(instr1.inited()){
+		instr2=new integral(context10u,context10o,0, 200, 0, 0,"./images/tacho-0w-200w.gif","images/elefantrad_small.jpg","Der Elefant",1);
+		all_inited=true
+		}
+	else
+		setTimeout(function(){create_instr2()}, 1000);
+}
+setTimeout(function(){create_instr2()}, 100);
+
+	var balance = new Image();	// definition of Tacho-Image
+	balance.src = "./images/maushaus.jpg"; 	// Set source path 
+
+	var house
+	house=new pic(context00u,0,35,"./images/maushaus.jpg","Energiebilanz",false)
+
+	myTimer = setInterval(actualize, 1000);	
+}
+</SCRIPT>

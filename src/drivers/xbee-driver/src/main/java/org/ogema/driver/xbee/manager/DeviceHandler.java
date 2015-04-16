@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -52,7 +51,7 @@ public class DeviceHandler implements Runnable {
 	private SentFrame sentFrame;
 	private final int RETRY_LIMIT = 3;
 	private long MIN_WAITING_TIME;
-	private Thread timerThread;
+	// private Thread timerThread;
 	protected final Object deviceHandlerLock = new Object();
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("xbee-driver");
 	private int cyclicSleepPeriod;
@@ -66,21 +65,22 @@ public class DeviceHandler implements Runnable {
 		/*
 		 * This thread notifies the endpoint handler after a certain amount of time.
 		 */
-		timerThread = new Thread(new Runnable() {
-			public void run() {
-				while (true) {
-					try {
-						Thread.sleep(MIN_WAITING_TIME);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-					synchronized (deviceHandlerLock) {
-						deviceHandlerLock.notify();
-					}
-				}
-			}
-		});
-		timerThread.start();
+		// timerThread = new Thread(new Runnable() {
+		// public void run() {
+		// while (true) {
+		// try {
+		// Thread.sleep(MIN_WAITING_TIME);
+		// } catch (Exception e) {
+		// e.printStackTrace();
+		// }
+		// synchronized (deviceHandlerLock) {
+		// deviceHandlerLock.notify();
+		// }
+		// }
+		// }
+		// });
+		// timerThread.setName("xbee-lld-deviceHandlerTimer");
+		// timerThread.start();
 	}
 
 	public Object getDeviceHandlerLock() {
@@ -145,7 +145,7 @@ public class DeviceHandler implements Runnable {
 		while (running) {
 			synchronized (deviceHandlerLock) {
 				try {
-					deviceHandlerLock.wait();
+					deviceHandlerLock.wait(MIN_WAITING_TIME);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();

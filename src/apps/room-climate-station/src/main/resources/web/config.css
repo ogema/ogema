@@ -1,0 +1,139 @@
+@charset "utf-8";
+
+body {
+	font-family: arial, sans-serif;
+	background: url('body_back.png') no-repeat;
+	margin: 0px auto;
+	overflow: hidden;
+}
+
+h1 {
+	font-family: 'Arial', sans-serif;
+	font-size: 30px;
+	color: rgba(142, 142, 142, 1);
+	font-weight: lighter;
+}
+
+.head {
+	font-size: 0.9em;
+	padding-left: 10px;
+	border-left: 10px solid #124791;
+	padding-top: 0px;
+	padding-bottom: 0px;
+	cursor: pointer;
+}
+
+.resDialog {
+	width: 160px;
+	display: block;
+	float: left;
+}
+
+div#top {
+	height: 170px;
+	width: 1890px;
+	margin: 15px;
+}
+
+div#middle {
+	height: 880px;
+	width: 1920px;
+	display: table;
+}
+
+.rowDiv {
+	display: table-row;
+}
+
+.cellDiv {
+	display: table-cell;
+	width: 640px;
+}
+
+.rowDivTop {
+	display: table-row;
+}
+
+.columnDiv {
+	display: table;
+	vertical-align: top;
+	width: 640px;
+}
+
+.cellDivTop {
+	display: table-cell;
+	width: 640px;
+	vertical-align: bottom;
+}
+
+.cellDivLeft {
+	display: table-cell;
+	width: 640px;
+	height: 50px;
+	vertical-align: top;
+}
+
+.cellDivRight {
+	display: table-cell;
+	width: 640px;
+	height: 150px;
+	vertical-align: top;
+}
+
+a.button {
+	font-weight: bold;
+	box-shadow: 7px 7px 7px rgba(179, 179, 179, 1);
+	text-align: center;
+	text-decoration: none;
+	float: left;
+	text-shadow: 1px 1px 0 rgba(255, 255, 255, .6);
+	font-family: 'Arial', sans-serif;
+	font-size: 22px;
+	margin: 15px;
+}
+
+a.button:active {
+	box-shadow: 4px 4px 4px rgba(104, 104, 104, 1);
+}
+
+a.buttonGreen:link, a.buttonGreen:visited {
+	color: rgba(128, 171, 68, 0);
+	width: 100%;
+	height: 100%
+}
+
+a.buttonGreen:hover {
+	border-color: rgba(128, 171, 68, .9);
+	color: rgba(128, 171, 68, 0);
+	box-shadow: 7px 7px 7px rgba(104, 104, 104, 1);
+}
+
+a.buttonGreen:active {
+	box-shadow: 4px 4px 4px rgba(104, 104, 104, 1);
+}
+
+a#index:link, #index:visited {
+	width: 200px;
+	padding: 10px;
+	border: 2px solid #CCC;
+	color: rgba(255, 255, 255, 1);
+	box-shadow: 2px 2px 2px rgba(179, 179, 179, .6);
+	text-align: center;
+	font-family: 'Arial', sans-serif;
+	font-size: 22px;
+	text-decoration: none;
+	background-color: rgba(0, 0, 0, 0.6);
+	margin: 15px;
+}
+
+a#index:hover {
+	box-shadow: 2px 2px 2px rgba(179, 179, 179, 1);
+	border: 2px solid rgba(179, 179, 179, .9);
+}
+
+a#index:active {
+	margin-left: 18px;
+	margin-top: 18px;
+	box-shadow: 1px 1px 1px rgba(179, 179, 179, 1);
+	border: 2px solid rgba(179, 179, 179, .9);
+}

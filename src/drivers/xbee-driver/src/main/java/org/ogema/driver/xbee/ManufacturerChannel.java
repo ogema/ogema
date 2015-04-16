@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -108,8 +107,8 @@ public class ManufacturerChannel extends Channel {
 			byte[] message = cluster.getManufacturerSpecificAttributeMessage((byte) 0x00, manufacturerId, attributeId,
 					emptyMessagePayload);
 
-			connection.localDevice.sendRequestMessage(message, Constants.READ_ATTRIBUTES_RESPONSE, channelLock);
 			synchronized (channelLock) {
+				connection.localDevice.sendRequestMessage(message, Constants.READ_ATTRIBUTES_RESPONSE, channelLock);
 				try {
 					channelLock.wait(60000);
 				} catch (InterruptedException e) {
@@ -137,9 +136,9 @@ public class ManufacturerChannel extends Channel {
 			byte[] messagePayload = value.getByteArrayValue();
 			if (messagePayload == null)
 				messagePayload = emptyMessagePayload;
-			connection.localDevice.sendRequestMessage(cluster.getManufacturerSpecificAttributeMessage((byte) 0x02,
-					manufacturerId, attributeId, messagePayload), Constants.WRITE_ATTRIBUTES_RESPONSE, channelLock);
 			synchronized (channelLock) {
+				connection.localDevice.sendRequestMessage(cluster.getManufacturerSpecificAttributeMessage((byte) 0x02,
+						manufacturerId, attributeId, messagePayload), Constants.WRITE_ATTRIBUTES_RESPONSE, channelLock);
 				try {
 					channelLock.wait();
 				} catch (InterruptedException e) {

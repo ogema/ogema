@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,6 +16,9 @@
 package org.ogema.frameworkadministration.controller;
 
 import java.io.IOException;
+import java.io.Writer;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -78,18 +80,17 @@ public class LoggerController {
 
 	/**
 	 * Generates a list of all OGEMA loggers as json. See {@see org.ogema.frameworkadministration.json.get.LoggerJsonGetList} for message format.
-	 * @return a list of all loggers as json.
+	 * @param out write output to this stream.
 	 */
-	public String getAllLoggersJSON() {
+	public void writeAllLoggersJSON(Writer out) {
 
 		List<AdminLogger> loggers = administrationManager.getAllLoggers();
-		String result = "{}";
+
+		if (loggers.isEmpty()) {
+			return;
+		}
 
 		AdminLogger initLogger = loggers.get(0);
-
-		if (initLogger == null) {
-			return result;
-		}
 
 		String path = initLogger.getFilePath().getPath();
 		long sizeFile = initLogger.getMaximumSize(LogOutput.FILE);
@@ -105,7 +106,17 @@ public class LoggerController {
 		//loggerList.setSizeFile(sizeFile);
 		loggerList.setSizeFile(new LoggerJsonSizeResponse("sizeFile", sizeFile, null, null));
 
-		for (AdminLogger adminLogger : loggers) {
+		AdminLogger[] sortedLoggers = loggers.toArray(new AdminLogger[loggers.size()]);
+		Arrays.sort(sortedLoggers, new Comparator<AdminLogger>() {
+
+			@Override
+			public int compare(AdminLogger o1, AdminLogger o2) {
+				return o1.getName().compareTo(o2.getName());
+			}
+
+		});
+
+		for (AdminLogger adminLogger : sortedLoggers) {
 
 			String name = adminLogger.getName();
 			LogLevel file = adminLogger.getMaximumLogLevel(LogOutput.FILE);
@@ -116,12 +127,10 @@ public class LoggerController {
 		}
 
 		try {
-			result = mapper.writeValueAsString(loggerList);
+			mapper.writeValue(out, loggerList);
 		} catch (IOException ex) {
 			Logger.getLogger(FrameworkAdministration.class.getName()).log(Level.SEVERE, null, ex);
 		}
-
-		return result;
 
 	}
 

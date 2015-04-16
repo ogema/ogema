@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,41 +15,27 @@
  */
 package org.ogema.impl.security;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.ogema.accesscontrol.SessionAuth;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.AppID;
 import org.ogema.core.security.WebAccessManager;
+import org.osgi.framework.Bundle;
 import org.osgi.service.http.HttpService;
 import org.osgi.service.http.NamespaceException;
-import org.osgi.service.useradmin.Authorization;
-import org.osgi.service.useradmin.User;
-import org.osgi.service.useradmin.UserAdmin;
 import org.slf4j.Logger;
 
 public class WebAccessManagerImpl implements WebAccessManager {
 
-	private static final long serialVersionUID = 2191312216443580107L;
-
 	protected static final String OLDREQ_ATTR_NAME = "requestBeforeLogin";
-
-	private static final String LOGIN_PATH = "/web/login.html";
-
-	private static final long LOGIN_TIMEOUT = 60000;
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 
@@ -91,7 +76,7 @@ public class WebAccessManagerImpl implements WebAccessManager {
 			this.http.registerResources("/login", "/web", null);
 			LoginServlet loginServlet = new LoginServlet(permMan, permMan.accessMan.usrAdmin);
 			this.http.registerServlet(LoginServlet.LOGIN_SERVLET_PATH, loginServlet, null, null);
-//			registerWebResource(LoginServlet.LOGIN_SERVLET_PATH, loginServlet);
+			// registerWebResource(LoginServlet.LOGIN_SERVLET_PATH, loginServlet);
 			// this.http.registerServlet("/rest", this.restAccess, null, restContext);
 			this.http.registerServlet("/m2mLogin", this.m2mLogin, null, restContext);
 		} catch (NamespaceException | ServletException e) {
@@ -123,21 +108,6 @@ public class WebAccessManagerImpl implements WebAccessManager {
 		// If the list is empty the http context could be unregistered too
 		if (ctx.resources.isEmpty() && ctx.servlets.isEmpty())
 			contextRegs.remove(alias);
-	}
-
-	/**
-	 * This Method adds "/ogema" to the beginning of the alias
-	 */
-	private String aliasToConvention(String alias) {
-		if (!alias.startsWith("/ogema")) {
-			if (alias.startsWith("/")) {
-				alias = "/ogema" + alias;
-			}
-			else {
-				alias = "/ogema/" + alias;
-			}
-		}
-		return alias;
 	}
 
 	/**
@@ -246,57 +216,152 @@ public class WebAccessManagerImpl implements WebAccessManager {
 		return alias + id.getIDString().hashCode();
 	}
 
-	synchronized SessionAuth handleNewSession(HttpServletRequest request, HttpServletResponse response) {
-		SessionAuth result = null;
-		HttpSession ses = request.getSession(true);
-		if (Configuration.DEBUG) {
-			logger.info("Creation time: " + ses.getCreationTime());
-			logger.info("SessionID: " + ses.getId());
+	@Override
+	public String registerWebResourcePath(String alias, Servlet servlet) {
+
+		AppID app = admin.getContextApp(getClass());
+
+		//return if ogema can not find the app
+		if (app == null) {
+			return null;
 		}
 
-		/*
-		 * If the session is new send the login page
-		 */
-		if (Configuration.DEBUG) {
-			logger.debug("Unknown session: send login request.");
+		char seperator = '/';
+
+		//always add "/" as prefix
+		if (alias.length() > 0 && alias.charAt(0) != seperator) {
+			alias = seperator + alias;
 		}
-		InputStream is;
-		OutputStream bout;
-		int len = 0;
+
+		String newAlias = app.getBundle().getSymbolicName() + alias;
+		newAlias = seperator + newAlias.replace('.', seperator);
+		newAlias = newAlias.toLowerCase();
+
+		//if the last character is "/" then remove it due to possible path exception
+		if (newAlias.charAt(newAlias.length() - 1) == '/') {
+			newAlias = newAlias.substring(0, newAlias.length() - 1);
+		}
+
+		//register servlet
+		String appid = app.getIDString();
+		OgemaHttpContext httpContext = this.contextRegs.get(appid);
+		if (httpContext == null) {
+			httpContext = new OgemaHttpContext(permMan, app);
+		}
+
 		try {
-			is = getClass().getResource(LOGIN_PATH).openStream();
-			bout = response.getOutputStream();
-			do {
-				len = is.read(scratch);
-				if (len == -1) // This check is needed due to jetty's own OutputStream implementation.
-					break;
-				bout.write(scratch, 0, len);
-				// NOTE: Jetty server has its own OutputStream class its write method doesn't throw this
-				// IndexOutOfBoundsException
+			http.registerServlet(newAlias, servlet, null, httpContext);
+		} catch (ServletException servletException) {
+			logger.error("could not register webresource due to servlet exception");
+			servletException.printStackTrace();
+		} catch (NamespaceException namespaceException) {
+			logger.error("could not register webresource due to namespace exception");
+			namespaceException.printStackTrace();
+		}
 
-			} while (true);
-			response.flushBuffer();
-			try {
-				wait(LOGIN_TIMEOUT);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-			// result = sessions.get(ses.getId());
-			result = (SessionAuth) ses.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME);
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		// If the Session is not new or the authentication was successful
-		if (result != null) {
-			if (Configuration.DEBUG) {
-				logger.debug("Authentication succeded.");
-			}
-		}
-		else if (Configuration.DEBUG) {
-			logger.debug("Authentication failed or timed out.");
-		}
-		return result;
+		contextRegs.put(appid, httpContext);
+		httpContext.servlets.put(newAlias, app);
+
+		return newAlias;
+
 	}
+
+	@Override
+	public String registerWebResourcePath(String alias, String name) {
+
+		AppID app = admin.getContextApp(getClass());
+
+		//return if ogema can not find the app
+		if (app == null) {
+			return null;
+		}
+
+		char seperator = '/';
+
+		//always add "/" as prefix
+		if (alias.length() > 0 && alias.charAt(0) != seperator) {
+			alias = seperator + alias;
+		}
+
+		String newAlias = app.getBundle().getSymbolicName() + alias;
+		newAlias = seperator + newAlias.replace('.', seperator);
+		newAlias = newAlias.toLowerCase();
+
+		//if the last character is "/" then remove it due to possible path exception
+		if (newAlias.charAt(newAlias.length() - 1) == '/') {
+			newAlias = newAlias.substring(0, newAlias.length() - 1);
+		}
+
+		//register webresource path
+		String appid = app.getIDString();
+		OgemaHttpContext httpContext = this.contextRegs.get(appid);
+		if (httpContext == null) {
+			httpContext = new OgemaHttpContext(permMan, app);
+		}
+
+		try {
+			http.registerResources(newAlias, name, httpContext);
+		} catch (NamespaceException namespaceException) {
+			logger.error("could not register webresource due to namespace exception");
+			namespaceException.printStackTrace();
+		}
+
+		contextRegs.put(appid, httpContext);
+		httpContext.resources.put(newAlias, name);
+		return newAlias;
+	}
+
+	// synchronized SessionAuth handleNewSession(HttpServletRequest request, HttpServletResponse response) {
+	// SessionAuth result = null;
+	// HttpSession ses = request.getSession(true);
+	// if (Configuration.DEBUG) {
+	// logger.info("Creation time: " + ses.getCreationTime());
+	// logger.info("SessionID: " + ses.getId());
+	// }
+	//
+	// /*
+	// * If the session is new send the login page
+	// */
+	// if (Configuration.DEBUG) {
+	// logger.debug("Unknown session: send login request.");
+	// }
+	// InputStream is;
+	// OutputStream bout;
+	// int len = 0;
+	// try {
+	// is = getClass().getResource(LOGIN_PATH).openStream();
+	// bout = response.getOutputStream();
+	// do {
+	// len = is.read(scratch);
+	// if (len == -1) // This check is needed due to jetty's own OutputStream implementation.
+	// break;
+	// bout.write(scratch, 0, len);
+	// // NOTE: Jetty server has its own OutputStream class its write method doesn't throw this
+	// // IndexOutOfBoundsException
+	//
+	// } while (true);
+	// response.flushBuffer();
+	// try {
+	// wait(LOGIN_TIMEOUT);
+	// } catch (InterruptedException e) {
+	// e.printStackTrace();
+	// }
+	// // result = sessions.get(ses.getId());
+	// result = (SessionAuth) ses.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME);
+	// } catch (IOException e1) {
+	// e1.printStackTrace();
+	// }
+	// // If the Session is not new or the authentication was successful
+	// if (result != null) {
+	// if (Configuration.DEBUG) {
+	// logger.debug("Authentication succeded.");
+	// }
+	// }
+	// else if (Configuration.DEBUG) {
+	// logger.debug("Authentication failed or timed out.");
+	// }
+	// return result;
+	// }
 
 	public String registerOTP(AppID app, HttpSession ses) {
 		SessionAuth auth = (SessionAuth) ses.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME);
@@ -333,4 +398,5 @@ public class WebAccessManagerImpl implements WebAccessManager {
 		else
 			return cntx.resources;
 	}
+
 }

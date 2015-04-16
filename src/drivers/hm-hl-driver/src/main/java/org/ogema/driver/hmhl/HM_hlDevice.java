@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -43,6 +42,7 @@ import org.ogema.core.channelmanager.measurements.ObjectValue;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.channelmanager.measurements.Value;
+import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.resourcemanager.ResourceManagement;
 
 /**
@@ -73,6 +73,8 @@ public abstract class HM_hlDevice {
 
 	protected HM_hlDriver driver;
 
+	protected final OgemaLogger logger;
+
 	public HM_hlDevice(HM_hlDriver driver, ApplicationManager appManager, HM_hlConfig config) {
 		attributeChannel = new HashMap<String, ChannelLocator>();
 		ChannelLocatorList = new ArrayList<ChannelLocator>(); // UpdateListenerList
@@ -80,6 +82,7 @@ public abstract class HM_hlDevice {
 		channelAccess = appManager.getChannelAccess();
 		resourceManager = appManager.getResourceManagement();
 		this.appManager = appManager;
+		this.logger = appManager.getLogger();
 		hm_hlConfig = config;
 		this.type = config.channelAddress.split(":")[0];
 		this.driver = driver;
@@ -91,7 +94,7 @@ public abstract class HM_hlDevice {
 
 			@Override
 			public void channelEvent(EventType type, List<SampledValueContainer> channels) {
-				System.out.print("ChannelEvent --> ");
+				//				System.out.print("ChannelEvent --> ");
 				for (SampledValueContainer c : channels) {
 					try {
 						updateChannelValue(c.getChannelLocator().getChannelAddress(), c.getSampledValue().getValue());
@@ -116,6 +119,7 @@ public abstract class HM_hlDevice {
 		ChannelLocatorList = new ArrayList<ChannelLocator>();
 		commandChannel = new HashMap<String, ChannelLocator>();
 		resourceManager = appManager.getResourceManagement();
+		logger = appManager.getLogger();
 		this.hm_hlConfig = new HM_hlConfig();
 		this.driver = driver;
 		deviceDescriptor = driver.getDeviceDescriptor();
@@ -133,7 +137,7 @@ public abstract class HM_hlDevice {
 
 			@Override
 			public void channelEvent(EventType type, List<SampledValueContainer> channels) {
-				System.out.print("ChannelEvent --> ");
+				//				System.out.print("ChannelEvent --> ");
 				for (SampledValueContainer c : channels) {
 					try {
 						updateChannelValue(c.getChannelLocator().getChannelAddress(), c.getSampledValue().getValue());

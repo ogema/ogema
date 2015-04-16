@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -186,7 +185,7 @@ public class TreeElementTest extends DBBasicTest {
 		System.out.println("Inside deleteTopLevelResource");
 		int id = resource_PhysicalElement_id_0.resID;
 		String name = resource_PhysicalElement_id_0.path;
-		Class<?> cls = resource_PhysicalElement_id_0.type;
+		String cls = resource_PhysicalElement_id_0.type.getName();
 		TestCase.assertTrue(db.hasResource("resource_PhysicalElement_name_0"));
 		// delete resource
 		db.deleteResource(resource_PhysicalElement_id_0);
@@ -289,10 +288,8 @@ public class TreeElementTest extends DBBasicTest {
 		TreeElementImpl montpk = (TreeElementImpl) switchCap
 				.addChild("meanOnTimePerKelvin", FloatResource.class, false);
 		// try to reach the leaves from the the top level resource
-		TestCase
-				.assertTrue(freezeCombi.getChild("anySensor").getChild("switchCap").getChild("meanOffTimePerKelvin") == moftpk);
-		TestCase
-				.assertTrue(freezeCombi.getChild("anySensor").getChild("switchCap").getChild("meanOnTimePerKelvin") == montpk);
+		TestCase.assertTrue(freezeCombi.getChild("anySensor").getChild("switchCap").getChild("meanOffTimePerKelvin") == moftpk);
+		TestCase.assertTrue(freezeCombi.getChild("anySensor").getChild("switchCap").getChild("meanOnTimePerKelvin") == montpk);
 
 		// set values of the leaves and read them back
 		moftpk.getData().setFloat(300.00f);
@@ -424,18 +421,18 @@ public class TreeElementTest extends DBBasicTest {
 		TreeElementImpl montpk = (TreeElementImpl) switchCap
 				.addChild("meanOnTimePerKelvin", FloatResource.class, false);
 		// try to reach the leaves from the the top level resource
-		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap").getChild(
-				"meanOffTimePerKelvin") == moftpk);
-		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap").getChild(
-				"meanOnTimePerKelvin") == montpk);
+		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap")
+				.getChild("meanOffTimePerKelvin") == moftpk);
+		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap")
+				.getChild("meanOnTimePerKelvin") == montpk);
 
 		// set values of the leaves and read them back
 		moftpk.getData().setFloat(300.00f);
 		montpk.getData().setFloat(288.88f);
-		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap").getChild(
-				"meanOffTimePerKelvin").getData().getFloat() == 300.00f);
-		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap").getChild(
-				"meanOnTimePerKelvin").getData().getFloat() == 288.88f);
+		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap")
+				.getChild("meanOffTimePerKelvin").getData().getFloat() == 300.00f);
+		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap")
+				.getChild("meanOnTimePerKelvin").getData().getFloat() == 288.88f);
 
 		// delete sub resource
 		db.deleteResource(switchCap);

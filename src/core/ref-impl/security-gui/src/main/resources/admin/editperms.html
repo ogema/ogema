@@ -1,0 +1,51 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<link rel="stylesheet" href="libs/jquery-ui/jquery-ui.min.css">
+<link rel="stylesheet" href="stylesheet.css">
+<link rel="stylesheet" href="dialog_permissions.css">
+<link rel="stylesheet" href="libs/jstree/themes/default/style.min.css" />
+<script src="libs/jquery/jquery.min.js"></script>
+<script src="libs/jquery-ui/jquery-ui.min.js"></script>
+<script src="commitPerms.js"></script>
+<script src="permsDialog.js"></script>
+<script src="NewPerms.js"></script>
+<script src="libs/jstree/jstree.js"></script>
+<title>Permission Management Interface</title>
+<script type="text/javascript">
+var main=new NewPerms();
+</script>
+<body id="mainpageBody">
+	<div id="wrap">
+		<img src="images/ogema.png" alt="ogema-logo" align="right" style="margin-right: 15px; margin-top: 15px;" /></img>
+		<h1 id="heading">
+			<strong style="font-size: 1.4em;">Security Configuration</strong> <br> <em>Manage permission demands</em>
+		</h1>
+		<form name='permForm' id='permissionForm'></form>
+	</div>
+	<div id="resourceDialog" title="Set Actions">
+		<input type='checkbox' id='resDia1' name='read'><label for='resDia1'>read</label> <br> <input
+			type='checkbox' id='resDia2' name='write'><label for='resDia2'>write</label> <br> <input type='checkbox'
+			id='resDia3' name='addSub'><label for='resDia3'>addSub</label> <br> <input type='checkbox' id='resDia4'
+			name='create'><label for='resDia4'>create</label> <br> <input type='checkbox' id='resDia5' name='delete'><label
+			for='resDia5'>delete</label> <br> <input type='checkbox' id='resDia6' name='activity'><label
+			for='resDia6'>activity</label> <br>
+		<p>Apply actions recursively?</p>
+		<input type="radio" id="recursiveyes" name="recursive" value="YES" /> <label for="recursiveyes">YES</label> <input
+			type="radio" id="recursiveno" name="recursive" value="NO" /> <label for="recursiveno">NO</label>
+	</div>
+</body>

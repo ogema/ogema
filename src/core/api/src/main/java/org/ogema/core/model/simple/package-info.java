@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -24,10 +23,7 @@
  * resource for cases where the value represents a physical property). Two
  * notable exceptions exist:<br>
  * - the {@link org.ogema.core.model.simple.TimeResource} holds a long value. In
- * OGEMA, times shall always be given as ms since 1970 (UTC).<br>
- * - the {@link org.ogema.core.model.simple.OpaqueResource} technically is a
- * byte array. It is constructed for containing binary data, e.g. when a logo
- * shall be stored or transmitted via REST or an application's interface.<br>
+ * OGEMA, times shall always be given as ms since 1970 (UTC).
  */
 package org.ogema.core.model.simple;
 

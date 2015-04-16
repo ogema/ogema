@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,7 +16,7 @@
 /**
  * Variety of physically different connections between physical elements as well
  * as the definition of generic nodes between the connections. All connections
- * defined in this package inherit from the {@link Connection} prototype and
+ * defined in this package inherit from the {@link CircuitConnection} prototype and
  * extend it by defining the type of connection (thermal, electric, fluid). Nodes
  * between the connections extend the base class {@link GenericCircuit} by defining
  * the type of circuit modeled by the resource. Topologically, a circuit is a 

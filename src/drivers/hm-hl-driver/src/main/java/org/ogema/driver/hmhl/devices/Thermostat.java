@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,22 +21,21 @@ import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.ByteArrayValue;
 import org.ogema.core.channelmanager.measurements.Value;
-import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.units.TemperatureResource;
-import org.ogema.core.resourcemanager.AccessMode;
-import org.ogema.core.resourcemanager.AccessPriority;
-import org.ogema.core.resourcemanager.ResourceListener;
+import org.ogema.core.resourcemanager.ResourceValueListener;
+import org.ogema.core.resourcemanager.pattern.ResourcePatternAccess;
 import org.ogema.driver.hmhl.Constants;
 import org.ogema.driver.hmhl.Converter;
 import org.ogema.driver.hmhl.HM_hlConfig;
 import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
-import org.ogema.driver.hmhl.models.ThermostatDataModel;
-import org.ogema.model.sensors.StateOfChargeSensor;
+import org.ogema.driver.hmhl.pattern.ThermostatPattern;
 
-public class Thermostat extends HM_hlDevice implements ResourceListener {
+public class Thermostat extends HM_hlDevice implements ResourceValueListener<TemperatureResource> {
 
+	private final ResourcePatternAccess patAcc;
+	private ThermostatPattern device;
 	private FloatResource batteryStatus;
 	private TemperatureResource currentTemp;
 	private TemperatureResource desiredTemp;
@@ -45,11 +43,25 @@ public class Thermostat extends HM_hlDevice implements ResourceListener {
 
 	public Thermostat(HM_hlDriver driver, ApplicationManager appManager, HM_hlConfig config) {
 		super(driver, appManager, config);
+		patAcc = appManager.getResourcePatternAccess();
+		device = patAcc.createResource(appManager.getResourceManagement().getUniqueResourceName(hm_hlConfig.resourceName), ThermostatPattern.class);
+		setVariables(device);
 	}
 
 	public Thermostat(HM_hlDriver driver, ApplicationManager appManager, DeviceLocator deviceLocator) {
 		super(driver, appManager, deviceLocator);
+		patAcc = appManager.getResourcePatternAccess();
+		device = patAcc.createResource(appManager.getResourceManagement().getUniqueResourceName(hm_hlConfig.resourceName), ThermostatPattern.class);
+		setVariables(device);
 		addMandatoryChannels();
+	}
+	
+	private void setVariables(ThermostatPattern pattern) {
+		batteryStatus = device.batteryCharge;
+		currentTemp = device.currentTemperature;
+		desiredTemp = device.localDesiredTemperature;
+		remoteDesiredTemp = device.remoteDesiredTemperature.getValue();
+		pattern.model.activate(true);
 	}
 
 	@Override
@@ -144,15 +156,18 @@ public class Thermostat extends HM_hlDevice implements ResourceListener {
 					break;
 				}
 
-				System.out.println("Measured Temperature: " + remoteCurrentTemp + " C");
-				currentTemp.setCelsius(remoteCurrentTemp);
-				System.out.println("Desired Temperature: " + remoteDesiredTemp + " C");
-				System.out.println("Battery Voltage: " + bat + " V");
-				batteryStatus.setValue(batt);
-				System.out.println("Valve Position: " + valvePos + " %");
-				System.out.println("Error: " + err_str);
-				System.out.println("Control Mode: " + ctrlMode_str);
+				logger.debug("Measured Temperature: " + remoteCurrentTemp + " C");
+				device.currentTemperature.setCelsius(remoteCurrentTemp);
+				logger.debug("Desired Temperature: " + remoteDesiredTemp + " C");
+				device.remoteDesiredTemperature.setCelsius(remoteDesiredTemp);
+				logger.debug("Battery Voltage: " + bat + " V");
+				device.batteryVoltage.setValue(bat);
+				logger.debug("Valve Position: " + valvePos + " %");
+				device.valvePosition.setValue(valvePos/100f);
 
+				// unsupported feedback
+				logger.debug("Error: " + err_str);
+				logger.debug("Control Mode: " + ctrlMode_str);
 			}
 			else if (msgtype == 0x59) { // inform about new value
 				// TODO: team msg
@@ -180,40 +195,21 @@ public class Thermostat extends HM_hlDevice implements ResourceListener {
 		commandConfig.channelAddress = "COMMAND:01";
 		commandConfig.resourceName = hm_hlConfig.resourceName + "_Command";
 		commandConfig.chLocator = addChannel(commandConfig);
-
-		/*
-		 * Initialize the resource tree
-		 */
-		// Create top level resource
-		ThermostatDataModel valve = resourceManager.createResource(hm_hlConfig.resourceName, ThermostatDataModel.class);
-
-		StateOfChargeSensor eSens = (StateOfChargeSensor) valve.battery().create();
-		batteryStatus = (FloatResource) eSens.reading().create();
-		batteryStatus.activate(true);
-		batteryStatus.setValue(95);
-		batteryStatus.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
-
-		currentTemp = (TemperatureResource) valve.temperature().reading().create();
-		currentTemp.activate(true);
-		currentTemp.setKelvin(0);
-		currentTemp.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
-
-		desiredTemp = (TemperatureResource) valve.temperature().settings().setpoint().create();
-		desiredTemp.activate(true);
-		desiredTemp.requestAccessMode(AccessMode.SHARED, AccessPriority.PRIO_HIGHEST);
-
+		
 		// Add listener to register on/off commands
-		desiredTemp.addResourceListener(this, false);
+		desiredTemp.addValueListener(this, false);
 	}
 
 	protected void unifyResourceName(HM_hlConfig config) {
 		config.resourceName += Constants.HM_VALVE_RES_NAME + config.deviceAddress.replace(':', '_');
 	}
 
+	/**
+	 * Listener called whenever the management system updated the temperature setpoint.
+	 */
 	@Override
-	public void resourceChanged(Resource res) {
-
-		float localDesiredTemp = ((TemperatureResource) res).getCelsius();
+	public void resourceChanged(TemperatureResource res) {
+		float localDesiredTemp = res.getCelsius();
 		localDesiredTemp = (float) (Math.ceil(localDesiredTemp * 2) / 2);
 
 		ChannelLocator locator = this.commandChannel.get("COMMAND:01");

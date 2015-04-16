@@ -2,9 +2,8 @@
 @REM This file is part of OGEMA.
 @REM
 @REM OGEMA is free software: you can redistribute it and/or modify
-@REM it under the terms of the GNU General Public License as published by
-@REM the Free Software Foundation, either version 3 of the License, or
-@REM (at your option) any later version.
+@REM it under the terms of the GNU General Public License version 3
+@REM as published by the Free Software Foundation.
 @REM
 @REM OGEMA is distributed in the hope that it will be useful,
 @REM but WITHOUT ANY WARRANTY; without even the implied warranty of

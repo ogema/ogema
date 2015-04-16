@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,7 +22,6 @@ import org.ogema.core.resourcemanager.InvalidResourceTypeException;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceGraphException;
 import org.ogema.core.resourcemanager.ResourceValueListener;
@@ -103,12 +101,14 @@ public interface Resource {
 	 *            reference to the listener receiving the callbacks.
 	 * @param callOnEveryUpdate
 	 *            receive a callback every time the resource value is written, even it is the same value.
+	 *            For schedules and array-values resources this must be true.
 	 */
 	void addValueListener(ResourceValueListener<?> listener, boolean callOnEveryUpdate);
 
 	/**
 	 * Register listener receiving callback whenever the resource value changes
-	 * to a new value.
+	 * to a new value (for simple values containing only a single value) or if
+	 * the values are written to (for array resources and schedules).
 	 * 
 	 * @param listener
 	 *            reference to the listener receiving the callbacks.
@@ -137,7 +137,7 @@ public interface Resource {
 	 * @deprecated use {@link #addValueListener(org.ogema.core.resourcemanager.ResourceValueListener)} instead
 	 */
 	@Deprecated
-	void addResourceListener(ResourceListener listener, boolean recursive);
+	void addResourceListener(org.ogema.core.resourcemanager.ResourceListener listener, boolean recursive);
 
 	/**
 	 * Unregister a resource listener. If the listener had not been registered previously, 
@@ -150,7 +150,7 @@ public interface Resource {
 	 * @deprecated use {@link #removeValueListener(org.ogema.core.resourcemanager.ResourceValueListener) } instead
 	 */
 	@Deprecated
-	boolean removeResourceListener(ResourceListener listener);
+	boolean removeResourceListener(org.ogema.core.resourcemanager.ResourceListener listener);
 
 	/**
 	 * Register a listener receiving callbacks when the {@link AccessMode} granted on this
@@ -271,8 +271,8 @@ public interface Resource {
 
 	/**
 	 * Get all direct sub-resources excluding children connected via references
-	 * @param recursive return all subresources below this resources recursively
-	 * @return this resource's direct subresources
+	 * @param recursive return all sub-resources below this resources recursively
+	 * @return this resource's direct sub-resources
 	 */
 	List<Resource> getDirectSubResources(boolean recursive);
 

@@ -3,9 +3,8 @@
     This file is part of OGEMA.
 
     OGEMA is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
 
     OGEMA is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -74,7 +73,7 @@
 		
 		
 <div class="round shadow">
-	<div id="chart1" class=" widthParent heightDP" data-width="parent" data-height="80">Loading...</div>
+	<div id="chart1" class=" widthParent heightDP" data-width="parent" data-height="260">Loading...</div>
 </div></td>
 </tr>
 </table></div>
@@ -195,14 +194,29 @@ keyServletURLs.push("/drs485de/getGraphData");
 label = new Label('label2', 'Wh','#0.000');  
 labelSource.push(["current_drs485de", label, 1.0, 1]);
 
-keyServletURLs.push("current_drs485de");
-keyServletURLs.push("/drs485de/getGraphData");																		    	    			
+
 	        adapter = new JSONAdapter();
 			adapter.setHashmapSize(1440);  
 		    adapter.setKeyServletURLArray(keyServletURLs);  
+
+// 		   	$.getJSON("/drs485de/getGraphDataHistory", function(data) 
+// 		   			   {
+// 		   	    		 if(data != null) 
+// 		   	    		 {
+// 		   	    			 for(i=0; i<data.length; i++)
+// 		   	    			 {
+// 		   	    				adapter.put("current_drs485de", data[i]);
+// 		   	    			 }	
+		   	    			 
+// 		   	    			 for(k = 0; k < graphSource.length; k++) 
+// 		   	    			 {
+// 		   			          	updateGraph(graphSource[k]);  
+// 		   			         }
+// 		   	    		 }
+// 		   			   });
 		 
 			/* Closures are called every x ms to update data, redraw charts and labels;  updateGraph(), ... located in script.js */  
-	        $(document).everyTime(60000, function() {
+	        $(document).everyTime(10000, function() {
 
                 /* Update data from sensors and switches with jsonAdapter */
                 adapter.update();	
@@ -213,8 +227,8 @@ keyServletURLs.push("/drs485de/getGraphData");
 		        }
 		        
                 /* Call update routine for each chart */
-		        for(j = 0; j < graphSource.length; j++) {
-		          updateGraph(graphSource[j]);  /*  nested array, entry in graphSource looks like this ["wind", plot, 1.0, 1000]  */
+		        for(k = 0; k < graphSource.length; k++) {
+		          updateGraph(graphSource[k]);  /*  nested array, entry in graphSource looks like this ["wind", plot, 1.0, 1000]  */
 		        }
 	       
 	        });

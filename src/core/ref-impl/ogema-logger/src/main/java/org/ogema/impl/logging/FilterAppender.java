@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +19,8 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.AppenderBase;
 import ch.qos.logback.core.filter.Filter;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 /**
  *
@@ -39,7 +40,23 @@ public class FilterAppender extends AppenderBase<ILoggingEvent> {
 
 	@Override
 	protected void append(ILoggingEvent e) {
-		delegate.doAppend(e);
+		if (System.getSecurityManager() == null) {
+			delegate.doAppend(e);
+		}
+		else {
+			appendPrivileged(e);
+		}
+	}
+
+	protected void appendPrivileged(final ILoggingEvent e) {
+		AccessController.doPrivileged(new PrivilegedAction<Void>() {
+
+			@Override
+			public Void run() {
+				delegate.doAppend(e);
+				return null;
+			}
+		});
 	}
 
 }

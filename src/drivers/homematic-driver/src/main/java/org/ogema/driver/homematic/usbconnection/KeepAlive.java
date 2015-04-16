@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,6 +15,7 @@
  */
 package org.ogema.driver.homematic.usbconnection;
 
+import org.ogema.driver.homematic.Activator;
 import org.ogema.driver.homematic.Constants;
 import org.ogema.driver.homematic.tools.Converter;
 
@@ -43,7 +43,7 @@ public class KeepAlive implements Runnable {
 		connection.sendFrame(Constants.M_K);
 		while (this.address == null) {
 			try {
-				Thread.sleep(500);
+				Thread.sleep(2000);
 			} catch (InterruptedException e1) {
 				e1.printStackTrace();
 			}
@@ -59,7 +59,7 @@ public class KeepAlive implements Runnable {
 
 	@Override
 	public void run() {
-		while (running) {
+		while (running && Activator.bundleIsRunning) {
 			if (!initiated) {
 				init();
 			}

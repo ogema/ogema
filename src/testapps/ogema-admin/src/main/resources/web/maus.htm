@@ -1,0 +1,117 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<HTML>
+<HEAD>
+<!--<SCRIPT language="javascript" src="battery.js" type="text/javascript"></SCRIPT>-->
+<SCRIPT language="javascript" src="maus.js" type="text/javascript"></SCRIPT>
+
+<SCRIPT type="application/javascript">
+			
+function actualize() {
+if(inited){
+	if((xml.readyState >= 4)||(xml.readyState == 0)){
+			xml.open("GET", "/maus",true);
+		xml.onreadystatechange = process;
+		xml.send();
+		}
+	}
+}
+
+function process(){
+	if ( xml.readyState == 4) {
+		data = xml.responseText;
+		var json = eval('('+data+')');
+		bat1.repaint(context0,json.powerValues[BATTERY]);
+		//instr1.setValue(json.powerValues[BATTERY]);
+		instr1.animate(json.powerValues[BATTERY]);
+	}
+}
+
+</SCRIPT>
+</HEAD>
+<style>
+.overlappedcanvas {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+.overlapped2 {
+	position: absolute;
+	top: 0px;
+	left: 600px;
+}
+.buttonOverCanvas {
+	position: absolute;
+	top: 300px;
+	left: 20px;
+}
+</style>
+<BODY>
+<canvas id="contentcanvas" width="600" height="600" class="overlappedcanvas"></canvas>
+<canvas id="containercanvas" width="600" height="600" class="overlappedcanvas"></canvas>
+<!--<button id="switchButton" type="button" class="buttonOverCanvas" onclick="switchComm();">Simulation An/Aus</button>-->
+<canvas id="tachoback" width="600" height="600" style="border: 1px solid red;" class="overlapped2"></canvas>
+<CANVAS id="tachofore" width="600" height="600" style="border: 1px solid red;" class="overlapped2"></CANVAS>
+<!--canvas id="canvas" width="600" height="600" onclick="startStop()"></canvas-->
+<!--Graph global vars-->
+<!--<SCRIPT type="application/javascript">-->
+<SCRIPT language="javascript" src="battery.js" type="text/javascript"></SCRIPT>
+<SCRIPT language="javascript" src="tacho.js" type="text/javascript"></SCRIPT>
+
+<SCRIPT type="application/javascript">
+var xml;
+
+var canvas0; 
+var canvas1; 
+var	context0;
+var context1;
+
+var canvas2; 
+var canvas3; 
+var	context2;
+var context3;
+
+var bat1;
+var instr1;
+var myTimer;
+init();
+
+function init(){
+	xml= new XMLHttpRequest();
+	canvas0 = document.getElementById("containercanvas"); 
+	canvas1 = document.getElementById("contentcanvas"); 
+	context0 = canvas0.getContext("2d");
+	context1 = canvas1.getContext("2d");
+
+	canvas2 = document.getElementById("tachoback"); 
+	canvas3 = document.getElementById("tachofore"); 
+	context2 = canvas2.getContext("2d");
+	context3 = canvas3.getContext("2d");
+
+	bat1=new battery(canvas0,canvas1,14); //14Volt maximum
+
+	var batInstr = new Image();	// definition of Tacho-Image
+	batInstr.src = "./images/voltBat.gif"; 	// Set source path 
+
+	instr1=new tacho(context2,context3,0, 14, 0, 0,batInstr);
+	//instr1.redrawInstrument();
+	myTimer = setInterval(actualize, 1000);	
+}
+</SCRIPT>
+</BODY>
+</HTML>

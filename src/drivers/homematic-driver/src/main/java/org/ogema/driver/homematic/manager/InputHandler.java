@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,6 +17,8 @@ package org.ogema.driver.homematic.manager;
 
 import java.util.Arrays;
 
+import org.ogema.driver.homematic.Activator;
+import org.ogema.driver.homematic.manager.RemoteDevice.InitStates;
 import org.ogema.driver.homematic.tools.Converter;
 import org.slf4j.Logger;
 
@@ -28,21 +29,17 @@ import org.slf4j.Logger;
  * 
  */
 public class InputHandler implements Runnable {
-	public enum ResponseType {
-		ACTIVE_ENDPOINT_RESPONSE, SIMPLE_DESCRIPTOR_RESPONSE, NODE_DESCRIPTOR_RESPONSE, IEEE_ADDR_RESPONSE, READ_ATTRIBUTES_RESPONSE, TRANSMIT_STATUS, WRITE_ATTRIBUTES_RESPONSE, REMOTE_NI_COMMAND
-	};
 
 	private volatile boolean running;
 	private volatile Object inputEventLock;
-	private volatile Object deviceHandlerLock;
 	private MessageHandler messageHandler;
 	private LocalDevice localDevice;
+	private StatusMessage lastMsg = new StatusMessage();
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("homematic-driver");
 
 	public InputHandler(LocalDevice localDevice) {
 		inputEventLock = localDevice.getInputEventLock();
-		deviceHandlerLock = localDevice.getDeviceHandlerLock();
 		messageHandler = localDevice.getMessageHandler();
 		running = true;
 		this.localDevice = localDevice;
@@ -59,7 +56,7 @@ public class InputHandler implements Runnable {
 
 	@Override
 	public void run() {
-		while (running) {
+		while (running && Activator.bundleIsRunning) {
 			synchronized (inputEventLock) {
 				while (!localDevice.connectionHasFrames()) {
 					try {
@@ -85,32 +82,40 @@ public class InputHandler implements Runnable {
 		case 'R':
 		case 'E':
 			StatusMessage emsg = new StatusMessage(tempArray);
-			if (emsg.msg_type == 0x00 & localDevice.getPairing() != null) { // if pairing
-				RemoteDevice temp_device = new RemoteDevice(localDevice, emsg);
-				if (localDevice.getPairing().equals("0000000000")
-						| localDevice.getPairing().equals(temp_device.getSerial())) {
+			if (!emsg.almostEquals(lastMsg)) {
+				if (emsg.msg_type == 0x00 & localDevice.getPairing() != null) { // if pairing
+					RemoteDevice temp_device = new RemoteDevice(localDevice, emsg);
+					if (localDevice.getPairing().equals("0000000000")
+							| localDevice.getPairing().equals(temp_device.getSerial())) {
 
-					if ((localDevice.getDevices().get(temp_device.getAddress())) == null) {
-						localDevice.getDevices().put(temp_device.getAddress(), temp_device);
-						synchronized (deviceHandlerLock) {
-							deviceHandlerLock.notify();
+						RemoteDevice found_device = localDevice.getDevices().get(temp_device.getAddress());
+						if (found_device == null) {
+							localDevice.getDevices().put(temp_device.getAddress(), temp_device);
+							temp_device.init();
+						}
+						else if (found_device.getInitState().equals(InitStates.UNKNOWN)) {
+							temp_device = localDevice.getDevices().get(found_device.getAddress());
+							temp_device.init();
 						}
 					}
 				}
-			}
-			else {
-				if (localDevice.getDevices().containsKey(emsg.source)
-						& (localDevice.getOwnerid().equals(emsg.destination) || emsg.destination.equals("000000"))) {
-					// 000000 = broadcast
-					logger.debug("InputHandler has device");
-					messageHandler.messageReceived(emsg);
+				else {
+					if (localDevice.getOwnerid().equals(emsg.destination) || emsg.destination.equals("000000")
+							|| emsg.partyMode) {
+						if (localDevice.getDevices().containsKey(emsg.source)) {
+							// 000000 = broadcast
+							logger.debug("InputHandler has device");
+							messageHandler.messageReceived(emsg);
+						}
+						else
+							logger.debug("Unpaired Homematic device detected: " + emsg.source);
+					}
 				}
 			}
+			lastMsg = emsg;
 			break;
 		case 'I':
 			// This is needed for AES magic
-			break;
-		case 'G': // not yet seen
 			break;
 		default:
 			// TODO: Status & Condition Handling !
@@ -122,7 +127,10 @@ public class InputHandler implements Runnable {
 		long raw_version = Converter.toLong(data, 11, 2);
 		localDevice.setFirmware(String.format("%d.%d", (raw_version >> 12) & 0xf, raw_version & 0xffff));
 		localDevice.setSerial(new String(Arrays.copyOfRange(data, 14, 24)));
-		localDevice.setOwnerid(new String(Converter.toHexString(data, 27, 3)));
+		String ownerid = new String(Converter.toHexString(data, 27, 3));
+		if (ownerid.equals("000000"))
+			ownerid = new String(Converter.toHexString(data, 24, 3));
+		localDevice.setOwnerid(ownerid);
 		localDevice.setUptime((int) Converter.toLong(data, 30, 4));
 	}
 

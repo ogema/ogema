@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,23 +17,18 @@ package org.ogema.accesscontrol;
 
 import java.security.AccessController;
 import java.security.Permission;
-import java.security.PermissionCollection;
 import java.security.PrivilegedAction;
 import java.util.StringTokenizer;
 
 import org.ogema.core.model.Resource;
 import org.ogema.resourcetree.TreeElement;
 
+/**
+ * @author Zekeriya Mansuroglu
+ *
+ */
 public class ResourcePermission extends Permission {
 
-	// enum PermissionType {
-	// STATIC, QUERY, QUERY_PRIMIVE
-	// }
-	//
-	// PermissionType pType;
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -7090110935361939550L;
 	public static final String READ = "read";
 	public static final String WRITE = "write";
@@ -53,6 +47,7 @@ public class ResourcePermission extends Permission {
 	public static final int _ACTIVITY = 1 << 5;
 	public static final int _ALLACTIONS = _READ | _WRITE | _ADDSUB | _CREATE | _DELETE | _ACTIVITY;
 	public static final int _NOACTIONS = 0;
+	private static final String INVALID_CLASS_NAME = "$";
 
 	/**
 	 * The canonical form of the actions -> "read,write,create,addsub,delete,activity"
@@ -62,11 +57,10 @@ public class ResourcePermission extends Permission {
 	String path;
 	boolean wced;
 	int actionsAsMask;
-	Class<?> type;
+	String type; // type name string instead of Class itself avoid CNFE after policy entry
 	int count;
 	private String owner;
 	private TreeElement node;
-	private ResourcePermissionCollection permColl;
 
 	enum PathType {
 		WILDCARD, WILDCARD_ONLY, NO_WILDCARD
@@ -147,10 +141,10 @@ public class ResourcePermission extends Permission {
 			if (path != null)
 				parsePath(path);
 			this.count = maxNumber;
-			// this.recursive = recursive;
-			this.type = type;
-			// this.typeName = type.getName();
-			// this.owner = owner;
+			if (type == null)
+				this.type = INVALID_CLASS_NAME;
+			else
+				this.type = type.getName();
 		} catch (Throwable e) {
 			e.printStackTrace();
 			throw e;
@@ -173,10 +167,14 @@ public class ResourcePermission extends Permission {
 			/*
 			 * This constructor is used only for the actions other than CREATE. Check it.
 			 */
-			if ((actionsAsMask & _CREATE) != 0)
-				throw new IllegalArgumentException();
+			//			if ((actionsAsMask & _CREATE) != 0)
+			//				throw new IllegalArgumentException();
 			this.count = maxNumber;
-			this.type = te.getType();
+			Class<?> type = te.getType();
+			if (type == null)
+				this.type = INVALID_CLASS_NAME;
+			else
+				this.type = type.getName();
 			this.path = te.getPath();
 			this.owner = te.getAppID();
 			this.node = te;
@@ -197,6 +195,13 @@ public class ResourcePermission extends Permission {
 	}
 
 	private void parsePath(String value) {
+		// throw leading /
+		try {
+			if (value.indexOf('/') == 0)
+				value = value.substring(1);
+		} catch (IndexOutOfBoundsException e) {
+			throw new IllegalArgumentException("Invalid path string: " + value);
+		}
 		int length = value.length();
 		/*
 		 * Handle wildcard
@@ -254,6 +259,13 @@ public class ResourcePermission extends Permission {
 			/* do the action */
 			switch (key) {
 			case "path":
+				// throw leading /
+				try {
+					if (value.indexOf('/') == 0)
+						value = value.substring(1);
+				} catch (IndexOutOfBoundsException e) {
+					throw new IllegalArgumentException("Invalid path string: " + value);
+				}
 				/*
 				 * Handle wildcard
 				 */
@@ -283,27 +295,21 @@ public class ResourcePermission extends Permission {
 					throw new IllegalArgumentException("Invalid filter string: " + filter);
 			case "type":
 				if (value.equals("*")) {
-					// this.typeName = "*";
 					this.type = null;
 				}
 				else {
-					// this.typeName = value;
-					this.type = getClassPrivileged(value);
+					this.type = value;
 				}
 				break;
 			case "count":
 				this.count = Integer.valueOf(value);
 				break;
-			// case "recursive":
-			// this.recursive = Boolean.valueOf(value);
-			// break;
 			case "owner":
 				this.owner = value;
 				break;
 			default:
 				throw new IllegalArgumentException("invalid filter string" + filter);
 			}
-			// index++;
 
 		}
 	}
@@ -509,9 +515,6 @@ public class ResourcePermission extends Permission {
 		if (!(p instanceof ResourcePermission))
 			return false;
 
-		if (permColl != null)
-			return permColl.implies(p);
-
 		ResourcePermission qp = (ResourcePermission) p;
 		/*
 		 * Condition 1: The action flag of the queried permission was set in the granted permission
@@ -529,14 +532,14 @@ public class ResourcePermission extends Permission {
 		 */
 		if (this.type != null) {
 			if (qp.node == null) {
-				if (this.type != qp.type)
+				if (!this.type.equals(qp.type))
 					return false;
 			}
 			else {
 				TreeElement parent = qp.node;
 				boolean success = false;
 				while (parent != null) {
-					if (parent.getType() == this.type) {
+					if (parent.getType().getName().equals(this.type)) {
 						success = true;
 						break;
 					}
@@ -653,11 +656,5 @@ public class ResourcePermission extends Permission {
 	@Override
 	public String getActions() {
 		return actions;
-	}
-
-	@Override
-	public PermissionCollection newPermissionCollection() {
-		permColl = new ResourcePermissionCollection();
-		return permColl;
 	}
 }

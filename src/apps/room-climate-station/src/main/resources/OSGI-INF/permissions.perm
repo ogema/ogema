@@ -1,0 +1,14 @@
+(org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+
+(org.osgi.framework.PackagePermission "javax.servlet" "import")
+(org.osgi.framework.PackagePermission "javax.servlet.*" "import")
+
+(org.osgi.framework.PackagePermission "org.json" "import")
+
+(org.osgi.framework.PackagePermission "org.ogema.driver.hmhl.models" "import")
+
+(org.osgi.framework.PackagePermission "org.osgi.framework" "import")
+
+(org.ogema.accesscontrol.ResourcePermission "path=MyHome*,type=org.ogema.core.model.ResourceList" "read,write,addsub,create,activity,delete")

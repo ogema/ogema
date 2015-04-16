@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -99,11 +98,42 @@ public class ArrayTimeSeries implements MemoryTimeSeries {
 
 	@Override
 	final public SampledValue getValue(long time) {
+		if (!isInsideTimeSeriesRange(time)) {
+			return null;
+		}
 		final int idx = m_values.getIndexBelow(time);
 		final SampledValue left = (idx != SampledValueSortedList.NO_SUCH_INDEX) ? m_values.get(idx) : null;
 		final SampledValue right = (idx < m_values.size() - 1) ? m_values.get(idx + 1) : null;
 		return m_interpolationFunction.interpolate(left, right, time, m_type);
 	}
+
+	/**
+	 * Checks if a given timestamp is in the range generally covered by the 
+	 * schedule (irrespective of the value qualities).
+	 */
+	private boolean isInsideTimeSeriesRange(long timestamp) {
+		if (m_values.isEmpty())
+			return false;
+		final long tmin = m_values.get(0).getTimestamp();
+		final long tmax = m_values.get(m_values.size() - 1).getTimestamp();
+		switch (m_interpolationMode) {
+		case NEAREST:
+			return true; // since there is at least one point there is alwayst a nearest one.
+		case STEPS:
+			return (timestamp >= tmin);
+		case NONE:
+		case LINEAR:
+			return ((timestamp >= tmin) && (timestamp <= tmax));
+		default:
+			throw new UnsupportedOperationException("Unsupported interpolation mode encountered: "
+					+ m_interpolationMode.toString());
+		}
+	}
+
+	//	private boolean isInsideTimeSeriesRange(long timestamp) {
+	//		return !m_values.isEmpty()
+	//				&& ((m_values.get(0).getTimestamp() <= timestamp) && (m_values.get(m_values.size() - 1).getTimestamp() >= timestamp));
+	//	}
 
 	@Override
 	public SampledValue getNextValue(long time) {
@@ -112,7 +142,7 @@ public class ArrayTimeSeries implements MemoryTimeSeries {
 
 	@Override
 	final public Long getTimeOfLatestEntry() {
-		return new Long(-1);
+		return null;
 	}
 
 	@Override

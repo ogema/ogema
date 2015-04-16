@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,6 +20,7 @@ import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.model.devices.connectiondevices.ElectricityConnectionBox;
 import org.ogema.model.devices.connectiondevices.HeatConnectionBox;
 import org.ogema.model.prototypes.PhysicalElement;
+import org.ogema.model.sensors.OccupancySensor;
 
 /**
  * Property unit, for example a flat within a residential building or shop within a mall. A separate BuildingPropertyUnit
@@ -29,8 +29,6 @@ import org.ogema.model.prototypes.PhysicalElement;
  * {@link #location()} of this resource.
  */
 public interface BuildingPropertyUnit extends PhysicalElement {
-	//	/** Reference to building in which property unit is situated */
-	//	Building building();
 
 	/**
 	 * Electrical connection cabinet of property unit including (sub-)distribution cabinet providing the different
@@ -55,4 +53,11 @@ public interface BuildingPropertyUnit extends PhysicalElement {
 	 * List of the rooms in this unit.
 	 */
 	ResourceList<Room> rooms();
+
+	/**
+	 * Sensor for presence of a person in this building property unit. If this
+	 * is not set, the information may still be available via the occupancy sensors
+	 * of the contained rooms.
+	 */
+	OccupancySensor occupancySensor();
 }

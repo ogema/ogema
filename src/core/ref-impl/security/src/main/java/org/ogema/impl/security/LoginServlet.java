@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -38,6 +37,9 @@ import org.slf4j.Logger;
 import static org.ogema.impl.security.WebAccessManagerImpl.OLDREQ_ATTR_NAME;
 
 public class LoginServlet extends HttpServlet {
+
+	private static final long serialVersionUID = 1l;
+
 	protected static final String LOGIN_PATH = "/web/login.html";
 	protected static final String LOGIN_SERVLET_PATH = "/ogema/login";
 
@@ -52,11 +54,9 @@ public class LoginServlet extends HttpServlet {
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		//		if(req.getSession().getAttribute(name))
-		//		req.getRequestDispatcher(LOGIN_PATH).forward(req, resp);
 		if (req.getSession().getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME) != null) {
-			//			req.getRequestDispatcher("/apps/ogema/framework/gui").forward(req, resp);
 			resp.sendRedirect("/ogema/index.html");
+			return;
 		}
 		InputStream is;
 		OutputStream bout;
@@ -101,8 +101,8 @@ public class LoginServlet extends HttpServlet {
 		String usr = req.getParameter("usr");
 		String pwd = req.getParameter("pwd");
 		if (Configuration.DEBUG) {
-			logger.info("Login request for: usr/pwd");
-			logger.info(usr + "/" + pwd);
+			logger.info("Login request for: usr");
+			logger.info(usr);
 		}
 		if (usr == null || usr.isEmpty() || pwd == null || pwd.isEmpty()) {
 			logger.info("Invalid user or password");
@@ -117,8 +117,11 @@ public class LoginServlet extends HttpServlet {
 			User user = (User) ua.getRole(usr);
 			Authorization author = ua.getAuthorization(user);
 			SessionAuth sauth = new SessionAuth(author, user, ses);
-			// check if we had an old req to redirect to the originally requested URL before invalidating 
-			HttpServletRequest oldReq = (HttpServletRequest) ses.getAttribute(OLDREQ_ATTR_NAME);
+			// check if we had an old req to redirect to the originally requested URL before invalidating
+			String newLocation = "/ogema/index.html";
+			if (ses.getAttribute(OLDREQ_ATTR_NAME) != null) {
+				newLocation = ses.getAttribute(OLDREQ_ATTR_NAME).toString();
+			}
 
 			// invalidate old session to prevent session hijacking:
 			req.getSession(false).invalidate();
@@ -129,25 +132,13 @@ public class LoginServlet extends HttpServlet {
 			 * Handle Request which is received before login was sent. This request is responded with the login page,
 			 * therefore the login request is responded with the stalled request received before.
 			 */
-			String newLocation = "/ogema/index.html";
 			resp.setContentType("text/html");
-			if (oldReq != null) {
-				resp.setStatus(HttpServletResponse.SC_OK);
-				StringBuffer requestURL = oldReq.getRequestURL();
-				if (requestURL != null) {
-					newLocation = requestURL.toString();
-				}
-				ses.setAttribute(OLDREQ_ATTR_NAME, null);
-			}
-			else {
-				resp.setStatus(HttpServletResponse.SC_OK);
-			}
-
+			resp.setStatus(HttpServletResponse.SC_OK);
 			resp.getWriter().write(newLocation);
 		}
 		else {
+			resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 			resp.getWriter().write("");
-			resp.setStatus(HttpServletResponse.SC_OK);
 			resp.flushBuffer();
 		}
 	}

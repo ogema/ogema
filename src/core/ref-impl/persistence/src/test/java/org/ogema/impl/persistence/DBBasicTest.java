@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -36,7 +35,7 @@ public class DBBasicTest {
 		ConcurrentHashMap<String, Class<?>> typeClassByName = db.typeClassByName;
 		ConcurrentHashMap<String, Integer> resIDByName = db.resIDByName;
 		ConcurrentHashMap<Integer, TreeElementImpl> resNodeByID = db.resNodeByID;
-		ConcurrentHashMap<Class<?>, Vector<Integer>> resIDsByType = db.resIDsByType;
+		ConcurrentHashMap<String, Vector<Integer>> resIDsByType = db.resIDsByType;
 		// check the consistency of the maps
 		boolean success = true;
 		// 1. root list
@@ -80,9 +79,9 @@ public class DBBasicTest {
 		}
 		// 5. resIDsByType list
 		{
-			Set<Entry<Class<?>, Vector<Integer>>> tlrs = resIDsByType.entrySet();
-			for (Map.Entry<Class<?>, Vector<Integer>> entry : tlrs) {
-				Class<?> cls = entry.getKey();
+			Set<Entry<String, Vector<Integer>>> tlrs = resIDsByType.entrySet();
+			for (Map.Entry<String, Vector<Integer>> entry : tlrs) {
+				String cls = entry.getKey();
 				Vector<Integer> values = entry.getValue();
 
 				for (int ID : values) {
@@ -91,7 +90,7 @@ public class DBBasicTest {
 						success = false;
 						break;
 					}
-					if (cls != ResourceList.class && res.type != cls) {
+					if (!cls.equals(ResourceList.class.getName()) && !res.type.getName().equals(cls)) {
 						success = false;
 						break;
 					}

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,7 +16,10 @@
 package org.ogema.core.rads.listening;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
 import org.ogema.core.rads.tools.RadFactory;
@@ -42,7 +44,7 @@ public class RadAssembler<T extends Resource, P extends ResourcePattern<T>> {
     private final Class<P> m_radClass;
 
     private final RadFactory<T,P> m_factory;
-    private final List<CompletionListener<P>> m_completionListeners = new ArrayList<>();
+    private final Map<String,CompletionListener<P>> m_completionListeners = new HashMap<>();
     
     public RadAssembler(ApplicationManager appMan, Class<P> radClass, AccessPriority writePriority, PatternListener<P> listener) {
         m_appMan = appMan;
@@ -69,16 +71,24 @@ public class RadAssembler<T extends Resource, P extends ResourcePattern<T>> {
         public void patternAvailable(P rad) {
             final CompletionListener<P> completeListener = new CompletionListener<>(m_appMan, rad, m_factory.getResourceFieldInfos());
             completeListener.start(m_completionListener);
-            m_completionListeners.add(completeListener);
+            m_completionListeners.put(rad.model.getLocation(),completeListener);
         }
 
         @Override
         public void patternUnavailable(P object2beLost) {
-            // primary demand lost. Stop all completion listeners.
-            for (CompletionListener<P> listener : m_completionListeners) {
-                listener.stop();
-            }
-            m_completionListeners.clear();
+        	//System.out.println("  RadAssembler: unavailable " + object2beLost.model.getLocation() + ", " + m_appMan.getAppID().getIDString());
+        	
+            // primary demand lost. Stop all completion listeners. -> no, stop only the one for the specific rad
+//            for (CompletionListener<P> listener : m_completionListeners) {
+        	CompletionListener<P> listener = m_completionListeners.get(object2beLost.model.getLocation());
+        	if (listener == null) {
+        		logger.warn("AdvancedAccess internal error... CompletionListener found null.");
+        		return;
+        	}       	
+            listener.stop();
+//            }
+//            m_completionListeners.clear();
+            m_completionListeners.remove(object2beLost.model.getLocation());
             m_listener.patternUnavailable(object2beLost);
         }
     };    

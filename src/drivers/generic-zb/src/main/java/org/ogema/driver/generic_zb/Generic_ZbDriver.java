@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -121,14 +120,10 @@ public class Generic_ZbDriver implements Application, DeviceScanListener {
 				Generic_ZbDevice zbDevice = null;
 				switch (deviceId) {
 				case Constants.COLOR_DIMMABLE_LIGHT_STRING:
-					zbDevice = new ColorDimmableLight(this, appManager, deviceLocator);
+					zbDevice = new ColorDimmableLight(this, appManager, deviceLocator, null);
 					break;
 				case Constants.MAINS_POWER_OUTLET_STRING:
-					if (splitStringArray[1].equals("Unknown_15BC001D02452D")) { // Develco
-						zbDevice = new DevelcoSmartPlug(this, appManager, deviceLocator);
-						break;
-					}
-					zbDevice = new MainsPowerOutlet(this, appManager, deviceLocator);
+					zbDevice = new DevelcoSmartPlug(this, appManager, deviceLocator, "Develco_Smart_Plug");
 					break;
 				default:
 					logger.info("Unsupported device detected: " + deviceLocator);
@@ -139,6 +134,40 @@ public class Generic_ZbDriver implements Application, DeviceScanListener {
 					devices.put(
 							deviceLocator.getInterfaceName() + ":" + deviceLocator.getDeviceAddress().toUpperCase(),
 							zbDevice);
+				}
+			}
+
+			// Handle non standard profile philips hue
+			if (splitStringArray[3].equals(Constants.PHILIPS_HUE_MANUFACTURER_PROFILE)) {
+				String deviceId = splitStringArray[2];
+				Generic_ZbDevice zbDevice = null;
+				switch (deviceId) {
+				case Constants.PHILIPS_HUE_ID:
+					zbDevice = new ColorDimmableLight(this, appManager, deviceLocator, "Philips_Hue");
+					break;
+				default:
+					logger.info("Unsupported device detected: " + deviceLocator);
+					break;
+				}
+				if (zbDevice != null) {
+					logger.debug("device created");
+					devices.put(
+							deviceLocator.getInterfaceName() + ":" + deviceLocator.getDeviceAddress().toUpperCase(),
+							zbDevice);
+				}
+			}
+
+			// Handle non standard profile develco
+			if (splitStringArray[3].equals(Constants.DEVELCO_MANUFACTURER_PROFILE)) {
+				String deviceId = splitStringArray[2];
+				Generic_ZbDevice zbDevice = null;
+				switch (deviceId) {
+				case Constants.DEVELCO_ZHWR202_ID:
+					// zbDevice = new DevelcoSmartPlug(this, appManager, deviceLocator);
+					break;
+				default:
+					logger.info("Unsupported device detected: " + deviceLocator);
+					break;
 				}
 			}
 		}

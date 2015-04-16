@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -19,6 +18,7 @@ package org.ogema.driver.homematic.manager;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.ogema.driver.homematic.Activator;
 import org.ogema.driver.homematic.manager.Messages.CmdMessage;
 import org.ogema.driver.homematic.usbconnection.IUsbConnection;
 import org.ogema.driver.homematic.usbconnection.UsbConnection;
@@ -28,8 +28,6 @@ public class LocalDevice {
 	private IUsbConnection connection;
 	private InputHandler inputHandler;
 	private Thread inputHandlerThread;
-	private DeviceHandler deviceHandler;
-	private Thread deviceHandlerThread;
 	private MessageHandler messageHandler;
 	FileStorage fileStorage;
 
@@ -40,23 +38,36 @@ public class LocalDevice {
 	private String serial = "0000000000";
 	private String firmware = "0.0";
 	private int uptime = 0;
+	private volatile boolean isReady = false;
 
 	public LocalDevice(String port, UsbConnection con) {
 		connection = con;
 
 		devices = new ConcurrentHashMap<String, RemoteDevice>();
 
-		deviceHandler = new DeviceHandler(this);
-		deviceHandlerThread = new Thread(deviceHandler);
-		deviceHandlerThread.start();
-
 		messageHandler = new MessageHandler(this);
 
 		inputHandler = new InputHandler(this);
 		inputHandlerThread = new Thread(inputHandler);
+		inputHandlerThread.setName("homematic-lld-inputHandler");
 		inputHandlerThread.start();
+		final LocalDevice loc = this;
 
-		fileStorage = new FileStorage(this);
+		Thread loadDevicesThread = new Thread() {
+			@Override
+			public void run() {
+				while (!isReady && Activator.bundleIsRunning) {
+					try {
+						Thread.sleep(500);
+					} catch (InterruptedException ex) {
+						ex.printStackTrace();
+					}
+				}
+				fileStorage = new FileStorage(loc);
+			}
+		};
+		loadDevicesThread.setName("homematic-lld-loadDevices");
+		loadDevicesThread.start();
 	}
 
 	public void closeUsbConnection() {
@@ -69,14 +80,6 @@ public class LocalDevice {
 
 	public Map<String, RemoteDevice> getDevices() {
 		return devices;
-	}
-
-	public Object getDeviceHandlerLock() {
-		return deviceHandler.getDeviceHandlerLock();
-	}
-
-	public DeviceHandler getDeviceHandler() {
-		return deviceHandler;
 	}
 
 	public String getName() {
@@ -94,6 +97,7 @@ public class LocalDevice {
 	public void setOwnerid(String ownerid) {
 		this.ownerid = ownerid;
 		connection.setConnectionAddress(ownerid);
+		this.isReady = true;
 	}
 
 	public String getSerial() {
@@ -161,10 +165,14 @@ public class LocalDevice {
 
 		closeUsbConnection();
 		inputHandler.stop();
-		deviceHandler.stop();
 	}
 
 	public void saveDeviceConfig() {
-		fileStorage.saveDeviceConfig();
+		if (isReady)
+			fileStorage.saveDeviceConfig();
+	}
+
+	public void isReady(boolean val) {
+		isReady = val;
 	}
 }

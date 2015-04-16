@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -56,4 +55,25 @@ public interface AppID {
 	 * @return Owners application reference.
 	 */
 	Application getApplication();
+
+	/**
+	 * Gets the name of the owner user.
+	 *
+	 * @return the name string
+	 */
+	String getOwnerUser();
+
+	/**
+	 * Gets the name of the group, the owner user is a member of it.
+	 *
+	 * @return the name string
+	 */
+	String getOwnerGroup();
+
+	/**
+	 * Gets the version string of the app.
+	 *
+	 * @return the name string
+	 */
+	String getVersion();
 }

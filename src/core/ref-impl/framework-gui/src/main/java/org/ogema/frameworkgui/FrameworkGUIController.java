@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -29,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.ogema.accesscontrol.AccessManager;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.AppID;
@@ -48,17 +48,19 @@ public class FrameworkGUIController {
 
 	private final AdministrationManager administrationManager;
 	private final BundleContext bundleContext;
-
+	private final AccessManager accessManager;
 	private final WebAccessManager webAccessManager;
 
 	public FrameworkGUIController(AdministrationManager administrationManager, BundleContext bundleContext,
-			WebAccessManager webAccessManager) {
+			WebAccessManager webAccessManager, AccessManager accessManager) {
 		this.administrationManager = administrationManager;
 		this.bundleContext = bundleContext;
 		this.webAccessManager = webAccessManager;
+		this.accessManager = accessManager;
 	}
 
-	public StringBuffer appsList2JSON() {
+	public StringBuffer appsList2JSON(String user) {
+
 		StringBuffer sb = new StringBuffer();
 		ArrayList<AdminApplication> apps = (ArrayList<AdminApplication>) administrationManager.getAllApps();
 
@@ -69,6 +71,10 @@ public class FrameworkGUIController {
 
 		for (AdminApplication entry : apps) {
 			String name = entry.getID().getBundle().getSymbolicName();
+
+			if (!accessManager.isAppPermitted(user, entry.getID())) {
+				continue;
+			}
 
 			String fileName = entry.getID().getBundle().getLocation();
 			int lastSeperator = fileName.lastIndexOf("/");

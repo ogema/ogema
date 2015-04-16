@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -266,4 +265,25 @@ public interface TreeElement {
 	 *            The class object of the sub elements.
 	 */
 	public void setResourceListType(Class<? extends Resource> cls);
+
+	/**
+	 * Sets the time stamp the, node was last modified at.
+	 *
+	 * @param time
+	 *            the new last modified time stamp in ms
+	 */
+	public void setLastModified(long time);
+
+	/**
+	 * Gets the time stamp, the node was last modified at.
+	 *
+	 * @return the last modified time stamp in ms
+	 */
+	public long getLastModified();
+
+	/**
+	 * Get the real path of the node that is free of references
+	 * @return
+	 */
+	public String getLocation();
 }

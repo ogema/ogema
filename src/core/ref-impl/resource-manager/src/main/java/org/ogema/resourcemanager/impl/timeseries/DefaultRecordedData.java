@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,6 +15,8 @@
  */
 package org.ogema.resourcemanager.impl.timeseries;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -49,9 +50,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  * 
- * @author jlapp
+ * @author Jan Lapp, Fraunhofer IWES
  */
 public class DefaultRecordedData implements RecordedData {
+
+	final static boolean SECURITY_ENABLED = System.getSecurityManager() != null;
 
 	protected final String id;
 	protected final DataRecorder dataAccess;
@@ -113,8 +116,25 @@ public class DefaultRecordedData implements RecordedData {
 
 	public void update(long time) {
 		if (updater != null) {
-			updater.elementUpdated(time);
+			if (System.getSecurityManager() == null) {
+				updater.elementUpdated(time);
+			}
+			else {
+				updatePrivileged(time);
+			}
 		}
+	}
+
+	private void updatePrivileged(final long time) {
+		AccessController.doPrivileged(new PrivilegedAction<Void>() {
+
+			@Override
+			public Void run() {
+				updater.elementUpdated(time);
+				return null;
+			}
+
+		});
 	}
 
 	public void logIntervalElapsed(long time) {
@@ -151,9 +171,30 @@ public class DefaultRecordedData implements RecordedData {
 	}
 
 	@Override
-	public final void setConfiguration(RecordedDataConfiguration configuration) {
+	public synchronized final void setConfiguration(final RecordedDataConfiguration configuration) {
+		AccessController.doPrivileged(new PrivilegedAction<Void>() {
+
+			@Override
+			public Void run() {
+				setConfigurationPrivileged(configuration);
+				return null;
+			}
+		});
+	}
+
+	private synchronized final void setConfigurationPrivileged(RecordedDataConfiguration configuration) {
+		if (configuration != null) {
+			setNewConfig(configuration);
+		}
+		else {
+			//TODO: test!
+			disable();
+		}
+	}
+
+	private void setNewConfig(RecordedDataConfiguration configuration) {
 		try {
-			if (config == null && configuration != null) {
+			if (config == null) {
 				data = dataAccess.getRecordedDataStorage(id);
 				if (data == null) {
 					data = dataAccess.createRecordedDataStorage(id, configuration);
@@ -163,8 +204,27 @@ public class DefaultRecordedData implements RecordedData {
 			config = data.getConfiguration();
 			createUpdater();
 			setupTimer();
+			if (configuration.getStorageType() == StorageType.ON_VALUE_CHANGED) {
+				logger.debug("new RecordedData configuration with ON_VALUE_CHANGED set, writing current value");
+				Timer t = scheduler.createTimer(exec, logger);
+				data.insertValue(updater.createValue(t.getExecutionTime()));
+				t.destroy();
+			}
 		} catch (DataRecorderException rdae) {
 			logger.warn("could not set new configuration", rdae);
+		}
+	}
+
+	private void disable() {
+		data = dataAccess.getRecordedDataStorage(id);
+		if (data != null) {
+			data.setConfiguration(null);
+		}
+		updater = null;
+		config = null;
+		if (timer != null) {
+			timer.destroy();
+			timer = null;
 		}
 	}
 
@@ -203,7 +263,17 @@ public class DefaultRecordedData implements RecordedData {
 
 	@Override
 	public List<SampledValue> getValues(long startTime, long endTime) {
-		return data.getValues(startTime, endTime);
+		return SECURITY_ENABLED ? getValuesPrivileged(startTime, endTime) : data.getValues(startTime, endTime);
+	}
+
+	private List<SampledValue> getValuesPrivileged(final long startTime, final long endTime) {
+		return AccessController.doPrivileged(new PrivilegedAction<List<SampledValue>>() {
+
+			@Override
+			public List<SampledValue> run() {
+				return data.getValues(startTime, endTime);
+			}
+		});
 	}
 
 	@Override

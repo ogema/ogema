@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -43,9 +42,14 @@ import org.ogema.core.channelmanager.measurements.LongValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.openmuc.openiec61850.BasicDataAttribute;
+import org.openmuc.openiec61850.BdaBitString;
 import org.openmuc.openiec61850.BdaBoolean;
 import org.openmuc.openiec61850.BdaFloat32;
 import org.openmuc.openiec61850.BdaFloat64;
+import org.openmuc.openiec61850.BdaInt16;
+import org.openmuc.openiec61850.BdaInt32;
+import org.openmuc.openiec61850.BdaInt64;
+import org.openmuc.openiec61850.BdaInt8;
 import org.openmuc.openiec61850.BdaTimestamp;
 import org.openmuc.openiec61850.ClientAssociation;
 import org.openmuc.openiec61850.ClientSap;
@@ -167,14 +171,16 @@ public class Iec61850Driver implements ChannelDriver {
 		case ENTRY_TIME:
 		case OCTET_STRING:
 		case VISIBLE_STRING:
+
 		case UNICODE_STRING:
-			container.setSampledValue(new SampledValue(new ByteArrayValue((byte[]) bda.getValue()), receiveTime,
-					Quality.GOOD));
+			container.setSampledValue(new SampledValue(new ByteArrayValue(((BdaBitString) bda).getValue()),
+					receiveTime, Quality.GOOD));
 			break;
 		case TIMESTAMP:
 			if (container.getChannelLocator().getChannelAddress().endsWith(":bytestring")) {
-				container.setSampledValue(new SampledValue(new ByteArrayValue((byte[]) bda.getValue()), receiveTime,
-						Quality.GOOD));
+				container.setSampledValue(new SampledValue(new ByteArrayValue(((BdaBitString) bda).getValue()),
+						receiveTime, Quality.GOOD));
+
 			}
 			else {
 				container.setSampledValue(new SampledValue(new LongValue(((BdaTimestamp) bda).getDate().getTime()),
@@ -194,23 +200,27 @@ public class Iec61850Driver implements ChannelDriver {
 					Quality.GOOD));
 			break;
 		case INT8:
-			container.setSampledValue(new SampledValue(new IntegerValue((Byte) bda.getValue()), receiveTime,
+			container.setSampledValue(new SampledValue(new IntegerValue(((BdaInt8) bda).getValue()), receiveTime,
 					Quality.GOOD));
+
 			break;
 		case INT8U:
 		case INT16:
-			container.setSampledValue(new SampledValue(new IntegerValue((Short) bda.getValue()), receiveTime,
+			container.setSampledValue(new SampledValue(new IntegerValue(((BdaInt16) bda).getValue()), receiveTime,
 					Quality.GOOD));
+
 			break;
 		case INT16U:
 		case INT32:
-			container.setSampledValue(new SampledValue(new IntegerValue((Integer) bda.getValue()), receiveTime,
+			container.setSampledValue(new SampledValue(new IntegerValue(((BdaInt32) bda).getValue()), receiveTime,
 					Quality.GOOD));
+
 			break;
 		case INT32U:
 		case INT64:
-			container
-					.setSampledValue(new SampledValue(new LongValue((Long) bda.getValue()), receiveTime, Quality.GOOD));
+			container.setSampledValue(new SampledValue(new LongValue(((BdaInt64) bda).getValue()), receiveTime,
+					Quality.GOOD));
+
 			break;
 		default:
 			throw new IllegalStateException("unknown BasicType received: " + bda.getBasicType());

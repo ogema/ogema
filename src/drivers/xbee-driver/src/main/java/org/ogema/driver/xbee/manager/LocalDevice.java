@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -87,14 +86,17 @@ public class LocalDevice {
 
 		deviceHandler = new DeviceHandler(this, cyclicSleepPeriod);
 		deviceHandlerThread = new Thread(deviceHandler);
+		deviceHandlerThread.setName("xbee-driver-deviceHandler");
 		deviceHandlerThread.start();
 
 		messageHandler = new MessageHandler(this, cyclicSleepPeriod);
 		messageHandlerThread = new Thread(messageHandler);
+		messageHandlerThread.setName("xbee-driver-messageHandler");
 		messageHandlerThread.start();
 
 		inputHandler = new InputHandler(this);
 		inputHandlerThread = new Thread(inputHandler);
+		inputHandlerThread.setName("xbee-driver-inputHandler");
 		inputHandlerThread.start();
 
 		connection.sendFrame(atCommandReadSp);
@@ -393,7 +395,8 @@ public class LocalDevice {
 		}
 		try {
 			if (Configuration.DEBUG)
-				logger.debug(" ### Sent frame: " + Constants.bytesToHex(XBeeFrameFactory.composeMessageToFrame(message)));
+				logger.debug(" ### Sent frame: "
+						+ Constants.bytesToHex(XBeeFrameFactory.composeMessageToFrame(message)));
 		} catch (WrongFormatException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

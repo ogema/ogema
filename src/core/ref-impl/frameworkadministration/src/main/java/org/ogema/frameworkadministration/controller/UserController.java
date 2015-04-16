@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,8 +24,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import org.codehaus.jackson.map.ObjectMapper;
 import org.ogema.accesscontrol.AccessManager;
+import org.ogema.accesscontrol.AppPermissionFilter;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.administration.AdministrationManager;
@@ -56,8 +57,6 @@ import org.osgi.framework.BundleContext;
 import org.osgi.service.condpermadmin.ConditionInfo;
 import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
 import org.osgi.service.permissionadmin.PermissionInfo;
-import org.osgi.service.useradmin.Group;
-import org.osgi.service.useradmin.Role;
 import org.osgi.service.useradmin.User;
 import org.osgi.service.useradmin.UserAdmin;
 
@@ -118,10 +117,11 @@ public class UserController {
 	}
 
 	/**
-	 * Checks if the given user has administrator rights. master always returns true. 
-	 * Machine users always return false. Checks for ALL APPS role and java.security.AllPermission policy.
+	 * Checks if the given user has administrator rights. master always returns true. Machine users always return false.
+	 * Checks for ALL APPS role and java.security.AllPermission policy.
 	 * 
-	 * @param user the name of the user as string
+	 * @param user
+	 *            the name of the user as string
 	 * @return true or false
 	 */
 	public boolean checkUserAdmin(String user) {
@@ -130,47 +130,50 @@ public class UserController {
 			return true;
 		}
 
-		//machine user is not allowed to be admin
+		// machine user is not allowed to be admin
 		if (!accessManager.isNatural(user)) {
 			return false;
 		}
 
 		boolean isAdmin = false;
 
-		List<String> appList = accessManager.getAppsPermitted(user);
-		if (appList != null && appList.contains("ALL APPS")) {
-			//first criteria met
-
-			String allPerms = Utils.USER_ALLPERMISSION;
-			AppPermission appPermission = accessManager.getPolicies(user);
-			Map<String, ConditionalPermissionInfo> grantedPerms = appPermission.getGrantedPerms();
-			for (ConditionalPermissionInfo cpi : grantedPerms.values()) {
-				PermissionInfo[] permInfo = cpi.getPermissionInfos();
-				for (PermissionInfo pi : permInfo) {
-					if (allPerms.equals(pi.getType())) {
-						isAdmin = true;
-					}
-				}
-			}
-		}
+		// The permission "ALL APPS" doesn't longer exist
+		// List<String> appList = accessManager.getAppsPermitted(user);
+		// if (appList != null && appList.contains("ALL APPS")) {
+		// //first criteria met
+		//
+		// String allPerms = Utils.USER_ALLPERMISSION;
+		// AppPermission appPermission = accessManager.getPolicies(user);
+		// Map<String, ConditionalPermissionInfo> grantedPerms = appPermission.getGrantedPerms();
+		// for (ConditionalPermissionInfo cpi : grantedPerms.values()) {
+		// PermissionInfo[] permInfo = cpi.getPermissionInfos();
+		// for (PermissionInfo pi : permInfo) {
+		// if (allPerms.equals(pi.getType())) {
+		// isAdmin = true;
+		// }
+		// }
+		// }
+		// }
 
 		return isAdmin;
 	}
 
 	/**
-	 * Grants administrator rights to a given user. Only natural user are allowed to be administrators.
-	 * Adds ALL APPS as a role and puts java.security.AllPermission into policies.
-	 * @param user the name of the user as string
+	 * Grants administrator rights to a given user. Only natural user are allowed to be administrators. Adds ALL APPS as
+	 * a role and puts java.security.AllPermission into policies.
+	 * 
+	 * @param user
+	 *            the name of the user as string
 	 * @return true on success otherwise false
 	 */
 	public boolean grantAdminRights(String user) {
 
-		//master is always admin
+		// master is always admin
 		if ("master".equals(user)) {
 			return false;
 		}
 
-		//machine user should not be admin
+		// machine user should not be admin
 		if (!accessManager.isNatural(user)) {
 			return false;
 		}
@@ -181,15 +184,18 @@ public class UserController {
 		appPermission.addPermission(permName, null, null);
 		permissionManager.installPerms(appPermission);
 
-		accessManager.addPermission(user, "ALL APPS");
+		// accessManager.addPermission(user, "ALL APPS");
+		accessManager.addPermission(user, AppPermissionFilter.ALLAPPSPERMISSION);
 
 		return true;
 	}
 
 	/**
-	 * Revokes administrator rights to a given user. It is not allowed to remove the rights for the master user.
-	 * Removed ALL APPS role and adds NO APPS as a new role. Removes java.security.AllPermission policy.
-	 * @param user the name of the user as string
+	 * Revokes administrator rights to a given user. It is not allowed to remove the rights for the master user. Removed
+	 * ALL APPS role and adds NO APPS as a new role. Removes java.security.AllPermission policy.
+	 * 
+	 * @param user
+	 *            the name of the user as string
 	 * @return true on success otherwise false
 	 */
 	public boolean revokeAdminRights(String user) {
@@ -198,7 +204,7 @@ public class UserController {
 			return false;
 		}
 
-		//machine user should never be admin in the first place
+		// machine user should never be admin in the first place
 		if (!accessManager.isNatural(user)) {
 			return false;
 		}
@@ -223,27 +229,30 @@ public class UserController {
 
 		permissionManager.installPerms(appPermission);
 
-		removePermissionRole(user, "ALL APPS");
-		accessManager.addPermission(user, "NO APPS");
+		// removePermissionRole(user, "ALL APPS");
+		// accessManager.addPermission(user, "NO APPS");
 
 		return true;
 
 	}
 
-	private void removePermissionRole(String user, String role) {
-
-		Role usrRole = userAdmin.getRole(user);
-
-		if ("NO APPS".equals(role) || "ALL APPS".equals(role)) {
-			Group roleGroup = (Group) userAdmin.getRole(role);
-			roleGroup.removeMember(usrRole);
-		}
-	}
+	// private void removePermissionRole(String user, String role) {
+	//
+	// Role usrRole = userAdmin.getRole(user);
+	//
+	// if ("NO APPS".equals(role) || "ALL APPS".equals(role)) {
+	// Group roleGroup = (Group) userAdmin.getRole(role);
+	// roleGroup.removeMember(usrRole);
+	// }
+	// }
 
 	/**
-	 * Sets the allowed applications with registered webresources. Does also remove applications from the list. 
-	 * It possible to add or remove a permission even if the application has no webresources.
-	 * @param jsonMessage message in json format. See {@see org.ogema.frameworkadministration.json.UserJsonAppIdList} for message format.
+	 * Sets the allowed applications with registered webresources. Does also remove applications from the list. It
+	 * possible to add or remove a permission even if the application has no webresources.
+	 * 
+	 * @param jsonMessage
+	 *            message in json format. See {@see org.ogema.frameworkadministration.json.UserJsonAppIdList} for
+	 *            message format.
 	 * @return true on success, otherwise false
 	 */
 	public boolean setAppsNaturalUser(String jsonMessage) {
@@ -268,32 +277,37 @@ public class UserController {
 			String appIdString = singleApp.getAppID();
 
 			if ("ALL APPS".equals(role)) {
-				accessManager.addPermission(user, "ALL APPS");
-				accessManager.addPermission(user, appIdString);
-				continue;
+				accessManager.addPermission(user, AppPermissionFilter.ALLAPPSPERMISSION);
+				// accessManager.addPermission(user, appIdString);
+				continue; // FIXME Break the loop because after all apps permission is granted other perms don't any
+				// further effect
 			}
 
+			AppID appID = findAppIdForString(appIdString);
+			AppPermissionFilter props = new AppPermissionFilter(appID.getBundle().getSymbolicName(), appID
+					.getOwnerUser(), appID.getOwnerGroup(), appID.getVersion());
 			if (permitted) {
-				accessManager.addPermission(user, appIdString);
+
+				accessManager.addPermission(user, props);
 			}
 			else {
-				AppID appID = findAppIdForString(appIdString);
-				accessManager.removePermission(user, appID);
+				accessManager.removePermission(user, props);
 			}
 
-			if ("NO APPS".equals(role)) {
-				accessManager.addPermission(user, "NO APPS");
-				AppID appID = findAppIdForString(appIdString);
-				accessManager.removePermission(user, appID);
-			}
+			// if ("NO APPS".equals(role)) {
+			// accessManager.addPermission(user, "NO APPS");
+			// accessManager.removePermission(user, appID);
+
+			// }
 		}
-
 		return true;
 	}
 
 	/**
-	 * finds a AppId for a given AppId string 
-	 * @param appIdString OGEMA AppId string
+	 * finds a AppId for a given AppId string
+	 * 
+	 * @param appIdString
+	 *            OGEMA AppId string
 	 * @return AppID object or null
 	 */
 	private AppID findAppIdForString(String appIdString) {
@@ -310,9 +324,12 @@ public class UserController {
 
 	/**
 	 * Generates a list of all applications for a natural user.
-	 * @param user the name of the user as string
-	 * @return A list in json format of all natural apps. See {@see org.ogema.frameworkadministration.json.UserJsonAppIdList} for message format.
-	 * Returns an error message if user is not a natural user
+	 * 
+	 * @param user
+	 *            the name of the user as string
+	 * @return A list in json format of all natural apps. See {@see
+	 *         org.ogema.frameworkadministration.json.UserJsonAppIdList} for message format. Returns an error message if
+	 *         user is not a natural user
 	 */
 	public String getAppsNaturalUser(String user) {
 
@@ -322,19 +339,21 @@ public class UserController {
 			return Utils.createMessage("ERROR", user + " ist not a natural user");
 		}
 
-		List<String> list = accessManager.getAppsPermitted(user);
-		if (list == null) {
-			list = Collections.emptyList();
-		}
+		// List<String> list = accessManager.getAppsPermitted(user);
+		// if (list == null) {
+		// list = Collections.emptyList();
+		// }
 		List<AdminApplication> appList = administrationManager.getAllApps();
 
 		UserJsonAppIdList userAppListJson = new UserJsonAppIdList();
 		userAppListJson.setUser(user);
 
-		if (list.contains("ALL APPS")) {
+		// if (list.contains("ALL APPS")) {
+		if (accessManager.isAllAppsPermitted(user)) {
 			userAppListJson.setRole("ALL APPS");
 		}
-		else if (list.contains("NO APPS")) {
+		// else if (list.contains("NO APPS")) {
+		else if (accessManager.isNoAppPermitted(user)) {
 			userAppListJson.setRole("NO APPS");
 		}
 		else {
@@ -367,13 +386,13 @@ public class UserController {
 			singleAppJson.setReadableName(appID.getBundle().getSymbolicName());
 			singleAppJson.setBundleID(bundleID);
 
-			if (list.contains("ALL APPS")) {
+			if (accessManager.isAllAppsPermitted(user)) {
 				singleAppJson.setPermitted(true);
 			}
-			else if (list.contains("NO APPS")) {
+			else if (accessManager.isNoAppPermitted(user)) {
 				singleAppJson.setPermitted(false);
 			}
-			else if (list.contains(appIDString)) {
+			else if (accessManager.isAppPermitted(user, appID)) {
 				singleAppJson.setPermitted(true);
 			}
 			else {
@@ -395,10 +414,13 @@ public class UserController {
 	}
 
 	/**
-	 * Generates a list of all resource policies for a machine user or administrator. 
-	 * @param user the name of the user as string
-	 * @return A list in json format of all resource policies. See {@see org.ogema.frameworkadministration.json.UserJsonResourcePolicyList} for message format.
-	 * Returns an error message if the user is not a machine user except administrators.
+	 * Generates a list of all resource policies for a machine user or administrator.
+	 * 
+	 * @param user
+	 *            the name of the user as string
+	 * @return A list in json format of all resource policies. See {@see
+	 *         org.ogema.frameworkadministration.json.UserJsonResourcePolicyList} for message format. Returns an error
+	 *         message if the user is not a machine user except administrators.
 	 */
 	public String getPoliciesMachineUser(String user) {
 
@@ -424,8 +446,8 @@ public class UserController {
 			for (PermissionInfo pi : permissionInfoArray) {
 
 				String uniqueName = cond.getName();
-				String permissionName = pi.getType(); //org.ogema.accesscontrol.ResourcePermission
-				String resourcePathType = pi.getName(); //path=...,type=...
+				String permissionName = pi.getType(); // org.ogema.accesscontrol.ResourcePermission
+				String resourcePathType = pi.getName(); // path=...,type=...
 
 				String resourcePath = null;
 				String resourceType = null;
@@ -450,8 +472,8 @@ public class UserController {
 					}
 				}
 
-				String permissionActions = pi.getActions(); //allow or deny
-				String accessDecision = cond.getAccessDecision(); //read,write,...
+				String permissionActions = pi.getActions(); // allow or deny
+				String accessDecision = cond.getAccessDecision(); // read,write,...
 
 				if (!Utils.USER_PERMISSIONAME.equals(permissionName)) {
 					continue;
@@ -484,8 +506,12 @@ public class UserController {
 	}
 
 	/**
-	 * Sets new policies for a given user. The user is part of the json message. This method does not differ between machine or natural user.
-	 * @param jsonMessage Resource Policies for an user in json format. See {@see org.ogema.frameworkadministration.json.UserJsonResourcePolicyList} for message format.
+	 * Sets new policies for a given user. The user is part of the json message. This method does not differ between
+	 * machine or natural user.
+	 * 
+	 * @param jsonMessage
+	 *            Resource Policies for an user in json format. See {@see
+	 *            org.ogema.frameworkadministration.json.UserJsonResourcePolicyList} for message format.
 	 * @return true on success, otherwise false
 	 */
 	public boolean setPoliciesMachineUser(String jsonMessage) {
@@ -544,11 +570,11 @@ public class UserController {
 			String[] args = { (Utils.USER_PRECONDITIONFILE + user + Utils.USER_SUFCONDITIONFILE) };
 			ConditionInfo conditionInfo = new ConditionInfo(conditionType, args);
 
-			//String permName = Utils.USER_PERMISSIONTYPE;
+			// String permName = Utils.USER_PERMISSIONTYPE;
 			String permName = policy.getPermissionName();
 			String arguments[] = { pathAndType, actions };
 
-			//only simple permissions, option with condition is implemented
+			// only simple permissions, option with condition is implemented
 			if (accessDecision.toLowerCase().equals("allow")) {
 				appPermission.addPermission(permName, arguments, conditionInfo);
 			}
@@ -565,7 +591,7 @@ public class UserController {
 	public String getPermittedApps(String user) {
 
 		String result = "{}";
-		List<String> list = accessManager.getAppsPermitted(user);
+		List<AppID> list = accessManager.getAppsPermitted(user);
 		ObjectMapper mapper = new ObjectMapper();
 
 		UserJsonPermittedApps userPermittedApps = new UserJsonPermittedApps();
@@ -596,10 +622,13 @@ public class UserController {
 		}
 
 		String user = userPermittedApps.getUser();
-		List<String> permittedAppList = userPermittedApps.getPermittedApps();
+		List<AppID> permittedAppList = userPermittedApps.getPermittedApps();
 
-		for (String singlePermittedApp : permittedAppList) {
-			accessManager.addPermission(user, singlePermittedApp);
+		for (AppID singlePermittedApp : permittedAppList) {
+			AppPermissionFilter filter = new AppPermissionFilter(singlePermittedApp.getBundle().getSymbolicName(),
+					singlePermittedApp.getOwnerGroup(), singlePermittedApp.getOwnerUser(), singlePermittedApp
+							.getVersion());
+			accessManager.addPermission(user, filter);
 		}
 
 		return true;
@@ -618,11 +647,13 @@ public class UserController {
 		}
 
 		String user = userUnPermittedApps.getUser();
-		List<String> unPermittedAppList = userUnPermittedApps.getPermittedApps();
+		List<AppID> unPermittedAppList = userUnPermittedApps.getPermittedApps();
 
-		for (String singleUnPermittedApp : unPermittedAppList) {
-			AppID appID = permissionManager.getAdminManager().getAppById(singleUnPermittedApp).getID();
-			accessManager.removePermission(user, appID);
+		for (AppID singleUnPermittedApp : unPermittedAppList) {
+			AppPermissionFilter filter = new AppPermissionFilter(singleUnPermittedApp.getBundle().getSymbolicName(),
+					singleUnPermittedApp.getOwnerGroup(), singleUnPermittedApp.getOwnerUser(), singleUnPermittedApp
+							.getVersion());
+			accessManager.removePermission(user, filter);
 		}
 
 		return true;
@@ -676,7 +707,7 @@ public class UserController {
 					String actions = up.getActions();
 					String args[] = { resourcePath, actions };
 
-					//only simple permissions, option with condition is implemented
+					// only simple permissions, option with condition is implemented
 					if (mode.toLowerCase().equals("allow")) {
 						appPermission.addPermission(permName, args, conditionInfo);
 					}
@@ -704,14 +735,14 @@ public class UserController {
 		AppPermission appPermission = accessManager.getPolicies(user);
 		Map<String, ConditionalPermissionInfo> grantedPermsMap = appPermission.getGrantedPerms();
 
-		//allow policies
+		// allow policies
 		for (String s : grantedPermsMap.keySet()) {
 			ConditionalPermissionInfo cpi = grantedPermsMap.get(s);
 			UserJsonPermissionCondition userPermCond = addPermissionsAndCondition(cpi);
 			userPolicesList.getPermissionsAndCondition().add(userPermCond);
 		}
 
-		//deny policies
+		// deny policies
 		List<AppPermissionType> exceptionsList = appPermission.getExceptions();
 
 		for (AppPermissionType apt : exceptionsList) {
@@ -733,16 +764,16 @@ public class UserController {
 
 		UserJsonPermissionCondition userPermCond = new UserJsonPermissionCondition();
 
-		String accessDecision = cpi.getAccessDecision(); //allow, deny
+		String accessDecision = cpi.getAccessDecision(); // allow, deny
 		userPermCond.setMode(accessDecision);
 
-		String name = cpi.getName(); //urps, basic import rights ogema
+		String name = cpi.getName(); // urps, basic import rights ogema
 		userPermCond.setName(name);
 
 		ConditionInfo[] conditionInfoArray = cpi.getConditionInfos();
 		PermissionInfo[] permissionInfoArray = cpi.getPermissionInfos();
 
-		//if there is a conditionInformation
+		// if there is a conditionInformation
 
 		if (conditionInfoArray.length > 0) {
 			ConditionInfo conditionInfo = conditionInfoArray[0];
@@ -778,9 +809,11 @@ public class UserController {
 
 	/**
 	 * Delete an user defined in the json message.
-	 * @param jsonMessage See {@see org.ogema.frameworkadministration.json.post.UserJsonDeleteUser}
+	 * 
+	 * @param jsonMessage
+	 *            See {@see org.ogema.frameworkadministration.json.post.UserJsonDeleteUser}
 	 * @return true on success, otherwise false
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public boolean deleteUser(String jsonMessage) throws IOException {
 
@@ -800,9 +833,11 @@ public class UserController {
 
 	/**
 	 * Create an user defined in the json message.
-	 * @param jsonMessage See {@see org.ogema.frameworkadministration.json.post.UserJsonCreateUser}
+	 * 
+	 * @param jsonMessage
+	 *            See {@see org.ogema.frameworkadministration.json.post.UserJsonCreateUser}
 	 * @return true on success, otherwise false
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public boolean createUser(String jsonMessage) throws IOException {
 
@@ -825,9 +860,11 @@ public class UserController {
 
 	/**
 	 * Changes the password for an user defined in the json message.
-	 * @param jsonMessage see {@see org.ogema.frameworkadministration.json.post.UserJsonChangePassword}
+	 * 
+	 * @param jsonMessage
+	 *            see {@see org.ogema.frameworkadministration.json.post.UserJsonChangePassword}
 	 * @return true on success, otherwise false
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public boolean changePassword(String jsonMessage) throws IOException {
 
@@ -840,11 +877,13 @@ public class UserController {
 	}
 
 	/**
-	 * Copies the resource policies and webresource (permitted apps) to another user which will be created in the process. Differs between machine
-	 * user, natural user and administrator.
-	 * @param jsonMessage {@see org.ogema.frameworkadministration.json.post.UserJsonCopyUser}
+	 * Copies the resource policies and webresource (permitted apps) to another user which will be created in the
+	 * process. Differs between machine user, natural user and administrator.
+	 * 
+	 * @param jsonMessage
+	 *            {@see org.ogema.frameworkadministration.json.post.UserJsonCopyUser}
 	 * @return true on success, otherwise false
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public boolean copyUser(String jsonMessage) throws IOException {
 
@@ -855,14 +894,14 @@ public class UserController {
 		String userOld = copyUser.getUserOld();
 		String pwd = copyUser.getPwd();
 
-		//check old user role
+		// check old user role
 		boolean isNaturalOld = accessManager.isNatural(userOld);
-		//get old user  policies
+		// get old user policies
 		String oldPolicies = getPoliciesMachineUser(userOld);
-		//get old user permitted apps
+		// get old user permitted apps
 		String oldPermittedApps = getAppsNaturalUser(userOld);
 
-		//create user
+		// create user
 		UserJsonCreateUser createUser = new UserJsonCreateUser(userNew, isNaturalOld, pwd);
 
 		String createUserMessage = mapper.writeValueAsString(createUser);
@@ -874,7 +913,7 @@ public class UserController {
 		}
 
 		if (!isNaturalOld) {
-			//set new user policies
+			// set new user policies
 			UserJsonResourcePolicyList policies;
 			try {
 				policies = mapper.readValue(oldPolicies, UserJsonResourcePolicyList.class);
@@ -898,7 +937,7 @@ public class UserController {
 		}
 
 		if (isNaturalOld) {
-			//set new user permitted apps
+			// set new user permitted apps
 			UserJsonAppIdList permittedApps;
 			try {
 				permittedApps = mapper.readValue(oldPermittedApps, UserJsonAppIdList.class);
@@ -923,7 +962,9 @@ public class UserController {
 	}
 
 	/**
-	 * Generates a list of all user in a json format. See {@see org.ogema.frameworkadministration.json.get.UserJsonGetList} for message format.
+	 * Generates a list of all user in a json format. See {@see
+	 * org.ogema.frameworkadministration.json.get.UserJsonGetList} for message format.
+	 * 
 	 * @return a list of all users in json.
 	 */
 	public String getAllUsersJSON() {
@@ -950,9 +991,11 @@ public class UserController {
 	}
 
 	/**
-	 * Generates a list of userinformation for a user. The information includes the name, role, isAdmin and extra credentials. 
-	 * See {@see org.ogema.frameworkadministration.json.get.UserInformationJsonGet} for message format.
-	 * @param name the name of the user as string
+	 * Generates a list of userinformation for a user. The information includes the name, role, isAdmin and extra
+	 * credentials. See {@see org.ogema.frameworkadministration.json.get.UserInformationJsonGet} for message format.
+	 * 
+	 * @param name
+	 *            the name of the user as string
 	 * @return a list of userinformation for a given user in json.
 	 */
 	public String getUserInformation(String name) {
@@ -961,7 +1004,7 @@ public class UserController {
 
 		User user = accessManager.getUser(name);
 
-		//TODO: check object type
+		// TODO: check object type
 		@SuppressWarnings("unchecked")
 		Dictionary<Object, Object> credentials = user.getCredentials();
 		@SuppressWarnings("unchecked")

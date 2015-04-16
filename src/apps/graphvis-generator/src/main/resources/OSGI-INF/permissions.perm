@@ -1,4 +1,4 @@
 (org.osgi.framework.PackagePermission "*" "import")
 (org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
 (org.ogema.accesscontrol.ResourcePermission "path=/*" "read")
-(java.io.FilePermission "./graph.gwizz" "read,write")
+(java.io.FilePermission "<<ALL FILES>>" "read,write")

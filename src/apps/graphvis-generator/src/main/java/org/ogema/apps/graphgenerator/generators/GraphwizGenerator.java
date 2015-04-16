@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -79,28 +78,6 @@ public class GraphwizGenerator implements GraphGenerator {
 		throw new RuntimeException("Unknown or unimplemented simple resource type " + resType.toString());
 	}
 
-	//    // FIXME redundant now, should be solved differently
-	//    public void writeDeviceGroups(List<Resource> topLevelResources, String config) {
-	//
-	//        for (Resource topres : topLevelResources) {
-	//            final NodeStyle defaultNodeStyle = new NodeStyleBlue();
-	//            final List<Resource> resources = topres.getDirectSubResources(true);
-	//            final boolean makeGroup = (resources.size() > 2);
-	//            if (makeGroup) {
-	//                m_graph.append("subgraph cluster_").append(topres.getPath(PATH_SEP)).append(
-	//                        " { style=filled color=gray90 ");
-	//                m_graph.append("label=").append(topres.getName()).append(" \n");
-	//            }
-	//            addNode(topres, defaultNodeStyle);
-	//            for (Resource resource : resources) {
-	//                addNode(resource, defaultNodeStyle);
-	//            }
-	//            if (makeGroup) {
-	//                m_graph.append("\n}\n");
-	//            }
-	//        }
-	//    }
-
 	@Override
 	public String toString() {
 		return m_graph.toString() + "\n}\n";
@@ -130,7 +107,7 @@ public class GraphwizGenerator implements GraphGenerator {
             labels.add(node.getLocation());
         }
         if (style.addSimpleValues()) {
-            if (node instanceof SimpleResource) {
+            if (node instanceof BooleanResource || node instanceof FloatResource || node instanceof IntegerResource || node instanceof IntegerResource || node instanceof StringResource || node instanceof TimeResource) {
                 final String value = getSimpleValue((SimpleResource) node);
                 labels.add("value = " + value);
             }
@@ -146,7 +123,7 @@ public class GraphwizGenerator implements GraphGenerator {
         if (node.isActive()) {
             m_graph.append(" color=").append(style.getActiveColor());
         } else {
-            m_graph.append("color=").append(style.getInactiveColor());
+            m_graph.append(" color=").append(style.getInactiveColor());
         }
         m_graph.append(" ]\n");
 

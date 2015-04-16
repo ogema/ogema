@@ -109,37 +109,33 @@ $(function() {
             //bind an onclick funktion to the download button
             $("#csvDownloadButton").click(function(){
                 
-                //extract the data to csv and init a download
-                var csvData = "";
-                var csvDataXrow = "";
-                var csvDataYrow = "";
+                var zip = new JSZip();
                 var csvDelimiterChar = ';';
+                var csvLineBreak = "\n";
                 
                 //for each dataset entry (logged resource)
                 $.each(datasets, function(key, val){
-                    //add the full resource name
-                    csvDataXrow = key + csvDelimiterChar + "X" + csvDelimiterChar;
-                    csvDataYrow = key + csvDelimiterChar + "Y" + csvDelimiterChar;
+                    
+                     var csvData = "";
+                     
                     //for each datapoint (array with 2 values) add the array
                     $.each(val.data, function(logPairKey, logValuePair){
-                        //for each value
-                        csvDataXrow += logValuePair[0] + csvDelimiterChar;
-                        csvDataYrow += logValuePair[1] + csvDelimiterChar;
-                        /*
-                        $.each(logValuePair, function(logValueKey, logValue){
-                                csvData+=logValue.toString()+csvDelimiterChar;
-                        });
-                        */
+                           
+                        //replace . with , for german conventions
+                        var value = logValuePair[1].toString();
+                        value = value.replace(".", ",");
+                        
+                        //write the whole data for one resource into csvData
+                        csvData += logValuePair[0] + csvDelimiterChar + value + csvDelimiterChar + csvLineBreak;
                     });
-                    //append x and y row to all csv data
-                    csvData += csvDataXrow+'\n'+csvDataYrow+'\n';
+                    //create a zip file with fitting folder hierarchy
+                    zip.file( key + ".csv", csvData);;
                 });
-                //alert(csvData);
-                
-                //init download
-                var csvBlob = new Blob([csvData], {type: 'text/csv'});
-                $(this).attr("download", "logged-resources.csv");
-                $(this).attr("href", window.URL.createObjectURL(csvBlob));
+               
+               //create download link
+                var content = zip.generate({type:"blob"});
+                $(this).attr("download", "logged-resources.zip");
+                $(this).attr("href", window.URL.createObjectURL(content));
             });
         }
         

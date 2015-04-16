@@ -1,0 +1,146 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#295ADCF0"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    tools:context="de.iis.graphicaldisplay.RESTActivity" >
+
+    <LinearLayout
+        android:id="@+id/graphLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginLeft="26dp"
+        android:layout_marginTop="26dp"
+        android:orientation="vertical" >
+    
+    <TextView
+  	    android:id="@+id/Text1"
+  	    android:layout_width="wrap_content"
+  	    android:layout_height="wrap_content"
+  	    android:layout_alignLeft="@+id/editText1"
+  	    android:layout_below="@+id/graphLayout"
+  	    android:text="Geben Sie zuerst die IP-Adresse der Raspberry-Plattform ein:"
+  	    android:textSize="16dp" />
+
+  	<EditText
+  	    android:id="@+id/editText1"
+  	    android:layout_width="match_parent"
+  	    android:layout_height="wrap_content"
+  	    android:layout_alignParentRight="true"
+  	    android:layout_below="@+id/graphLayout"
+  	    android:layout_marginTop="78dp"
+  	    android:ems="10"
+  	    android:text="192.168.1.111" >
+  	    <requestFocus />
+  	</EditText>
+  	
+  	<Button
+  	    android:id="@+id/button1"
+  	    android:layout_width="wrap_content"
+  	    android:layout_height="wrap_content"
+  	    android:layout_alignLeft="@+id/editText1"
+  	    android:layout_alignRight="@+id/toggleButton1"
+  	    android:layout_below="@+id/editText1"
+  	    android:layout_marginTop="44dp"
+  	    android:text="Start" />
+
+  	<LinearLayout
+  	    android:id="@+id/horizonLayout"
+  	    android:layout_width="match_parent"
+  	    android:layout_height="122dp"
+  	    android:layout_marginLeft="26dp"
+  	    android:layout_marginTop="80dp"
+  	    android:orientation="horizontal" >
+
+  		<ToggleButton
+  		    android:id="@+id/toggleButton1"
+  		    android:layout_width="95dp"
+  		    android:layout_height="141dp"
+  		    android:layout_marginBottom="50dp"
+  		    android:layout_marginLeft="200dp"
+  		    android:background="@drawable/lightoff"
+  		    android:text="Lava-Lampe" />
+
+  		<ToggleButton
+  		    android:id="@+id/toggleButton2"
+  		    android:layout_width="95dp"
+  		    android:layout_height="141dp"
+  		    android:layout_marginBottom="50dp"
+  		    android:layout_marginLeft="100dp"
+  		    android:background="@drawable/lightoff"
+  		    android:text="LED-Streifen" />
+  		
+  		<ToggleButton
+  		    android:id="@+id/toggleButton3"
+  		    android:layout_width="115dp"
+  		    android:layout_height="136dp"
+  		    android:layout_marginBottom="50dp"
+  		    android:layout_marginLeft="100dp"
+  		    android:background="@drawable/ventilator_off"
+  		    android:text="Ventilator" />
+  		
+  		<ToggleButton
+  		    android:id="@+id/toggleButton4"
+  		    android:layout_width="115dp"
+  		    android:layout_height="136dp"
+  		    android:layout_marginBottom="50dp"
+  		    android:layout_marginLeft="100dp"
+  		    android:background="@drawable/lightoff"
+  		    android:text="Zwave" />
+
+  	</LinearLayout>
+
+  
+  	<LinearLayout
+  	    android:id="@+id/horizonLayout2"
+  	    android:layout_width="match_parent"
+  	    android:layout_height="match_parent"
+  	    android:layout_marginLeft="26dp"
+  	    android:layout_marginTop="10dp"
+  	    android:orientation="horizontal" >
+  		
+  	<TextView
+  	    android:id="@+id/Text3"
+  	    android:layout_width="wrap_content"
+  	    android:layout_height="wrap_content"
+  	    android:layout_marginLeft="210dp"
+  	    android:text="Lava-Lampe"
+  	    android:textSize="16dp" />
+  	
+  	<TextView
+  	    android:id="@+id/Text4"
+  	    android:layout_width="wrap_content"
+  	    android:layout_height="wrap_content"
+  	    android:layout_marginLeft="103dp"
+  	    android:text="LED-Streifen"
+  	    android:textSize="16dp" />
+  	
+  	<TextView
+  	    android:id="@+id/Text5"
+  	    android:layout_width="wrap_content"
+  	    android:layout_height="wrap_content"
+  	    android:layout_marginLeft="115dp"
+  	    android:text="Ventilator"
+  	    android:textSize="16dp" />
+  	
+  		<TextView
+  	    android:id="@+id/Text6"
+  	    android:layout_width="wrap_content"
+  	    android:layout_height="wrap_content"
+  	    android:layout_marginLeft="118dp"
+  	    android:text="Z-Wave-Lampe"
+  	    android:textSize="16dp" />
+  	
+  	</LinearLayout>
+  	
+  	 </LinearLayout>
+  	 
+     
+
+</RelativeLayout>

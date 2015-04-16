@@ -1,0 +1,107 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html ng-app="resources">
+    <head>
+        <title>Logging app</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="lib/jquery-1.11.1.min.js"></script>
+        <link href="lib/bootstrap.min.css" rel="stylesheet" type="text/css"/> 
+        <style>
+        th {
+			    background-color: #00ccff;
+			}
+        </style>
+	<!-- 	<style>
+			table {
+			    border-collapse: collapse;
+			}
+			table, td {
+		  	  border: 2px solid blue;
+			} 
+			td {
+			    text-align: left;
+			    padding: 10px;
+			    height: 18px;
+			}
+			th {
+				text-align: left;
+			    padding: 10px;
+			    background-color: blue;
+    			color: white;
+    			height: 40px;
+    			border: 2px solid white
+			}
+			tr:nth-child(even) {
+			  background-color: #99ccff;
+			}
+			tr:nth-child(odd) {
+			  background-color: #00ccff;
+			}
+			tr:hover {
+          		background-color: #ffff99;
+        	}
+		</style> -->
+    </head>
+    <body>
+    	<div ng-controller="ResourcesCtrl">
+	        <h3>Log settings</h3>
+   	        <div class="form-inline">
+   	        	<div class="form-group">
+	   	       		<label>Logging interval in s &nbsp;</label><input type="text" class="form-control" ng-model="loggingInterval"/>
+	   	       	</div>
+	   	       	<div class="form-group">
+	  	      		<label>&nbsp;Logging type &nbsp;</label><select class="form-control" ng-model="selectedType"><option ng-repeat="loggingType in loggingTypes">{{loggingType}}</option></select>
+	  	      	</div>
+	        </div>
+	        <p>{{message}}</p>	
+	        <h3>Resources</h3>
+	        <div id="resourceContainer"></div>
+			<button ng-Click="getResources()" class="btn btn-success">Update</button><br><br>
+	        <table class="table table-striped table-hover">
+	        	<tr>
+	        	  <th ng-repeat="col in getColumns() | filter: filterFn ">{{col}}</th>
+	        	  <th>Logging</th>
+	        	</tr>
+	        	<tr ng-repeat="res in resourcesSet.getResources()">
+	        	  <td ng-repeat="col in getColumns()  | filter: filterFn">{{res[col]}}</td>
+	        	  <td>        	  	
+	        	  	<div ng-show="isLogging(res)"><button ng-Click="recordData(res,false,loggingInterval,selectedType)" class="btn btn-info">change settings</button><br></div>
+	        	  	<button ng-Click="recordData(res,isLogging(res),loggingInterval,selectedType)" ng-show="logAllowed(res)" class="btn btn-primary">{{getLogButtonMsg(res)}}</button>
+	        	  </td>
+	        	</tr>
+	        	<tr ng-show="resourcesSet.getResources().length > 10">
+	        	  <th ng-repeat="col in getColumns() | filter: filterFn ">{{col}}</th>
+	        	  <th>Logging</th>
+	        	</tr>
+	        </table>
+	        <br>
+
+        
+    	
+    	<script src="lib/angular.js"></script>
+    	<script src="app.js"></script>
+    </body>
+</html>
+</html>

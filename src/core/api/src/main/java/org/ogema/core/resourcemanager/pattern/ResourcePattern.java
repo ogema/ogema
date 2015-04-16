@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,19 +20,23 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.simple.BooleanResource;
+import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.resourcemanager.AccessMode;
 
 /**
- * Class to be extended in order to define a resource pattern that can be used to
- * create resource structures and find matches to the pattern defined in the derived
- * class.
+ * Class to be extended in order to define a resource pattern that can be used
+ * to create resource structures and find matches to the pattern defined in the
+ * derived class.
+ *
  * @param <DemandedModel>
  */
 public class ResourcePattern<DemandedModel extends Resource> {
+
 	/**
-	 * The primary demand for the pattern. This is going to be set by the framework.
-	 * Other resource references in the derived classes may refer to this as their
-	 * anchor point..
+	 * The primary demand for the pattern. This is going to be set by the
+	 * framework. Other resource references in the derived classes may refer to
+	 * this as their anchor point..
 	 */
 	public DemandedModel model;
 
@@ -43,39 +46,79 @@ public class ResourcePattern<DemandedModel extends Resource> {
 	@Target(ElementType.FIELD)
 	@Retention(RetentionPolicy.RUNTIME)
 	public @interface Existence {
+
 		CreateMode required() default CreateMode.MUST_EXIST;
 	}
 
 	/**
-	 * Specifies the access mode to demand for the field. If the access mode
-	 * is required but not granted, the pattern will not be reported as a valid
+	 * Specifies the access mode to demand for the field. If the access mode is
+	 * required but not granted, the pattern will not be reported as a valid
 	 * pattern. If this annotation is not present, the access mode is considered
 	 * as "take framework default, required=false".
 	 */
 	@Target(ElementType.FIELD)
 	@Retention(RetentionPolicy.RUNTIME)
 	public @interface Access {
+
+		/**
+		 * Defines the kind of access that is requested from the framework.
+		 * Whether this access mode is strictly required or optional is
+		 * configured with the {@link #required()} parameter.
+		 */
 		AccessMode mode() default AccessMode.SHARED;
 
-		//      AccessPriority priority() default AccessPriority.PRIO_LOWEST; // access prio for writes is defined when issuing the demands
+		/**
+		 * Defines whether fulfillment of the access mode requirement in
+		 * {@link #mode() } is required or not. If this is false, patterns can
+		 * report as matches to a request even when the required access mode has
+		 * not been granted. Otherwise, the reporting of a match is delayed
+		 * until the access mode is evnetually granted.
+		 */
 		boolean required() default true;
 	}
 
 	public enum CreateMode {
+
 		/**
-		 * Indicates that the resource must exist and be active for pattern-demands to be completed. During pattern creation
-		 * fields with this CreateMode are created.
+		 * Indicates that the resource must exist and be active for
+		 * pattern-demands to be completed. During pattern creation fields with
+		 * this CreateMode are created.
 		 */
 		MUST_EXIST,
 		/**
-		 * Pattern demands can be completed even if this resource does not exist or is not active. In creation
-		 * mode, this field is not created.
+		 * Pattern demands can be completed even if this resource does not exist
+		 * or is not active. In creation mode, this field is not created.
 		 */
 		OPTIONAL
 	}
 
 	/**
-	 * Constructor invoked by the framework
+	 * Defines that the annotated resource should equal the given value. If a
+	 * resource pattern with this annotation is used in a pattern demand and the
+	 * annotated resource exists, the pattern is only returned as a hit if the
+	 * annotated resource equals {@link #value()}. Only active resources are
+	 * checked for equality (so be careful when combining this annotation with
+	 * {@link CreateMode#OPTIONAL}). The annotation has no effect when a resource
+	 * pattern is created or activated.
+	 * <br>
+	 * The annotation is intended to be used only on resources of type {@link IntegerResource}
+	 * or {@link BooleanResource}.
+	 */
+	@Target(ElementType.FIELD)
+	@Retention(RetentionPolicy.RUNTIME)
+	public @interface Equals {
+
+		/**
+		 * The mapping between integers and boolean is as follows: zero is
+		 * interpreted as "false", ever non-zero value is interpreted as "true".
+		 */
+		int value();
+	}
+
+	/**
+	 * Constructor invoked by the framework. All patterns must implement this as
+	 * a public constructor.
+	 *
 	 * @param match primary demand match found.
 	 */
 	@SuppressWarnings("unchecked")

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,6 +25,7 @@ import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.Access;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.CreateMode;
+import org.ogema.core.resourcemanager.pattern.ResourcePattern.Equals;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.Existence;
 
 /**
@@ -72,18 +72,16 @@ public class ResourceFieldInfo {
 			m_createMode = CreateMode.MUST_EXIST;
 		}
 
-		//		final Equals equalsRequired = field.getAnnotation(Equals.class);
-		//		if (equalsRequired != null) {
-		//			m_valueRequired = true;
-		//			m_requiredValue = equalsRequired.value();
-		//		}
-		//		else {
-		//			m_valueRequired = false;
-		//			m_requiredValue = 0;
-		//		}
-		// XX remnants of the @Equals annotation
-		m_valueRequired = false;
-		m_requiredValue = 0;
+		// No values required at the current state of the API.
+		final Equals equals = field.getAnnotation(Equals.class);
+		if (equals != null) {
+			m_valueRequired = true;
+			m_requiredValue = equals.value();
+		}
+		else {
+			m_valueRequired = false;
+			m_requiredValue = 0;
+		}
 	}
 
 	public Field getField() {
@@ -104,6 +102,10 @@ public class ResourceFieldInfo {
 
 	public boolean isEqualityRequired() {
 		return m_valueRequired;
+	}
+
+	public int getEqualsValue() {
+		return m_requiredValue;
 	}
 
 	public boolean valueSatisfied(Resource resource) {
@@ -144,5 +146,4 @@ public class ResourceFieldInfo {
 	public CreateMode getCreateMode() {
 		return m_createMode;
 	}
-
 }

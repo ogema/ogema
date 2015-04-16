@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -46,7 +45,8 @@ public interface ResourceList<T extends Resource> extends Resource {
 
 	/**
 	 * Get all elements of the list. The sequence of the elements is determined
-	 * by the sequence of adding the elements. This is the same as calling
+	 * by the sequence of adding the elements. The set of elements returned is the same as 
+	 * the one obtained from calling
 	 * {@link org.ogema.core.model.Resource#getSubResources}({@link getElementType()},
 	 * false)
 	 *
@@ -78,6 +78,16 @@ public interface ResourceList<T extends Resource> extends Resource {
 	 * @return reference to new element child resource
 	 */
 	T add();
+
+	/**
+	 * Add direct child resource as element of the list.
+	 *
+	 * @param type type of the new element.
+	 * @param <S> concrete sub type of the new element.
+	 * 
+	 * @return reference to new element child resource
+	 */
+	<S extends T> S add(Class<S> type);
 
 	/**
 	 * Remove element from the list. If the element is a reference, only the

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +19,7 @@ import org.ogema.core.model.ResourceList;
 import org.ogema.model.devices.connectiondevices.ElectricityConnectionBox;
 import org.ogema.model.devices.connectiondevices.HeatConnectionBox;
 import org.ogema.model.prototypes.PhysicalElement;
+import org.ogema.model.sensors.OccupancySensor;
 
 /**
  * Definition of a single building. Buildings contain {@link BuildingPropertyUnit}s
@@ -42,4 +42,12 @@ public interface Building extends PhysicalElement {
 	 * List of the building property units associated to this building.
 	 */
 	ResourceList<BuildingPropertyUnit> buildingPropertyUnits();
+
+	/**
+	 * Occupancy sensor for the entire building. If this does not exist
+	 * the information may still be available via the occupancy sensors
+	 * of the building property units contained or the sensors of the 
+	 * rooms contained in them.
+	 */
+	OccupancySensor occupancySensor();
 }

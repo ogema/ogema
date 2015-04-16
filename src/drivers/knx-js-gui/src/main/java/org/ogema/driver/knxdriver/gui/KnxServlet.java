@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,12 +16,6 @@
 package org.ogema.driver.knxdriver.gui;
 
 import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.security.AccessControlException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,6 +30,7 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.tools.SerializationManager;
 import org.ogema.driver.knxdriver.ConnectionInfo;
 import org.ogema.driver.knxdriver.KNXdriverI;
+import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.devices.buildingtechnology.ElectricDimmer;
 import org.ogema.model.devices.connectiondevices.ThermalValve;
 import org.ogema.model.sensors.ElectricPowerSensor;
@@ -46,18 +40,10 @@ import org.ogema.model.sensors.OccupancySensor;
 import org.ogema.model.sensors.TemperatureSensor;
 import org.ogema.model.sensors.TouchSensor;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
-import org.ogema.model.actors.OnOffSwitch;
-import org.ogema.tools.impl.FastJsonGenerator;
-
 public class KnxServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
 	private final KNXdriverI knxDriver;
-
-	private final Gson gson = new GsonBuilder().create();
 
 	private final List<String> deviceType = Arrays.asList(new String[] { LightSensor.class.getSimpleName(),
 			TemperatureSensor.class.getSimpleName(), MotionSensor.class.getSimpleName(),
@@ -67,9 +53,11 @@ public class KnxServlet extends HttpServlet {
 	// FIXME: still missing these: "Setpoint", "LightSetpoint" -- BrightnessResource (Float) ansonsten allg. SimpleResource
 			});
 
+	private SerializationManager serializationManager;
+
 	public KnxServlet(ApplicationManager appMan, KNXdriverI knxDriver) {
 		this.knxDriver = knxDriver;
-
+		serializationManager = appMan.getSerializationManager();
 		Collections.sort(deviceType);
 	}
 
@@ -80,32 +68,9 @@ public class KnxServlet extends HttpServlet {
 		dao.setAvailableTypes(deviceType);
 		dao.setConnectionInfos(knxDriver.getConnectionSorted());
 
-		int status = HttpURLConnection.HTTP_OK;
-		try {
-			// FIXME: remove this when ogema-ref-impl:util implemented toJson also for non OGEMA resources
-			AccessController.doPrivileged(new PrivilegedExceptionAction<Void>() {
-				@Override
-				public Void run() throws IOException {
-					resp.getWriter().write(gson.toJson(dao));
-					return null;
-				}
-			});
-
-		} catch (AccessControlException e) {
-			e.printStackTrace();
-		} catch (PrivilegedActionException e) {
-			if (e.getException() instanceof IOException) {
-				// let the http service care about this ...
-				throw (IOException) e.getException();
-			}
-			else {
-				// TODO logging...
-				e.printStackTrace();
-				status = HttpURLConnection.HTTP_INTERNAL_ERROR;
-			}
-		}
-
-		resp.setStatus(status);
+		String json = serializationManager.toJson(dao);
+		resp.getWriter().write(json);
+		resp.setStatus(HttpServletResponse.SC_OK);
 	}
 
 	@Override
@@ -114,7 +79,7 @@ public class KnxServlet extends HttpServlet {
 			knxDriver.searchInterface();
 			List<String> availableInterfaces = new ArrayList<String>(knxDriver.getInterfaces().keySet());
 			resp.setContentType("application/json");
-			resp.getWriter().write(gson.toJson(availableInterfaces));
+			resp.getWriter().write(serializationManager.toJson(availableInterfaces));
 			resp.setStatus(200);
 		}
 		else if (req.getParameter("add") != null) {

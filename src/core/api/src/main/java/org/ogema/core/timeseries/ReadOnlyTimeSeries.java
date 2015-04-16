@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -19,6 +18,7 @@ package org.ogema.core.timeseries;
 import java.util.List;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.core.model.ValueResource;
 
 /**
  * Function over time that is read-only for OGEMA applications. The function is defined by a set of support points
@@ -81,10 +81,14 @@ public interface ReadOnlyTimeSeries {
 	InterpolationMode getInterpolationMode();
 
 	/**
-	 * Get time of last write operation into time series
+	 * Get time of last write operation into time series.
 	 * 
-	 * 
-	 * @return ms since epoch
+	 * @return time of the last write operation into the time series. TimeSeries
+	 * implementations that cannot sensibly support this, as well as instances of
+	 * implementations that support it but have never been written to (virtual 
+	 * schedules), return null.
+	 * @deprecated Only schedules can sensibly support this. For getting the time
+	 * of the last write entry into a schedule, use {@link ValueResource#getLastUpdateTime() }, instead.
 	 */
 	Long getTimeOfLatestEntry();
 

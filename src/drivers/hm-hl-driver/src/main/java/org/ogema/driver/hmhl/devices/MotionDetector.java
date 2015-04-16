@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -70,7 +69,7 @@ public class MotionDetector extends HM_hlDevice {
 		// byte msgflag = array[array.length - 2];
 		byte[] msg = ArrayUtils.removeAll(array, array.length - 2, array.length - 1);
 
-		//		long state = Converter.toLong(msg[2]); // Is also brightness
+		// long state = Converter.toLong(msg[2]); // Is also brightness
 
 		if ((msgtype == 0x10 || msgtype == 0x02) && msg[0] == 0x06 && msg[1] == 0x01) {
 			long err = Converter.toLong(msg[3]);
@@ -170,10 +169,10 @@ public class MotionDetector extends HM_hlDevice {
 		SensorDevice motionDetector = resourceManager.createResource(hm_hlConfig.resourceName, SensorDevice.class);
 
 		motionDetector.sensors().create();
-		motionDetector.sensors().activate(false);
+		motionDetector.sensors().activate(true);
 
 		MotionSensor motionSensor = motionDetector.sensors().addDecorator("motion", MotionSensor.class);
-		//TODO: can this be replaced with LightSensor (brightness in Lux)?
+		// TODO: can this be replaced with LightSensor (brightness in Lux)?
 		GenericFloatSensor brightnessSensor = motionDetector.sensors().addDecorator("brightness",
 				GenericFloatSensor.class);
 
@@ -184,20 +183,19 @@ public class MotionDetector extends HM_hlDevice {
 
 		brightness = (FloatResource) brightnessSensor.reading().create();
 		brightness.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
-		brightness.setValue(0);
+		// brightness.setValue(0);
 		brightness.activate(true);
 		brightnessSensor.activate(true);
 
 		ElectricityStorage battery = motionDetector.electricityStorage().create();
-		battery.type().setValue(1); //magic number: generic battery
-		battery.type().activate(false);
-		battery.activate(false);
+		battery.type().setValue(1); // magic number: generic battery
+		battery.activate(true);
 		StateOfChargeSensor eSens = battery.chargeSensor().create();
 		batteryStatus = eSens.reading().create();
 		batteryStatus.activate(true);
 		batteryStatus.setValue(95);
 		batteryStatus.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
-		eSens.activate(false);
+		eSens.activate(true);
 	}
 
 	@Override

@@ -1,0 +1,406 @@
+body#appsBody {
+	height: 100.3%;
+	color: #56555A;
+	font-family: arial, sans-serif;
+	background: #596778;
+	margin-bottom: 0px;
+	margin-top: 0px;
+	padding-bottom: 0px;
+}
+
+div#header {
+	-moz-box-shadow: 0 0 5px #000;
+	-webkit-box-shadow: 0 0 5px #000;
+	box-shadow: 0 0 5px #000;
+	background: white url(images/ogema.png);
+	background-repeat: no-repeat;
+	background-position: 90% 50%;
+	background-size: 360px 150px;
+	min-height: 200px;
+	height: 20%;
+	border-top: none;
+	border-top-left-radius: 0px;
+	border-top-right-radius: 0px;
+	border-bottom-left-radius: 10px;
+	border-bottom-right-radius: 10px;
+	margin-bottom: 5px;
+	width: 70%;
+	min-width: 600px;
+	margin: auto;
+	padding: 0 30px
+}
+
+div#wrapper {
+	-moz-box-shadow: 0 0 5px #000;
+	-webkit-box-shadow: 0 0 5px #000;
+	box-shadow: 0 0 5px #000;
+	background: #FFFFFF;
+	width: 70%;
+	min-width: 600px;
+	min-height: 70%;
+	height: auto !important;
+	padding: 30px;
+	padding-top: 20px;
+	position: relative;
+	margin: auto;
+	margin-top: 5px;
+	margin-bottom: 0px;
+	border-radius: 10px;
+}
+
+div#outerTableWrap {
+	display: block;
+	background: none repeat scroll 0 0 #FFFFFF;
+	border: 1px solid #808080;
+	border-radius: 5px 5px 5px 5px;
+	margin: 10px 0 0;
+	padding: 1px 0 1px 10px;
+}
+
+div#tableWrap {
+	max-height: 400px;
+	overflow: auto;
+	margin: auto;
+}
+
+div#footer {
+	-moz-box-shadow: 0 0 5px #000;
+	-webkit-box-shadow: 0 0 5px #000;
+	box-shadow: 0 0 5px #000;
+	background: #FFFFFF;
+	width: 70%;
+	min-width: 600px;
+	height: 30px;
+	padding-left: 30px;
+	padding-right: 30px;
+	position: relative;
+	margin: auto;
+	margin-top: 5px;
+	margin-bottom: 0px;
+	border-top-right-radius: 10px;
+	border-top-left-radius: 10px;
+	padding-top: 10px;
+}
+
+div.footerElement {
+	text-align: center;
+	font-weight: bold;
+	width: 33.33%;
+	float: left;
+	display: block;
+	padding: 0px;
+	margin: 0px;
+}
+
+/* TABLE */
+table#tab1 {
+	background: #FFFFFF;
+	border-collapse: collapse;
+	font-family: "Lucida Sans Unicode", "Lucida Grande", Sans-Serif;
+	font-size: 12px;
+	text-align: left;
+	width: 100%;
+	border-spacing: 0;
+	padding-left: 0px;
+	margin: auto;
+	/*font-family: "Lucida Sans Unicode","Lucida Grande",Sans-Serif;*/
+}
+/* table row */
+tr {
+	border-bottom: 1px solid #7D7D7D;
+}
+/* table data and head elements */
+th,td {
+	background: #FFFFFF;
+	color: #56555A;
+	font-size: 1em;
+	font-weight: normal;
+	padding: 5px 0 5px 5px;
+}
+
+/* th/td where the radio button is put */
+.select {
+	padding-left: 25px !important;
+}
+
+th {
+	font-weight: bold;
+	color: #124791;
+	border-bottom: 2px solid #124791;
+}
+
+td {
+	border-bottom: 1px solid grey;
+}
+
+tr:last-child,tr:last-child>td {
+	border: none;
+}
+
+tr:hover td {
+	background-color: #124791;
+	cursor: pointer;
+	color: white;
+}
+
+.highlightHeading {
+	padding-bottom: 10px;
+	border-bottom: 2px solid #124791;
+	border-left: 15px solid #124791;
+	padding-left: 10px;
+	margin-bottom: 10px;
+	padding-top: 8px;
+	margin-top: 20px;
+	font-weight: normal;
+	color: #124791;
+	font-size: 1em;
+}
+
+label:hover {
+	cursor: pointer;
+}
+
+.ui-dialog {
+	right: 0px;
+	outline: 0 none;
+	padding: 0px 0px 0px !important;
+	position: absolute;
+	top: 0px;
+	border: 1px solid black !important;
+	border-radius: 10px !important;
+	overflow: auto;
+}
+
+.ui-dialog .ui-dialog-content {
+	background: none repeat scroll 0 0 transparent;
+	border: 0 none;
+	overflow: auto;
+	position: relative;
+	padding: 10 !important;
+	font-size: 0.7em;
+}
+
+.ui-dialog .ui-dialog-titlebar {
+	padding: 0.1em .5em;
+	position: relative;
+	font-size: 0.8em;
+	font-weight: normal;
+}
+
+.ui-dialog .ui-dialog-titlebar .ui-widget-header .ui-corner-all .ui-helper-clearfix
+	{
+	border-radius: 0px !important;
+}
+
+.no-close .ui-dialog-titlebar-close {
+	display: none
+}
+
+.ui-widget-header {
+	border: none !important;
+}
+
+html body#appsBody div.ui-dialog div.ui-dialog-titlebar {
+	border-bottom-left-radius: 0px !important;
+	border-bottom-right-radius: 0px !important;
+}
+/* ----- Bearbeitet die Buttons ---- */
+.ui-dialog-buttonpane .ui-dialog-buttonset {
+	padding-left: 40px;
+	padding-bottom: 0px;
+	margin-bottom: 0px;
+	margin-top: 0px;
+}
+
+.ui-dialog-buttonpane .ui-dialog-buttonset .ui-button.installButton {
+	font-size: 0.8em;
+}
+
+.ui-dialog-buttonpane .ui-dialog-buttonset .ui-button.cancelButton {
+	color: black;
+	background: #E6E6E6;
+	font-size: 0.8em;
+}
+
+.ui-dialog-buttonpane .ui-dialog-buttonset .ui-button.cancelButton .ui-icon
+	{
+	background-image:
+		url('jquery-ui-1.10.4.custom/css/smoothness/images/ui-icons_888888_256x240.png');
+}
+
+.ui-dialog-buttonpane .ui-dialog-buttonset .ui-button.installButton .ui-icon
+	{
+	background-image:
+		url('jquery-ui-1.10.4.custom/css/smoothness/images/ui-icons_ffffff_256x240.png');
+}
+
+/* DIALOG */
+/* Wraps over each permission (.additional is the wrap over the additional permission) */
+div.wrapsOnePerm,div.additional {
+	margin-top: 0px;
+	border-bottom: 1px solid grey;
+	padding: 5px;
+}
+/* In permission-div the headline (=name of permission) */
+div.headLine {
+	border-style: none;
+	margin: 5px 5px 0;
+	padding: 5px;
+	background: #124791;
+	border-radius: 5px 5px 0 0;
+	color: white;
+}
+
+div.allPermHeadLine {
+	border-style: none;
+	margin: 5px 5px 20px;
+	padding: 5px;
+	background: #124791;
+	border-radius: 5px;
+	color: white;
+}
+/* In the permission-Div the body (=content) */
+div.bodyOfPerm {
+	margin: 0 5px 5px;
+	padding: 5px 5px 5px 10px;
+	border: 1px solid grey;
+	border-radius: 0 0 5px 5px;
+	color: black;
+}
+
+/* For the Add Permission Button */
+.ui-dialog .ui-dialog-content form button {
+	margin-top: 30px;
+	margin-bottom: 10px;
+}
+
+div.bodyOfPerm input[type=text] {
+	width: 450px !important;
+	border: none;
+	border-bottom: 1px dotted black;
+	height: 22px;
+	width: 250px;
+	padding: 2px;
+	margin-bottom: 10px !important;
+	background: none;
+}
+
+div.headLine input[type=text] {
+	margin: 5px;
+	border: none;
+	background: none;
+	border-bottom: 1px dotted white;
+	width: 250px;
+	height: 22px;
+	color: white;
+}
+
+div.allPermHeadLine input[type=text] {
+	margin: 5px;
+	border: none;
+	background: none;
+	border-bottom: 1px dotted white;
+	width: 250px;
+	height: 22px;
+	color: white;
+}
+
+/* Checkboxes in PermissionBody for actions*/
+div.bodyOfPerm input.m {
+	padding: 5px;
+	margin-top: 5px;
+	margin-bottom: 10px;
+}
+
+/* When label clicked, checkbox gets checked, so label gets thick */
+:checked+.lb {
+	font-weight: bold;
+}
+
+/* Vorwort */
+div#preface {
+	margin: auto;
+	text-align: justify;
+	margin-top: 10px;
+	margin-bottom: 10px;
+	font-size: 0.8em;
+}
+
+p.head {
+	font-size: 0.9em;
+	padding-left: 10px;
+	border-left: 10px solid #124791;
+	padding-top: 0px;
+	padding-bottom: 0px;
+	margin-top: 20px;
+	margin-bottom: 2px;
+}
+
+.highlight {
+	font-weight: bold;
+}
+
+.highlightInputText {
+	background: #89A5CC;
+}
+
+div.conditions {
+	margin-bottom: 10px;
+}
+
+.checkResActions {
+	background-color: #2E2E2E !important;
+	color: white;
+	padding: 10px;
+	margin-bottom: 10px;
+	border-radius: 5px;
+	display: inline;
+	float: right;
+	cursor: pointer;
+	border: 1px solid grey;
+}
+
+.checkResActions:hover {
+	background-color: #383838 !important;
+}
+
+.checkResActions:active {
+	background-color: white !important;
+	color: black;
+}
+
+.wrapActions {
+	min-height: 40px;
+}
+
+.wrapActions input,label {
+	margin-top: 10px;
+}
+
+div.justShowActions {
+	background:
+		url("jquery-ui-1.10.4.custom/css/black-tie/images/ui-bg_glass_40_111111_1x400.png")
+		repeat-x scroll 50% 50% !important; /* #e7f4f9 */
+	color: white;
+	padding: 5px;
+	-webkit-border-radius: 5px;
+	-moz-border-radius: 5px;
+	border-radius: 5px;
+	width: 370px;
+}
+
+div.justShowActions:before {
+	content: ' ';
+	height: 0;
+	position: absolute;
+	width: 0;
+	left: 10px;
+	top: -20px;
+	border: 10px solid transparent;
+	border-bottom-color: #2E2E2E; /* #e7f4f9 */
+}
+
+#toMainPage {
+	font-size: 0.8em !important;
+	border: none !important;
+}

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -34,7 +33,7 @@ import org.slf4j.Logger;
 public class MessageHandler implements Runnable {
 	private volatile boolean running;
 	private LocalDevice localDevice;
-	private Thread timerThread;
+	// private Thread timerThread;
 	protected final Object messageHandlerLock = new Object();
 	public long MIN_WAITING_TIME;
 	private int cyclicSleepPeriod;
@@ -53,21 +52,22 @@ public class MessageHandler implements Runnable {
 		this.localDevice = device;
 		setCyclicSleepPeriod(cyclicSleepPeriod);
 
-		timerThread = new Thread(new Runnable() {
-			public void run() {
-				while (true) {
-					try {
-						Thread.sleep(MIN_WAITING_TIME);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-					synchronized (messageHandlerLock) {
-						messageHandlerLock.notify();
-					}
-				}
-			}
-		});
-		timerThread.start();
+		// timerThread = new Thread(new Runnable() {
+		// public void run() {
+		// while (true) {
+		// try {
+		// Thread.sleep(MIN_WAITING_TIME);
+		// } catch (Exception e) {
+		// e.printStackTrace();
+		// }
+		// synchronized (messageHandlerLock) {
+		// messageHandlerLock.notify();
+		// }
+		// }
+		// }
+		// });
+		// timerThread.setName("xbee-driver-timerThread");
+		// timerThread.start();
 	}
 
 	/**
@@ -84,7 +84,7 @@ public class MessageHandler implements Runnable {
 		while (running) {
 			synchronized (messageHandlerLock) {
 				try {
-					messageHandlerLock.wait();
+					messageHandlerLock.wait(MIN_WAITING_TIME);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}

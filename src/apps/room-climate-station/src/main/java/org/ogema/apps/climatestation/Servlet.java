@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -35,8 +34,6 @@ public class Servlet extends HttpServlet implements Application {
 	 */
 	private static final long serialVersionUID = 269613440207288592L;
 
-	private OutputStream bout;
-
 	private WebAccessManager wam;
 
 	private Rooms rooms;
@@ -60,11 +57,16 @@ public class Servlet extends HttpServlet implements Application {
 			IOException {
 		String pi = request.getPathInfo();
 		response.setContentType("text/script");
-		bout = response.getOutputStream();
+		OutputStream bout = response.getOutputStream();
 
 		switch (pi) {
 		case "/getData":
-			bout.write(rooms.getRoomData(request.getParameter("roomId")).toString().getBytes());
+			String result = rooms.getRoomData(request.getParameter("roomId")).toString();
+			bout.write(result.getBytes());
+			break;
+		case "/matchType2Sensors":
+			result = rooms.getMatchingSensors(request.getParameter("type")).toString();
+			bout.write(result.getBytes());
 			break;
 		}
 	}
@@ -73,11 +75,16 @@ public class Servlet extends HttpServlet implements Application {
 			IOException {
 		String pi = request.getPathInfo();
 		response.setContentType("text/script");
-
+		OutputStream bout = response.getOutputStream();
 		switch (pi) {
 		case "/setResource4Sensor":
-			rooms.setResource4Sensor(request.getParameter("roomId"), request.getParameter("resourcePath"), request
-					.getParameter("sensor"));
+			String result = rooms.setResource4Sensor(request.getParameter("roomId"), request
+					.getParameter("resourcePath"), request.getParameter("sensor"));
+			bout.write(result.getBytes());
+			break;
+		case "/resetRoomSensors":
+			result = rooms.resetRoomSensors(request.getParameter("roomId"));
+			bout.write(result.getBytes());
 			break;
 		}
 	}

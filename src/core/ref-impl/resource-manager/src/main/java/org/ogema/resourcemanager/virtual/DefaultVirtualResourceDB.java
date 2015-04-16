@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,6 +20,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.SimpleResource;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
@@ -174,7 +174,7 @@ public class DefaultVirtualResourceDB implements VirtualResourceDB {
     }
     
     protected DefaultVirtualTreeElement getElement(String name, TreeElement parent, Class<? extends Resource> type, boolean decorator) {
-        String path = parent.getPath() + "." + name;
+        String path = parent.getPath() + "/" + name;
         DefaultVirtualTreeElement vEl = elements.get(path);
         if (vEl == null){
             MemoryTreeElement el = new MemoryTreeElement(name, type, parent, decorator);
@@ -183,5 +183,10 @@ public class DefaultVirtualResourceDB implements VirtualResourceDB {
         }
         return vEl;
     }
+
+	@Override
+	public Collection<TreeElement> getFilteredNodes(Map<String, String> dict) {
+		return null;
+	}
 
 }

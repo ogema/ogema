@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +15,8 @@
  */
 package org.ogema.model.functions;
 
-import org.ogema.core.model.SimpleResource;
+import org.ogema.core.channelmanager.measurements.Quality;
+import org.ogema.core.model.array.ArrayResource;
 import org.ogema.core.model.array.BooleanArrayResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.timeseries.InterpolationMode;
@@ -32,21 +32,20 @@ import org.ogema.model.prototypes.Data;
  * of the function must be defined in the data model using it.
  */
 public interface Function extends Data {
-
 	/**
 	 * Locations x of the support points (x,f,q). Models inheriting from the
 	 * base model must override this data type with a suitable array resource.
 	 */
-	SimpleResource points();
+	ArrayResource points();
 
 	/**
 	 * Values f of the support points (x,f,q). Models inheriting from the
 	 * base model must override this data type with a suitable array resource.
 	 */
-	SimpleResource values();
+	ArrayResource values();
 
 	/**
-	 * Qualities q of the support points (x,f,q). True is the equivalent of 
+	 * {@link Quality Qualities} q of the support points (x,f,q). True is the equivalent of 
 	 * Quality.GOOD, false is the equivalent of Quality.BAD. If no qualities
 	 * are given, all points are assumed to have GOOD quality.
 	 */

@@ -157,6 +157,10 @@ body,html {
 	width: 100%;
 }
 
+.heightParent {
+	height: 100%;
+}
+
 .center {
 	width: 90%;
 	margin: auto;

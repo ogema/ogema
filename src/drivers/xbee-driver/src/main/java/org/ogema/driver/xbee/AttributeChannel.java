@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -95,9 +94,9 @@ public final class AttributeChannel extends Channel {
 		if (multipleAttributes) {
 			// Use the first attribute with the ids of the other attributes as
 			// payload
-			connection.localDevice.sendRequestMessage(clusterAttributes.get(0).getMessage((byte) 0x00,
-					messagePayloadBuffer.array()), Constants.READ_ATTRIBUTES_RESPONSE, channelLock);
 			synchronized (channelLock) {
+				connection.localDevice.sendRequestMessage(clusterAttributes.get(0).getMessage((byte) 0x00,
+						messagePayloadBuffer.array()), Constants.READ_ATTRIBUTES_RESPONSE, channelLock);
 				try {
 					channelLock.wait();
 				} catch (InterruptedException e) {
@@ -127,11 +126,12 @@ public final class AttributeChannel extends Channel {
 
 		}
 		else {
-			connection.localDevice.sendRequestMessage(clusterAttribute.getMessage((byte) 0x00, emptyMessagePayload),
-					Constants.READ_ATTRIBUTES_RESPONSE, channelLock);
 			synchronized (channelLock) {
+				connection.localDevice.sendRequestMessage(
+						clusterAttribute.getMessage((byte) 0x00, emptyMessagePayload),
+						Constants.READ_ATTRIBUTES_RESPONSE, channelLock);
 				try {
-					channelLock.wait(60000);
+					channelLock.wait(1111);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -164,9 +164,9 @@ public final class AttributeChannel extends Channel {
 			byte[] messagePayload = value.getByteArrayValue();
 			if (messagePayload == null)
 				messagePayload = emptyMessagePayload;
-			connection.localDevice.sendRequestMessage(clusterAttribute.getMessage((byte) 0x02, messagePayload),
-					Constants.WRITE_ATTRIBUTES_RESPONSE, channelLock);
 			synchronized (channelLock) {
+				connection.localDevice.sendRequestMessage(clusterAttribute.getMessage((byte) 0x02, messagePayload),
+						Constants.WRITE_ATTRIBUTES_RESPONSE, channelLock);
 				try {
 					channelLock.wait();
 				} catch (InterruptedException e) {

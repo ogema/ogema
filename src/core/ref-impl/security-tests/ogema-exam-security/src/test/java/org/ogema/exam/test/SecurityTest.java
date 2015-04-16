@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -46,6 +45,7 @@ import org.ops4j.pax.exam.junit.PaxExam;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerMethod;
 import org.osgi.framework.BundleContext;
+import org.osgi.service.condpermadmin.ConditionalPermissionAdmin;
 
 /**
  * Integration tests for OGEMA resource security.
@@ -64,6 +64,9 @@ public class SecurityTest extends OsgiAppTestBase implements Application {
 	BundleContext probeContext;
 	ApplicationManager securityTestApp;
 	ApplicationManager unrestrictedApp;
+
+	@Inject
+	ConditionalPermissionAdmin cpa;
 
 	@Before
 	public void registerApp() throws InterruptedException {
@@ -92,6 +95,9 @@ public class SecurityTest extends OsgiAppTestBase implements Application {
 	public void securityIsEnabled() {
 		assertEquals("osgi", ctx.getProperty("org.osgi.framework.security"));
 		assertNotNull("no security!", System.getSecurityManager());
+		assertNotNull("no conditional permission admin", cpa);
+		assertFalse("no permissions in system", cpa.newConditionalPermissionUpdate().getConditionalPermissionInfos()
+				.isEmpty());
 	}
 
 	@Test(expected = SecurityException.class)

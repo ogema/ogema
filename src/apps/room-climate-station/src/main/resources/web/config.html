@@ -1,0 +1,141 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Rooms - Configuration</title>
+<script src="lib/jquery-1.11.1.min.js"></script>
+<script src="lib/jquery-ui-1.11.1.custom/jquery-ui.min.js"></script>
+<script src="lib/jsTree/jstree.min.js"></script>
+<script src="config.js"></script>
+<link rel="stylesheet" type="text/css" href="config.css">
+<link rel="stylesheet" href="lib/jsTree/themes/default/style.min.css">
+<link rel='stylesheet' href='lib/jquery-ui-1.11.1.custom/jquery-ui.min.css'>
+<script>
+$('*').contextmenu( function() {
+    return false;
+});
+</script>
+</head>
+
+<body scroll="">
+	<div id="top">
+		<div class="rowDivTop">
+			<div class="cellDivTop"></div>
+			<div class="cellDivTop">
+				<h1 align="center">Raumklimastation - Raumkonfiguration</h1>
+			</div>
+			<div class="cellDivTop">
+				<img src="ogema.png" alt="ogema-logo" align="right" /></img>
+			</div>
+		</div>
+	</div>
+
+	<div id="middle">
+		<div class="rowDiv">
+			<div class="cellDiv">
+				<div class="rowDiv">
+					<div class="cellDivLeft">
+						<a id="KITCHEN" class="button buttonGreen" onclick='showResources("KITCHEN")'>
+							<img src="kitchen_str.png" alt="KITCHEN" /></img>
+						</a>
+					</div>
+				</div>
+				<div class="rowDiv">
+					<div class="cellDivLeft">
+						<a id="DINING" class="button buttonGreen" onclick='showResources("DINING")'>
+							<img src="dining_str.png" alt="DINING ROOM" /></img>
+						</a>
+					</div>
+				</div>
+				<div class="rowDiv">
+					<div class="cellDivLeft">
+						<a id="LIVING" class="button buttonGreen" onclick='showResources("LIVING")'>
+							<img src="living_str.png" alt="LIVING ROOM" /></img>
+						</a>
+					</div>
+				</div>
+				<div class="rowDiv">
+					<div class="cellDivLeft">
+						<a id="BEDROOM" class="button buttonGreen" onclick='showResources("BEDROOM")'>
+							<img src="bed_str.png" alt="BEDROOM" /></img>
+						</a>
+					</div>
+				</div>
+				<div class="rowDiv">
+					<div class="cellDivLeft">
+						<a id="BATH" class="button buttonGreen" onclick='showResources("BATH")'>
+							<img src="bath_str.png" alt="BATHROOM" /></img>
+						</a>
+					</div>
+				</div>
+				<div class="rowDiv">
+					<div class="cellDivLeft">
+						<a id="OUTSIDE" class="button buttonGreen" onclick='showResources("OUTSIDE")'>
+							<img src="outside_str.png" alt="OUTSIDE" /></img>
+						</a>
+					</div>
+				</div>
+
+				<div class="rowDiv">
+					<div class="cellDivLeft"></div>
+				</div>
+				<div class="rowDiv">
+					<div class="cellDivLeft">
+						<a href="index.html" id="index">Zurück zur Übersicht</a>
+					</div>
+				</div>
+			</div>
+			<div class="cellDiv">
+				<div id='resources'>
+					<p class="head">
+						<strong>Ressourcen</strong> <br />
+					</p>
+					<div class='part'>
+						<div id='jsTree_Resources' style='background-color: rgba(179, 179, 179, 0.5);'></div>
+					</div>
+					<div id='dialog_Resources' style='display: none; background-color: rgba(179, 179, 179, 0.5);'></div>
+				</div>
+			</div>
+			<div class="cellDiv">
+				<div class="rowDiv">
+					<div class="cellDivRight"></div>
+				</div>
+				<div class="rowDiv">
+					<div class="cellDivRight"></div>
+				</div>
+				<div class="rowDiv">
+					<div class="cellDivRight"></div>
+				</div>
+				<div class="rowDiv">
+					<div class="cellDivRight"></div>
+				</div>
+				<div class="rowDiv">
+					<div class="cellDivRight">
+						<img src="iis.png" alt="iis-logo" align="right" style="margin-right: 15px;" /></img>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	</div>
+	</div>
+
+</body>
+
+</html>

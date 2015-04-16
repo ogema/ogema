@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -40,28 +39,42 @@ public class RadCreator<T extends Resource, P extends ResourcePattern<T>> {
 	final ApplicationManager m_appMan;
 	final OgemaLogger m_logger;
 	final ResourceManagement m_resMan;
-	final String m_name;
 	final RadFactory<T, P> m_factory;
 	P m_result;
 
-	public RadCreator(ApplicationManager appMan, Class<P> type, String name) {
+	public RadCreator(ApplicationManager appMan, Class<P> type) {
 		m_appMan = appMan;
 		m_logger = appMan.getLogger();
 		m_resMan = appMan.getResourceManagement();
-		m_name = name;
 		m_factory = new RadFactory<>(type, AccessPriority.PRIO_LOWEST);
 	}
 
-	public void create() {
+	/**
+	 * Creates the pattern by first creating a top-level resource with a given name which serves as the root resource and then subsequently adding the other fields in the pattern.
+	 */
+	public void create(String name) {
 		final Class<T> model = m_factory.getDemandedModel();
 		final T seed;
 		try {
-			seed = m_resMan.createResource(m_name, model);
+			seed = m_resMan.createResource(name, model);
 		} catch (Exception e) {
 			m_logger.error("Error creating ResourceAccessDeclaration: Could not create demanded model with name "
-					+ m_name + " and type " + model.getCanonicalName() + "\n\t Reason: " + e.getMessage());
+					+ name + " and type " + model.getCanonicalName() + "\n\t Reason: " + e.getMessage());
 			return;
 		}
+		createSubresources(seed);
+	}
+
+	/**
+	 * Creates the pattern with a given resource object being the root resource.
+	 */
+	public void create(T seed) {
+		if (!seed.exists())
+			seed.create();
+		createSubresources(seed);
+	}
+
+	private void createSubresources(T seed) {
 		m_result = m_factory.create(seed);
 		assert m_result != null;
 		for (ResourceFieldInfo info : m_factory.getResourceFieldInfos()) {

@@ -1,0 +1,8 @@
+(org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.apps.sensorwarning.model" "export")
+
+(org.ogema.accesscontrol.ResourcePermission "type=org.ogema.apps.sensorwarning.model.SensorWarningConfiguration" "read")
+(org.ogema.accesscontrol.ResourcePermission "type=org.ogema.model.sensors.GenericFloatSensor" "read")
+(org.ogema.accesscontrol.ResourcePermission "type=org.ogema.model.actors.OnOffSwitch" "write")

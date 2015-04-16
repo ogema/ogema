@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -62,12 +61,15 @@ public class Constants {
 		deviceNames.put("002B", "HM-WS550Tech");
 		deviceNames.put("0040", "HM-WDS100-C6-O");
 		deviceNames.put("0050", "HM-SEC-SFA-SM");
+		deviceNames.put("0000", "HM-LC-Sw1-Pl-DN-R2");
 		deviceNames.put("0033", "KS550LC");
 		deviceNames.put("002C", "KS550TECH");
 		deviceNames.put("0038", "HM-RC-19-B");
 		deviceNames.put("0088", "Schueco_263-132");
 		deviceNames.put("004E", "HM-LC-DDC1-PCB");
+		deviceNames.put("00DE", "HM-ES-TX-WM");
 		deviceNames.put("007D", "ROTO_ZEL-STG-RM-WT-2");
+		deviceNames.put("00D9", "HM-MOD-Em-8");
 		deviceNames.put("005D", "HM-Sen-MDIR-O");
 		deviceNames.put("0046", "HM-SWI-3-FM");
 		deviceNames.put("0019", "HM-SEC-KEY");
@@ -79,15 +81,17 @@ public class Constants {
 		deviceNames.put("0054", "DORMA_RC-H");
 		deviceNames.put("0061", "HM-LC-SW4-DR");
 		deviceNames.put("00B4", "HM-LC-Dim1T-Pl-3");
-		deviceNames.put("00C1", "HM-Sen-MDIR-O-2");
+		deviceNames.put("00C1", "Motion Detector HM-Sen-MDIR-O-2");
+		deviceNames.put("00D3", "HM-Dis-WM55");
 		deviceNames.put("006D", "HM-OU-LED16");
+		deviceNames.put("00DB", "HM-Sen-MDIR-WM55");
 		deviceNames.put("0080", "ROTO_ZEL-STG-RM-HS-4");
 		deviceNames.put("00BD", "HM-CC-RT-DN-BoM");
 		deviceNames.put("001B", "HM-RC-SEC3");
 		deviceNames.put("0004", "HM-LC-SW1-FM");
-		deviceNames.put("003E", "HM-WDS30-T-O");
+		deviceNames.put("003E", "Temperature Outdoor HM-WDS30-T-O");
 		deviceNames.put("008C", "Schueco_263-131");
-		deviceNames.put("004F", "HM-SEN-MDIR-SM");
+		deviceNames.put("004F", "IR Motion Detector HM-SEN-MDIR-SM");
 		deviceNames.put("000B", "HM-WS550");
 		deviceNames.put("0014", "HM-LC-SW1-SM-ATMEGA168");
 		deviceNames.put("00BF", "HM-PB-2-FM");
@@ -112,13 +116,14 @@ public class Constants {
 		deviceNames.put("003A", "HM-CC-VD");
 		deviceNames.put("0071", "HM-LC-Dim1T-Pl-644");
 		deviceNames.put("002F", "HM-SEC-SC");
+		deviceNames.put("00D7", "HM-ES-PMSw1-Pl-DN-R1");
 		deviceNames.put("00A6", "HM-RC-Key4-2");
 		deviceNames.put("00D2", "HM-LC-Bl1-FM-2");
 		deviceNames.put("0064", "DORMA_atent");
 		deviceNames.put("00D0", "HM-LC-Sw4-DR-2");
 		deviceNames.put("008B", "Schueco_263-130");
 		deviceNames.put("00A9", "HM-PB-6-WM55");
-		deviceNames.put("0095", "HM-CC-RT-DN");
+		deviceNames.put("0095", "Radiator Valve HM-CC-RT-DN");
 		deviceNames.put("0007", "KS550");
 		deviceNames.put("00A1", "HM-LC-SW1-PL2");
 		deviceNames.put("000D", "ASH550");
@@ -127,6 +132,7 @@ public class Constants {
 		deviceNames.put("0013", "HM-LC-DIM1L-PL");
 		deviceNames.put("00CC", "HM-LC-Sw2-DR-2");
 		deviceNames.put("00C2", "HM-PB-2-WM55-2");
+		deviceNames.put("0000", "HM-ES-PMSw1-Pl-DN-R3");
 		deviceNames.put("0073", "HM-LC-Dim1T-FM-644");
 		deviceNames.put("00A3", "HM-LC-Dim1L-Pl-2");
 		deviceNames.put("0087", "Schueco_263-147");
@@ -137,8 +143,9 @@ public class Constants {
 		deviceNames.put("0037", "HM-RC-19");
 		deviceNames.put("00BB", "HM-LC-Dim2T-SM-2");
 		deviceNames.put("001D", "HM-RC-KEY3");
+		deviceNames.put("0000", "HM-LC-Sw1-Pl-DN-R4");
 		deviceNames.put("0083", "Roto_ZEL-STG-RM-FSS-UP3");
-		deviceNames.put("0042", "HM-SEC-SD");
+		deviceNames.put("0042", "Smoke Detector HM-SEC-SD");
 		deviceNames.put("0011", "HM-LC-SW1-PL");
 		deviceNames.put("007F", "ROTO_ZEL-STG-RM-FST-UP4");
 		deviceNames.put("00A4", "HM-LC-Dim1T-Pl-2");
@@ -151,11 +158,12 @@ public class Constants {
 		deviceNames.put("00B7", "HM-LC-Dim1L-CV-2");
 		deviceNames.put("0093", "Schueco_263-158");
 		deviceNames.put("0009", "HM-LC-SW2-FM");
-		deviceNames.put("003D", "HM-WDS10-TH-O");
+		deviceNames.put("003D", "Temperature/Humidity HM-WDS10-TH-O");
 		deviceNames.put("0062", "HM-LC-SW2-DR");
 		deviceNames.put("0041", "HM-WDC7000");
 		deviceNames.put("0076", "HM-Sys-sRP-Pl");
-		deviceNames.put("00AC", "HM-ES-PMSw1-Pl");
+		deviceNames.put("00AC", "Switchbox HM-ES-PMSw1-Pl");
+		deviceNames.put("0000", "HM-ES-PMSw1-Pl-DN-R5");
 		deviceNames.put("004C", "HM-RC-12-SW");
 		deviceNames.put("0069", "HM-LC-Sw1PBU-FM");
 		deviceNames.put("0003", "HM-LC-SW4-SM");
@@ -172,7 +180,7 @@ public class Constants {
 		deviceNames.put("001A", "HM-RC-P1");
 		deviceNames.put("0072", "HM-LC-Dim1T-CV-644");
 		deviceNames.put("00A5", "HM-RC-Sec4-2");
-		deviceNames.put("00A0", "HM-RC-4-2");
+		deviceNames.put("00A0", "Remote Control HM-RC-4-2");
 		deviceNames.put("0092", "Schueco_263-144");
 		deviceNames.put("003B", "HM-RC-4-B");
 		deviceNames.put("001C", "HM-RC-SEC3-B");
@@ -196,27 +204,31 @@ public class Constants {
 		deviceNames.put("0053", "HM-LC-BL1-PB-FM");
 		deviceNames.put("002D", "HM-LC-SW4-PCB");
 		deviceNames.put("007E", "ROTO_ZEL-STG-RM-DWT-10");
-		deviceNames.put("00BE", "HM-MOD-RC-8");
+		deviceNames.put("00BE", "HM-MOD-Re-8");
 		deviceNames.put("0001", "HM-LC-SW1-PL-OM54");
+		deviceNames.put("00DA", "HM-RC-8");
 		deviceNames.put("00C0", "HM-SEC-MDIR-2");
+		deviceNames.put("00DD", "HM-PB-4DIS-WM-2");
 		deviceNames.put("0057", "HM-LC-DIM1T-PL");
 		deviceNames.put("000E", "ASH550I");
 		deviceNames.put("0012", "HM-LC-DIM1L-CV");
+		deviceNames.put("0000", "HM-LC-Sw1-Pl-DN-R5");
 		deviceNames.put("8002", "PS-Th-Sens");
 		deviceNames.put("00B8", "HM-LC-Dim2L-SM-2");
 		deviceNames.put("0027", "HM-SEC-KEY-O");
 		deviceNames.put("0082", "Roto_ZEL-STG-RM-FFK");
-		deviceNames.put("0056", "HM-CC-SCD");
+		deviceNames.put("0056", "CO2 Detector HM-CC-SCD");
 		deviceNames.put("004D", "HM-RC-19-SW");
 		deviceNames.put("0051", "HM-LC-SW1-PB-FM");
 		deviceNames.put("00CA", "HM-LC-Sw1-FM-2");
 		deviceNames.put("0043", "HM-SEC-TIS");
 		deviceNames.put("0022", "WS888");
-		deviceNames.put("00B2", "HM-SEC-WDS-2");
+		deviceNames.put("00B2", "Water Detector HM-SEC-WDS-2");
 		deviceNames.put("0016", "HM-LC-DIM2L-CV");
 		deviceNames.put("0074", "HM-LC-Dim2T-SM");
 		deviceNames.put("008A", "Schueco_263-133");
 		deviceNames.put("00AD", "HM-TC-IT-WM-W-EU");
+		deviceNames.put("00DC", "HM-Sen-DB-PCB");
 		deviceNames.put("00D1", "HM-LC-Bl1-SM-2");
 		deviceNames.put("008F", "Schueco_263-145");
 		deviceNames.put("0018", "CMM");
@@ -228,17 +240,23 @@ public class Constants {
 		deviceNames.put("00B5", "HM-LC-Dim1PWM-CV-2");
 		deviceNames.put("006F", "HM-LC-Dim1L-Pl-644");
 		deviceNames.put("000A", "HM-LC-SW2-SM");
+		deviceNames.put("0000", "HM-ES-PMSw1-Pl-DN-R4");
+		deviceNames.put("00BC", "HM-WDS40-TH-I-2");
 		deviceNames.put("00BA", "HM-LC-Dim1T-FM-2");
 		deviceNames.put("0005", "HM-LC-BL1-FM");
 		deviceNames.put("00B3", "HM-LC-Dim1L-Pl-3");
 		deviceNames.put("005F", "HM-SCI-3-FM");
 		deviceNames.put("00AB", "HM-LC-SW4-BA-PCB");
 		deviceNames.put("00A2", "ROTO_ZEL-STG-RM-FZS-2");
+		deviceNames.put("00D8", "HM-LC-Sw1-Pl-DN-R1");
 		deviceNames.put("0006", "HM-LC-BL1-SM");
 		deviceNames.put("0026", "HM-SEC-KEY-S");
 		deviceNames.put("007B", "ROTO_ZEL-STG-RM-FEP-230V");
 		deviceNames.put("FFF0", "CCU-FHEM");
+		deviceNames.put("0000", "HM-LC-Sw1-Pl-DN-R3");
+		deviceNames.put("00C7", "HM-SEC-SCo");
 		deviceNames.put("001E", "HM-RC-KEY3-B");
+
 	}
 
 }

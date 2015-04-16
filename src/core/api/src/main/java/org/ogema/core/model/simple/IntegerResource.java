@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,7 +15,6 @@
  */
 package org.ogema.core.model.simple;
 
-import org.ogema.core.model.SimpleResource;
 import org.ogema.core.model.schedule.DefinitionSchedule;
 import org.ogema.core.model.schedule.ForecastSchedule;
 import org.ogema.core.recordeddata.RecordedData;
@@ -24,7 +22,7 @@ import org.ogema.core.recordeddata.RecordedData;
 /**
  * Simple resource holding an integer value.
  */
-public interface IntegerResource extends SimpleResource {
+public interface IntegerResource extends SingleValueResource {
 
 	/**
 	 * Gets the value stored in the resource.

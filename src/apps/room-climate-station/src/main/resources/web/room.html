@@ -3,9 +3,8 @@
     This file is part of OGEMA.
 
     OGEMA is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
 
     OGEMA is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,43 +15,147 @@
     along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
 
 -->
+<META http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>Room</title>
 <script src="rooms.js"></script>
+<script src="widgets.js"></script>
 <script src="lib/jquery-1.7.min.js"></script>
 <script>
 new room();
+$('*').contextmenu( function() {
+    return false;
+});
 </script>
 <link rel="stylesheet" type="text/css" href="rooms.css">
 
-<body onload="draw()">
-
-
-<h1 id="room">Room</h1>
-
-<canvas id="veil" width="600" height="420" style="border:none;">
-Your browser does not support the HTML5 canvas tag.
-</canvas>
-
-<canvas id="temperatureIn" width="240" height="180" style="border:none;">
-Your browser does not support the HTML5 canvas tag.
-</canvas>
-
-<canvas id="temperatureOut" width="240" height="180" style="border:none;">
-Your browser does not support the HTML5 canvas tag.
-</canvas>
-
-<canvas id="humidityIn" width="240" height="180" style="border:none;">
-Your browser does not support the HTML5 canvas tag.
-</canvas>
-
-<canvas id="humidityOut" width="240" height="180" style="border:none;">
-Your browser does not support the HTML5 canvas tag.
-</canvas>
-
-<div id = "message">
-</div>
-
-<div id = "links">
-</div>
-
+<body>
+	<div id="top">
+		<div class="rowDiv">
+			<div class="cellDivTop"></div>
+			<div class="cellDivTop">
+				<h1 id="room" align="center">Room</h1>
+			</div>
+			<div class="cellDivTop">
+				<img src="ogema.png" alt="ogema-logo" align="right" /></img>
+			</div>
+		</div>
+	</div>
+	<div id="row0">
+		<div class="rowDiv">
+			<!-- empty row -->
+			<div class="cellHeadTail">
+				<h2 align="center"></h2>
+			</div>
+		</div>
+		<div class="rowDiv">
+			<!-- empty row -->
+			<div class="cellHeadTail">
+				<h2 align="center"></h2>
+			</div>
+		</div>
+		<div class="rowDiv">
+			<!-- empty row -->
+			<div class="cellHeadTail">
+				<h2 align="center"></h2>
+			</div>
+		</div>
+		<div class="rowDiv">
+			<div class="cellHeadTail">
+				<h2 align="center">Temperatur Innen</h2>
+			</div>
+			<div class="cellHeadTail">
+				<h2 align="center">Temperatur Außen</h2>
+			</div>
+			<div class="cellHeadTail">
+				<h2 align="center">Beleuchtung</h2>
+			</div>
+			<div class="cellHeadTail">
+				<h2 align="center">Schaltbarer Anschluß</h2>
+			</div>
+			<div class="cellHeadTail">
+				<h2 align="center">Bewegungsmelder</h2>
+			</div>
+		</div>
+	</div>
+	<div id="row1">
+		<div class="rowDiv">
+			<div class="cellDiv">
+				<!-- tepm -->
+				<canvas id="temperatureIn" width="240" height="180" align="center">
+			</canvas>
+			</div>
+			<div class="cellDiv">
+				<canvas id="temperatureOut" width="240" height="180">
+			</canvas>
+			</div>
+			<div class="cellDiv" id="light1"></div>
+			<div class="cellDiv" id="light2"></div>
+			<div class="cellDiv" id="move"></div>
+		</div>
+		<div class="rowDiv">
+			<div class="cellDiv">
+				<!-- humidity -->
+				<canvas id="humidityIn" width="240" height="180" style="border: none;">
+					</canvas>
+			</div>
+			<div class="cellDiv">
+				<canvas id="humidityOut" width="240" height="180" style="border: none;">
+					</canvas>
+			</div>
+			<div class="cellDiv" id="water"></div>
+			<div class="cellDiv" id="smoke" width="320px" hight="180px"></div>
+			<div class="cellDiv" id="air"></div>
+		</div>
+	</div>
+	<div id="row2">
+		<div class="rowDiv">
+			<div class="cellHeadTail">
+				<h2 align="center">Relative Luftfeuchte Innen</h2>
+			</div>
+			<div class="cellHeadTail">
+				<h2 align="center">Relative Luftfeuchte Außen</h2>
+			</div>
+			<div class="cellHeadTail">
+				<h2 align="center">Wassermelder</h2>
+			</div>
+			<div class="cellHeadTail">
+				<h2 align="center">Rauchmelder</h2>
+			</div>
+			<div class="cellHeadTail">
+				<h2 align="center">Klimaanlage</h2>
+			</div>
+		</div>
+		<div class="rowDiv">
+			<div class="cellEmpty">
+				<div id="message1"></div>
+			</div>
+			<div class="cellEmpty">
+				<div id="message2"></div>
+			</div>
+			<div class="cellEmpty">
+				<div id="message3"></div>
+			</div>
+			<div class="cellEmpty">
+				<div id="message4"></div>
+			</div>
+			<div class="cellEmpty">
+				<div id="message5"></div>
+			</div>
+		</div>
+	</div>
+	<div id="row3">
+		<div class="cellEmpty"></div>
+		<div class="cellEmpty" style="text-align: right; margin-right: 4px;">
+			<a class="button" href="index.html">Raumübersicht</a>
+		</div>
+		<div class="cellEmpty" style="text-align: center">
+			<a href="config.html" class="button">Raum Konfiguration</a>
+		</div>
+		<div class="cellEmpty" style="text-align: left">
+			<a id="simpleView" class="button" href="room2.html">Einfache Ansicht</a>
+		</div>
+		<div class="cellEmpty">
+			<img src="iis.png" alt="iis-logo" align="right" /></img>
+		</div>
+	</div>
 </body>

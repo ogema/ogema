@@ -1,0 +1,14 @@
+(org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+
+(org.osgi.framework.PackagePermission "javax.servlet" "import")
+(org.osgi.framework.PackagePermission "javax.servlet.http" "import")
+
+(org.osgi.framework.PackagePermission "org.codehaus.jackson.*" "import")
+# jackson reflection permissions
+(java.lang.RuntimePermission "accessDeclaredMembers")
+
+#(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.core.model.SimpleResource" "read")
+#(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.core.model.simple.FloatResource" "read")
+(org.ogema.accesscontrol.ResourcePermission "path=*" "read")

@@ -1,0 +1,80 @@
+div.wrapsOnePerm,div.additional {
+	margin-top: 0px;
+	border-bottom: 1px solid grey;
+	padding: 5px;
+}
+/* In permission-div the headline (=name of permission) */
+div.headLine {
+	border-style: none;
+	margin: 5px 5px 0;
+	padding: 5px;
+	background: #124791;
+	border-radius: 5px 5px 0 0;
+	color: white;
+}
+
+div.allPermHeadLine {
+	border-style: none;
+	margin: 5px 5px 20px;
+	padding: 5px;
+	background: #124791;
+	border-radius: 5px;
+	color: white;
+}
+/* In the permission-Div the body (=content) */
+div.bodyOfPerm {
+	margin: 0 5px 5px;
+	padding: 5px 5px 5px 10px;
+	border: 1px solid grey;
+	border-radius: 0 0 5px 5px;
+	color: black;
+}
+
+/* For the Add Permission Button */
+.ui-dialog .ui-dialog-content form button {
+	margin-top: 30px;
+	margin-bottom: 10px;
+}
+
+div.bodyOfPerm input[type=text] {
+	width: 450px !important;
+	border: none;
+	border-bottom: 1px dotted black;
+	height: 22px;
+	width: 250px;
+	padding: 2px;
+	margin-bottom: 10px !important;
+	background: none;
+}
+
+div.headLine input[type=text] {
+	margin: 5px;
+	border: none;
+	background: none;
+	border-bottom: 1px dotted white;
+	width: 250px;
+	height: 22px;
+	color: white;
+}
+
+div.allPermHeadLine input[type=text] {
+	margin: 5px;
+	border: none;
+	background: none;
+	border-bottom: 1px dotted white;
+	width: 250px;
+	height: 22px;
+	color: white;
+}
+
+/* Checkboxes in PermissionBody for actions*/
+div.bodyOfPerm input.m {
+	padding: 5px;
+	margin-top: 5px;
+	margin-bottom: 10px;
+}
+
+/* When label clicked, checkbox gets checked, so label gets thick */
+:checked+.lb {
+	font-weight: bold;
+}

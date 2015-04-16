@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,6 +21,7 @@ import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.ChannelConfigurationException;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
+import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.measurements.ByteArrayValue;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
@@ -63,35 +63,23 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceListen
 	private SingleSwitchBox mainsPowerOutlet;
 	private VoltageResource vRes;
 	private FrequencyResource fRes;
+	private String deviceName;
 
 	public DevelcoSmartPlug(Generic_ZbDriver driver, ApplicationManager appManager, Generic_ZbConfig config) {
 		super(driver, appManager, config);
 		unifyResourceName(generic_ZbConfig);
 	}
 
-	public DevelcoSmartPlug(Generic_ZbDriver driver, ApplicationManager appManager, DeviceLocator deviceLocator) {
+	public DevelcoSmartPlug(Generic_ZbDriver driver, ApplicationManager appManager, DeviceLocator deviceLocator,
+			String name) {
 		super(driver, appManager, deviceLocator);
+		deviceName = name;
 		addMandatoryChannels();
-
-		// new Thread(new Runnable() {
-		// @Override
-		// public void run() {
-		// boolean onoff = false;
-		// // TODO remove after successful testing
-		// while (true) {
-		// try {
-		// Thread.sleep(10000);
-		// } catch (InterruptedException e) {
-		// e.printStackTrace();
-		// }
-		// System.out.println("onOff");
-		// onOff.setValue(onoff = !onoff);
-		// }
-		// }
-		// }).start();
 	}
 
 	private void addMandatoryChannels() {
+		if (deviceName != null)
+			generic_ZbConfig.resourceName = deviceName;
 		offCmdConfig = new Generic_ZbConfig();
 		offCmdConfig.interfaceId = generic_ZbConfig.interfaceId;
 		offCmdConfig.deviceAddress = generic_ZbConfig.interfaceId;
@@ -133,7 +121,7 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceListen
 		onOffConfig.deviceAddress = generic_ZbConfig.interfaceId;
 		onOffConfig.deviceId = Constants.MAINS_POWER_OUTLET;
 		onOffConfig.channelAddress = Constants.ON_OFF_ATTR_ADDRESS;
-		onOffConfig.timeout = 20000;
+		onOffConfig.timeout = 2000;
 		onOffConfig.resourceName = generic_ZbConfig.resourceName;
 
 		onOffConfig.resourceName += "_OnOffAttribute"; // In case of several devices with the same
@@ -212,6 +200,8 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceListen
 		isOn = (BooleanResource) mainsPowerOutlet.onOffSwitch().stateFeedback().create();
 		isOn.activate(true);
 		isOn.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
+
+		updateOnOffState();
 	}
 
 	@Override
@@ -269,9 +259,18 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceListen
 					channelAccess.setChannelValue(onCmdConfig.chLocator, ON);
 				else
 					channelAccess.setChannelValue(offCmdConfig.chLocator, OFF);
+				updateOnOffState();
 			}
 		} catch (ChannelAccessException e) {
 			e.printStackTrace();
+		}
+	}
+
+	private void updateOnOffState() {
+		SampledValueContainer onoffState = channelAccess.readUnconfiguredChannel(onOffConfig.chLocator);
+		Value v = onoffState.getSampledValue().getValue();
+		if (v != null) {
+			isOn.setValue(v.getBooleanValue());
 		}
 	}
 

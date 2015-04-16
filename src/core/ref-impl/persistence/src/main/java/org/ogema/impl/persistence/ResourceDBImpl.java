@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -45,6 +44,7 @@ import org.ogema.resourcetree.TreeElement;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
+import org.slf4j.Logger;
 
 /**
  * This class implements the interface ResourceDB supporting OGEMA Resource Management with persistent data storage. The
@@ -56,9 +56,9 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 
 	private static final int INITIAL_MAP_SIZE = 64;
 
-	private final boolean DEBUG = false;
-
 	private ServiceRegistration<ResourceDB> registration;
+
+	private final Logger logger = org.slf4j.LoggerFactory.getLogger("persistence");
 
 	/**
 	 * Map of all top level resources as Proxy instances with resource name as key.
@@ -91,7 +91,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	ConcurrentHashMap<String, Class<?>> typeClassByName;
 	ConcurrentHashMap<String, Integer> resIDByName;
 	ConcurrentHashMap<Integer, TreeElementImpl> resNodeByID;
-	ConcurrentHashMap<Class<?>, Vector<Integer>> resIDsByType;
+	ConcurrentHashMap<String, Vector<Integer>> resIDsByType;
 
 	boolean activatePersistence;
 
@@ -153,73 +153,18 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	@Override
 	public Class<? extends Resource> addOrUpdateResourceType(Class<? extends Resource> type)
 			throws InvalidResourceTypeException {
+		// check if its a valid type
+		if (!isValidType(type))
+			throw new InvalidResourceTypeException("Type definition couldn't be verified as valid: " + type.getName());
 		// check if the type already registered
 		String typeName = type.getName();
 		Class<?> regType = typeClassByName.get(typeName);
 		if (regType == null) {
-			regType = addType(typeName);
-			if (regType == null)
-				throw new InvalidResourceTypeException("Type definition class couldn't be loaded " + typeName);
-			else if (!isValidType(regType))
-				throw new InvalidResourceTypeException("Type definition couldn't be verified as valid: " + typeName);
+			typeClassByName.put(typeName, type);
 
 		}
-		return regType.asSubclass(Resource.class);
+		return type.asSubclass(Resource.class);
 	}
-
-	Class<?> addType(String typeName) {
-		Class<?> result = null;
-		try {
-			result = Class.forName(typeName);
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		}
-		if (result != null)
-			typeClassByName.put(typeName, result);
-
-		return result;
-	}
-
-	/**
-	 * For a proper work of this method a specific class loading is to be implemented. Otherwise the type is replaced by
-	 * himself.
-	 * 
-	 * @param oldType
-	 * @return
-	 */
-	// Class<? extends Resource> updateType(Class<?> oldType) {
-	// boolean compatible = false;
-	// Class<? extends Resource> newType = null;
-	// // load the new model definition class.
-	// // This wont work if the osgi class loading mechanisms are used only.
-	// String name = oldType.getName();
-	// try {
-	// newType = Class.forName(name).asSubclass(Resource.class);
-	// } catch (ClassNotFoundException e) {
-	// e.printStackTrace();
-	// }
-	//
-	// if (newType == null)
-	// return null;
-	//
-	// // check if existing resources from oldtype are compatible to the new
-	// // type definition.
-	// compatible = isDBTypeCompatible(oldType, newType);
-	//
-	// if (!compatible) {
-	// // 1.1 type is registered already but its not compatible with
-	// // the resource db
-	// return null;
-	// }
-	// else {
-	// // 2 type is registered already and its compatible with the
-	// // resource db
-	// // 3. register it in the dynamic map
-	// typeClassByName.put(name, newType);
-	//
-	// }
-	// return newType;
-	// }
 
 	/**
 	 * Initialize a (sub)tree for the given resource type. Some of the node information are set by the caller and some
@@ -275,7 +220,6 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 			Set<Entry<String, TreeElementImpl>> tlrs = node.requireds.entrySet();
 			for (Map.Entry<String, TreeElementImpl> entry : tlrs) {
 
-				// String name = entry.getKey();
 				TreeElementImpl res = entry.getValue();
 				createTree(res);
 			}
@@ -334,6 +278,9 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 				return DBConstants.TYPE_KEY_LONG;
 			}
 			else if (cls == DBConstants.CLASS_OPAQUE_TYPE) {
+				return DBConstants.TYPE_KEY_OPAQUE;
+			}
+			else if (cls == DBConstants.CLASS_BYTE_ARR_TYPE) {
 				return DBConstants.TYPE_KEY_OPAQUE;
 			}
 		}
@@ -397,7 +344,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 					}
 
 					e.complexArray = true;
-					initSimpleNode(e);
+//					initSimpleNode(e);
 				}
 
 				// init node
@@ -412,7 +359,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 				e.topLevelParent = node.topLevelParent;
 				e.appID = node.appID;
 				e.name = name;
-				e.path = node.path + "." + name;
+				e.path = node.path + DBConstants.PATH_SEPARATOR + name;
 				e.active = false;
 
 				// read flags coded in annotations
@@ -439,7 +386,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 			else {
 				// method doesn't represent a type element but its a
 				// regular interface method. Such methods are ignored.
-				if (DEBUG)
+				if (Configuration.LOGGING)
 					System.err.println("Invalid sub resource type ignored " + clazz.getName());
 			}
 		}
@@ -466,7 +413,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 			else {
 				// method doesn't represent a type element but its a
 				// regular interface method. Such methods are ignored.
-				if (DEBUG)
+				if (Configuration.LOGGING)
 					System.err.println("Invalid sub resource type ignored " + clazz.getName());
 			}
 		}
@@ -491,17 +438,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	 * @return
 	 */
 	private boolean isSimple(Class<?> type) {
-		// FIXME I changed this implementation. Please double-check it. Timo, Aug 11th, 2014.
 		return (SimpleResource.class.isAssignableFrom(type));
-		// boolean simple = false;
-		// Class<?>[] ifaces = type.getInterfaces();
-		// for (Class<?> cls : ifaces) {
-		// if (cls == DBConstants.CLASS_SIMPLE_TYPE) {
-		// simple = true;
-		// break;
-		// }
-		// }
-		// return simple;
 	}
 
 	/**
@@ -612,13 +549,17 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 			type = DBConstants.CLASS_COMPLEX_ARR_TYPE;
 		else
 			type = e.type;
-		// register in table of id's by type as key
-		Vector<Integer> v = resIDsByType.get(type);
-		if (v == null) {
-			v = new Vector<Integer>();
-			resIDsByType.put(type, v);
+		if (type != null) {
+			String name = type.getName();
+			// register in table of id's by type as key
+			Vector<Integer> v = resIDsByType.get(name);
+			if (v == null) {
+				v = new Vector<Integer>();
+				resIDsByType.put(name, v);
+			}
+
+			v.add(e.resID);
 		}
-		v.add(e.resID);
 
 		// register in table of nodes by id as type
 		resNodeByID.put(e.resID, e);
@@ -636,7 +577,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		// unregister in table of id's by name as key
 		boolean exist = resIDByName.remove(e.path, e.resID);
 		if (!exist)
-			assert false : "Registration table resIDByName is corrupted!";
+			logger.error("Registration table resIDByName is corrupted!");
 		/*
 		 * If e is a node of type ResourceList the type info is not yet known.
 		 */
@@ -646,19 +587,23 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		else
 			type = e.type;
 
-		// register in table of id's by type as key
-		Vector<Integer> v = resIDsByType.get(type);
-		if (v == null) {
-			assert false : "Registration table resIDsByType is corrupted!";
+		if (type != null) {
+			// register in table of id's by type as key
+			Vector<Integer> v = resIDsByType.get(type.getName());
+			if (v == null) {
+				logger.error("Registration table resIDsByType is corrupted!");
+			}
+			else {
+				exist = v.remove(new Integer(e.resID));
+				if (!exist)
+					logger.error("Registration table resIDByName is corrupted!");
+			}
 		}
-		exist = v.remove(new Integer(e.resID));
-		if (!exist)
-			assert false : "Registration table resIDByName is corrupted!";
 
 		// register in table of nodes by id as type
 		exist = resNodeByID.remove(e.resID, e);
 		if (!exist)
-			assert false : "Registration table resNodeByID is corrupted!";
+			logger.error("Registration table resNodeByID is corrupted!");
 	}
 
 	@Override
@@ -667,7 +612,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		if (cls == null)
 			return null;
 
-		Vector<Integer> v = resIDsByType.get(cls);
+		Vector<Integer> v = resIDsByType.get(name);
 		if (v == null || v.size() == 0) {
 			return getTypeChildren0(cls);
 		}
@@ -707,12 +652,12 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		TreeElementImpl e = root.get(elem.name);
 		if (e == elem)
 			return true;
-		else if ((e != null) && DBResourceIO.DEBUG)
+		else if ((e != null) && Configuration.LOGGING)
 			System.out.println("A top level Resource exists with the same name: " + elem.name);
 		e = resNodeByID.get(elem.resID);
 		if (e == elem)
 			return true;
-		else if ((e != null) && DBResourceIO.DEBUG)
+		else if ((e != null) && Configuration.LOGGING)
 			System.out.println("A sub level Resource exists with the same name: " + elem.name);
 		return false;
 	}
@@ -765,6 +710,103 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	@Override
 	public Collection<TreeElement> getAllToplevelResources() {
 		Vector<TreeElement> result = new Vector<TreeElement>(root.values());
+		return result;
+	}
+
+	@Override
+	public Collection<TreeElement> getFilteredNodes(Map<String, String> dict) {
+		Vector<TreeElement> result = new Vector<TreeElement>();
+		String type = dict.get("type");
+		String path = dict.get("path");
+		String owner = dict.get("owner");
+		String residStr = dict.get("id");
+
+		if (residStr != null && !residStr.equals("#")) {
+
+			int residInt = Integer.valueOf(residStr);
+			TreeElementImpl element = resNodeByID.get(residInt);
+			if (element != null)
+				return element.getChildren();
+			else
+				return result;
+		}
+
+		// 1. filter by path
+		if (path != null) {
+			// normalize path info
+			int end, lastindex = path.length(), begin = 0;
+			end = lastindex;
+			boolean wc = false;
+			if (path.equals("*") || path.equals("/*") || path.equals("/")) {
+				path = "";
+				wc = true;
+			}
+			if (path.endsWith("/*")) {
+				end -= 2;
+				wc = true;
+			}
+			else if (path.endsWith("*")) {
+				end -= 1;
+				wc = true;
+			}
+			if (path.startsWith("/"))
+				begin = 1;
+			if (end != lastindex || begin != 0)
+				path = path.substring(begin, end);
+
+			// Handle the case if the path is '*' or '/*' only
+			if (path.equals("/") || (path.equals("") && wc))
+				return getAllToplevelResources();
+
+			Integer id = resIDByName.get(path);
+			TreeElementImpl te = null;
+			if (id != null) {
+				te = resNodeByID.get(id);
+				if (!te.reference)
+					result.add(te);
+				if (owner != null) {
+					if (!te.appID.equals(owner)) {
+						result.remove(te);
+						return result;
+					}
+				}
+				if (type != null) {
+					if (!te.typeName.equals(type)) {
+						result.remove(te);
+					}
+				}
+				return result;
+			}
+		}
+		else
+
+		// 2. filter by type (path is null)
+		if (type != null) {
+			Vector<Integer> ids = resIDsByType.get(type);
+			if (ids != null)
+				for (int id : ids) {
+					TreeElementImpl e = resNodeByID.get(id);
+					if (owner != null) {
+						if (e.appID.equals(owner))
+							if (!e.reference)
+								result.add(e);
+					}
+					else if (!e.reference)
+						result.add(e);
+				}
+			return result;
+		}
+		else
+		// 3. filter by owner (path and type is null)
+		if (owner != null) {
+			Set<Entry<String, TreeElementImpl>> tops = root.entrySet();
+			for (Entry<String, TreeElementImpl> entry : tops) {
+				TreeElementImpl te = entry.getValue();
+				if (te.appID.equals(owner))
+					if (!te.reference)
+						result.add(te);
+			}
+		}
 		return result;
 	}
 
@@ -831,7 +873,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	}
 
 	private void myDebug(String message) {
-		if (DEBUG) {
+		if (Configuration.LOGGING) {
 			System.out.println(this.getClass().getCanonicalName().concat(": ").concat(message));
 		}
 	}

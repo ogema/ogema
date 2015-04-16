@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -185,13 +184,15 @@ public class SynchronizedTimeSeries implements MemoryTimeSeries {
 
 	@Override
 	public synchronized boolean addValueSchedule(long startTime, long stepSize, List<Value> values) {
-		return m_schedule.addValueSchedule(startTime, stepSize, values);
+		return m_schedule.replaceValuesFixedStep(startTime, values, stepSize);
+		//		return m_schedule.addValueSchedule(startTime, stepSize, values);
 	}
 
 	@Override
 	public synchronized boolean addValueSchedule(long startTime, long stepSize, List<Value> values,
 			long timeOfCalculation) {
-		return m_schedule.addValueSchedule(startTime, stepSize, values, timeOfCalculation);
+		return m_schedule.replaceValuesFixedStep(startTime, values, stepSize, timeOfCalculation);
+		//		return m_schedule.addValueSchedule(startTime, stepSize, values, timeOfCalculation);
 	}
 
 }

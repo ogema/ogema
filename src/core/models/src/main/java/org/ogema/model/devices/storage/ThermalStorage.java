@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,6 +20,7 @@ import org.ogema.model.devices.connectiondevices.ThermalValve;
 import org.ogema.model.connections.ThermalConnection;
 import org.ogema.model.prototypes.Connection;
 import org.ogema.model.sensors.TemperatureSensor;
+import org.ogema.model.sensors.VolumeAccumulatedSensor;
 
 /**
  * Device storing thermal energy.
@@ -39,4 +39,9 @@ public interface ThermalStorage extends EnergyStorage {
 	 * individually via the {@link ThermalValve}s acting on them (i.e. referenced via {@link Connection#device() }.
 	 */
 	ResourceList<ThermalConnection> heatConnections();
+
+	/**
+	 * Sensor for the volume of the storage medium, if applicable.
+	 */
+	VolumeAccumulatedSensor volume();
 }

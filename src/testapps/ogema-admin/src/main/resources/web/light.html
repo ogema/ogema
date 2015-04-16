@@ -1,0 +1,236 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<HTML>
+<HEAD>
+<TITLE>Licht</TITLE>
+<SCRIPT language="javascript" src="maus.js" type="text/javascript"></SCRIPT>
+<SCRIPT type="application/javascript">
+
+function init(){
+	argArr=new Array(8)
+	get= new XMLHttpRequest();
+	post= new XMLHttpRequest();
+	
+	zoomx=1;
+    zoomy=1;
+    zoomp=1;
+    zoomi=1;
+
+	canvas1 = document.getElementById("Mycanvas1"); 
+	canvas1.width=parseInt(visibleW/3);
+	canvas1.height=parseInt(visibleH/3); 
+
+	canvas2 = document.getElementById("Mycanvas2"); 
+	canvas2.width=parseInt(visibleW/3);
+	canvas2.height=parseInt(visibleH/3); 
+
+	canvas3 = document.getElementById("Mycanvas3"); 
+	canvas3.width=parseInt(visibleW);
+	canvas3.height=200
+
+	context1 = canvas1.getContext("2d");
+	context2= canvas2.getContext("2d");
+	context3= canvas3.getContext("2d");
+	halogenBild.src = "./images/halogen1.jpg"; 	// Set source path 
+
+	halogenBild.onload=function(){
+	w1=halogenBild.width;
+     h1=halogenBild.height;
+  if(canvas1.width<=w1)
+    { 
+
+	zoomx=canvas1.width/w1;
+	}
+	
+	if  ((canvas1.height/2)<=h1)
+	
+	
+	{
+	zoomy=canvas1.height/(2*h1); // ein halbe teil von canvas 
+	}
+	if (zoomx>zoomy)
+		{ zoomp=zoomy;
+	}
+	else
+	{  zoomp=zoomx;
+	}
+breite1=(canvas1.width-halogenBild.width*zoomp)/2;
+context1.save()
+context1.scale(zoomp,zoomp)
+context1.drawImage(halogenBild,breite1/zoomp,Ytop/zoomp);
+context1.restore()
+	}
+	ledBild.src = "./images/led1.jpg"; 	// Set source path 
+	ledBild.onload=function(){
+	w2=ledBild.width;
+    h2=ledBild.height;
+  if(canvas2.width<=w2)
+    {
+	zoomx=canvas2.width/w2;
+	}
+	if  ((canvas2.height/2)<=h2 )
+	{
+	zoomy=canvas2.height/(2*h2); // ein halbe teil von canvas 
+	}
+
+	if (zoomx>zoomy)
+		{ zoomp=zoomy;
+	}
+	else
+	{  zoomp=zoomx;
+	}
+breite2=(canvas2.width-ledBild.width*zoomp)/2;
+context2.save()
+context2.scale(zoomp,zoomp)
+context2.drawImage(ledBild,breite2/zoomp,Ytop/zoomp);
+context2.restore()
+	}
+	myTimer = setInterval(actualize, 1000);	
+}	
+
+function actualize() {
+	if((get.readyState >= 4)||(get.readyState == 0)){
+		get.open("GET", "/maus",true);
+		get.onreadystatechange = process;
+		get.send();
+		}
+}
+
+function process(){
+	if ( get.readyState == 4) {
+		data = get.responseText;
+		var json = eval('('+data+')');
+		watt=json.powerValues[LIGHT]
+		
+	context3.clearRect(0,0,canvas3.width,canvas3.height);
+	context3.font = "100px Arial";
+	context3.fillStyle='black';
+	context3.textAlign = "center";
+	context3.fillText(watt+" W",canvas3.width/2,100);
+
+	}
+}
+
+function switchLight1(){
+	var cmd
+	halogen=!halogen
+	if(led&&halogen)
+		cmd="/maus?action=lights&led=on&halogen=on"
+	else if(led&&!halogen)
+		cmd="/maus?action=lights&led=on&halogen=off"
+	else if(!led&&halogen)
+		cmd="/maus?action=lights&led=off&halogen=on"
+	else if(!led&&!halogen)
+		cmd="/maus?action=lights&led=off&halogen=off"
+	else{}
+
+	if((post.readyState >= 4)||(post.readyState == 0)){
+		post.open("POST", cmd,true);
+		post.setRequestHeader("Content-Type", "text/html");
+		post.send();
+	}
+}
+
+function switchLight2(){
+	var cmd
+	led=!led
+	if(led&&halogen)
+		cmd="/maus?action=lights&led=on&halogen=on"
+	else if(led&&!halogen)
+		cmd="/maus?action=lights&led=on&halogen=off"
+	else if(!led&&halogen)
+		cmd="/maus?action=lights&led=off&halogen=on"
+	else if(!led&&!halogen)
+		cmd="/maus?action=lights&led=off&halogen=off"
+	else{}
+	if((post.readyState >= 4)||(post.readyState == 0)){
+		post.open("POST", cmd,true);
+		post.setRequestHeader("Content-Type", "text/html");
+		post.send();
+	}
+}
+</SCRIPT>
+</HEAD>
+<style>
+
+.grid00 {
+	position: absolute;
+	top: 5%;
+	left: 5%;
+
+}
+.grid01 {
+	position: absolute;
+	top: 5%;
+	left: 60%;
+
+}
+.grid1 {
+	position: absolute;
+	top: 500px;
+	left: 0px;
+
+}
+
+.buttonOverCanvas {
+position: absolute;
+bottom:5%;
+left: 40%;
+}
+
+
+
+
+</style>
+
+<!--<BODY>-->
+<body style="overflow:hidden;">
+<canvas id="Mycanvas1" class="grid00" onclick="switchLight1()"></canvas>
+<canvas id="Mycanvas2" class="grid01" onclick="switchLight2()"></canvas>
+<canvas id="Mycanvas3" class="grid1"></canvas>
+
+<a href="maushaus.html"><button id="switchButton" type="button" class="buttonOverCanvas" style="height: 75px; width:225px;" value="
+&uuml;ck">
+<font size="6"><b>Zur&uuml;ck</b></font></button></a>
+
+<SCRIPT type="application/javascript">
+var get,post;
+var led=false,halogen=false
+var canvas1;
+var canvas2,canvas3;
+var	context1;
+var context2,context3;
+var myTimer;
+
+
+var argArr
+var loaded=0;
+var halogenBild= new Image();	// definition of Tacho-Image
+var ledBild= new Image();	// definition of Tacho-Image
+
+var visibleW =window.innerWidth;
+var visibleH=window.innerHeight;
+var breite1;
+var breite2;
+var Ytop=10;
+var w1,w2,h1,h2;
+
+init();
+</SCRIPT>
+</BODY>
+</HTML>

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -34,7 +33,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.core.application.Application;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
@@ -402,9 +400,6 @@ public class ResourceDBManager {
 	 */
 	public void resourceActivated(TreeElement el) {
 		Class<? extends Resource> elType = el.getType();
-		if (elType == null || el.isComplexArray()) {
-			elType = ResourceList.class; // special case: ResourceList decorators
-		}
 		synchronized (resourceTypeListeners) {
 			for (Map.Entry<Class<? extends Resource>, List<ResourceDemandListenerRegistration>> e : resourceTypeListeners
 					.entrySet()) {
@@ -440,9 +435,6 @@ public class ResourceDBManager {
 	 */
 	private void resourceUnavailable(TreeElement el, ResourceDemandListener.AccessLossReason reason) {
 		Class<? extends Resource> elType = el.getType();
-		if (elType == null || el.isComplexArray()) {
-			elType = ResourceList.class;
-		}
 		synchronized (resourceTypeListeners) {
 			for (Map.Entry<Class<? extends Resource>, List<ResourceDemandListenerRegistration>> e : resourceTypeListeners
 					.entrySet()) {

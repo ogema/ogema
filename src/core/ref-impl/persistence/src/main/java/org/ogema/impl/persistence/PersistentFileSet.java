@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -58,7 +57,7 @@ class PersistentFileSet {
 					 * Name is newer then name1 and name2. name1 can be deleted before it is overridden by the new name.
 					 */
 					if (name1 != null) {
-						if (DBResourceIO.DEBUG)
+						if (Configuration.LOGGING)
 							System.out.println("Deleting file: " + name1);
 						new File(dir, name1).delete();
 					}
@@ -74,14 +73,14 @@ class PersistentFileSet {
 					 * the new name.
 					 */
 					if (name1 != null) {
-						if (DBResourceIO.DEBUG)
+						if (Configuration.LOGGING)
 							System.out.println("Deleting file: " + name);
 						new File(dir, name1).delete();
 					}
 					name1 = name;
 				}
 				else {
-					if (DBResourceIO.DEBUG)
+					if (Configuration.LOGGING)
 						System.out.println("Deleting file: " + name);
 					/*
 					 * Name is older then name1 and name2. name can be deleted.
@@ -120,7 +119,7 @@ class PersistentFileSet {
 			e.printStackTrace();
 		}
 		if (fileOld != null) {
-			if (DBResourceIO.DEBUG)
+			if (Configuration.LOGGING)
 				System.out.println("Deleting file: " + fileOld.getName());
 			fileOld.delete();
 		}
@@ -154,7 +153,7 @@ class PersistentFileSet {
 				if (out != null)
 					out.close();
 				if (delete != null) {
-					if (DBResourceIO.DEBUG)
+					if (Configuration.LOGGING)
 						System.out.println("Deleting file: " + delete.getName());
 					delete.delete();
 				}
@@ -191,13 +190,13 @@ class PersistentFileSet {
 		System.gc();
 		if (fileNew != null) {
 			fileNew.setWritable(true);
-			if (DBResourceIO.DEBUG)
+			if (Configuration.LOGGING)
 				System.out.println("Deleting file: " + fileNew.getName());
 			fileNew.delete();
 		}
 		if (fileOld != null) {
 			fileOld.setWritable(true);
-			if (DBResourceIO.DEBUG)
+			if (Configuration.LOGGING)
 				System.out.println("Deleting file: " + fileOld.getName());
 			fileOld.delete();
 		}
@@ -234,7 +233,7 @@ class PersistentFileSet {
 	}
 
 	public void deleteNew() {
-		if (DBResourceIO.DEBUG)
+		if (Configuration.LOGGING)
 			System.out.println("Deleting file: " + fileNew.getName());
 		fileNew.delete();
 		fileNew = fileOld;

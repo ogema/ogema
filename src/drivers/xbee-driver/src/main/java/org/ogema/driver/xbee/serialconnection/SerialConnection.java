@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -49,7 +48,8 @@ public class SerialConnection implements ISerialConnection {
 			logger.error(String.format("Failed to open serial port %s \n %s", port, e.getMessage()));
 		}
 		serialPortWriter = new SerialPortWriter(this.serialPort);
-		serialPortWriterThread = new Thread(serialPortWriter, "SerialPortWriter");
+		serialPortWriterThread = new Thread(serialPortWriter);
+		serialPortWriterThread.setName("xbee-driver-serialPortWriter");
 		serialPortWriterThread.start();
 		serialPortReader = new SerialPortReaderAp1(this.serialPort);
 		serialPort.addEventListener(serialPortReader);

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -37,9 +36,13 @@ public class Activator {
 	@Reference(bind = "setChannelAccess")
 	protected ChannelAccess channelAccess;
 	private final Object connectionLock = new Object();
+	public static boolean bundleIsRunning = true;
 
 	@Activate
 	public void activate(final BundleContext context, Map<String, Object> config) throws Exception {
+
+		driver = new HMDriver(channelAccess);
+		registration = context.registerService(ChannelDriver.class, driver, null);
 
 		Thread connectThread = new Thread() {
 			@Override
@@ -47,7 +50,7 @@ public class Activator {
 
 				Connection con = new Connection(connectionLock, "USB", "HMUSB");
 				synchronized (connectionLock) {
-					while (!con.hasConnection()) {
+					while (!con.hasConnection() && bundleIsRunning) {
 						try {
 							connectionLock.wait();
 						} catch (InterruptedException ex) {
@@ -56,12 +59,10 @@ public class Activator {
 					}
 				}
 
-				driver = new HMDriver(channelAccess);
 				driver.addConnection(con);
 
 				new ShellCommands(driver, context);
 
-				registration = context.registerService(ChannelDriver.class, driver, null);
 				driver.enablePairing("USB");
 
 			}
@@ -74,6 +75,7 @@ public class Activator {
 		hardwareManager.removeListener(driver);
 		if (registration != null)
 			registration.unregister();
+		bundleIsRunning = false;
 	}
 
 	protected void setChannelAccess(ChannelAccess ca) {

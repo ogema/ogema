@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,6 +17,7 @@ package org.ogema.driver.knxdriver.gui;
 
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
@@ -27,7 +27,7 @@ import org.ogema.driver.knxdriver.KNXdriverI;
 @Component(specVersion = "1.2", immediate = true)
 public class KnxJsGuiApp implements Application {
 
-	@Reference
+	@Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
 	private KNXdriverI knxDriver;
 	private ApplicationManager appManager;
 

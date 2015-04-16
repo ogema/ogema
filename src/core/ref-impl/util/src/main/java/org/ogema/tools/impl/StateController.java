@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -46,10 +45,9 @@ public class StateController {
      * false if some boundary conditions are no more fulfilled and we can not proceed traversing.
      */
     public boolean doDescent(Resource resource){
-        currentDepth++;
         //we can proceed traversing if:
         return visitedResources.add(resource) //the given resource is not visited twice (graph-cycle termination criteria)
-                && (currentDepth <= serializationManager.getMaxDepth()) // and we still are in range of the allowed depth
+                && (currentDepth++ <= serializationManager.getMaxDepth()) // and we still are in range of the allowed depth
                 && (resource.isReference(false) ? serializationManager.getFollowReferences() : true) //and we are allowed to follow references  
                 && (resource instanceof Schedule ? serializationManager.getSerializeSchedules() : true); //and the resource is no or serializeShedules flag is true
     }

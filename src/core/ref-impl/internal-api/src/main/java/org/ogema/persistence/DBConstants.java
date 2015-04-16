@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -19,6 +18,7 @@ package org.ogema.persistence;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.array.BooleanArrayResource;
+import org.ogema.core.model.array.ByteArrayResource;
 import org.ogema.core.model.array.FloatArrayResource;
 import org.ogema.core.model.array.IntegerArrayResource;
 import org.ogema.core.model.array.StringArrayResource;
@@ -101,7 +101,8 @@ public class DBConstants {
 	/*
 	 * The delimiter character in the path information of resources.
 	 */
-	public static final char RESOURCE_PATH_DELIMITER = '.';
+	public static final char RESOURCE_PATH_DELIMITER = '/';
+	public static final String PATH_SEPARATOR = "/";
 
 	/*
 	 * Class references of known basic resources to be cached for more efficient access.
@@ -115,6 +116,7 @@ public class DBConstants {
 	public static Class<StringResource> CLASS_STRING_TYPE;
 	public static Class<OpaqueResource> CLASS_OPAQUE_TYPE;
 	public static Class<BooleanArrayResource> CLASS_BOOL_ARR_TYPE;
+	public static Class<ByteArrayResource> CLASS_BYTE_ARR_TYPE;
 	public static Class<FloatArrayResource> CLASS_FLOAT_ARR_TYPE;
 	public static Class<IntegerArrayResource> CLASS_INT_ARR_TYPE;
 	public static Class<TimeArrayResource> CLASS_TIME_ARR_TYPE;
@@ -145,6 +147,7 @@ public class DBConstants {
 			CLASS_STRING_TYPE = org.ogema.core.model.simple.StringResource.class;
 			CLASS_OPAQUE_TYPE = org.ogema.core.model.simple.OpaqueResource.class;
 			CLASS_BOOL_ARR_TYPE = org.ogema.core.model.array.BooleanArrayResource.class;
+			CLASS_BYTE_ARR_TYPE = org.ogema.core.model.array.ByteArrayResource.class;
 			CLASS_FLOAT_ARR_TYPE = org.ogema.core.model.array.FloatArrayResource.class;
 			CLASS_INT_ARR_TYPE = org.ogema.core.model.array.IntegerArrayResource.class;
 			CLASS_STRING_ARR_TYPE = org.ogema.core.model.array.StringArrayResource.class;

@@ -3,9 +3,8 @@
     This file is part of OGEMA.
 
     OGEMA is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
 
     OGEMA is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -45,6 +44,9 @@ $(document).ready(function(){
 					 $("#button01").addClass("buttonGreen");
 				 }
 }
+$('*').contextmenu( function() {
+    return false;
+});
 //	 setInterval(function(){
 //					   $.getJSON("/climate_station_servlet/getData", function(data) {
 //									 priorK = data[0].Priority;
@@ -57,21 +59,68 @@ $(document).ready(function(){
 </script>
 </head>
 <body>
+	<div id="top">
+		<div class="rowDivTop">
+			<div class="cellDivTop"></div>
+			<div class="cellDivTop">
+				<h1 align="center">Raumklimastation - Raumübersicht</h1>
+			</div>
+			<div class="cellDivTop">
+				<img src="ogema.png" alt="ogema-logo" align="right" style="margin-right: 15px; margin-top: 15px;" /></img>
+			</div>
+		</div>
+	</div>
+	<div id="middle">
+		<div class="rowDiv">
+			<div class="cellDiv"></div>
+			<div class="cellDiv">
+				<a href="room.html?roomId=KITCHEN" id="KITCHEN" class="button buttonGreen">
+					<img src="kitchen.png" alt="KITCHEN" max-width="100%" /></img>
+				</a>
+			</div>
+			<div class="cellDiv">
+				<a href="room.html?roomId=DINING" id="DINING" class="button buttonGreen">
+					<img src="dining.png" alt="DINING ROOM" max-width="100%" /></img>
+				</a>
+			</div>
+			<div class="cellDiv">
+				<a href="room.html?roomId=LIVING" id="LIVING" class="button buttonGreen">
+					<img src="living.png" alt="LIVING ROOM" max-width="100%" /></img>
+				</a>
+			</div>
+			<div class="cellDiv"></div>
+		</div>
+		<div class="rowDiv">
+			<div class="cellDiv"></div>
+			<div class="cellDiv">
+				<a href="room.html?roomId=BEDROOM" id="BEDROOM" class="button buttonGreen">
+					<img src="bed.png" alt="BEDROOM" max-width="100%" /></img>
+				</a>
+			</div>
+			<div class="cellDiv">
+				<a href="room.html?roomId=BATH" id="BATH_index" class="button buttonGreen">
+					<img src="bath.png" alt="BATHROOM" max-width="100%" /></img>
+				</a>
+			</div>
+			<div class="cellDiv">
+				<a href="room.html?roomId=OUTSIDE" id="OUTSIDE" class="button buttonGreen">
+					<img src="outside.png" alt="OUTSIDE" max-width="100%" /></img>
+				</a>
+			</div>
+			<div class="cellDiv"></div>
+		</div>
 
-	<h1 style="padding-left: 150px">Room Climate Station</h1>
-	<a href="room.html?roomId=KITCHEN" id="KITCHEN"
-		class="button buttonGreen">KÜCHE</a>
-	<a href="room.html?roomId=DINING" id="DINING"
-		class="button buttonGreen">ESSZIMMER</a>
-	<a href="room.html?roomId=LIVING" id="LIVING"
-		class="button buttonGreen">WOHNZIMMER</a>
-	<a href="room.html?roomId=BEDROOM" id="BEDROOM"
-		class="button buttonGreen">SCHLAFZIMMER</a>
-	<!--<a href="room.html?roomId=OUTSIDE" id="OUTSIDE" class="button buttonGreen">OUTSIDE</a>-->
-	<a href="room.html?roomId=BATH" id="BATH_index" 
-		class="button buttonGreen">BADEZIMMER</a>
-	<a href="main-config.html" id="config">Verbindung Raum-Ressourcen</a>
-
-
+	</div>
+	<div id="buttom">
+		<div class="rowDivTop">
+			<div class="cellDivTop"></div>
+			<div class="cellDivTop">
+				<a href="config.html" id="config" align="center">Raum Konfiguration</a>
+			</div>
+			<div class="cellDivTop">
+				<img src="iis.png" alt="iis-logo" align="right" style="margin-right: 15px;" /></img>
+			</div>
+		</div>
+	</div>
 </body>
 </html>

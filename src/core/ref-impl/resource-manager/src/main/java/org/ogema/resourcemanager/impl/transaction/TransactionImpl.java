@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -31,6 +30,7 @@ import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.array.BooleanArrayResource;
+import org.ogema.core.model.array.ByteArrayResource;
 import org.ogema.core.model.array.FloatArrayResource;
 import org.ogema.core.model.array.IntegerArrayResource;
 import org.ogema.core.model.array.StringArrayResource;
@@ -74,9 +74,9 @@ public class TransactionImpl implements Transaction {
     private final Map<String, RwPair<Boolean>> m_boolMap = new HashMap<>();
     private final Map<String, RwPair<Float>> m_floatMap = new HashMap<>();
     private final Map<String, RwPair<Integer>> m_intMap = new HashMap<>();
-    private final Map<String, RwPair<byte[]>> m_opaqueMap = new HashMap<>();
     private final Map<String, RwPair<String>> m_stringMap = new HashMap<>();
     private final Map<String, RwPair<Long>> m_timeMap = new HashMap<>();
+    private final Map<String, RwPair<byte[]>> m_byteArrayMap = new HashMap<>();    
     private final Map<String, RwPair<float[]>> m_floatArrayMap = new HashMap<>();
     private final Map<String, RwPair<int[]>> m_intArrayMap = new HashMap<>();
     private final Map<String, RwPair<boolean[]>> m_booleanArrayMap = new HashMap<>();
@@ -96,9 +96,9 @@ public class TransactionImpl implements Transaction {
         result.addAll(m_boolMap.keySet());
         result.addAll(m_floatMap.keySet());
         result.addAll(m_intMap.keySet());
-        result.addAll(m_opaqueMap.keySet());
         result.addAll(m_stringMap.keySet());
         result.addAll(m_timeMap.keySet());
+        result.addAll(m_byteArrayMap.keySet());
         result.addAll(m_floatArrayMap.keySet());
         result.addAll(m_intArrayMap.keySet());
         result.addAll(m_booleanArrayMap.keySet());
@@ -136,7 +136,7 @@ public class TransactionImpl implements Transaction {
             return;
         }
         if (OpaqueResource.class.isAssignableFrom(resType)) {
-            m_opaqueMap.put(path, new RwPair<byte[]>());
+            m_byteArrayMap.put(path, new RwPair<byte[]>());
             return;
         }
         if (StringResource.class.isAssignableFrom(resType)) {
@@ -149,6 +149,10 @@ public class TransactionImpl implements Transaction {
         }
 
         // arrays
+        if (ByteArrayResource.class.isAssignableFrom(resType)) {
+            m_byteArrayMap.put(path, new RwPair<byte[]>());
+            return;
+        }
         if (FloatArrayResource.class.isAssignableFrom(resType)) {
             m_floatArrayMap.put(path, new RwPair<float[]>());
             return;
@@ -239,7 +243,7 @@ public class TransactionImpl implements Transaction {
         removeByPath(resource, m_boolMap);
         removeByPath(resource, m_floatMap);
         removeByPath(resource, m_intMap);
-        removeByPath(resource, m_opaqueMap);
+        removeByPath(resource, m_byteArrayMap);
         removeByPath(resource, m_stringMap);
         removeByPath(resource, m_timeMap);
         removeByPath(resource, m_booleanArrayMap);
@@ -257,7 +261,7 @@ public class TransactionImpl implements Transaction {
         removeByLocation(resource, m_boolMap);
         removeByLocation(resource, m_floatMap);
         removeByLocation(resource, m_intMap);
-        removeByLocation(resource, m_opaqueMap);
+        removeByLocation(resource, m_byteArrayMap);
         removeByLocation(resource, m_stringMap);
         removeByLocation(resource, m_timeMap);
         removeByLocation(resource, m_booleanArrayMap);
@@ -323,10 +327,16 @@ public class TransactionImpl implements Transaction {
 
     @Override
     public byte[] getByteArray(OpaqueResource resource) throws NoSuchResourceException {
-        final byte[] values = getReadEntry(resource, m_opaqueMap);
+        final byte[] values = getReadEntry(resource, m_byteArrayMap);
         return (values != null) ? values.clone() : null;
     }
 
+    @Override
+    public byte[] getByteArray(ByteArrayResource resource) throws NoSuchResourceException {
+        final byte[] values = getReadEntry(resource, m_byteArrayMap);
+        return (values != null) ? values.clone() : null;
+    }
+    
     @Override
     public float[] getFloatArray(FloatArrayResource resource) throws NoSuchResourceException {
         final float[] values = getReadEntry(resource, m_floatArrayMap);
@@ -411,13 +421,23 @@ public class TransactionImpl implements Transaction {
     @Override
     public void setByteArray(OpaqueResource resource, byte[] values) throws NoSuchResourceException {
         final String path = resource.getPath();
-        if (!m_opaqueMap.containsKey(path)) {
+        if (!m_byteArrayMap.containsKey(path)) {
             throw new NoSuchResourceException("Can not set a value for resource " + resource.toString() + " in transaction: Resource had not been registered before. Be sure to register the resource to the transaction with addResource(...) before trying to set a value for it");
         }
-        final RwPair<byte[]> pair = m_opaqueMap.get(path);
+        final RwPair<byte[]> pair = m_byteArrayMap.get(path);
         pair.write = values;
     }
 
+    @Override
+    public void setByteArray(ByteArrayResource resource, byte[] values) throws NoSuchResourceException {
+        final String path = resource.getPath();
+        if (!m_byteArrayMap.containsKey(path)) {
+            throw new NoSuchResourceException("Can not set a value for resource " + resource.toString() + " in transaction: Resource had not been registered before. Be sure to register the resource to the transaction with addResource(...) before trying to set a value for it");
+        }
+        final RwPair<byte[]> pair = m_byteArrayMap.get(path);
+        pair.write = values;
+    }
+    
     @Override
     public void setFloatArray(FloatArrayResource resource, float[] values) throws NoSuchResourceException {
         final String path = resource.getPath();
@@ -493,11 +513,20 @@ public class TransactionImpl implements Transaction {
             final RwPair<Integer> pair = m_intMap.get(path);
             pair.read = value;
         }
-        for (String path : m_opaqueMap.keySet()) {
-            final OpaqueResource resource = (OpaqueResource) resAcc.getResource(path);
+        for (String path : m_byteArrayMap.keySet()) {
+            final Resource untypedResource = resAcc.getResource(path);
+            if (untypedResource instanceof ByteArrayResource) {
+            final ByteArrayResource resource = (ByteArrayResource) untypedResource;
+            final byte[] value = (resource.exists()) ? resource.getValues(): null;
+            final RwPair<byte[]> pair = m_byteArrayMap.get(path);
+            pair.read = value;                                
+            } else
+            if (untypedResource instanceof OpaqueResource) { // case for deprecated OpaqueResources
+            final OpaqueResource resource = (OpaqueResource) untypedResource;
             final byte[] value = (resource.exists()) ? resource.getValue() : null;
-            final RwPair<byte[]> pair = m_opaqueMap.get(path);
-            pair.read = value;
+            final RwPair<byte[]> pair = m_byteArrayMap.get(path);
+            pair.read = value;                
+            }
         }
         for (String path : m_stringMap.keySet()) {
             final StringResource resource = (StringResource) resAcc.getResource(path);
@@ -598,15 +627,28 @@ public class TransactionImpl implements Transaction {
                 pair.read = null;
             }
         }
-        for (String path : m_opaqueMap.keySet()) {
-            final OpaqueResource resource = (OpaqueResource) resAcc.getResource(path);
-            final RwPair<byte[]> pair = m_opaqueMap.get(path);
+        for (String path : m_byteArrayMap.keySet()) {
+            final Resource untypedResource = resAcc.getResource(path);
+            if (untypedResource instanceof ByteArrayResource) {
+            final ByteArrayResource resource = (ByteArrayResource) untypedResource;
+            final RwPair<byte[]> pair = m_byteArrayMap.get(path);
+            final byte[] value = pair.write;
+            if (resource.exists() && value != null) {
+                resource.setValues(value);
+                pair.read = resource.getValues();
+            } else {
+                pair.read = null;
+            }                                
+            } else if (untypedResource instanceof OpaqueResource) {
+            final OpaqueResource resource = (OpaqueResource) untypedResource;
+            final RwPair<byte[]> pair = m_byteArrayMap.get(path);
             final byte[] value = pair.write;
             if (resource.exists() && value != null) {
                 resource.setValue(value);
                 pair.read = resource.getValue();
             } else {
                 pair.read = null;
+            }                
             }
         }
         for (String path : m_stringMap.keySet()) {

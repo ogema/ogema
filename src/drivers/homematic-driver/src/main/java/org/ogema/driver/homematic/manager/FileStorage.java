@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,7 +16,6 @@
 package org.ogema.driver.homematic.manager;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -37,14 +35,12 @@ public class FileStorage {
 
 	private java.io.File deviceConfigFile;
 	private LocalDevice localDevice;
-	private DeviceHandler deviceHandler;
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("homematic-driver");
 
 	public FileStorage(LocalDevice localDevice) {
 		deviceConfigFile = new File("./config", "homematic.devices");
 		this.localDevice = localDevice;
-		this.deviceHandler = localDevice.getDeviceHandler();
 		if (deviceConfigFile.exists())
 			loadDeviceConfig();
 	}
@@ -83,9 +79,6 @@ public class FileStorage {
 				if ((localDevice.getDevices().get(temp_device.getAddress())) == null) {
 					localDevice.getDevices().put(temp_device.getAddress(), temp_device);
 					logger.debug("Device added: " + temp_device.getAddress());
-					synchronized (deviceHandler.deviceHandlerLock) {
-						deviceHandler.deviceHandlerLock.notify();
-					}
 				}
 			}
 		} catch (JSONException e) {
@@ -94,7 +87,7 @@ public class FileStorage {
 	}
 
 	public void saveDeviceConfig() {
-		JSONObject obj = new JSONObject();
+		final JSONObject obj = new JSONObject();
 		JSONArray arr = new JSONArray();
 		try {
 			Iterator<Entry<String, RemoteDevice>> devicesIt = localDevice.getDevices().entrySet().iterator();
@@ -113,23 +106,19 @@ public class FileStorage {
 			e1.printStackTrace();
 		}
 
-		try {
-			FileWriter file = AccessController.doPrivileged(new PrivilegedAction<FileWriter>() {
-				public FileWriter run() {
-					FileWriter writer = null;
-					try {
-						writer = new FileWriter(deviceConfigFile);
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-					return writer;
+		AccessController.doPrivileged(new PrivilegedAction<FileWriter>() {
+			public FileWriter run() {
+				FileWriter result = null;
+				try {
+					result = new FileWriter(deviceConfigFile);
+					result.write(obj.toString());
+					result.flush();
+					result.close();
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
-			});
-			file.write(obj.toString());
-			file.flush();
-			file.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+				return result;
+			}
+		});
 	}
 }

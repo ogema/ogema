@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -79,10 +78,13 @@ public abstract class ResourceBase implements ConnectedResource {
 		this.resMan = resMan;
 		this.path = path;
 		revision = resMan.getDatabaseManager().getRevision();
+
+		assert el.getType() != null;
 	}
 
 	// called when resource has been updated
 	protected void handleResourceUpdate(boolean valueChanged) {
+		setLastUpdateTime();
 		if (!el.isActive()) {
 			return;
 		}
@@ -156,11 +158,7 @@ public abstract class ResourceBase implements ConnectedResource {
 
 	@Override
 	public Class<? extends Resource> getResourceType() {
-		Class<? extends Resource> type = getEl().getType();
-		if (type == null || getEl().isComplexArray()) {
-			type = ResourceList.class; //uninitialized decorator of type ResourceList has type null
-		}
-		return type;
+		return getEl().getType();
 	}
 
 	/**
@@ -371,8 +369,12 @@ public abstract class ResourceBase implements ConnectedResource {
                 if (!validResourceName(child)) {
                     continue;
                 }
-                Resource resource = resMan.getResource(path + "/" + child.getName());
-                result.add(resource);
+                try {
+                    Resource resource = resMan.getResource(path + "/" + child.getName());
+                    result.add(resource);
+                } catch (SecurityException se) {
+                    resMan.logger.trace("missing permission for sub resource", se);
+                }
             }
             return result;
         } finally {
@@ -657,7 +659,7 @@ public abstract class ResourceBase implements ConnectedResource {
 			info.setSchedule(child);
 		}
 		parentInfo.updateListenerRegistrations();
-		resMan.getDatabaseManager().getElementInfo(child).fireResourceCreated();
+		resMan.getDatabaseManager().getElementInfo(child).fireResourceCreated(child.getPath());
 		parentInfo.fireSubResourceAdded(child);
 	}
 
@@ -669,7 +671,7 @@ public abstract class ResourceBase implements ConnectedResource {
 		refInfo.addReference(parent);
 		parentInfo.updateListenerRegistrations();
 
-		resMan.getDatabaseManager().getElementInfo(ref).fireResourceCreated();
+		resMan.getDatabaseManager().getElementInfo(ref).fireResourceCreated(ref.getPath());
 		parentInfo.fireSubResourceAdded(ref);
 		revision = resMan.getDatabaseManager().incrementRevision();
 	}
@@ -748,9 +750,6 @@ public abstract class ResourceBase implements ConnectedResource {
 			TreeElement existingDecorator = getEl().getChild(name);
 			if (existingDecorator != null) {
 				Class<?> existingType = existingDecorator.getType();
-				if (existingType == null || existingDecorator.isComplexArray()) {
-					existingType = ResourceList.class;
-				}
 				if (existingType.equals(resourceType)) {
 					return resMan.getResource(path + "/" + existingDecorator.getName());
 				}
@@ -797,9 +796,6 @@ public abstract class ResourceBase implements ConnectedResource {
 									.getPath()));
 				}
 				Class<?> existingType = existingDecorator.getType();
-				if (existingType == null || existingDecorator.isComplexArray()) {
-					existingType = ResourceList.class;
-				}
 				if (!decorator.getResourceType().isAssignableFrom(existingType)) {
 					throw (new ResourceAlreadyExistsException("decorator with same name but incomatible type exists."));
 				}
@@ -951,23 +947,12 @@ public abstract class ResourceBase implements ConnectedResource {
 		Objects.requireNonNull(type, "type must not be null");
 		TreeElement subRes = getEl().getChild(name);
 		if (subRes != null) {
-			if (getEl().getType() == null) { //ResourceList decorators may have type null
-				if (ResourceList.class.isAssignableFrom(type)) {
-					return getSubResource(name);
-				}
-				else {
-					throw (new NoSuchResourceException(String.format(
-							"A sub resource called '%s' already exists, but has incompatible type", name)));
-				}
+			if (!type.isAssignableFrom(subRes.getType())) {
+				throw (new NoSuchResourceException(String.format(
+						"A sub resource called '%s' already exists, but has incompatible type", name)));
 			}
 			else {
-				if (!type.isAssignableFrom(subRes.getType())) {
-					throw (new NoSuchResourceException(String.format(
-							"A sub resource called '%s' already exists, but has incompatible type", name)));
-				}
-				else {
-					return getSubResource(name);
-				}
+				return getSubResource(name);
 			}
 		}
 		else {
@@ -1091,6 +1076,14 @@ public abstract class ResourceBase implements ConnectedResource {
 
 	protected final ResourceDBManager getResourceDB() {
 		return resMan.getDatabaseManager();
+	}
+
+	protected void setLastUpdateTime() {
+		getTreeElement().setLastModified(resMan.getApplicationManager().getFrameworkTime());
+	}
+
+	protected long getLastUpdateTime() {
+		return getTreeElement().getLastModified();
 	}
 
 }

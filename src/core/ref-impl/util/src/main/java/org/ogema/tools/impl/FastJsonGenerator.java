@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,8 +19,10 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.List;
+
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.ogema.core.channelmanager.measurements.BooleanValue;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.IntegerValue;
@@ -57,14 +58,13 @@ public class FastJsonGenerator {
 	 *
 	 * @param resource
 	 * @param serializationManager
-	 * @return String of serialized json limited by options, setup in
-	 * serializationManager
+	 * @return String of serialized json limited by options, setup in serializationManager
 	 * @throws IOException
 	 */
 	public String serialize(Resource resource, SerializationManager serializationManager) throws IOException {
 		final StringWriter writer = new StringWriter();
 		serialize(writer, resource, serializationManager);
-		//writer.flush();
+		// writer.flush();
 		return writer.toString();
 	}
 
@@ -79,7 +79,24 @@ public class FastJsonGenerator {
 			throws IOException {
 		jGen = jsonFactory.createJsonGenerator(writer).useDefaultPrettyPrinter();
 		this.stateControl = new StateController(serializationManager, resource);
-		this.serializeResource(resource);
+		try {
+			this.serializeResource(resource);
+		} catch (Throwable e) {
+			e.printStackTrace();
+		}
+		jGen.flush();
+	}
+
+	/**
+	 *
+	 * @param writer
+	 * @param obj
+	 * @param serializationManager
+	 * @throws IOException
+	 */
+	public void serialize(Writer writer, Object obj, SerializationManager serializationManager) throws IOException {
+		jGen = jsonFactory.createJsonGenerator(writer).useDefaultPrettyPrinter().setCodec(new ObjectMapper());
+		jGen.writeObject(obj);
 		jGen.flush();
 	}
 
@@ -91,7 +108,7 @@ public class FastJsonGenerator {
 	 */
 	private void serializeResource(Resource resource) throws IOException {
 		if (stateControl.doDescent(resource)) {
-			//true: unknown resource, serialize full and recursively proceed
+			// true: unknown resource, serialize full and recursively proceed
 			this.serializeFullResource(resource);
 		}
 		else {
@@ -107,7 +124,7 @@ public class FastJsonGenerator {
 	 * @throws IOException
 	 */
 	private void serializeFullResource(Resource resource) throws IOException {
-		//begin serialize Resource
+		// begin serialize Resource
 		jGen.writeStartObject();
 
 		// the resource type occures as "@type" element just in the requested root-resource
@@ -121,13 +138,12 @@ public class FastJsonGenerator {
 			jGen.writeEndObject();
 		}
 
-		//end serialize Resource
+		// end serialize Resource
 		jGen.writeEndObject();
 	}
 
 	/**
-	 * Writes all fields of an resource, it calls
-	 * serializeSubResources(resource) to rekursively create json for each
+	 * Writes all fields of an resource, it calls serializeSubResources(resource) to rekursively create json for each
 	 * subresource
 	 *
 	 * @param resource
@@ -142,20 +158,21 @@ public class FastJsonGenerator {
 		jGen.writeBooleanField("active", resource.isActive());
 		jGen.writeBooleanField("referencing", resource.isReference(true));
 		if (resource instanceof ResourceList) {
-			jGen.writeStringField("elementType", ((ResourceList) resource).getElementType().getName());
+			@SuppressWarnings("unchecked")
+			Class<? extends Resource> listType = ((ResourceList) resource).getElementType();
+			jGen.writeStringField("elementType", listType != null ? listType.getName() : null);
 		}
-		//NOTE: There is no Type of Schedule in Ogema api, that contains all xsd-dfined values
+		// NOTE: There is no Type of Schedule in Ogema api, that contains all xsd-dfined values
 		if (resource instanceof Schedule) {
 			this.serializeEntrys((Schedule) resource);
 		}
-		//serialize subresources
+		// serialize subresources
 		this.serializeSubResources(resource);
 	}
 
 	/**
-	 * determines the type of the given Resource and if its some kind of simpe
-	 * resource, it writes the corresponding value-field to json, else it does
-	 * nothing
+	 * determines the type of the given Resource and if its some kind of simpe resource, it writes the corresponding
+	 * value-field to json, else it does nothing
 	 *
 	 * @param resource
 	 * @throws IOException
@@ -183,14 +200,13 @@ public class FastJsonGenerator {
 			jGen.writeStringField("value", ((StringResource) resource).getValue());
 		}
 		if (resource instanceof OpaqueResource) {
-			//Jackson default Base64 variant (which is Base64Variants.MIME_NO_LINEFEEDS)
+			// Jackson default Base64 variant (which is Base64Variants.MIME_NO_LINEFEEDS)
 			jGen.writeBinaryField("value", ((OpaqueResource) resource).getValue());
 		}
 	}
 
 	/**
-	 * Just writes the fields to json needed for a resource-link. No further
-	 * rekursive calls are done.
+	 * Just writes the fields to json needed for a resource-link. No further rekursive calls are done.
 	 *
 	 * @param resource
 	 * @throws IOException
@@ -206,15 +222,14 @@ public class FastJsonGenerator {
 	}
 
 	/**
-	 * Recursively creates json for all subresources by calling
-	 * this.serializeResource(subRes)
+	 * Recursively creates json for all subresources by calling this.serializeResource(subRes)
 	 *
 	 * @param resource
 	 * @throws IOException
 	 */
 	private void serializeSubResources(Resource resource) throws IOException {
 		jGen.writeArrayFieldStart("subresources");
-		//rekursivly write out the subresources, important to get them non-rekursive
+		// rekursivly write out the subresources, important to get them non-rekursive
 		for (Resource subRes : resource.getSubResources(false)) {
 			this.serializeResource(subRes);
 		}
@@ -226,13 +241,17 @@ public class FastJsonGenerator {
 	}
 
 	private void serializeEntrys(Schedule definitionSchedule, long start, long end) throws IOException {
-		jGen.writeNumberField("lastUpdateTime", definitionSchedule.getTimeOfLatestEntry());
-		jGen.writeNumberField("lastCalculationTime", definitionSchedule.getLastCalculationTime());
+		if (definitionSchedule.getTimeOfLatestEntry() != null) {
+			jGen.writeNumberField("lastUpdateTime", definitionSchedule.getTimeOfLatestEntry());
+		}
+		if (definitionSchedule.getLastCalculationTime() != null) {
+			jGen.writeNumberField("lastCalculationTime", definitionSchedule.getLastCalculationTime());
+		}
 		List<SampledValue> entries = definitionSchedule.getValues(start, end);
 		jGen.writeNumberField("start", start);
 		jGen.writeNumberField("end", end);
 		jGen.writeArrayFieldStart("entry");
-		//write sampled values
+		// write sampled values
 		if (!entries.isEmpty()) {
 			SampledValuesWriter w = SampledValuesWriter.forValue(entries.get(0));
 			for (SampledValue sampledValue : entries) {
@@ -309,9 +328,8 @@ public class FastJsonGenerator {
 	}
 
 	/**
-	 * Return the value for the json field "type". If its some kind of simple
-	 * resource it will return the classname of that resource (e.g.
-	 * BooleanResource), else it will return "Resource"
+	 * Return the value for the json field "type". If its some kind of simple resource it will return the classname of
+	 * that resource (e.g. BooleanResource), else it will return "Resource"
 	 *
 	 * @param resource
 	 * @return String
@@ -327,15 +345,14 @@ public class FastJsonGenerator {
 		if (resource instanceof Schedule) {
 			return this.figgureOutScheduleType((Schedule) resource);
 		}
-		//return "Resource";
-		//TODO: clarify why different cases in old json-serialization?
+		// return "Resource";
+		// TODO: clarify why different cases in old json-serialization?
 		return stateControl.isRquestedRootResource(resource) ? "Resource" : "resource";
 	}
 
 	/**
-	 * We have to figgure out which (simple)type of Schedule we have ( (but
-	 * there are no simple typs of schedules in the ogema model) otherwise
-	 * deserialization of a shedule wont work.
+	 * We have to figgure out which (simple)type of Schedule we have ( (but there are no simple typs of schedules in the
+	 * ogema model) otherwise deserialization of a shedule wont work.
 	 *
 	 * @param schedule
 	 * @return
@@ -357,7 +374,7 @@ public class FastJsonGenerator {
 		if (parent instanceof org.ogema.core.model.simple.TimeResource) {
 			return "TimeSchedule";
 		}
-		//NOTE deserialization of type shedule wont work
+		// NOTE deserialization of type shedule wont work
 		return "Shedule";
 	}
 

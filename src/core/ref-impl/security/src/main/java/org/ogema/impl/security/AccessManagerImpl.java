@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,6 +20,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Dictionary;
@@ -29,10 +29,15 @@ import java.util.List;
 import java.util.Vector;
 
 import org.ogema.accesscontrol.AccessManager;
+import org.ogema.accesscontrol.AppPermissionFilter;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.UserRightsProxy;
+import org.ogema.accesscontrol.WebAccessPermission;
+import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.application.AppID;
 import org.ogema.core.security.AppPermission;
+import org.ogema.staticpolicy.StaticPolicies;
+import org.ogema.staticpolicy.StaticUser;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleEvent;
@@ -40,7 +45,6 @@ import org.osgi.framework.BundleException;
 import org.osgi.framework.BundleListener;
 import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceReference;
-import org.osgi.service.useradmin.Authorization;
 import org.osgi.service.useradmin.Group;
 import org.osgi.service.useradmin.Role;
 import org.osgi.service.useradmin.User;
@@ -71,10 +75,12 @@ import org.slf4j.Logger;
  * an exact path to a resource or it could be wildcarded that means that the access is recursively granted. The user
  * that should get the access right to a resource is added to the GROUP as a member.
  * 
- * @author mns
- * 
  */
 
+/**
+ * @author Zekeriya Mansuroglu
+ *
+ */
 public class AccessManagerImpl implements AccessManager, BundleListener {
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
@@ -113,6 +119,8 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 
 	HashMap<String, UserRightsProxy> urpMap;
 	PermissionManager permMan;
+
+	static final String WEB_ACCESS_PERMISSION_CLASS = WebAccessPermission.class.getName();
 
 	public AccessManagerImpl() {
 	}
@@ -154,12 +162,24 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 		/*
 		 * Create the statically configured users and their roles
 		 */
-
+		StaticPolicies stPol;
+		ServiceReference<?> sRef = osgi.getServiceReference(StaticPolicies.class);
+		if (sRef != null) {
+			stPol = (StaticPolicies) osgi.getService(sRef);
+			List<StaticUser> users = stPol.getUsers();
+			if (users != null) // if users is null non-clean start is performed, so no new users are to be created.
+				for (StaticUser user : users) {
+					String name = user.getName();
+					boolean natural = user.isNatural();
+					if (createUser(name, natural))
+						setCredential(name, PASSWORD_NAME, name);
+				}
+		}
 		/*
 		 * Create standard user admin
 		 */
 		if (createUser(ADMIN_NAME, true))
-			setCredetials(ADMIN_NAME, PASSWORD_NAME, ADMIN_DEFAULT_PASSWORD);
+			setCredential(ADMIN_NAME, PASSWORD_NAME, ADMIN_DEFAULT_PASSWORD);
 		this.admin = getUser(ADMIN_NAME);
 		// Set the admin user as a member of ALLAPPS
 		allApps.addMember(this.admin);
@@ -170,7 +190,7 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 		 * Create standard user guest
 		 */
 		if (createUser(GUEST_NAME, true))
-			setCredetials(GUEST_NAME, PASSWORD_NAME, GUEST_DEFAULT_PASSWORD);
+			setCredential(GUEST_NAME, PASSWORD_NAME, GUEST_DEFAULT_PASSWORD);
 		this.guest = getUser(GUEST_NAME);
 		// Set the guest user as a member of NOAPPS
 		noApps.addMember(this.guest);
@@ -179,7 +199,7 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 		 * Create standard rest user
 		 */
 		if (createUser(REST_NAME, false))
-			setCredetials(REST_NAME, PASSWORD_NAME, REST_DEFAULT_PASSWORD);
+			setCredential(REST_NAME, PASSWORD_NAME, REST_DEFAULT_PASSWORD);
 
 		if (Configuration.DEBUG) {
 			try {
@@ -229,7 +249,7 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 		};
 
 		urpTracker = new ServiceTracker<>(osgi, UserRightsProxy.class, cust);
-		urpTracker.open();
+		urpTracker.open(true);
 
 	}
 
@@ -261,9 +281,12 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	 * 
 	 * The added user doesn't possess any app or resource permissions as default. They could be granted later on the
 	 * administration interface.
-	 * 
+	 *
 	 * @param user
 	 *            name of the entity which is added to the system as user.
+	 * @param natural
+	 *            true if the user is a natural one or false if the user is a machine
+	 * @return true, if a new user was created successfully or false if the user already exist or the creation failed.
 	 */
 	@Override
 	public boolean createUser(final String user, final boolean natural) {
@@ -348,34 +371,57 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	}
 
 	@Override
-	public void addPermission(String user, String roleName) {
-		/*
-		 * Get the group that represents the app and the user object that matches the given name
-		 */
-		Role role = usrAdmin.getRole(roleName);
+	public void addPermission(String user, AppPermissionFilter props) {
+		UserRightsProxy urp = urpMap.get(user);
+		if (urp == null)
+			throw new RuntimeException(String.format(
+					"User rights proxy installation for the user %s not yet completed.", user));
+		Bundle b = urp.getBundle();
+		AppID appid = permMan.getAdminManager().getAppByBundle(b);
 
-		if (role == null)
-			role = usrAdmin.createRole(roleName, Role.GROUP);
-		final Role usrRole = usrAdmin.getRole(user);
-		/*
-		 * Check if the objects are valid
-		 */
-		if (usrRole == null || !(usrRole instanceof User))
-			throw new IllegalArgumentException();
-		final Role finalRole = role;
-		AccessController.doPrivileged(new PrivilegedAction<Void>() {
-			public Void run() {
-				/*
-				 * Add the user as a member to the group
-				 */
-				((Group) finalRole).addMember(usrRole);
-				/*
-				 * In order to have an effect a possible membership of NOAPPS is to be removed.
-				 */
-				noApps.removeMember(usrRole);
-				return null;
+		addPerm(appid, props);
+	}
+
+	@Override
+	public void addPermission(String user, List<AppPermissionFilter> props) {
+		UserRightsProxy urp = urpMap.get(user);
+		Bundle b = urp.getBundle();
+		AppID appid = permMan.getAdminManager().getAppByBundle(b);
+
+		addPermList(appid, props);
+	}
+
+	private void addPermList(AppID appid, List<AppPermissionFilter> props) {
+		String args[] = new String[2];
+		args[1] = "";
+		AppPermission ap = permMan.getPolicies(appid);
+
+		for (AppPermissionFilter approps : props) {
+			args[0] = approps.getFilterString();
+			if (args[0] == null)
+				args[0] = "*";
+			{
+				ap.addPermission(WEB_ACCESS_PERMISSION_CLASS, args, null);
 			}
-		});
+		}
+		// To commit the made changes the following is needed.
+		permMan.installPerms(ap);
+
+	}
+
+	private void addPerm(AppID appid, AppPermissionFilter props) {
+		String args[] = new String[2];
+		args[0] = props.getFilterString();
+		if (args[0] == null)
+			args[0] = "*";
+		args[1] = "";
+
+		AppPermission ap = permMan.getPolicies(appid);
+		{
+			ap.addPermission(WEB_ACCESS_PERMISSION_CLASS, args, null);
+		}
+		// To commit the made changes the following is needed.
+		permMan.installPerms(ap);
 
 	}
 
@@ -434,72 +480,43 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	}
 
 	@Override
-	public List<String> getAppsPermitted(String user) {
-		Vector<String> v = null;
-		Role[] roles = null;
+	public List<AppID> getAppsPermitted(String user) {
+		Vector<AppID> v = new Vector<>();
 		/*
 		 * Get the all groups that represent installed apps
 		 */
-		try {
-			roles = usrAdmin.getRoles(APPLICATION_ROLES_FILTER);
-		} catch (InvalidSyntaxException e) {
-			e.printStackTrace();
-		}
+		List<AdminApplication> laa = permMan.getAdminManager().getAllApps();
 
-		if (roles == null)
-			return null;
-
-		Role usrRole = usrAdmin.getRole(user);
-		if (usrRole == null || !(usrRole instanceof User))
-			throw new IllegalArgumentException();
-		Authorization auth = usrAdmin.getAuthorization((User) usrRole);
-
-		for (Role r : roles) {
-			String name = r.getName();
-			if (auth.hasRole(name)) {
-				if (v == null)
-					v = new Vector<>();
-				v.add(name);
-			}
+		for (AdminApplication aa : laa) {
+			AppID id = aa.getID();
+			if (isPermitted(user, id))
+				v.add(id);
 		}
 		return v;
 	}
 
 	@Override
 	public boolean isAppPermitted(User user, AppID app) {
-		String appid = app.getIDString();
-		// Is NO_APPS permitted?
-		Authorization auth = usrAdmin.getAuthorization(user);
-		if (auth.hasRole(NOAPPS))
-			return false;
-		// Is the permission granted explicitly for ALL_APPS
-		if (auth.hasRole(ALLAPPS))
-			return true;
-		// Is the permission granted explicitly for this app
-		if (auth.hasRole(appid))
-			return true;
-		else
-			return false;
+		String username = user.getName();
+		return isPermitted(username, app);
 	}
 
 	@Override
 	public boolean isAppPermitted(String user, AppID app) {
-		Role r = usrAdmin.getRole(user);
-		if (r == null || !(r instanceof User))
-			throw new RuntimeException("Unknown user " + user);
-		String appid = app.getIDString();
-		// Is NO_APPS permitted?
-		Authorization auth = usrAdmin.getAuthorization((User) r);
-		if (auth.hasRole(NOAPPS))
+		return isPermitted(user, app);
+	}
+
+	private boolean isPermitted(String username, AppID app) {
+		Bundle b = app.getBundle();
+		WebAccessPermission wap = new WebAccessPermission(b.getSymbolicName(), username, null, b.getVersion());
+		UserRightsProxy urp = urpMap.get(username);
+		if (urp == null) {
+			logger.error("Unknown user " + username);
 			return false;
-		// Is the permission granted explicitly for ALL_APPS
-		if (auth.hasRole(ALLAPPS))
-			return true;
-		// Is the permission granted explicitly for this app
-		if (auth.hasRole(appid))
-			return true;
-		else
-			return false;
+		}
+		Bundle userBundle = urp.getBundle();
+		AccessControlContext acc = permMan.getBundleAccessControlContext(urp.getClass());
+		return permMan.handleSecurity(wap, acc);
 	}
 
 	@Override
@@ -522,31 +539,15 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	}
 
 	@Override
-	public void removePermission(String user, AppID app) {
-		/*
-		 * Get the group that represents the app and the user object that matches the given name
-		 */
-		Role appRole = usrAdmin.getRole(app.getIDString());
-		Role usrRole = usrAdmin.getRole(user);
-		/*
-		 * Check if the objects are valid
-		 */
-		if (appRole == null || !(appRole instanceof Group))
-			throw new IllegalArgumentException();
-		if (usrRole == null || !(usrRole instanceof User))
-			throw new IllegalArgumentException();
-		/*
-		 * Remove the user as a member to the group
-		 */
-		((Group) appRole).removeMember(usrRole);
+	public void removePermission(String user, AppPermissionFilter props) {
+		Bundle urpbundle = urpMap.get(user).getBundle();
+		AppID urpapp = permMan.getAdminManager().getAppByBundle(urpbundle);
 
-		/*
-		 * If the removed user doesn't belong to any role, it is to be added to NOAPPS. TODO check it before
-		 */
+		permMan.removePermission(urpapp.getBundle(), WEB_ACCESS_PERMISSION_CLASS, props.getFilterString(), null);
 	}
 
 	@Override
-	public void setCredetials(String user, String credential, String value) {
+	public void setCredential(String user, String credential, String value) {
 		User usr;
 		Role role = usrAdmin.getRole(user);
 		if (role == null) {
@@ -562,32 +563,33 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 				logger.debug("User credential is set correctly");
 	}
 
-	@Override
-	public boolean checkPermission(String userName, String roleName) {
-		User user = (User) usrAdmin.getRole(userName);
-		// Is NO_APPS permitted?
-		Authorization auth = usrAdmin.getAuthorization(user);
-		if (auth.hasRole(NOAPPS))
-			return false;
-		// Is the permission granted explicitly for ALL_APPS
-		if (auth.hasRole(ALLAPPS))
-			return true;
-		// Is the permission granted explicitly for this app
-		if (auth.hasRole(roleName))
-			return true;
-		else
-			return false;
-	}
+	// @Override
+	// public boolean checkPermission(String userName, AppPermissionFilter appprops) {
+	//
+	// User user = (User) usrAdmin.getRole(userName);
+	// // Is NO_APPS permitted?
+	// Authorization auth = usrAdmin.getAuthorization(user);
+	// if (auth.hasRole(NOAPPS))
+	// return false;
+	// // Is the permission granted explicitly for ALL_APPS
+	// if (auth.hasRole(ALLAPPS))
+	// return true;
+	// // Is the permission granted explicitly for this app
+	// if (auth.hasRole(roleName))
+	// return true;
+	// else
+	// return false;
+	// }
 
 	@Override
 	public void registerApp(AppID id) {
-		Role r = usrAdmin.createRole(id.getIDString(), Role.GROUP);
-		if (r == null) {
-			r = usrAdmin.getRole(id.getIDString());
-		}
-		@SuppressWarnings("unchecked")
-		Dictionary<String, Object> dict = r.getProperties();
-		dict.put(OGEMA_ROLE_NAME, OGEMA_APPLICATION);
+		// Role r = usrAdmin.getRole(id.getIDString());
+		// if (r == null) {
+		// r = usrAdmin.createRole(id.getIDString(), Role.GROUP);
+		// }
+		// @SuppressWarnings("unchecked")
+		// Dictionary<String, Object> dict = r.getProperties();
+		// dict.put(OGEMA_ROLE_NAME, OGEMA_APPLICATION);
 	}
 
 	@Override
@@ -635,5 +637,17 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 		AppID appid = permMan.getAdminManager().getAppByBundle(b);
 		if (appid != null)
 			usrAdmin.removeRole(appid.getIDString());
+	}
+
+	@Override
+	public boolean isAllAppsPermitted(String user) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean isNoAppPermitted(String user) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 }

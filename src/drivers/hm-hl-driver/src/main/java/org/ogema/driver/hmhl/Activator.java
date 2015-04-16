@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,6 +24,7 @@ public class Activator implements BundleActivator {
 
 	private ServiceRegistration<?> serviceRegistration;
 	private HM_hlDriver driver;
+	public static boolean bundleIsRunning = true;
 
 	@Override
 	public void start(BundleContext context) throws Exception {
@@ -37,6 +37,7 @@ public class Activator implements BundleActivator {
 	@Override
 	public void stop(BundleContext context) throws Exception {
 		serviceRegistration.unregister();
+		bundleIsRunning = false;
 	}
 
 }

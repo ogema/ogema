@@ -1,0 +1,39 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html>
+<html xmlns:wicket="http://wicket.apache.org">
+    <wicket:head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">	
+    </wicket:head>
+    <body>
+        <a wicket:id="link" title="back to Parent"><span wicket:id="name"></span></a>
+        <table>
+            <thead>
+                <th>ResourceName</th>
+                <th>Aktueller Wert</th>
+            </thead>
+            <tbody>
+                <tr wicket:id="paths">
+                    <td><a wicket:id="link"><span wicket:id="name"></span></a></td> 
+                    <td><span wicket:id="value"></span></td> 
+                </tr>
+            </tbody>
+    </table>
+</body>
+</html>

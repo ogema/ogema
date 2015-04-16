@@ -1,0 +1,100 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<body>
+	<link rel="icon" href="../img/icon.png" type="image/x-icon">
+	<link rel="stylesheet" href="apps_files/stylesheetApps.css">
+	<link rel="stylesheet"
+		href="apps_files/jquery-ui-1.10.4.custom/css/black-tie/jquery-ui-1.10.4.custom.css">
+	<script src="jquery-1.11.0.js"></script>
+	<script src="dist/jstree.js"></script>
+	<script
+		src="apps_files/jquery-ui-1.10.4.custom/js/jquery-ui-1.10.4.custom.js"></script>
+	<script src="apps_files/jsApps.js"></script>
+	<script src="getPermissions.js"></script>
+	<link rel="stylesheet" href="dist/themes/default/style.min.css" />
+	<link rel="icon" href="img/icon.png" type="image/x-icon">
+</body>
+
+<body id="appsBody"
+	style="font-family: arial, sans-serif; height: 100.3%; margin: 0px; padding: 0px; color: #56555A;">
+	<div id="header"></div>
+	<!-- Picture or something -->
+	<div id="wrapper">
+		<h1 id="appstore"></h1>
+		<!-- If there is an appstore with this name -->
+		<h2 id="noAppstore"></h2>
+		<!-- If there is NO appstore with this name -->
+
+		
+
+		<!----- preface ------>
+		<div id="preface">
+
+			<!-- 			<h4>Informations concerning this appstore</h4> -->
+			<!-- 			<p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed -->
+			<!-- 				diam nonumy eirmod tempor invidunt ut labore et dolore magna -->
+			<!-- 				aliquyam erat, sed diam voluptua. At vero eos et accusam et justo -->
+			<!-- 				duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata -->
+			<!-- 				sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, -->
+			<!-- 				consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt -->
+			<!-- 				ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero -->
+			<!-- 				eos et accusam et justo duo dolores et ea rebum. Stet clita kasd -->
+			<!-- 				gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p> -->
+
+		</div>
+		<!----- END  preface ------>
+
+
+
+		<!----- heading ------>
+
+		<p class="head">
+			<strong>App Installation</strong> <br /> Choose one app to be
+			installed.
+		</p>
+
+
+		<!----- app-table in DIV, added later ------>
+		<div id="outerTableWrap">
+			<div id="tableWrap"></div>
+		</div>
+
+		<div id="resourceDialog" title="Set Actions">
+
+			<input type='checkbox' id='resDia1' name='read'><label
+				for='resDia1'>read</label> <br> <input type='checkbox'
+				id='resDia2' name='write'><label for='resDia2'>write</label>
+			<br> <input type='checkbox' id='resDia3' name='addSub'><label
+				for='resDia3'>addSub</label> <br> <input type='checkbox'
+				id='resDia4' name='create'><label for='resDia4'>create</label>
+			<br> <input type='checkbox' id='resDia5' name='delete'><label
+				for='resDia5'>delete</label> <br> <input type='checkbox'
+				id='resDia6' name='activity'><label for='resDia6'>activity</label>
+		</div>
+
+	</div>
+	<div id="footer">
+		<div id="mainpage" class="footerElement"><button type="button" id="toMainPage" onclick="toMainPage()">Admin
+			Page</button></div>
+		<div id="impressum" class="footerElement">Impressum</div>
+		<div id="ogema" class="footerElement"><a target="_blank" href="http://ogema.org/">OGEMA Website</a></div>
+	</div>
+
+
+</body>
+</html>

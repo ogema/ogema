@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,8 +16,6 @@
 package org.ogema.rest.servlet;
 
 import java.security.AccessControlContext;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.security.ProtectionDomain;
 
 import javax.servlet.http.HttpServlet;
@@ -28,12 +25,15 @@ import javax.servlet.http.HttpSession;
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.AppDomainCombiner;
 import org.ogema.accesscontrol.PermissionManager;
-import org.ogema.accesscontrol.ResourcePermission;
 import org.ogema.accesscontrol.UserRightsProxy;
-import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.administration.AdminApplication;
+import org.ogema.core.administration.AdministrationManager;
 import org.slf4j.Logger;
 
+/**
+ * @author Zekeriya Mansuroglu
+ *
+ */
 public class RestAccess extends HttpServlet {
 
 	private static final boolean DEBUG = true;
@@ -130,41 +130,8 @@ public class RestAccess extends HttpServlet {
 
 	private boolean checkAppAccess(ProtectionDomain pda[], String method, String path) {
 		final AccessControlContext acc = new AccessControlContext(new AccessControlContext(pda), domainCombiner);
-		// The rest method says which kind of access is desired to the resource
-		String action;
-		switch (method) {
-		case "GET":
-			action = "READ";
-			break;
-		case "POST":
-			action = "CREATE";
-			break;
-		case "PUT":
-			action = "WRITE";
-			break;
-		case "DELETE":
-			action = "DELETE";
-			break;
-		default:
-			action = null;
-			break;
-		}
-		// Create permission
-		final ResourcePermission perm = new ResourcePermission("path=" + path, action);
-
-		boolean result = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
-			@Override
-			public Boolean run() {
-				try {
-					System.getSecurityManager().checkPermission(perm, acc);
-				} catch (Throwable t) {
-					return false;
-				}
-				return true;
-			}
-		});
-
-		return result;
+		permMan.setAccessContext(acc);
+		return true;
 	}
 
 	/*
@@ -185,7 +152,6 @@ public class RestAccess extends HttpServlet {
 		 * Is there an user registered with the credentials attached to the request?
 		 */
 		return permMan.getAccessManager().authenticate(usr, pwd, false);
-		// return ctx.wam.permMan.accessMan.authenticate(usr, pwd);
 
 	}
 }

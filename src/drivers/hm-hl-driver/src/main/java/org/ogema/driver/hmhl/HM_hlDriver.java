@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -30,9 +29,11 @@ import org.ogema.driver.hmhl.devices.MotionDetector;
 import org.ogema.driver.hmhl.devices.PowerMeter;
 import org.ogema.driver.hmhl.devices.Remote;
 import org.ogema.driver.hmhl.devices.CO2Detector;
+import org.ogema.driver.hmhl.devices.SmokeSensor;
 import org.ogema.driver.hmhl.devices.THSensor;
 import org.ogema.driver.hmhl.devices.Thermostat;
-import org.ogema.driver.hmhl.devices.ThreeStateSensor;
+import org.ogema.driver.hmhl.devices.WaterSensor;
+import org.ogema.driver.hmhl.Activator;
 import org.slf4j.Logger;
 
 public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
@@ -57,7 +58,7 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 	@Override
 	public void start(ApplicationManager appManager) {
 		this.appManager = appManager;
-		new Thread(this).start();
+		new Thread(this, "homematic-hld-deviceScan").start();
 	}
 
 	@Override
@@ -77,7 +78,7 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
 				break;
 			case "threeStateSensor":
-				device = new ThreeStateSensor(this, appManager, config);
+				device = new WaterSensor(this, appManager, config);
 				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
 				break;
 			case "thermostat":
@@ -89,6 +90,10 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
 				break;
 			case "smokeDetector":
+				device = new SmokeSensor(this, appManager, config);
+				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
+				break;
+			case "CO2Detector":
 				device = new CO2Detector(this, appManager, config);
 				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
 				break;
@@ -148,7 +153,7 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 				device = new THSensor(this, appManager, deviceLocator);
 				break;
 			case "threeStateSensor":
-				device = new ThreeStateSensor(this, appManager, deviceLocator);
+				device = new WaterSensor(this, appManager, deviceLocator);
 				break;
 			case "thermostat":
 				device = new Thermostat(this, appManager, deviceLocator);
@@ -157,6 +162,9 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 				device = new PowerMeter(this, appManager, deviceLocator);
 				break;
 			case "smokeDetector":
+				device = new SmokeSensor(this, appManager, deviceLocator);
+				break;
+			case "CO2Detector":
 				device = new CO2Detector(this, appManager, deviceLocator);
 				break;
 			case "motionDetector":
@@ -190,7 +198,7 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 
 	@Override
 	public void run() {
-		while (true) {
+		while (true && Activator.bundleIsRunning) {
 			try {
 				Thread.sleep(Constants.DEVICE_SCAN_WAITING_TIME);
 			} catch (Exception e) {
@@ -206,7 +214,7 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 						.error("homematic-driver reported problem during the communication oder the specified interface.");
 			} catch (NoSuchDriverException e) {
 				logger
-						.error("Either the homematic-driver is not yet installed or the coordinator hardware is not connected.");
+						.debug("Either the homematic-driver is not yet installed or the coordinator hardware is not connected.");
 			}
 			logger.info("... device scan finished!");
 		}

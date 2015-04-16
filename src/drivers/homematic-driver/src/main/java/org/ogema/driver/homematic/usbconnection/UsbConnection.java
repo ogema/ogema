@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +19,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
+import org.ogema.driver.homematic.Activator;
 import org.ogema.driver.homematic.Constants;
 import org.ogema.driver.homematic.tools.Converter;
 import org.slf4j.Logger;
@@ -41,9 +41,9 @@ public class UsbConnection implements IUsbConnection {
 	private KeepAlive keepAlive;
 	private Thread keepAliveThread;
 	private Context context; // The LibUSB Driver Context
-	EventHandlingThread usbThread = new EventHandlingThread();
-	final TransferCallback messageReceived;
-	DeviceHandle handle;
+	private EventHandlingThread usbThread = new EventHandlingThread();
+	private final TransferCallback messageReceived;
+	private DeviceHandle handle;
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("homematic-driver");
 
@@ -132,6 +132,7 @@ public class UsbConnection implements IUsbConnection {
 	private void initiate() {
 		keepAlive = new KeepAlive(this);
 		keepAliveThread = new Thread(keepAlive);
+		keepAliveThread.setName("homematic-lld-keepAlive");
 		keepAliveThread.start();
 	}
 
@@ -151,14 +152,14 @@ public class UsbConnection implements IUsbConnection {
 		// This is very straight through, maybe TODO: more dynamic
 		handle = LibUsb.openDeviceWithVidPid(context, Constants.VENDOR_ID, Constants.PRODUCT_ID);
 		if (handle == null) {
-			logger.error("The coordinator hardware seems not to be connected. Please plug your hardware in.");
+			logger.debug("The coordinator hardware seems not to be connected. Please plug your hardware in.");
 			return false;
 		}
 		else {
 			int r = LibUsb.detachKernelDriver(handle, Constants.INTERFACE);
 			if (r != LibUsb.SUCCESS && r != LibUsb.ERROR_NOT_SUPPORTED && r != LibUsb.ERROR_NOT_FOUND)
 				throw new LibUsbException("Unable to detach kernel driver", r);
-
+			usbThread.setName("homematic-lld-usbThread");
 			usbThread.start();
 			// Claim the interface
 			int result = LibUsb.claimInterface(handle, Constants.INTERFACE);
@@ -222,7 +223,7 @@ public class UsbConnection implements IUsbConnection {
 
 		@Override
 		public void run() {
-			while (!this.abort) {
+			while (!this.abort && Activator.bundleIsRunning) {
 				int result = LibUsb.handleEventsTimeout(null, 250000);
 				if (result != LibUsb.SUCCESS)
 					logger.error("Unable to handle events %d", result);

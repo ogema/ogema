@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -387,8 +386,9 @@ public final class FileObjectProxy {
 	private String encodeLabel(String label) throws IOException {
 		String encodedLabel = encodedLabels.get(label);
 		if (encodedLabel == null) {
-			encodedLabel = URLEncoder.encode(label, Charset.defaultCharset().toString()); // encodes label to supported
-			// String for Filenames.
+			// encoding should be compatible with usual linux & windows file system file names
+			encodedLabel = URLEncoder.encode(label, "UTF-8");
+			encodedLabel.replace("%252F", "%2F");
 			encodedLabels.put(label, encodedLabel);
 		}
 		return encodedLabel;

@@ -1,0 +1,7 @@
+(org.osgi.framework.PackagePermission "org.osgi.framework" "import")
+(org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+(org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.ogema.accesscontrol.ChannelPermission "busid=*,devaddr=*,chaddr=*" "read,write")
+(org.ogema.accesscontrol.ResourcePermission "type=org.ogema.model.devices.sensoractordevices.SingleSwitchBox" "create")
+(org.ogema.accesscontrol.ResourcePermission "path=ExamProbe*,type=org.ogema.model.locations.Room" "read,write,addsub,create,activity,delete")

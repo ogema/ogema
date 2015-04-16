@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,6 +27,10 @@ import java.util.StringTokenizer;
  * parts devAddrs and chAddrs within the string are to be set in dependence of the specified bus type.
  * 
  */
+/**
+ * @author Zekeriya Mansuroglu
+ *
+ */
 public final class ChannelPermission extends Permission {
 
 	public class Param {
@@ -38,11 +41,6 @@ public final class ChannelPermission extends Permission {
 		boolean[] wcs;
 
 		public void parse(String param) {
-			// if (value.equals("*")) {
-			// this.wcs[0] = true;
-			// this.values[0] = null;
-			// return;
-			// }
 			StringTokenizer st = new StringTokenizer(param, " ");
 			int len = st.countTokens();
 			values = new String[len];
@@ -170,8 +168,6 @@ public final class ChannelPermission extends Permission {
 	// the actions mask
 	private transient int mask;
 
-	// private boolean wced;
-
 	private static final String WILD_STRING = "*";
 
 	public ChannelPermission() {
@@ -269,7 +265,7 @@ public final class ChannelPermission extends Permission {
 
 	private void parseFilter(String filter) {
 		/*
-		 * Check if the filter consists of a wildcard, that would mean unrestricted resource permissions
+		 * Check if the filter consists of a wildcard, that would mean unrestricted channel permissions
 		 */
 		if (filter.equals("*")) {
 			this.busId = new Param();
@@ -343,13 +339,6 @@ public final class ChannelPermission extends Permission {
 
 		if (this.mask < that.mask)
 			return false;
-
-		// Check if busId is implied
-		// if (!(this.busId.equals(that.busId)) && !(this.busId.equals(WILD_STRING)))
-		// return false;
-
-		// PermissionType thisType = pType;
-		// PermissionType thatType = that.pType;
 
 		if (!this.busId.implies(that.busId))
 			return false;

@@ -1,0 +1,1 @@
+allow { [natural "master"] (java.security.AllPermission)} "master"

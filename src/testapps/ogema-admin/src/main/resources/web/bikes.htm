@@ -1,0 +1,133 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<HTML>
+<HEAD>
+<SCRIPT language="javascript" src="maus.js" type="text/javascript"></SCRIPT>
+<SCRIPT language="javascript" src="tacho_integral.js" type="text/javascript"></SCRIPT>
+<SCRIPT type="application/javascript">
+			
+function actualize() {
+	if((get.readyState >= 4)||(get.readyState == 0)){
+		get.open("GET", "/maus",true);
+		get.onreadystatechange = process;
+		get.send();
+		}
+}
+
+function process(){
+	if ( get.readyState == 4) {
+		data = get.responseText;
+		var json = eval('('+data+')');
+		instr1.setValue(json.powerValues[BIKE1])
+		instr2.setValue(json.powerValues[BIKE2])
+	}
+}
+
+function openall(){
+self.location.href="./all.htm"}
+
+</SCRIPT>
+</HEAD>
+<style>
+.overlappedcanvas {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
+.grid00 {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
+.grid01 {
+	position: absolute;
+	top: 0px;
+	left: 960px;
+}
+
+.grid02 {
+	position: absolute;
+	top: 0px;
+	left: 960px;
+}
+
+.grid10 {
+	position: absolute;
+	top: 540px;
+	left: 0px;
+}
+
+.grid11 {
+	position: absolute;
+	top: 540px;
+	left: 480px;
+}
+
+.grid12 {
+	position: absolute;
+	top: 540px;
+	left: 960px;
+}
+</style>
+<!--<BODY>-->
+<body style="overflow: hidden;" onkeydown="openall()">
+<canvas id="canvas00u" width="960" height="1080" class="grid00"></canvas>
+<canvas id="canvas00o" width="960" height="1080"
+	style="border-bottom: 1px solid blue;" class="grid00"></canvas>
+<canvas id="canvas01u" width="960" height="1080" class="grid01"></canvas>
+<canvas id="canvas01o" width="960" height="1080"
+	style="border-bottom: 1px solid blue;" class="grid01"></canvas>
+
+
+<SCRIPT type="application/javascript">
+var get;
+var canvas00u,canvas00o,canvas01u,canvas01o
+var	context00u,context00o,context01u,context01o
+
+var instr1,instr2;
+var myTimer;
+init();
+
+function init(){
+	get= new XMLHttpRequest();
+	canvas00u = document.getElementById("canvas00u"); 
+	canvas00o = document.getElementById("canvas00o"); 
+	canvas01u = document.getElementById("canvas01u"); 
+	canvas01o = document.getElementById("canvas01o"); 
+
+	context00u = canvas00u.getContext("2d");
+	context00o = canvas00o.getContext("2d");
+	context01u = canvas01u.getContext("2d");
+	context01o = canvas01o.getContext("2d");
+
+	instr1=new integral(context01u,context01o,0, 200, 0, 0,"./images/tacho-0w-200w.gif","images/mausfahrrad_I_small.jpg","Die Maus",1);
+function create_instr2(){
+	if(instr1.inited()){
+		instr2=new integral(context00u,context00o,0, 200, 0, 0,"./images/tacho-0w-200w.gif","images/elefantrad_small.jpg","Der Elefant",1);
+		}
+	else
+		setTimeout(function(){create_instr2()}, 1000);
+}
+setTimeout(function(){create_instr2()}, 100);
+	myTimer = setInterval(actualize, 1000);	
+}
+</SCRIPT>
+</BODY>
+</HTML>

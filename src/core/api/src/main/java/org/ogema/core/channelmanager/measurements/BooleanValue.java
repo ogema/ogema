@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,6 +14,8 @@
  * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ogema.core.channelmanager.measurements;
+
+import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 
 /**
  * 
@@ -59,7 +60,7 @@ public class BooleanValue implements Value {
 
 	@Override
 	public byte[] getByteArrayValue() throws IllegalConversionException {
-		throw new IllegalConversionException();
+		throw new IllegalConversionException("Cannot convert a boolean to a byte array.");
 	}
 
 	@Override
@@ -85,6 +86,11 @@ public class BooleanValue implements Value {
 	@Override
 	public BooleanValue clone() {
 		return new BooleanValue(value);
+	}
+
+	@Override
+	public ReadOnlyTimeSeries getTimeSeriesValue() throws IllegalConversionException {
+		throw new IllegalConversionException("Cannot convert a boolean to a time series.");
 	}
 
 }

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,31 +15,35 @@
  */
 package ${package};
 
-import java.util.Map;
-
 import org.apache.wicket.markup.html.basic.Label;
-import org.ogema.service.webresourcemanager.ApplicationPanel;
-import org.ogema.service.webresourcemanager.JSWidget;
+import org.ogema.apps.wicket.ApplicationPanel;
 
 public class ${app-name}Panel extends ApplicationPanel {
 	
 	private static final long serialVersionUID = 45676583578358L;
+        private final Label title;
+        private static ${app-name}Panel instance;
+
+        private ${app-name}Panel(){
+            this.title = new Label("label", "Hello ${app-name}");
+        }
 
 	@Override
 	public void initContent() {
-		Label l = new Label("label", "Hello ${app-name}");
-		add(l);
+		add(title);
 	}
 	
-	
-
 	@Override
 	public String getTitle() {
-		return "${app-name}";
+              return "${app-name}";
 	}
 
-	@Override
-	public Map<String, JSWidget> getWidgets() {
-		return null;
-	}
+        public static ${app-name}Panel getInstance(){
+            if(${app-name}Panel.instance == null){
+                ${app-name}Panel.instance = new  ${app-name}Panel();
+            }
+            return ${app-name}Panel.instance;
+        }
+
+	
 }

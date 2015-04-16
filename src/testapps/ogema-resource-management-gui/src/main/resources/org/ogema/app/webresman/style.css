@@ -1,0 +1,22 @@
+@CHARSET "UTF-8";
+
+
+
+.chart {
+    display: block;
+    font-size: 11px;
+    margin: 60px auto auto;
+}
+rect {
+    fill: #AAAAAA;
+    fill-opacity: 0.8;
+    stroke: #EEEEEE;
+}
+rect.parent {
+    cursor: pointer;
+    fill: #5db12e;
+}
+text {
+    pointer-events: none;
+}
+

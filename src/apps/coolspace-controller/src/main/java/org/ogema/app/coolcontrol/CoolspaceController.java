@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -19,7 +18,7 @@ package org.ogema.app.coolcontrol;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
-import org.ogema.core.resourcemanager.ResourceListener;
+import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.model.devices.whitegoods.CoolingDevice;
 
 /**
@@ -44,7 +43,7 @@ public class CoolspaceController {
 		m_logger = appMan.getLogger();
 		m_device = device;
 		// Add a resource listener to the temperature reading, which is invoked whenever the temperature of the device changes.
-		m_device.temperature.addResourceListener(m_tempChange, false);
+		m_device.temperature.addValueListener(m_tempChange);
 	}
 
 	/**
@@ -59,7 +58,7 @@ public class CoolspaceController {
 	 * cooling device changes and possibly changes the on/off settings if the
 	 * temperature left the set constraints.
 	 */
-	private final ResourceListener m_tempChange = new ResourceListener() {
+	private final ResourceValueListener m_tempChange = new ResourceValueListener() {
 
 		@Override
 		public void resourceChanged(Resource resource) {
@@ -98,6 +97,6 @@ public class CoolspaceController {
 
 	// Cleanup method in case the controller is removed (e.g. the device pattern was no longer valid): Unregisters the listener on the temperature reading.
 	void stopListener() {
-		m_device.temperature.removeResourceListener(m_tempChange);
+		m_device.temperature.removeValueListener(m_tempChange);
 	}
 }

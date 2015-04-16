@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +19,8 @@ import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
+import org.ogema.accesscontrol.AccessManager;
+import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
@@ -28,6 +29,7 @@ import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.security.WebAccessManager;
 import org.osgi.framework.BundleContext;
+import org.osgi.service.useradmin.UserAdmin;
 
 // The annotations encapsule the OSGi required. They expose the service Application
 // to OSGi, which the OGEMA framework uses to detect this piece of code as an
@@ -43,6 +45,9 @@ public class FrameworkGUI implements Application {
 
 	@Reference
 	private AdministrationManager administrationManager;
+
+	@Reference
+	private PermissionManager permissionManager;
 
 	BundleContext bundleContext;
 
@@ -68,9 +73,10 @@ public class FrameworkGUI implements Application {
 
 		logger.debug("{} started", getClass().getName());
 
+		AccessManager accessManager = permissionManager.getAccessManager();
 		WebAccessManager webAccessManager = appManager.getWebAccessManager();
 		FrameworkGUIController controller = new FrameworkGUIController(administrationManager, bundleContext,
-				webAccessManager);
+				webAccessManager, accessManager);
 
 		appManager.getWebAccessManager().registerWebResource("/ogema", "org/ogema/frameworkgui/gui");
 		appManager.getWebAccessManager().registerWebResource("/apps/ogema/framework/gui",

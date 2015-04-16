@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -38,11 +37,7 @@ public class RemoteDevice {
 
 	// TODO: AES-Key !
 	public enum InitStates {
-		UNPAIRED, PAIRED
-	}
-
-	public enum DeviceStates {
-		UNKNOWN, ACTIVE, MSG_PENDING
+		UNKNOWN, PAIRING, PAIRED
 	}
 
 	private final String address;
@@ -54,8 +49,7 @@ public class RemoteDevice {
 	private long msg_num;
 
 	// States
-	private InitStates initState = InitStates.UNPAIRED;
-	private DeviceStates deviceState = DeviceStates.ACTIVE;
+	private InitStates initState = InitStates.UNKNOWN;
 	private LocalDevice localdevice;
 
 	// ChannelManagerImpl
@@ -89,7 +83,7 @@ public class RemoteDevice {
 		configs += "0A" + owner.charAt(0) + owner.charAt(1) + "0B" + owner.charAt(2) + owner.charAt(3) + "0C"
 				+ owner.charAt(4) + owner.charAt(5);
 		pushConfig("00", "00", configs);
-		setInitState(InitStates.PAIRED);
+		setInitState(InitStates.PAIRING);
 		// AES aktivieren
 		// pushConfig("01", "01", "0801");
 		createChannels();
@@ -185,13 +179,4 @@ public class RemoteDevice {
 	public void setInitState(InitStates initState) {
 		this.initState = initState;
 	}
-
-	public DeviceStates getDeviceState() {
-		return deviceState;
-	}
-
-	public void setDeviceState(DeviceStates deviceState) {
-		this.deviceState = deviceState;
-	}
-
 }

@@ -3,9 +3,8 @@
     This file is part of OGEMA.
 
     OGEMA is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
 
     OGEMA is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -24,20 +23,91 @@
 <script src="lib/jquery-1.7.min.js"></script>
 <script>
 new room2();
+$('*').contextmenu( function() {
+    return false;
+});
 </script>
 
-<link rel="stylesheet" type="text/css" href="rooms2.css">
+<link rel="stylesheet" type="text/css" href="rooms.css">
 
 </head>
 
 <body onload="draw();">
-<h2 id="room">Room</h2>
+	<div id="top">
+		<div class="rowDiv">
+			<div class="cellDivTop"></div>
+			<div class="cellDivTop">
+				<h1 id="room" align="center">Room</h1>
+			</div>
+			<div class="cellDivTop">
+				<img src="ogema.png" alt="ogema-logo" align="right" /></img>
+			</div>
+		</div>
+	</div>
+	<div id="row0">
+		<div class="rowDiv">
+			<!-- empty row -->
+			<div class="cellHeadTail">
+				<h2 align="center"></h2>
+			</div>
+		</div>
+		<div class="rowDiv">
+			<!-- empty row -->
+			<div class="cellHeadTail">
+				<h2 align="center"></h2>
+			</div>
+		</div>
+		<div class="rowDiv">
+			<!-- empty row -->
+			<div class="cellHeadTail">
+				<h2 align="center"></h2>
+			</div>
+		</div>
+		<div class="rowDiv">
+			<div class="cellHeadTail">
+				<h2 align="center"></h2>
+			</div>
+			<div class="cellHeadTail">
+				<h2 align="center"></h2>
+			</div>
+			<div class="cellHeadTail">
+				<h2 align="center">Temperatur Innen</h2>
+			</div>
+			<div class="cellHeadTail">
+				<h2 align="center"></h2>
+			</div>
+			<div class="cellHeadTail">
+				<h2 align="center"></h2>
+			</div>
+		</div>
+	</div>
+	<div class="rowFull">
+		<div class="cellDivTop"></div>
+		<div class="cellDivTop">
+			<canvas id="qualitativeView" width="680" height="400" align="center"></canvas>
+		</div>
+		<div class="cellDivTop"></div>
+	</div>
 
-<canvas id="qualitativeView" width="680" height="400" style="border:none;"><!--1px solid lightgrey;-->
-Your browser does not support the HTML5 canvas tag.
-</canvas>
-
-<div id = "links">
-</div>
+	<div id="row2">
+		<div class="cellDivTop"></div>
+		<div class="cellDivTop"></div>
+		<div class="cellDivTop"></div>
+	</div>
+	<div id="row3">
+		<div class="cellEmpty"></div>
+		<div class="cellEmpty" style="text-align: right">
+			<a class="button" href="index.html">Raumübersicht</a>
+		</div>
+		<div class="cellEmpty" style="text-align: center">
+			<a href="config.html" class="button">Raum Konfiguration</a>
+		</div>
+		<div class="cellEmpty" style="text-align: left">
+			<a id="fullView" class="button">Gesamtansicht</a>
+		</div>
+		<div class="cellEmpty">
+			<img src="iis.png" alt="iis-logo" align="right" /></img>
+		</div>
+	</div>
 </body>
 </html>

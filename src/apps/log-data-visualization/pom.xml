@@ -4,19 +4,19 @@
     <parent>
     <artifactId>ogema-apps</artifactId>
     <groupId>org.ogema.apps</groupId>
-    <version>2.0.1</version>
+    <version>2.0.2-SNAPSHOT</version>
   </parent>
     
     <groupId>org.ogema.apps</groupId>
     <artifactId>log-data-visualization</artifactId>
-    <version>2.0.1</version>
+    <version>2.0.2-SNAPSHOT</version>
 
     <packaging>bundle</packaging>
     <name>OGEMA Applications :: Logdata Visualization</name>
 	
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <ogema.api.version>2.0.1-SNAPSHOT</ogema.api.version>
+        <ogema.api.version>2.0.2-SNAPSHOT</ogema.api.version>
     </properties>
 
     <build>

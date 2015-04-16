@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -45,7 +44,7 @@ public class InheritanceTest extends OsgiTestBase {
 	OutsideRoomRad m_room = null;
 
 	@Before
-	public void initDeactiveRad() {
+	public void initInactiveRad() {
 		final String RADNAME = "testInheritedRadRoom";
 		final Resource existingModel = resAcc.getResource(RADNAME);
 		if (existingModel != null) {
@@ -101,13 +100,13 @@ public class InheritanceTest extends OsgiTestBase {
 		final InheritedOutsideRoomRad room = listener.lastAvailable;
 
 		// @Equals annotation was removed
-		//		room.type.setValue(46);
-		//		listener.lostLatch.await(5, TimeUnit.SECONDS);
-		//		assertEquals(0, listener.lostLatch.getCount());
-		//
-		//		listener.foundLatch = new CountDownLatch(1);
-		//		room.type.setValue(0);
-		//		listener.foundLatch.await(5, TimeUnit.SECONDS);
-		//		assertEquals(0, listener.foundLatch.getCount());
+		room.type.setValue(46);
+		listener.lostLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.lostLatch.getCount());
+
+		listener.foundLatch = new CountDownLatch(1);
+		room.type.setValue(0);
+		listener.foundLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.foundLatch.getCount());
 	}
 }

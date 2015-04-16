@@ -1,0 +1,1 @@
+var SOLAR = 0;var WIND = 1;var BIKE1 = 2;var BIKE2 = 3;var FRIDGE = 5;var LIGHT = 4;var AIR = 6;var BATTERY = 7;var TEMP_IN = 8;var TEMP_OUT = 9;var TEMP_FRIDGE = 10;

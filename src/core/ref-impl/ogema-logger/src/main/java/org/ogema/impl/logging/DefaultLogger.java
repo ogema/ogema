@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -113,6 +112,8 @@ public class DefaultLogger implements OgemaLogger {
         logger.addAppender(createAppenderDecorator(factory.cacheOutput, cacheFilter));
         logger.addAppender(createAppenderDecorator(factory.fileOutput, fileFilter));
         logger.addAppender(createAppenderDecorator(factory.consoleOutput, consoleFilter));
+        
+        setSlf4jLoggerLevel();
     }
 
     private void configureLevels(String levels) {
@@ -141,7 +142,33 @@ public class DefaultLogger implements OgemaLogger {
 
         }
     }
-
+    
+    private LogLevel getMaximumLevel() {
+        LogLevel maxCache = getMaximumLogLevel(LogOutput.CACHE);
+        LogLevel maxFile = getMaximumLogLevel(LogOutput.FILE);
+        LogLevel maxConsole = getMaximumLogLevel(LogOutput.CONSOLE);
+        LogLevel max = maxCache;
+        if (maxFile.ordinal() < max.ordinal()){
+            max = maxFile;
+        }
+        if (maxConsole.ordinal() < max.ordinal()){
+            max = maxConsole;
+        }
+        return max;
+    }
+    
+    private Level toSlf4jLevel(LogLevel lvl) {
+        switch (lvl) {
+            case DEBUG : return Level.DEBUG;
+            case ERROR : return Level.ERROR;
+            case INFO : return Level.INFO;
+            case TRACE : return Level.TRACE;
+            case WARNING : return Level.WARN;
+            case NO_LOGGING : return Level.OFF;
+            default : return Level.ALL;
+        }
+    }
+    
     /* setting log level in logback requires (java.util.logging.LoggingPermission "control") */
     private void setLogLevelPrivileged(final Logger logger, final Level level) {
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
@@ -152,6 +179,10 @@ public class DefaultLogger implements OgemaLogger {
                 return null;
             }
         });
+    }
+    
+    private void setSlf4jLoggerLevel() {
+        setLogLevelPrivileged(logger, toSlf4jLevel(getMaximumLevel()));
     }
 
     /**
@@ -186,6 +217,7 @@ public class DefaultLogger implements OgemaLogger {
             throw new IllegalArgumentException("level must not be null");
         }
         filters.get(output).setLevelUser(level);
+        setSlf4jLoggerLevel();
     }
 
     protected void overrideLogLevel(LogOutput output, LogLevel level) {
@@ -195,6 +227,7 @@ public class DefaultLogger implements OgemaLogger {
         } else {
             filters.get(output).setLevelAdmin(level);
         }
+        setSlf4jLoggerLevel();
     }
 
     @Override

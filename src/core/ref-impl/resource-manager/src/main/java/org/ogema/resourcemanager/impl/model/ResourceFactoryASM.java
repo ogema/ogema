@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,12 +31,12 @@ import java.lang.reflect.ParameterizedType;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.security.ProtectionDomain;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
+import static org.objectweb.asm.Opcodes.ACC_SYNTHETIC;
 import org.objectweb.asm.Type;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
@@ -75,7 +74,7 @@ enum ResourceFactoryASM {
 		implementationTypes.put(ogemaType, implementationType);
 		return implementationType;
 	}
-
+    
 	private Class<? extends ResourceBase> createImplementationType(final Class<? extends Resource> ogemaType) {
 		final long startTime = System.currentTimeMillis();
 
@@ -83,7 +82,7 @@ enum ResourceFactoryASM {
 		MethodVisitor mv;
         
 		final String classname = "resourceImpl."+ogemaType.getCanonicalName();
-
+        
 		cw.visit(V1_7, ACC_PUBLIC + ACC_SUPER,
 				classname.replace('.', '/'), null,
 				BASECLASS_NAME,
@@ -101,8 +100,12 @@ enum ResourceFactoryASM {
 			mv.visitMaxs(4, 4);
 			mv.visitEnd();
 		}
-
-        for (Method m : collectMethodsToImplement(ogemaType)) {
+        
+        for (Method m : ogemaType.getMethods()) {
+            if (m.getDeclaringClass().equals(Resource.class)) {
+				continue;
+			}
+            
 			String signature = null;
 			if (ResourceList.class.isAssignableFrom(m.getReturnType())){
 				java.lang.reflect.Type type = m.getGenericReturnType();
@@ -113,8 +116,10 @@ enum ResourceFactoryASM {
 						Type.getInternalName(m.getReturnType()),
 						Type.getInternalName(typeParameter));
 			}
+            
+            int access = ACC_PUBLIC | ((m.isBridge() || m.isSynthetic()) ? ACC_SYNTHETIC : 0);
 
-			mv = cw.visitMethod(ACC_PUBLIC, m.getName(),
+			mv = cw.visitMethod(access, m.getName(),
 					Type.getMethodDescriptor(m),
 					signature, null);
 			mv.visitCode();
@@ -128,6 +133,7 @@ enum ResourceFactoryASM {
 			mv.visitMaxs(2, 1);
 			mv.visitEnd();
 		}
+
 		cw.visitEnd();
 
 		final byte[] bytes = cw.toByteArray();
@@ -154,29 +160,6 @@ enum ResourceFactoryASM {
 		});
 	}
     
-    private Collection<Method> collectMethodsToImplement(Class<?> type){
-        Map<String, Method> methodsToImplement = new HashMap<>();
-        for (Method m: type.getMethods()){
-            if (m.getDeclaringClass().equals(Resource.class) || m.isBridge() || m.isSynthetic()) {
-				continue;
-			}
-            Method previousMethod = methodsToImplement.get(m.getName());
-            if (previousMethod != null && methodAoverwritesB(previousMethod, m)){
-                continue;
-            }
-            methodsToImplement.put(m.getName(), m);
-        }
-        return methodsToImplement.values();
-    }
-    
-    private boolean methodAoverwritesB(Method a, Method b){
-        /*
-        covariant override can not be detected with Method#isBridge() in Java 7
-        (in Java 8, the overridden method is both a bridge and a default method)
-        */
-        return b.getReturnType().isAssignableFrom(b.getReturnType());
-    }
-
     @SuppressWarnings("unchecked")
 	public <T extends ResourceBase> T makeResource(VirtualTreeElement el, String path, ApplicationResourceManager resman) {
 		try {

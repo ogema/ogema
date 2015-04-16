@@ -1,0 +1,226 @@
+<!--
+
+    Copyright 2009 - 2014
+
+    Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
+
+    Fraunhofer IIS
+    Fraunhofer ISE
+    Fraunhofer IWES
+
+    All Rights reserved
+
+-->
+<!DOCTYPE html>
+	<head>
+		<meta charset="utf-8">
+		<title>Lemoneg Administration</title>
+		<!-- Mobile viewport optimized -->
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+	</head>
+	
+    <body>
+		
+        <!--Include local jQuery copy -->
+		<script src="js/libs/jquery-1.7.min.js"></script>
+		<!--<script src="js/libs/jquery-1.11.0.js"></script>-->
+		<!-- jQuery UI provides widgets for GUI design -->
+		<script src="js/libs/jquery-ui-1.10.4.custom.js"></script>
+		<!-- External JavaScript libraries and dependencies -->
+		<!-- Defer script loading (if supported) until body is parsed and rendered -->
+		<!-- ExplorerCanvas brings the HTML5 canvas tag functionality to Internet Explorer  -->
+		<script src="js/libs/excanvas.compiled.js"></script>
+		<!-- Flot is a pure Javascript plotting library for jQuery -->
+		<script src="js/libs/jquery.flot.js"></script>
+		<!-- jQuery Timers is a high level abstraction of setTimeout and setInterval -->
+		<script src="js/jquery.timers.js"></script>
+		<!--  JavaScript implementation of a Hashtable (needed by NumberFormatter) -->
+		<script src="js/libs/jshashtable-2.1.js"></script>
+		<!-- JavaScript implementation of Java's NumberFormatter Class -->
+		<script src="js/jquery.numberformatter.js"></script>
+		<script src="js/plugins/jquery.form.js"></script>
+		
+		<!--
+		<form id="config_form" method="post" action="/servlet/new_config"> 
+		<div id="status_message">fill out form to create a Lemoneg configuration</div>
+		hardwareId: <input type="text" name="hardwareId"><br>
+		driverId: <input type="text" name="driverId"><br>
+		deviceAddress: <input type="text" name="deviceAddress"><br>
+		deviceParameters: <input type="text" name="deviceParameters"><br>
+		channelAddress: <input type="text" name="channelAddress"><br>
+		timeout: <input type="text" name="timeout"><br>
+		resourceName: <input type="text" name="resourceName"><br>
+		<input type="submit" value="Submit">
+		</form> -->
+	
+		<div id="lemoneg table">
+		<table>
+			 <tr >  
+			  <td>  
+			   <p>voltage: </p>
+			  </td>
+			  <td>  
+			   <p id="voltage"></p>
+			  </td>
+			 </tr>
+			 <tr>   
+			 <td>  
+			  <p>current: </p>
+			  </td>
+			  <td>  
+			  <p id="current"></p>
+			  </td>
+			 </tr>
+			 <tr >  
+			  <td>  
+			   <p>power: </p>
+			  </td>
+			  <td>  
+			   <p id="power"></p>
+			  </td>
+			 </tr>
+			 <tr >  
+			 <td>  
+			   <p>frequency: </p>
+			  </td>
+			  <td>  
+			   <p id="frequency"></p>
+			  </td>
+			 </tr>
+			 <tr >  
+			 <td>  
+			   <p>time: </p>
+			  </td>
+			  <td>  
+			   <p id="time"></p>
+			  </td>
+			 </tr>
+		</table>
+		</div>
+		
+		
+		<div id='div_JSON_table'>
+		</div>
+		
+		
+		<script type="text/javascript">
+		
+		
+			$(document).everyTime(12000, function() 
+			{
+				   $("#JSON_table").remove();
+				   $("#bus_dialog").remove();
+				
+				
+				   $.getJSON("/servlet/buses_devices_list", function(data)
+				   {
+					   $("#div_JSON_table").append("<table id='JSON_table'><thead><tr><th></th><th></th></tr></thead><tbody id='JSON_table_tbody'></tbody></table>");
+					   
+					   $("body").append("<div id='bus_dialog'>" +
+							   				"<form>" +
+												"<fieldset>" +
+												"<label for='hardwareId'>hardwareId:</label>" +
+												"<input type='text' name='hardwareId' id='hardwareId'><br>" +
+												"<label for='driverId'>driverId:</label>" +
+												"<input type='text' name='driverId' id='driverId'><br>" +
+												"<label for='channelAddress'>channelAddress:</label>" +
+												"<input type='text' name='channelAddress' id='channelAddress'><br>" +
+												"</fieldset>" +
+							   				"</form>" +
+							   			 "</div>"
+							   		   );
+					   
+					   
+					   $("#JSON_table_tbody").append("<tr><th>" + "<button id='add_bus'>add bus</button>" + "</th></tr>");
+					   
+					   $("#bus_dialog").dialog({
+						   autoOpen: false,
+						   height: 280,
+						   width: 280,
+						   modal: true,
+						   buttons: {
+						   "submit": function() {
+						   		$("#JSON_table_tbody").append("<tr><td>" + hardwareId.value + "</td></tr>");
+						   		$("#JSON_table_tbody").append("<tr><td>" + driverId.value + "</td></tr>");
+						   		$("#JSON_table_tbody").append("<tr><td>" + channelAddress.value + "</td></tr>");
+						   		
+						   		$.post("/servlet/addBus", {hardwareId: hardwareId.value, driverId: driverId.value, channelAddress: channelAddress.value});
+						   
+					   	   },
+						   cancel: function() {
+						   $(this).dialog( "close" );
+						   }
+						   },
+						   close: function() {
+						   
+						   }
+						   });
+					 
+					   $("#add_bus").button().click(function() {$("#bus_dialog").dialog("open");} );
+					   
+					   for(i = 0; i < data.length; i++) 
+					   {
+						   for(j = 0; j < data[i].length; j++)
+						   {
+							   if(j == 0) $("#JSON_table_tbody").append("<tr><th>" + "bus:  " + data[i][j] + "</th></tr>");
+							   else $("#JSON_table_tbody").append("<tr><th>" + "clamp/device:  " + data[i][j] + "</th></tr>");		
+							   bus_value = data[i][0];
+						   }
+						   $("#JSON_table_tbody").append("<tr><th>" + "<button id='add_device'>add device</button>" + "</th></tr>");
+						   
+						   $("body").append("<div id='device_dialog'>" +
+					   				"<form>" +
+										"<fieldset>" +
+										"<label for='deviceAddress'>deviceAddress:</label>" +
+										"<input type='text' name='deviceAddress' id='deviceAddress'><br>" +
+										"<label for='deviceParameters'>deviceParameters:</label>" +
+										"<input type='text' name='deviceParameters' id='deviceParameters'><br>" +
+										"<label for='timeout'>timeout:</label>" +
+										"<input type='text' name='timeout' id='timeout'><br>" +
+										"<label for='resourceName'>resourceName:</label>" +
+										"<input type='text' name='resourceName' id='resourceName'><br>" +
+										"</fieldset>" +
+					   				"</form>" +
+					   			 "</div>"
+					   		   );
+						   
+						   $("#device_dialog").dialog({
+							   autoOpen: false,
+							   height: 300,
+							   width: 300,
+							   modal: true,
+							   buttons: {
+							   "submit": function() {
+							   	$.post("/servlet/new_device", {bus: bus_value, deviceAddress: deviceAddress.value, deviceParameters: deviceParameters.value, timeout: timeout.value, resourceName: resourceName.value});
+						   	   },
+							   cancel: function() {
+							   $(this).dialog( "close" );
+							   }
+							   },
+							   close: function() {
+							   
+							   }
+							   });
+		
+						   $("#add_device").button().click(function() {$("#device_dialog").dialog("open");} );
+					   }
+				   });
+				
+			/*	   $.getJSON("/servlet/JSON_package", function(data) 
+				   {
+				    	
+					   for(i = 0; i < data.length; i++) {		 
+				    		
+						   if(i == 0) document.getElementById("voltage").innerHTML = data[i].voltage;
+						   if(i == 1) document.getElementById("current").innerHTML = data[i].current;
+						   if(i == 2) document.getElementById("power").innerHTML = data[i].power;
+						   if(i == 3) document.getElementById("frequency").innerHTML = data[i].frequency;
+						   if(i == 4) document.getElementById("time").innerHTML = data[i].time;
+					   }
+				   });   */
+			});
+		
+		</script>
+
+	</body>
+</html>

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -162,15 +161,13 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
 	@Override
 	public VirtualTreeElement addChild(String name, Class<? extends Resource> type, boolean isDecorating)
 			throws ResourceAlreadyExistsException, ResourceNotFoundException, InvalidResourceTypeException {
+        Objects.requireNonNull(type);
 		VirtualTreeElement existingChild = getChild(name);
 		if (existingChild != null && !existingChild.isVirtual()) {
 			if (type != null && !type.isAssignableFrom(existingChild.getType())) {
 				throw new ResourceAlreadyExistsException("resource exists with incompatible type");
 			}
 			return existingChild;
-		}
-		if (type == null) { // ResourceList type confusion
-			type = ResourceList.class;
 		}
 		Object existingResRef = (existingChild != null) ? existingChild.getResRef() : null;
 		TreeElement newElement = el.addChild(name, type, isDecorating);
@@ -210,6 +207,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
 	/* the tree element was virtual and is now replaced by a real one. */
 	private void realizedBy(TreeElement e) {
 		assert e.getName().equals(getName()) : "name mismatch: " + getPath() + " / " + e.getPath();
+        String createdPath = getPath();
 		for (TreeElement child : e.getChildren()) {
 			DefaultVirtualTreeElement vChild = virtualSubresources.get(child.getName());
 			if (vChild != null) {
@@ -219,7 +217,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
 				}
 				else {
 					if (vChild.getResRef() != null) {
-						((ElementInfo) vChild.getResRef()).fireResourceCreated();
+						((ElementInfo) vChild.getResRef()).fireResourceCreated(createdPath);
 					}
 				}
 				virtualSubresources.remove(child.getName());
@@ -230,7 +228,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
 		setEl(getRealElement(e));
 		if (oldElementInfo != null) {
 			oldElementInfo.transferListeners(el);
-			oldElementInfo.fireResourceCreated();
+			oldElementInfo.fireResourceCreated(createdPath);
 		}
 	}
 
@@ -416,14 +414,28 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
 
 	@Override
 	public Class<? extends Resource> getResourceListType() {
-		// TODO Auto-generated method stub
-		return null;
+		return el.getResourceListType();
 	}
 
 	@Override
 	public void setResourceListType(Class<? extends Resource> cls) {
+		el.setResourceListType(cls);
+	}
+
+	@Override
+	public void setLastModified(long time) {
+		el.setLastModified(time);
+	}
+
+	@Override
+	public long getLastModified() {
+		return el.getLastModified();
+	}
+
+	@Override
+	public String getLocation() {
 		// TODO Auto-generated method stub
-		
+		return null;
 	}
 
 }

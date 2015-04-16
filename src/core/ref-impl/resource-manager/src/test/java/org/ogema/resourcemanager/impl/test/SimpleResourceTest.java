@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,6 +20,7 @@ import static org.junit.Assert.assertNotNull;
 
 import java.nio.ByteBuffer;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -50,6 +50,18 @@ import org.ops4j.pax.exam.spi.reactors.PerClass;
 public class SimpleResourceTest extends OsgiTestBase {
 
 	public static final String RESNAME = SimpleResourceTest.class.getSimpleName();
+
+	@Test
+	public void lastUpdateTimeWorks() throws Exception {
+		OnOffSwitch res = resMan.createResource(newResourceName(), OnOffSwitch.class);
+		assertEquals(-1, res.stateControl().getLastUpdateTime());
+		res.stateControl().create();
+		assertEquals(-1, res.stateControl().getLastUpdateTime());
+		long beforeUpdate = getApplicationManager().getFrameworkTime();
+		res.stateControl().setValue(true);
+		assertNotEquals(-1, res.stateControl().getLastUpdateTime());
+		assertTrue(res.stateControl().getLastUpdateTime() >= beforeUpdate);
+	}
 
 	@Test
 	public void decoratorsWorkOnSimpleResources() throws ResourceException {

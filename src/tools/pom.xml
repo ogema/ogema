@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.ogema</groupId>
 		<artifactId>ogema</artifactId>
-		<version>2.0.1</version>
+		<version>2.0.2</version>
 	</parent>
 
 	<groupId>org.ogema.tools</groupId>
@@ -16,8 +16,10 @@
 
 	<!-- Sub-projects: OGEMA Tools (in alphabetical order).  -->
 	<modules>
+		<module>grafana-base</module>
 	    <module>memory-timeseries</module>
 	    <module>ogema-console-scripting</module>
+	    <module>resource-manipulators</module>
 	</modules>
 
 	<build>

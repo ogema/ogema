@@ -1,0 +1,163 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<HTML>
+<HEAD>
+<SCRIPT language="javascript" src="maus.js" type="text/javascript"></SCRIPT>
+<SCRIPT type="application/javascript">
+			
+function actualize() {
+	if((get.readyState >= 4)||(get.readyState == 0)){
+		get.open("GET", "/maus",true);
+		get.onreadystatechange = process;
+		get.send();
+		}
+<!--	if((post.readyState >= 4)||(post.readyState == 0)){-->
+<!--		post.open("POST", "/maus?led=on&halogen=off&bulb=on",true);-->
+<!--		post.setRequestHeader("Content-Type", "text/html");-->
+<!--		post.onreadystatechange = process;-->
+<!--		post.send();-->
+<!--		}-->
+}
+
+function process(){
+	if ( get.readyState == 4) {
+		data = get.responseText;
+		var json = eval('('+data+')');
+		
+		argArr[0]=json.powerValues[LIGHT]
+
+	}
+	if ( post.readyState == 4) {
+		data = post.responseText;
+		var json = eval('('+data+')');
+	}
+}
+
+</SCRIPT>
+</HEAD>
+<style>
+.overlappedcanvas {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+
+}
+.grid00 {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+
+}
+.grid01 {
+	position: absolute;
+	top: 0px;
+	left: 480px;
+
+}
+.grid02 {
+	position: absolute;
+	top: 0px;
+	left: 960px;
+
+}
+.grid10 {
+	position: absolute;
+	top: 600px;
+	left: 0px;
+
+}
+.grid11 {
+	position: absolute;
+	top: 600px;
+	left: 480px;
+
+}
+.grid12 {
+	position: absolute;
+	top: 600px;
+	left: 960px;
+
+}
+</style>
+<!--<BODY>-->
+<body style="overflow:hidden;">
+<canvas id="canvas00u" width="480" height="600" class="grid00"></canvas>
+<canvas id="canvas00o" width="480" height="600" class="grid00"></canvas>
+
+
+<SCRIPT type="application/javascript">
+var get,post;
+
+var canvas00u,canvas00o
+var	context00u,context00o
+var myTimer;
+init();
+var argArr
+var loaded=0;
+
+// Which dimensions the visible area have
+var visibleW =window.innerWidth;
+var visibleH=window.innerHeight;
+// History graph position
+var canvas_w=visibleW;
+var canvas_h=visibleH;
+
+
+function init(){
+	argArr=new Array(8)
+	get= new XMLHttpRequest();
+	post= new XMLHttpRequest();
+
+	canvas00u = document.getElementById("canvas00u"); 
+	canvas00u.width=parseInt(visibleW);
+	canvas00u.height=parseInt(visibleH); 
+
+	canvas00o = document.getElementById("canvas00o"); 
+	canvas00o.width=parseInt(visibleW);
+	canvas00o.height=parseInt(visibleH); 
+
+	context00u = canvas00u.getContext("2d");
+	context00o = canvas00o.getContext("2d");
+
+	var halogenBild= new Image();	// definition of Tacho-Image
+	var ledBild= new Image();	// definition of Tacho-Image
+
+	halogenBild.onload=function(){
+		loaded++
+		if(loaded==2)
+		{
+
+		}
+	}
+
+	ledBild.onload=function(){
+		loaded++
+		if(loaded==2)
+		{
+			
+		}
+
+	}
+	halogenBild.src = "./images/mauslicht.jpg"; 	// Set source path 
+	ledBild.src = "./images/mauslicht.jpg"; 	// Set source path 
+
+	myTimer = setInterval(actualize, 1000);	
+}
+</SCRIPT>
+</BODY>
+</HTML>

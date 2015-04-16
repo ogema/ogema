@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -30,7 +29,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.ogema.accesscontrol.AdminPermission;
 import org.ogema.accesscontrol.ChannelPermission;
 import org.ogema.accesscontrol.ResourcePermission;
-import org.ogema.accesscontrol.Util;
 import org.ogema.core.application.AppID;
 import org.ogema.core.security.AppPermission;
 import org.ogema.core.security.AppPermissionType;
@@ -42,14 +40,18 @@ import org.osgi.service.condpermadmin.ConditionalPermissionUpdate;
 import org.osgi.service.permissionadmin.PermissionInfo;
 import org.slf4j.Logger;
 
+/**
+ * @author Zekeriya Mansuroglu
+ *
+ */
 public class AppPermissionImpl implements AppPermission {
 
 	static final String BUNDLE_LOCATION_CONDITION_NAME = "org.osgi.service.condpermadmin.BundleLocationCondition";
 
 	private AppID appID;
 	ConditionalPermissionAdmin cpa;
-	private ArrayList<AppPermissionType> nTypes;
-	private ArrayList<AppPermissionType> pTypes;
+	ArrayList<AppPermissionType> nTypes;
+	ArrayList<AppPermissionType> pTypes;
 	private HashMap<String, AppPermissionType> allTypes;
 	/*
 	 * List of the permissions that are already commited to the security manager
@@ -279,12 +281,8 @@ public class AppPermissionImpl implements AppPermission {
 		}
 	}
 
-	void apply() {
+	boolean apply() {
 		boolean exists = false;
-		// Add the default policies that doesn't need to be explicitly demanded by the app. This is done by setting of
-		// that policies in the policy file without the restriction related to bundle location.
-		// addDefaults();
-		// Remove the old permissions
 		completeTypes();
 		// First get the permissions table
 		ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
@@ -303,8 +301,7 @@ public class AppPermissionImpl implements AppPermission {
 			// Check if a permission info with the same name exists
 			for (ConditionalPermissionInfo tmpcpi : piList) {
 				// If a permission info exists in the table remove it before adding the new info
-				if (implies(tmpcpi, cpi)) {
-					// piList.remove(tmpcpi);
+				if (PermissionManagerImpl.implies(tmpcpi, cpi)) {
 					exists = true;
 					break;
 				}
@@ -333,8 +330,7 @@ public class AppPermissionImpl implements AppPermission {
 			// Check if a permission info with the same name exists
 			for (ConditionalPermissionInfo tmpcpi : piList) {
 				// If a permission info exists in the table remove it before adding the new info with the same name
-				if (implies(tmpcpi, cpi)) {
-					// piList.remove(tmpcpi);
+				if (PermissionManagerImpl.implies(tmpcpi, cpi)) {
 					exists = true;
 					break;
 				}
@@ -349,31 +345,9 @@ public class AppPermissionImpl implements AppPermission {
 			else
 				exists = false;
 		}
-		cpu.commit();
+		boolean result = cpu.commit();
 		refresh();
-	}
-
-	private boolean implies(ConditionalPermissionInfo implier, ConditionalPermissionInfo implied) {
-		/*
-		 * Check Access decision
-		 */
-		if (!implier.getAccessDecision().equals(implied.getAccessDecision()))
-			return false;
-		/*
-		 * Check the PermisssionInfos
-		 */
-		Object rpinfos[] = implier.getPermissionInfos();
-		Object dpinfos[] = implied.getPermissionInfos();
-		boolean success = Util.containsAll(rpinfos, dpinfos);
-		if (!success)
-			return false;
-		/*
-		 * Check the ConditionInfos
-		 */
-		rpinfos = implier.getConditionInfos();
-		dpinfos = implied.getConditionInfos();
-		success = Util.containsAll(rpinfos, dpinfos);
-		return success;
+		return result;
 	}
 
 	void refresh() {
@@ -437,7 +411,6 @@ public class AppPermissionImpl implements AppPermission {
 						break;
 					}
 				}
-			// granted.remove(name);
 		}
 		cpu.commit();
 		// remove the policies not yet applied

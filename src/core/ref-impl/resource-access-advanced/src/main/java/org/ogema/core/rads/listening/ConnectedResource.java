@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,16 +13,31 @@
  * You should have received a copy of the GNU General Public License
  * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
+/**
+ * This file is part of OGEMA.
+ *
+ * OGEMA is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * OGEMA is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.ogema.core.rads.listening;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.rads.tools.ResourceFieldInfo;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessModeListener;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureEvent.EventType;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
+import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.CreateMode;
 
 /**
@@ -49,7 +63,8 @@ class ConnectedResource {
 		m_resource.addStructureListener(structureListener);
 		m_resource.addAccessModeListener(accessListener);
 		if (m_info.isEqualityRequired()) {
-			m_resource.addResourceListener(m_valueListener, false);
+			//System.out.println("   Adding value listener " + m_resource.getLocation());
+			m_resource.addValueListener(valueListener);
 		}
 		m_resource.requestAccessMode(m_info.getMode(), m_info.getPrio());
 		if (this.meetsRequirements()) {
@@ -66,7 +81,8 @@ class ConnectedResource {
 		m_resource.removeStructureListener(structureListener);
 		m_resource.removeAccessModeListener(accessListener);
 		if (m_info.isEqualityRequired()) {
-			m_resource.removeResourceListener(m_valueListener);
+			//System.out.println("   Removing value listener " + m_resource.getLocation());
+			m_resource.removeValueListener(valueListener);
 		}
 	}
 
@@ -112,7 +128,7 @@ class ConnectedResource {
 	 * Listener in the resource values in case that an @Equals annotation had
 	 * been issued in the RAD.
 	 */
-	private final ResourceListener m_valueListener = new ResourceListener() {
+	private final ResourceValueListener valueListener = new ResourceValueListener() {
 
 		@Override
 		public void resourceChanged(Resource resource) {
@@ -148,24 +164,28 @@ class ConnectedResource {
 			throw new RuntimeException("Resource is null. Programmer is not convinced this should ever happen.");
 		}
 
+		// Check existence, if required
 		if (m_info.getCreateMode() == CreateMode.MUST_EXIST) {
 			if (!m_resource.isActive())
 				return false;
 		}
 
-		// Check the access mode.
-		final AccessMode access = m_resource.getAccessMode();
-		final AccessMode accessReq = m_info.getMode();
-		if (accessReq == AccessMode.SHARED) {
-			if (access == AccessMode.READ_ONLY)
-				return false;
-		}
-		else if (accessReq == AccessMode.EXCLUSIVE) {
-			if (access != AccessMode.EXCLUSIVE)
-				return false;
+		// Check the access mode, if required
+		if (m_info.isAccessModeRequired()) {
+			final AccessMode access = m_resource.getAccessMode();
+			final AccessMode accessReq = m_info.getMode();
+			if (accessReq == AccessMode.SHARED) {
+				if (access == AccessMode.READ_ONLY)
+					return false;
+			}
+			else if (accessReq == AccessMode.EXCLUSIVE) {
+				if (access != AccessMode.EXCLUSIVE)
+					return false;
+			}
 		}
 
-		if (m_info.isEqualityRequired()) {
+		// Check equality, if required
+		if (m_resource.isActive() && m_info.isEqualityRequired()) {
 			if (!m_info.valueSatisfied(m_resource))
 				return false;
 		}

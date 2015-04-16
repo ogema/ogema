@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,6 +25,7 @@ import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.array.BooleanArrayResource;
+import org.ogema.core.model.array.ByteArrayResource;
 import org.ogema.core.model.array.FloatArrayResource;
 import org.ogema.core.model.array.IntegerArrayResource;
 import org.ogema.core.model.array.StringArrayResource;
@@ -55,74 +55,6 @@ import org.ops4j.pax.exam.spi.reactors.PerClass;
  */
 @ExamReactorStrategy(PerClass.class)
 public class TransactionTest extends OsgiTestBase {
-
-	/*
-	 Tests for the old transactions not using a transaction object (deprecated)
-	 */
-	//	@Test
-	//	public void oldTransactionUpdatesAreAppliedAfterCommit() {
-	//		ElectricBinarySwitch sw = resMan.createResource(newResourceName(), ElectricBinarySwitch.class);
-	//		sw.addOptionalElement("ratedSwitchingCurrent");
-	//		FloatResource f = sw.ratedSwitchingCurrent();
-	//		f.setValue(0);
-	//		assertEquals(0, f.getValue(), 0);
-	//		resAcc.startTransaction();
-	//		f.setValue(1);
-	//		assertEquals(0, f.getValue(), 0);
-	//		resAcc.commitTransaction();
-	//		assertEquals(1, f.getValue(), 0);
-	//	}
-	//
-	//	@Test
-	//	public void oldListenersAreNotifiedAfterCommit() throws InterruptedException {
-	//		ElectricBinarySwitch sw = resMan.createResource(newResourceName(), ElectricBinarySwitch.class);
-	//		final FloatResource f = (FloatResource) sw.ratedSwitchingCurrent().create();
-	//		sw.controllable().create();
-	//		final BooleanResource b = sw.controllable();
-	//		b.setValue(false);
-	//		f.setValue(0);
-	//		sw.activate(true);
-	//
-	//		final CountDownLatch listenerCall = new CountDownLatch(1);
-	//
-	//		ResourceListener l = new ResourceListener() {
-	//
-	//			@Override
-	//			public void resourceChanged(Resource resource) {
-	//				assertEquals(1, f.getValue(), 0);
-	//				assertTrue(b.getValue());
-	//				listenerCall.countDown();
-	//			}
-	//		};
-	//		sw.addResourceListener(l, true);
-	//		resAcc.startTransaction();
-	//		f.setValue(1);
-	//		b.setValue(true);
-	//		assertFalse(listenerCall.await(5, TimeUnit.SECONDS));
-	//		resAcc.commitTransaction();
-	//		assertTrue(listenerCall.await(30, TimeUnit.SECONDS));
-	//	}
-	//
-	//	@Test
-	//	public void oldTransactionsWorkWithArrays() {
-	//		IntegerArrayResource arr = resMan.createResource(newResourceName(), IntegerArrayResource.class);
-	//		arr.setValues(new int[8]);
-	//		int[] expected = new int[4];
-	//		Arrays.fill(expected, 1);
-	//		expected[0] = 2;
-	//		assertEquals(0, arr.getElementValue(0));
-	//		assertEquals(8, arr.size());
-	//		resAcc.startTransaction();
-	//		int[] newVal = new int[4];
-	//		Arrays.fill(newVal, 1);
-	//		arr.setValues(newVal);
-	//		arr.setElementValue(2, 0);
-	//		assertEquals(0, arr.getElementValue(0));
-	//		assertEquals(8, arr.size());
-	//		resAcc.commitTransaction();
-	//		assertEquals(2, arr.getElementValue(0));
-	//		assertTrue(Arrays.equals(expected, arr.getValues()));
-	//	}
 
 	/*
 	 Tests for the new transactions using a transaction object.
@@ -280,6 +212,47 @@ public class TransactionTest extends OsgiTestBase {
 
 			for (int j = 0; j < L; ++j) {
 				final byte entry = (byte) (value + j);
+				assertEquals(v1[j], entry);
+				assertEquals(v2[j], entry);
+			}
+		}
+	}
+
+	@Test
+	public void transactionWritesByteArrayValues() {
+		final ByteArrayResource res1 = resMan.createResource("bya1", ByteArrayResource.class);
+		final ByteArrayResource res2 = resMan.createResource("bya2", ByteArrayResource.class);
+
+		final Transaction transaction = resAcc.createTransaction();
+		transaction.addResource(res1);
+		transaction.addResource(res2);
+		assertNull(transaction.getByteArray(res1));
+		assertNull(transaction.getByteArray(res2));
+		for (int i = 0; i < 10; ++i) {
+			final int L = i;
+			final byte value = (byte) (256. * Math.random());
+			final byte[] values = new byte[L];
+			for (int j = 0; j < L; ++j)
+				values[j] = value;
+
+			transaction.setByteArray(res1, values);
+			transaction.setByteArray(res2, values);
+			transaction.write();
+
+			assertEquals(res1.getValues().length, L);
+			assertEquals(res2.getValues().length, L);
+			transaction.read();
+
+			final byte[] v1 = transaction.getByteArray(res1);
+			assertNotNull(res1);
+			assertEquals(v1.length, L);
+
+			final byte[] v2 = transaction.getByteArray(res2);
+			assertNotNull(v2);
+			assertEquals(v2.length, L);
+
+			for (int j = 0; j < L; ++j) {
+				final byte entry = value;
 				assertEquals(v1[j], entry);
 				assertEquals(v2[j], entry);
 			}

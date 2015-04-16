@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,10 +20,6 @@ import java.util.Arrays;
 import org.ogema.driver.homematic.tools.Converter;
 
 public class StatusMessage {
-
-	public enum States {
-		INVALID, VALID
-	}
 
 	public byte type = 0;
 	public long rtoken;
@@ -45,11 +40,15 @@ public class StatusMessage {
 	public long msg_num = 0;
 	public byte msg_flag = 0;
 	public byte msg_type = 0;
-
 	public byte[] msg_data = null;
 
+	public byte[] msg_all = null;
+
+	public boolean partyMode = false;
+	private boolean isEmpty = false;
+
 	StatusMessage() {
-		// DKtor
+		isEmpty = true;
 	}
 
 	StatusMessage(byte[] data) {
@@ -81,6 +80,19 @@ public class StatusMessage {
 		msg_type = data[16 + i_type];
 		if (this.msg_len > 9)
 			msg_data = Arrays.copyOfRange(data, 23 + i_type, (int) (14 + i_type + this.msg_len));
+		msg_all = Arrays.copyOfRange(data, 13 + i_type, (int) (14 + i_type + this.msg_len));
+
+		if (source.equals(destination))
+			partyMode = true;
+	}
+
+	public boolean almostEquals(StatusMessage emsg) {
+		if (isEmpty)
+			return false;
+		else if (rtoken == emsg.rtoken && Arrays.equals(msg_all, emsg.msg_all))
+			return true;
+		else
+			return false;
 	}
 
 }

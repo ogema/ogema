@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.ogema.core.hardwaremanager.HardwareDescriptor;
 import org.ogema.core.hardwaremanager.HardwareListener;
@@ -105,6 +105,18 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 	public Collection<HardwareDescriptor> getHardwareDescriptors() {
 		synchronized (devices) {
 			return new ArrayList<HardwareDescriptor>(devices.values());
+		}
+	}
+
+	@Override
+	public Collection<HardwareDescriptor> getHardwareDescriptors(String pattern) {
+		ArrayList<HardwareDescriptor> result = new ArrayList<HardwareDescriptor>();
+		synchronized (devices) {
+			for (HardwareDescriptor descr : devices.values()) {
+				if (Pattern.matches(pattern, descr.getIdentifier()))
+					result.add(descr);
+			}
+			return result;
 		}
 	}
 

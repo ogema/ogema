@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -208,9 +207,11 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 					+ m_valueType.getCanonicalName());
 		}
 
-		// delete+insert instead of replace to capture exotic case of value at t=MAX_LONG.
-		m_schedule.deleteValues();
-		m_schedule.addValues(values, calculationTime);
+		if (!values.isEmpty()) {
+			// delete+insert instead of replace to capture exotic case of value at t=MAX_LONG.
+			m_schedule.deleteValues();
+			m_schedule.addValues(values, calculationTime);
+		}
 
 		final InterpolationMode mode = InterpolationMode.getInterpolationMode(m_interpolationMode.getData().getInt());
 		m_schedule.setInterpolationMode(mode);
@@ -243,8 +244,9 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 		}
 
 		// note: update time is not stored in the memory schedules, only calculation time.
-		final long calculationTime = m_schedule.getLastCalculationTime();
-		m_calculationTime.getData().setLong(calculationTime);
+		if (m_schedule.getLastCalculationTime() != null) {
+			m_calculationTime.getData().setLong(m_schedule.getLastCalculationTime());
+		}
 
 		final int mode = m_schedule.getInterpolationMode().getInterpolationMode();
 		m_interpolationMode.getData().setInt(mode);
@@ -768,6 +770,24 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 	public void setResourceListType(Class<? extends Resource> cls) {
 		// TODO Auto-generated method stub
 
+	}
+
+	@Override
+	public void setLastModified(long time) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public long getLastModified() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public String getLocation() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

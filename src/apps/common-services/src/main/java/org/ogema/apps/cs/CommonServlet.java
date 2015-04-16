@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,7 +17,9 @@ package org.ogema.apps.cs;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.text.SimpleDateFormat;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -36,9 +37,16 @@ import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
+import org.ogema.core.model.units.ElectricCurrentResource;
+import org.ogema.core.model.units.EnergyResource;
+import org.ogema.core.model.units.PhysicalUnit;
+import org.ogema.core.model.units.PowerResource;
+import org.ogema.core.model.units.TemperatureResource;
+import org.ogema.core.model.units.VoltageResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceAccess;
+import org.ogema.core.resourcemanager.ResourceNotFoundException;
 import org.ogema.core.security.WebAccessManager;
 import org.ogema.persistence.DBConstants;
 import org.ogema.persistence.ResourceDB;
@@ -62,7 +70,6 @@ public class CommonServlet extends HttpServlet {
 	private ResourceAccess resMngr;
 
 	CommonServlet(WebAccessManager wam, ResourceDB db, ResourceAccess resAcc) {
-		wam.registerWebResource("/admin", "/admin");
 		wam.registerWebResource("/service", this);
 		this.db = db;
 		this.resMngr = resAcc;
@@ -97,6 +104,26 @@ public class CommonServlet extends HttpServlet {
 			data = sb.toString();
 			printResponse(resp, data);
 			break;
+		case "/filteredresources":
+			resp.setContentType("application/json");
+			try {
+				sb = filteredResourceTree2JSON(req);
+			} catch (Throwable e) {
+				e.printStackTrace();
+			}
+			data = sb.toString();
+			printResponse(resp, data);
+			break;
+		case "/resourceperm":
+			resp.setContentType("application/json");
+			idStr = req.getParameter("id");
+			if (idStr != null && !idStr.equals("#"))
+				id = Integer.valueOf(idStr);
+			sb = resourceTreeView2JSON(id);
+			data = sb.toString();
+			printResponse(resp, data);
+			break;
+
 		case "/resourcevalue":
 			resp.setContentType("application/json");
 			idStr = req.getParameter("id");
@@ -137,7 +164,8 @@ public class CommonServlet extends HttpServlet {
 			sb.append(te.getResID());
 			sb.append('"');
 			sb.append(',');
-			sb.append("\"method\":\"\",");
+			sb.append("\"method\":\"\","); // method and recursive are container that are user on the client side
+			sb.append("\"recursive\":\"\",");
 			sb.append("\"value\":\"");
 			readResourceValue(te, sb);
 			sb.append('"');
@@ -151,7 +179,11 @@ public class CommonServlet extends HttpServlet {
 				sb.append(ResourceList.class.getName());
 			}
 			else {
-				sb.append(te.getType().getName());
+				Class<?> cls = te.getType();
+				if (cls != null)
+					sb.append(cls.getName());
+				else
+					sb.append("Unknown model class");
 			}
 			sb.append('"');
 			sb.append(',');
@@ -165,6 +197,97 @@ public class CommonServlet extends HttpServlet {
 		}
 		sb.append(']');
 		return sb;
+	}
+
+	StringBuffer filteredResourceTree2JSON(HttpServletRequest req) {
+		Collection<TreeElement> childs;
+
+		String type = req.getParameter("type");
+		String path = req.getParameter("path");
+		String owner = req.getParameter("owner");
+		String id = req.getParameter("id");
+		HashMap<String, String> map = new HashMap<String, String>();
+		map.put("type", type);
+		map.put("path", path);
+		map.put("owner", owner);
+		map.put("id", id);
+
+		childs = db.getFilteredNodes(map);
+
+		StringBuffer sb = new StringBuffer();
+		sb.append('[');
+		int index = 0;
+		for (TreeElement te : childs) {
+			String text = te.getName();
+			// if the node is an internal one skip it
+			if (text.startsWith("@"))
+				continue;
+			// If the node is a reference extend the name string with the path of the referee
+			if (te.isReference())
+				text = text + "->" + te.getLocation();
+			if (index++ != 0)
+				sb.append(',');
+			sb.append("{\"text\":\"");
+			sb.append(text);
+			sb.append('"');
+			sb.append(',');
+			sb.append("\"id\":\"");
+			sb.append(te.getResID());
+			sb.append('"');
+			sb.append(',');
+			sb.append("\"method\":\"\",");
+			sb.append("\"value\":\"");
+			readResourceValue(te, sb);
+			sb.append('"');
+			sb.append(',');
+			sb.append("\"readOnly\":\"");
+			sb.append(true);
+			sb.append('"');
+			sb.append(',');
+			sb.append("\"type\":\"");
+			assignNodeType(te, sb);
+			sb.append('"');
+			sb.append(',');
+			sb.append("\"restype\":\"");
+			if (te.getTypeKey() == DBConstants.TYPE_KEY_COMPLEX_ARR) {
+				sb.append(ResourceList.class.getName());
+			}
+			else {
+				Class<?> cls = te.getType();
+				if (cls != null)
+					sb.append(cls.getName());
+				else
+					sb.append("Unknown model class");
+			}
+			sb.append('"');
+			sb.append(',');
+			List<TreeElement> children = te.getChildren();
+			boolean hasChildren = true;
+			if (children.size() == 0)
+				hasChildren = false;
+			sb.append("\"children\":");
+			sb.append(hasChildren);
+			sb.append('}');
+		}
+		sb.append(']');
+		return sb;
+	}
+
+	private void assignNodeType(TreeElement te, StringBuffer sb) {
+		if (te.isReference())
+			sb.append("reference");
+		else if (te.isToplevel())
+			sb.append("toplevel");
+		else {
+			try {
+				SimpleResourceData srd = te.getData();
+				sb.append("leaf");
+			} catch (ResourceNotFoundException e) {
+			} catch (UnsupportedOperationException e) {
+				sb.append("default");
+			}
+
+		}
 	}
 
 	StringBuffer simpleResourceValue2JSON(int id) {
@@ -186,6 +309,13 @@ public class CommonServlet extends HttpServlet {
 		boolean readOnly = readResourceValue(te, sb);
 		sb.append('"');
 		sb.append(',');
+		String unit = readResourceUnit(te);
+		if (unit != null) {
+			sb.append("\"unit\":\"");
+			sb.append(unit);
+			sb.append('"');
+			sb.append(',');
+		}
 		sb.append("\"readOnly\":\"");
 		sb.append(readOnly);
 		sb.append('"');
@@ -290,6 +420,27 @@ public class CommonServlet extends HttpServlet {
 			}
 		}
 		return result;
+	}
+
+	String readResourceUnit(TreeElement node) {
+		Class<?> type = node.getType();
+		PhysicalUnit pu = null;
+		if (type == TemperatureResource.class) {
+			pu = PhysicalUnit.KELVIN;
+		}
+		else if (type == VoltageResource.class)
+			pu = PhysicalUnit.VOLTS;
+		else if (type == ElectricCurrentResource.class)
+			pu = PhysicalUnit.AMPERES;
+		else if (type == PowerResource.class)
+			pu = PhysicalUnit.WATTS;
+		else if (type == EnergyResource.class)
+			pu = PhysicalUnit.JOULES;
+
+		if (pu != null)
+			return pu.toString();
+		else
+			return null;
 	}
 
 	void writeResourceValue(TreeElement node, String value) {

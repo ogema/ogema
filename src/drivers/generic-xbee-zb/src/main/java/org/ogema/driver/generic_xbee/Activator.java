@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,10 +22,8 @@ import org.osgi.framework.ServiceRegistration;
 import org.slf4j.Logger;
 
 /**
- * OSGi Activator. Register an LemonegDriver instance as an org.ogema.Application.
- * 
- * @author pau
- * 
+ * @author Zekeriya Mansuroglu
+ *
  */
 public class Activator implements BundleActivator {
 
@@ -45,7 +42,7 @@ public class Activator implements BundleActivator {
 		shell = new ShellCommands(driver, context);
 		running = true;
 
-		new Thread(new Runnable() {
+		Thread scan = new Thread(new Runnable() {
 
 			public void run() {
 				int scantimes = 5;
@@ -60,15 +57,17 @@ public class Activator implements BundleActivator {
 						running = false;
 					try {
 						Thread.sleep(13000);
-						logger.info("Device scan started ...");
+						logger.debug("Device scan started ...");
 						shell.deviceScan(null);
-						logger.info(".. device scan finished.");
+						logger.debug(".. device scan finished.");
 					} catch (Throwable e) {
 						e.printStackTrace();
 					}
 				}
 			}
-		}).start();
+		});
+		scan.setName("generic-xbee-hld-scanDevices");
+		scan.start();
 	}
 
 	@Override

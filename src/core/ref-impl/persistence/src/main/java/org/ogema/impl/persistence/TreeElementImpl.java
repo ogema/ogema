@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -85,6 +84,11 @@ public class TreeElementImpl implements TreeElement {
 	ResourceDBImpl db;
 	int footprint;
 
+	/*
+	 * Last modified time stamp of the node
+	 */
+	long lastModified = -1;
+
 	public TreeElementImpl(ResourceDBImpl db) {
 		this.db = db;
 		requireds = new ConcurrentHashMap<String, TreeElementImpl>();
@@ -117,6 +121,9 @@ public class TreeElementImpl implements TreeElement {
 
 	public void setAppID(String appID) {
 		this.appID = appID;
+		if (db.activatePersistence) {
+			store(ChangeInfo.STATUS_CHANGED);
+		}
 	}
 
 	@Override
@@ -149,6 +156,9 @@ public class TreeElementImpl implements TreeElement {
 		if (reference)
 			node = refered;
 		node.resRef = resRef;
+		if (db.activatePersistence) {
+			store(ChangeInfo.STATUS_CHANGED);
+		}
 	}
 
 	public boolean isActive() {
@@ -187,6 +197,9 @@ public class TreeElementImpl implements TreeElement {
 	}
 
 	public Class<? extends Resource> getType() {
+		if (complexArray) {
+			return ResourceList.class;
+		}
 		// if this is a reference than get the type of the referenced node
 		TreeElementImpl node = this;
 		if (reference)
@@ -313,9 +326,13 @@ public class TreeElementImpl implements TreeElement {
 			}
 			// If the child is not complexArray the references type has to be an
 			// ancestor of the childs type.
-			else if (!isAncestor(e.type, refimpl.type)) {
+			// else if (!isAncestor(e.type, refimpl.type)) {
+			// throw new InvalidResourceTypeException(refimpl.getName());
+			// }
+			else if (!e.type.isAssignableFrom(refimpl.type)) {
 				throw new InvalidResourceTypeException(refimpl.getName());
 			}
+
 		}
 		TreeElementImpl result;
 		// for a decorator we need a new node object whereas a node object for a
@@ -326,7 +343,7 @@ public class TreeElementImpl implements TreeElement {
 			result.type = refimpl.type;
 			result.typeName = refimpl.typeName;
 			result.name = refName;
-			result.path = this.path + "." + refName;
+			result.path = this.path + DBConstants.PATH_SEPARATOR + refName;
 			result.parent = this;
 			result.parentID = this.resID;
 			result.resRef = null;
@@ -374,21 +391,21 @@ public class TreeElementImpl implements TreeElement {
 		return false;
 	}
 
-	private boolean isAncestor(Class<?> ancestor, Class<?> child) {
-		if (child == ancestor)
-			return true;
-		Class<?> superModel = child;
-		Class<?>[] ifaces;
-		while ((superModel != DBConstants.CLASS_BASIC_TYPE) && (superModel != DBConstants.CLASS_SIMPLE_TYPE)) {
-
-			ifaces = superModel.getInterfaces();
-
-			superModel = ifaces[0];
-			if (superModel == ancestor)
-				return true;
-		}
-		return false;
-	}
+	// private boolean isAncestor(Class<?> ancestor, Class<?> child) {
+	// if (child == ancestor)
+	// return true;
+	// Class<?> superModel = child;
+	// Class<?>[] ifaces;
+	// while ((superModel != DBConstants.CLASS_BASIC_TYPE) && (superModel != DBConstants.CLASS_SIMPLE_TYPE)) {
+	//
+	// ifaces = superModel.getInterfaces();
+	//
+	// superModel = ifaces[0];
+	// if (superModel == ancestor)
+	// return true;
+	// }
+	// return false;
+	// }
 
 	@Override
 	public TreeElement addChild(String chName, Class<? extends Resource> chType, boolean isDecorating)
@@ -454,7 +471,7 @@ public class TreeElementImpl implements TreeElement {
 				result.typeKey = DBConstants.TYPE_KEY_COMPLEX_ARR;
 			}
 			result.name = chName;
-			result.path = node.path + "." + chName;
+			result.path = node.path + DBConstants.PATH_SEPARATOR + chName;
 			result.parent = node;
 			result.parentID = node.resID;
 			result.resRef = null;
@@ -471,8 +488,7 @@ public class TreeElementImpl implements TreeElement {
 		int id = db.getNextresourceID();
 		result.resID = id;
 		// setup the tree for this type only if itsn't a ComplexArrayResourse
-		// if (chType != DBConstants.CLASS_COMPLEX_ARR_TYPE)
-		if ((e != null && !e.complexArray) || chType != DBConstants.CLASS_COMPLEX_ARR_TYPE)
+		if ((result != null && !result.complexArray && result.type != null))
 			db.createTree(result);
 		db.registerRes(result);
 
@@ -521,7 +537,7 @@ public class TreeElementImpl implements TreeElement {
 		}
 		result.appID = this.topLevelParent.appID;
 		result.name = chName;
-		result.path = this.path + "." + chName;
+		result.path = this.path + DBConstants.PATH_SEPARATOR + chName;
 		result.parent = this;
 		result.parentID = this.resID;
 		result.resRef = null;
@@ -564,7 +580,7 @@ public class TreeElementImpl implements TreeElement {
 		result.type = refimpl.type;
 		result.typeName = refimpl.typeName;
 		result.name = refName;
-		result.path = this.path + "." + refName;
+		result.path = this.path + DBConstants.PATH_SEPARATOR + refName;
 		result.parent = this;
 		result.parentID = this.resID;
 		result.resRef = null;
@@ -607,7 +623,8 @@ public class TreeElementImpl implements TreeElement {
 		 * If the type of the ResourceList is already set, the type must an ancestor of the reference.
 		 */
 		if (this.type != null) {
-			if (isAncestor(this.type, refimpl.type)) {
+			if (this.type.isAssignableFrom(refimpl.type)) {
+				// if (isAncestor(this.type, refimpl.type)) {
 				return true;
 			}
 			else
@@ -766,7 +783,17 @@ public class TreeElementImpl implements TreeElement {
 	@Override
 	public Class<? extends Resource> getResourceListType() {
 		if (complexArray) {
-			return getType();
+			TreeElementImpl node = this;
+			if (reference) {
+				node = refered;
+			}
+			Class<?> cls = node.type;
+			if (cls != null) {
+				return cls.asSubclass(Resource.class);
+			}
+			else {
+				return null;
+			}
 		}
 		else
 			throw new InvalidResourceTypeException("TreeElement is not an instance of ResourceList but of " + typeName);
@@ -782,5 +809,33 @@ public class TreeElementImpl implements TreeElement {
 		}
 		else
 			throw new InvalidResourceTypeException("TreeElement is not an instance of ResourceList but of " + typeName);
+	}
+
+	@Override
+	public void setLastModified(long time) {
+		this.lastModified = time;
+		if (db.activatePersistence) {
+			store(ChangeInfo.STATUS_CHANGED);
+		}
+	}
+
+	@Override
+	public long getLastModified() {
+		return lastModified;
+	}
+
+	@Override
+	public String getLocation() {
+		String result = path;
+		TreeElement te = this;
+		while (true) {
+			try {
+				te = te.getReference();
+			} catch (UnsupportedOperationException e) {
+				result = te.getPath();
+				break;
+			}
+		}
+		return result;
 	}
 }

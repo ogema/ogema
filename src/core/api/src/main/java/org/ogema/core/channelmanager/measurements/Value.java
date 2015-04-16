@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,6 +14,8 @@
  * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ogema.core.channelmanager.measurements;
+
+import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 
 /**
  * Value type for the ChannelAPI.
@@ -28,7 +29,7 @@ public interface Value extends Cloneable {
 	 * @throws IllegalConversionException
 	 *             if the value cannot be converted to a float.
 	 */
-	public float getFloatValue() throws IllegalConversionException;
+	float getFloatValue() throws IllegalConversionException;
 
 	/**
 	 * Get the value as a double variable.
@@ -37,7 +38,7 @@ public interface Value extends Cloneable {
 	 * @throws IllegalConversionException
 	 *             if the value cannot be converted to a double.
 	 */
-	public double getDoubleValue() throws IllegalConversionException;
+	double getDoubleValue() throws IllegalConversionException;
 
 	/**
 	 * Get the value as a int variable.
@@ -46,7 +47,7 @@ public interface Value extends Cloneable {
 	 * @throws IllegalConversionException
 	 *             if the value cannot be converted to a int.
 	 */
-	public int getIntegerValue() throws IllegalConversionException;
+	int getIntegerValue() throws IllegalConversionException;
 
 	/**
 	 * Get the value as a byte[] object.
@@ -55,7 +56,7 @@ public interface Value extends Cloneable {
 	 * @throws IllegalConversionException
 	 *             if the value cannot be converted to a byte[].
 	 */
-	public long getLongValue() throws IllegalConversionException;
+	long getLongValue() throws IllegalConversionException;
 
 	/**
 	 * Get the value as a String object.
@@ -64,7 +65,7 @@ public interface Value extends Cloneable {
 	 * @throws IllegalConversionException
 	 *             if the value cannot be converted to a String.
 	 */
-	public String getStringValue() throws IllegalConversionException;
+	String getStringValue() throws IllegalConversionException;
 
 	/**
 	 * Get the value as a byte[] object.
@@ -73,7 +74,7 @@ public interface Value extends Cloneable {
 	 * @throws IllegalConversionException
 	 *             if the value cannot be converted to a byte[].
 	 */
-	public byte[] getByteArrayValue() throws IllegalConversionException;
+	byte[] getByteArrayValue() throws IllegalConversionException;
 
 	/**
 	 * Get the value as a boolean object.
@@ -82,17 +83,26 @@ public interface Value extends Cloneable {
 	 * @throws IllegalConversionException
 	 *             if the value cannot be converted to a boolean.
 	 */
-	public boolean getBooleanValue() throws IllegalConversionException;
+	boolean getBooleanValue() throws IllegalConversionException;
+
+	/**
+	 * Gets a time-series valued entry.
+	 * @return time series represented by this value.
+	 * @throws IllegalConversionException 
+	 *         if the value content cannot be converted to a time series (expect this 
+	 *         to be the case for most value types).
+	 */
+	ReadOnlyTimeSeries getTimeSeriesValue() throws IllegalConversionException;
 
 	/**
 	 * Get the value as a Java object. Relevant for channels delivering complex Java objects.
 	 * 
 	 * @return Java object from channel
 	 */
-	public Object getObjectValue();
+	Object getObjectValue();
 
 	/**
 	 * Creates a copy of this.
 	 */
-	public Value clone() throws CloneNotSupportedException;
+	Value clone() throws CloneNotSupportedException;
 }

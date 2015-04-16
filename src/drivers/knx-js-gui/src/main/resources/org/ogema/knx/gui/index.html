@@ -3,9 +3,8 @@
     This file is part of OGEMA.
 
     OGEMA is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
 
     OGEMA is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -53,7 +52,7 @@ and open the template in the editor.
 		 		$("#wait_overlay").hide();
 			})
 			.fail(function() {
-				console.log( "Error: unable to get data from OGEMA ..." );
+				console.log( "Error: unable to get data from OGEMA -> try reloading the page" );
 				$("#wait_overlay").hide();
 				alert("Error: Cannot connect to OGEMA");
 			})
@@ -94,8 +93,8 @@ and open the template in the editor.
 		<table border="0">
 			<tr align="left" valign="middle">
 				<td>Interface:</td>
-				<td style="padding-left:35px;padding-right:35px">
-					<select id="interfaces"></select>
+				<td style="padding-left:86px;padding-right:75px">
+					<select id="interfaces" style="min-width:174px"></select>
 				</td>
 				<td>
 					<a id="search" onclick="searchInterfaces()">

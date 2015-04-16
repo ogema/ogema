@@ -1,5 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<artifactId>security</artifactId>
@@ -11,12 +10,27 @@
 	<parent>
 		<groupId>org.ogema.ref-impl</groupId>
 		<artifactId>ref-impl</artifactId>
-		<version>2.0.1</version>
+		<version>2.0.2</version>
 	</parent>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
+
+	<profiles>
+		<profile>
+			<id>noLogging</id>
+			<activation>
+				<property>
+					<name>noLogging</name>
+					<value>true</value>
+				</property>
+			</activation>
+			<properties>
+				<suppressLogging>=true</suppressLogging>
+			</properties>
+		</profile>
+	</profiles>
 
 	<!-- XXX hack! remove when AccessManager is available as service -->
 	<build>
@@ -29,7 +43,7 @@
 					<instructions>
 						<!-- Bundle-Activator>org.ogema.impl.security.PermissionManagerImpl</Bundle-Activator -->
 						<Export-Package>org.ogema.impl.security</Export-Package>
-                        <Import-Package>org.apache.felix.service.command;resolution:=optional,*</Import-Package>
+						<Import-Package>org.apache.felix.service.command;resolution:=optional,*</Import-Package>
 					</instructions>
 				</configuration>
 			</plugin>
@@ -38,6 +52,40 @@
 				<artifactId>maven-scr-plugin</artifactId>
 			</plugin>
 		</plugins>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>com.igormaznitsa</groupId>
+					<artifactId>jcp</artifactId>
+					<version>6.0.0</version>
+					<executions>
+						<execution>
+							<phase>generate-sources</phase>
+							<goals>
+								<goal>preprocess</goal>
+							</goals>
+						</execution>
+					</executions>
+					<configuration>
+						<excluded>xml,html</excluded>
+						<processing>java</processing>
+						<inEncoding>UTF-8</inEncoding>
+						<outEncoding>UTF-8</outEncoding>
+						<keepSrcRoot>false</keepSrcRoot>
+						<removeComments>false</removeComments>
+						<disableOut>false</disableOut>
+						<verbose>true</verbose>
+						<clear>true</clear>
+						<globalVars>
+							<property>
+								<name>SUPPRESS</name>
+								<value>${suppressLogging}</value>
+							</property>
+						</globalVars>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
 	</build>
 	<dependencies>
 		<dependency>
@@ -59,7 +107,7 @@
 		<dependency>
 			<groupId>org.ogema.ref-impl</groupId>
 			<artifactId>permission-admin</artifactId>
-			<version>2.0.1</version>
+			<version>2.0.2</version>
 		</dependency>
 		<dependency>
 			<groupId>org.ogema.ref-impl</groupId>

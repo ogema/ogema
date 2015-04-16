@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -53,9 +52,9 @@ public interface ResourcePatternAccess {
 	/**
 	 * Attempts to create a resource structure according to the given pattern. The structure is
 	 * created inactive.
-	 * @param <P>
-	 * @param name
-	 * @param radtype
+	 * @param <P> type of the resource pattern
+	 * @param name Name of the to-be-created root resource of the pattern.
+	 * @param radtype Pattern class declaring the fields to be created.
 	 * @return 
 	 *    returns the structure created by the call. Returns null if nothing could be created.
 	 */

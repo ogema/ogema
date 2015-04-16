@@ -1,0 +1,195 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:wicket="http://wicket.sourceforge.net/" xml:lang="en" lang="en">
+<head>
+<wicket:head>
+	<title>Schedules Table Viewer</title>
+</wicket:head>
+</head>
+<body>
+	<wicket:panel>
+		<form wicket:id="displaySchedulesForm">
+		
+			<div wicket:id="feedback"></div>
+			<table class="table table-striped">
+				<tr>
+					<td><b><span wicket:id="scheduleSelection" /></b></td>
+					<td><select wicket:id="scheduleChoice"></select></td>
+				</tr>
+			</table>
+			<div wicket:id="scheduleBox">
+			<h5><span wicket:id="scheduleGeneralPropsHeader"/></h5>
+				<table class="table table-striped">
+					<tr>
+						<td><span wicket:id="schedId" /></td>
+						<td><span wicket:id="schedIdVal" /></td>
+					</tr>
+					<tr>
+						<td><span wicket:id="schedType" /></td>
+						<td><span wicket:id="schedTypeVal" /></td>
+					</tr>
+					<tr>
+						<td><span wicket:id="schedIM" /></td>
+						<td><select wicket:id="interpolationChoice"/></td>
+					</tr>
+					<tr>
+						<td><span wicket:id="schedActive" /></td>
+						<td><select wicket:id="activeChoice"/></td>
+					</tr>
+				</table>
+			<h5><span wicket:id="scheduleValuesHeader"/></h5>
+				<table class="table table-striped">
+					<tr>
+						<th>Time</th>
+						<th>Value</th>
+						<th>Quality</th>
+					</tr>
+					<tr wicket:id="scheduleRows">
+						<td wicket:id="scheduleDataRow"></td>
+					</tr>
+				</table>
+			<h5><span wicket:id="scheduleValueAdderHeader"/></h5>
+			<table class="table table-striped">
+				<tr>
+					<td><span wicket:id="newTimeLabel"/></td><td><span wicket:id="newValueLabel"/></td><td><span wicket:id="newQualityLabel"/></td><td></td>
+				</tr>
+				<tr>
+					<td><input type="text" wicket:id="newTimeField"
+						class="input-medium search-query" /></td>
+						<td><input type="text" wicket:id="newValueField"
+						class="input-medium search-query" /></td>
+						<td><select wicket:id="newQualityField"/></td>
+						<td><button wicket:id="addValueButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="addValueButtonLabel"></span>
+						</button></td>
+				</tr>
+				<tr>
+					<td><span wicket:id="convertedTime"></span></td>
+					<td><button wicket:id="addFiveMinButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="addFiveMinButtonLabel"></span>
+						</button><span> </span><button wicket:id="addHourButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="addHourButtonLabel"></span>
+						</button></td>
+					
+					<td><button wicket:id="addDayButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="addDayButtonLabel"></span>
+						</button><span> </span><button wicket:id="addWeekButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="addWeekButtonLabel"></span>
+						</button></td>
+						<td></td>
+				
+				</tr>
+				</table>
+				<h5><span wicket:id="deleteValuesHeader"/></h5>
+			<table class="table table-striped">
+				<tr>
+					<td><span wicket:id="deleteStartTime"/></td><td><span wicket:id="deleteEndTime"/></td><td><span wicket:id="deleteAffectedValues"/></td>
+					<td><span wicket:id="delLabel"/></td>
+				</tr>
+				<tr>
+					<td><input type="text" wicket:id="deleteStartTimeField"
+						class="input-medium search-query" /></td>
+						<td><input type="text" wicket:id="deleteEndTimeField"
+						class="input-medium search-query" /></td>
+						<td><span wicket:id="deleteAffectedValuesField"/></td>
+						<td><button wicket:id="deleteButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="deleteButtonLabel"></span>
+						</button></td>
+				</tr>
+				<tr>
+					<td><span wicket:id="convertedStartTime"/></td><td><span wicket:id="convertedEndTime"/></td><td></td><td></td>
+				</tr>
+				<tr>
+					<td><button wicket:id="addFiveMinStartButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="addFiveMinStartButtonLabel"></span>
+						</button><span> </span><button wicket:id="addHourStartButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="addHourStartButtonLabel"></span>
+						</button><span> </span><button wicket:id="addDayStartButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="addDayStartButtonLabel"></span>
+						</button><span> </span><button wicket:id="addWeekStartButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="addWeekStartButtonLabel"></span>
+						</button></td>
+						<td><button wicket:id="addFiveMinEndButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="addFiveMinEndButtonLabel"></span>
+						</button><span> </span><button wicket:id="addHourEndButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="addHourEndButtonLabel"></span>
+						</button><span> </span><button wicket:id="addDayEndButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="addDayEndButtonLabel"></span>
+						</button><span> </span><button wicket:id="addWeekEndButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="addWeekEndButtonLabel"></span>
+						</button></td><td></td><td></td>
+				</tr>
+			</table>
+			</div>
+			<h4>
+				<span wicket:id="timeHeader" />
+			</h4>
+			<table class="table table-striped">
+				<tr>
+					<td><span wicket:id="currentTime" /></td>
+					<td><span wicket:id="timeField"></span></td>
+					<td><select wicket:id="timeFormatChoice"></select></td>
+					<td><button wicket:id="updateButton" type="submit"
+							class="btn btn-success">
+							<span wicket:id="updateButtonLabel"></span>
+						</button></td>
+				</tr>
+			</table>
+			<br>
+			<h4>
+				<span wicket:id="displayHeader" />
+			</h4>
+			<div wicket:id="informationBox">
+				<table class="table table-striped">
+					<tr>
+						<th>Schedule</th>
+						<th>Schedule Type</th>
+						<th>Parent Type</th>
+						<th>Active</th>
+						<th>Values</th>
+						<th>Start time</th>
+						<th>End time</th>
+						<th>Current value</th>
+						<th>Interpolation mode</th>
+					</tr>
+					<tr wicket:id="rows">
+						<td wicket:id="dataRow"></td>
+					</tr>
+				</table>
+			</div>
+		</form>
+	</wicket:panel>
+</body>
+</html>

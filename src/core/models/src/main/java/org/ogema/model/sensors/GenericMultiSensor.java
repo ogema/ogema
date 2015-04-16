@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,7 +24,7 @@ import org.ogema.model.targetranges.GenericFloatTargetRange;
  * A generic sensor for either a continuous value range or a discrete range with more than two steps (e.g. measuring the
  * current position of a dimmer/multi switch).
  */
-public interface GenericMultiSensor extends Sensor {
+public interface GenericMultiSensor extends GenericFloatSensor {
 	/**
 	 * Number of switchable steps. If this variable is negative or absent, the switch is assumed to allow for a
 	 * continuous range of values.

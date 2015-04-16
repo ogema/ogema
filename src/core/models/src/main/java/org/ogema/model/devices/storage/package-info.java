@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,7 +19,7 @@
  * which is the case for simple storages with only one in- and out-connection or
  * for storages with internal controlling that is not exposed to the framework.
  * More complex storages may not have a direct control. Their behavior is then
- * set by the actors on the {@link Connection}s leading to the storage.
+ * set by the actors on the {@link CircuitConnection}s leading to the storage.
  */
 package org.ogema.model.devices.storage;
 

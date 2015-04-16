@@ -23,7 +23,9 @@ function JSONAdapter() {
    * If the hashmap already contains the "key", the value "value" is appended to the list of existing values. */
   this.put = function(key, value) {
 	  if(this.store[key].length < this.HashmapSize) {this.store[key].push(value);}
-	  else { this.store[key].shift(); this.store[key].push(value);}
+	  else { this.store[key].shift(); 
+	  		 this.store[key].push(value);
+	  	   }
   }
   
   /* Public method to retrieve a list of values that are stored under the key "key". By providing a start and end 
@@ -36,7 +38,7 @@ function JSONAdapter() {
 	    
 	  if(data != null && data.length > 0) 
 			   {
-				/* Build returnArray of this form: [[1, subArray[0] * scale)], ...]*/
+				/* Build returnArray of this form: [[1, value1 * scale)], [2, value2 * scale)], ...]*/
 				for(i = 1; i <= data.length; i++) 
 				{
 					returnArray.push([i, data[i - 1] * scale]);
@@ -49,8 +51,9 @@ function JSONAdapter() {
   /* get the last entry in the hash map for keyword key */
  this.getLast = function(key) {
 	 
-		 return this.store[key][this.store[key].length -1];
+	 return this.store[key][this.store[key].length -1];
   }
+ 
 
   /* jQuery AJAX Public method that is called to poll data (in this case we expect the data to be JSON-formatted) from the specified url. 
    * The data is parsed and the extracted values are stored under their respective key in the hashmap. */
@@ -64,6 +67,25 @@ function JSONAdapter() {
 	    			 that.put(that.keyServletURLArray[0], data[that.keyServletURLArray[0]]);
 	    		 }	
 			   });
+	 
+	 $.getJSON("/drs485de/getMeterList", function(data) 
+			   {
+	   
+			   });
+	 
+	 
+	 
+	 
+	 $.getJSON("/rest/resources/DRS485DE_0/energyReading?user=rest&pw=rest&depth=100" , function(data) 
+			   {
+		
+			   });
+	 
+//	 $.getJSON("/rest/recordeddata/DRS485DE_0/energyReading/1422543600000/1422546000000?user=rest&pw=rest&interval=60000&mode=AVERAGE" , 
+//			 function(data) 
+//			   {
+//		
+//			   });
 	
 	
 //	 for(i = 0; i < this.keyServletURLArray.length; i = i+2)

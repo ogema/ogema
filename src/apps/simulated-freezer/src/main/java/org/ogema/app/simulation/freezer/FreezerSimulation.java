@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,7 +20,8 @@ import org.ogema.core.application.Timer;
 import org.ogema.core.application.TimerListener;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
-import org.ogema.core.resourcemanager.ResourceListener;
+import org.ogema.core.model.simple.BooleanResource;
+import org.ogema.core.resourcemanager.ResourceValueListener;
 
 /**
  * A simulated FreezerSimulation object. Creates the respective resource and
@@ -63,7 +63,7 @@ public class FreezerSimulation implements TimerListener {
 	 */
 	public boolean init() {
 		// Register listener and start simulation.
-		m_device.stateControl.addResourceListener(m_switchListener, false);
+		m_device.stateControl.addValueListener(m_switchListener);
 		m_timer = m_appMan.createTimer(UPDATE_RATE, this);
 		m_log.debug("Freezer simulator initialized successfully.");
 		return true;
@@ -73,7 +73,7 @@ public class FreezerSimulation implements TimerListener {
 	 * Stop simulating and remove the simulated fridge from the OGEMA system.
 	 */
 	public void destroy() {
-		m_device.stateControl.removeResourceListener(m_switchListener);
+		m_device.stateControl.removeValueListener(m_switchListener);
 		if (m_timer != null) {
 			m_timer.stop();
 			m_appMan.destroyTimer(m_timer);
@@ -119,11 +119,11 @@ public class FreezerSimulation implements TimerListener {
 	 * Callback received when the stateControl state has been changed. Sets the
 	 * feedback to the control value.
 	 */
-	private final ResourceListener m_switchListener = new ResourceListener() {
+	private final ResourceValueListener<BooleanResource> m_switchListener = new ResourceValueListener<BooleanResource>() {
 		@Override
-		public void resourceChanged(Resource resource) {
+		public void resourceChanged(BooleanResource stateControl) {
 			m_log.debug(FreezerSimulation.this + ": Received callback that state was changed");
-			final boolean state = m_device.stateControl.getValue();
+			final boolean state = stateControl.getValue();
 			if (m_device.feedback.getValue() != state)
 				m_device.feedback.setValue(state);
 		}

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -90,11 +89,11 @@ public class THSensor extends HM_hlDevice {
 			batt = ((temp & 0x8000) > 0) ? 5 : 95;
 		}
 
-		System.out.println("Temperatur: " + ((float) temp) / 10 + " C");
-		System.out.println("State of Battery: " + err_str);
+		//		System.out.println("Temperatur: " + ((float) temp) / 10 + " C");
+		//		System.out.println("State of Battery: " + err_str);
 		tRes.setCelsius(temp / 10f);
 		if (hum < 100) {
-			System.out.println("Humidity: " + hum + "%");
+			//			System.out.println("Humidity: " + hum + "%");
 			rHumidity.setValue(hum);
 		}
 		batteryStatus.setValue(batt);
@@ -117,32 +116,33 @@ public class THSensor extends HM_hlDevice {
 		SensorDevice thDevice = resourceManager.createResource(hm_hlConfig.resourceName, SensorDevice.class);
 
 		thDevice.sensors().create();
-		thDevice.sensors().activate(false);
+		thDevice.sensors().activate(true);
 
 		HumiditySensor hSensor = thDevice.sensors().addDecorator("humidity", HumiditySensor.class);
 		rHumidity = hSensor.reading().create();
 		rHumidity.activate(true);
 		rHumidity.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
-		hSensor.activate(false);
+		hSensor.activate(true);
 
 		TemperatureSensor tSensor = thDevice.sensors().addDecorator("temperature", TemperatureSensor.class);
 		tRes = tSensor.reading().create();
 		tRes.activate(true);
-		tRes.setKelvin(0);
+		//		tRes.setKelvin(0);
 		tRes.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
-		tSensor.activate(false);
+		tSensor.activate(true);
+		thDevice.activate(true);
 
 		ElectricityStorage battery = thDevice.electricityStorage().create();
 		IntegerResource batteryType = battery.type().create();
 		batteryType.setValue(1); // "generic battery"
-		batteryType.activate(false);
+		batteryType.activate(true);
 		StateOfChargeSensor eSens = battery.chargeSensor().create();
 		batteryStatus = eSens.reading().create();
 		batteryStatus.activate(true);
-		batteryStatus.setValue(95);
+		//		batteryStatus.setValue(95);
 		batteryStatus.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
-		eSens.activate(false);
-		battery.activate(false);
+		eSens.activate(true);
+		battery.activate(true);
 	}
 
 	@Override

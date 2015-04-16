@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,6 +21,7 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.SimpleResource;
 import org.ogema.core.model.array.BooleanArrayResource;
+import org.ogema.core.model.array.ByteArrayResource;
 import org.ogema.core.model.array.FloatArrayResource;
 import org.ogema.core.model.array.IntegerArrayResource;
 import org.ogema.core.model.array.StringArrayResource;
@@ -60,6 +60,7 @@ import org.ogema.resourcemanager.impl.DynamicProxyResource;
 import org.ogema.resourcemanager.impl.ElementInfo;
 import org.ogema.resourcemanager.impl.ResourceDBManager;
 import org.ogema.resourcemanager.impl.model.array.DefaultBooleanArrayResource;
+import org.ogema.resourcemanager.impl.model.array.DefaultByteArrayResource;
 import org.ogema.resourcemanager.impl.model.array.DefaultFloatArrayResource;
 import org.ogema.resourcemanager.impl.model.array.DefaultIntegerArrayResource;
 import org.ogema.resourcemanager.impl.model.array.DefaultStringArrayResource;
@@ -223,8 +224,26 @@ public class ResourceFactory {
 
 		// simple resources and array resources.
 		if (SimpleResource.class.isAssignableFrom(resType)) {
-			if (resType.equals(BooleanArrayResource.class)) {
+			if (resType.equals(BooleanResource.class)) {
+				result = new DefaultBooleanResource(el, path, m_resMan);
+			}
+			else if (resType.equals(FloatResource.class)) {
+				result = new DefaultFloatResource(el, path, m_resMan);
+			}
+			else if (resType.equals(IntegerResource.class)) {
+				result = new DefaultIntegerResource(el, path, m_resMan);
+			}
+			else if (resType.equals(StringResource.class)) {
+				result = new DefaultStringResource(el, path, m_resMan);
+			}
+			else if (resType.equals(TimeResource.class)) {
+				result = new DefaultTimeResource(el, path, m_resMan);
+			}
+            else if (resType.equals(BooleanArrayResource.class)) {
 				result = new DefaultBooleanArrayResource(el, path, m_resMan);
+			}
+            else if (resType.equals(ByteArrayResource.class)) {
+				result = new DefaultByteArrayResource(el, path, m_resMan);
 			}
 			else if (resType.equals(FloatArrayResource.class)) {
 				result = new DefaultFloatArrayResource(el, path, m_resMan);
@@ -238,23 +257,8 @@ public class ResourceFactory {
 			else if (resType.equals(TimeArrayResource.class)) {
 				result = new DefaultTimeArrayResource(el, path, m_resMan);
 			}
-			else if (resType.equals(BooleanResource.class)) {
-				result = new DefaultBooleanResource(el, path, m_resMan);
-			}
-			else if (resType.equals(FloatResource.class)) {
-				result = new DefaultFloatResource(el, path, m_resMan);
-			}
-			else if (resType.equals(IntegerResource.class)) {
-				result = new DefaultIntegerResource(el, path, m_resMan);
-			}
-			else if (resType.equals(OpaqueResource.class)) {
+            else if (resType.equals(OpaqueResource.class)) {
 				result = new DefaultOpaqueResource(el, path, m_resMan);
-			}
-			else if (resType.equals(StringResource.class)) {
-				result = new DefaultStringResource(el, path, m_resMan);
-			}
-			else if (resType.equals(TimeResource.class)) {
-				result = new DefaultTimeResource(el, path, m_resMan);
 			}
 			else {
 				throw new UnsupportedOperationException("Cannot create a resource object for SimpleResource of type "

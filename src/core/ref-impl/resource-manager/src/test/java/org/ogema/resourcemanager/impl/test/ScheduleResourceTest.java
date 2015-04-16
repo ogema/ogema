@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -52,6 +51,7 @@ import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.ResourceException;
 import org.ogema.core.resourcemanager.ResourceListener;
+import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 
@@ -209,8 +209,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		}
 
 		SampledValue outOfBoundsValue = schedule.getValue(MAX + 1);
-		Quality q = outOfBoundsValue.getQuality();
-		assertEquals(q, Quality.BAD);
+        assertNull(outOfBoundsValue);
 	}
 
 	@Test
@@ -241,8 +240,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		}
 
 		SampledValue outOfBoundsValue = schedule.getValue(MAX + 1);
-		Quality q = outOfBoundsValue.getQuality();
-		assertEquals(q, Quality.BAD);
+		assertNull(outOfBoundsValue);
 	}
 
 	@Test
@@ -271,8 +269,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		}
 
 		SampledValue outOfBoundsValue = schedule.getValue(MAX + 1);
-		Quality q = outOfBoundsValue.getQuality();
-		assertEquals(q, Quality.BAD);
+		assertNull(outOfBoundsValue);
 	}
 
 	@Test
@@ -300,8 +297,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		}
 
 		SampledValue outOfBoundsValue = schedule.getValue(MAX + 1);
-		Quality q = outOfBoundsValue.getQuality();
-		assertEquals(q, Quality.BAD);
+		assertNull(outOfBoundsValue);
 	}
 
 	@Test
@@ -330,10 +326,6 @@ public class ScheduleResourceTest extends OsgiTestBase {
 			final String scheduleValue = schedule.getValue(t + STEP / 2 + 2).getValue().getStringValue();
 			assert exactValue.equals(scheduleValue);
 		}
-
-		SampledValue outOfBoundsValue = schedule.getValue(MAX + 1);
-		Quality q = outOfBoundsValue.getQuality();
-		assertEquals(q, Quality.GOOD); // NEAREST returns a good result.
 	}
 
 	/**
@@ -490,7 +482,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		schedule.addValue(26, new FloatValue(4.3f));
 		assertTrue("did not receive update callback", callbackCount.await(5, TimeUnit.SECONDS));
 	}
-
+    
 	/**
 	 * Minimal test for checking that getNextValue works on empty schedules.
 	 */

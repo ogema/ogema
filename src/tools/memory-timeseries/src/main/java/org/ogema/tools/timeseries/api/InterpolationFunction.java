@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -29,7 +28,7 @@ public interface InterpolationFunction {
 	 * Interpolate between x0 and x1 to find the value at time t. Timestamp
 	 * of the result is given by t, value determined by interpolation. Quality
 	 * is good exactly if a sensible interpolation could be performed, which usually
-	 * involves the qualities of x0 and/or x1. Thre type of the sampled values
+	 * involves the qualities of x0 and/or x1. The type of the sampled values
 	 * is given by valueType. It is assume that the timestamp of t0 preceeds or
 	 * equals t and that the timestamp of x1 equals of succeeds t.
 	 */

@@ -13,3 +13,18 @@
 	outline: 9999px solid rgba(0, 0, 0, 0.5);
 	background-color: rgba(0, 0, 0, 0.5); /*dim the background*/
 }
+
+#connectionTable {
+	border: 1px solid black;
+	text-align:center; 
+    vertical-align:middle;
+}
+
+#connectionTable th {
+    border: 1px solid black;
+    background: -moz-MenuBarText;
+}
+
+#connectionTable td {
+	border: 1px solid black;
+}

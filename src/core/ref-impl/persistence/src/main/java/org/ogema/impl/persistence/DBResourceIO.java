@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,9 +31,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
-import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.impl.persistence.TimedPersistence.Change;
 import org.ogema.persistence.DBConstants;
+import org.slf4j.Logger;
 
 public class DBResourceIO {
 
@@ -49,7 +48,7 @@ public class DBResourceIO {
 
 	private static final int INITIAL_MAP_SIZE = 256;
 
-	static boolean DEBUG;
+	private final Logger logger = org.slf4j.LoggerFactory.getLogger("persistence");
 
 	PersistentFileSet resDataFiles, dirFiles;
 	int dirFileSuffix;
@@ -118,7 +117,7 @@ public class DBResourceIO {
 		// check if the property to activate persistence debugging is set
 		String persDebug = System.getProperty(DBConstants.PROP_NAME_PERSISTENCE_DEBUG, "false");
 		if (persDebug.equals("true"))
-			DEBUG = true;
+			Configuration.LOGGING = true;
 		// check if the minimum compaction file size is set
 		String filesize = System.getProperty(DBConstants.PROP_NAME_PERSISTENCE_COMPACTION_START_SIZE_FILE, null);
 		try {
@@ -269,7 +268,7 @@ public class DBResourceIO {
 		tmpint += tmpstr.length();
 		// 2. set resource ID
 		setIValue(node.resID);
-		// 2. set resources parent ID
+		// 3. set resources parent ID
 		setIValue(node.parentID);
 		// 4. setFlags
 		setByte(node.getFlags());
@@ -281,13 +280,16 @@ public class DBResourceIO {
 		tmpstr = node.path;
 		setUTF8(tmpstr);
 		tmpint += tmpstr.length();
-		// 7. set number of requireds
+		// 7. set the owner app id
 		tmpstr = node.appID;
 		setUTF8(tmpstr);
 		tmpint += tmpstr.length();
-		// 8. set number of decorators
+		// 8. set the id of the referenced node. If the node doesn't reference any node, this field is just 0
 		setIValue(node.refID);
 		tmpint += 4;
+		// 9. set the lastmodified time stamp.
+		setJValue(node.lastModified);
+		tmpint += 8;
 		// update footprint info
 		node.footprint += tmpint;
 	}
@@ -328,7 +330,7 @@ public class DBResourceIO {
 		// reset size of the resource within the persistence
 		// node.footprint = 0;
 
-		if (DEBUG)
+		if (Configuration.LOGGING)
 			System.out.println("Store Resource " + node.path);
 		/*
 		 * Determine the offset of the resource data in the archive and put it in the map of offsets.
@@ -446,7 +448,7 @@ public class DBResourceIO {
 		/*
 		 * First read the directory structure
 		 */
-		if (DEBUG)
+		if (Configuration.LOGGING)
 			System.out.println("Parse Resources...");
 		resDataFiles.updateCurrentIn();
 		if (resDataFiles.in == null) {
@@ -513,7 +515,7 @@ public class DBResourceIO {
 		 */
 		handleUnsorted(unsortedParents);
 		handleUnsorted(unsortedRefs);
-		if (DEBUG)
+		if (Configuration.LOGGING)
 			System.out.println("...Resources parsed");
 		try {
 
@@ -612,28 +614,32 @@ public class DBResourceIO {
 		/*
 		 * prepare data container, so the simple data can be filled in.
 		 */
-		node.initDataContainer();
+
 		// check if the interface is a simple or a complex one
 		RandomAccessFile raf = resDataFiles.in;
 		try {
 			switch (typeKey) {
 			// read simple resource
 			case DBConstants.TYPE_KEY_BOOLEAN:
+				node.initDataContainer();
 				node.type = DBConstants.CLASS_BOOL_TYPE;
 				node.simpleValue.Z = raf.readBoolean();
 				isSimple = true;
 				break;
 			case DBConstants.TYPE_KEY_FLOAT:
+				node.initDataContainer();
 				node.type = DBConstants.CLASS_FLOAT_TYPE;
 				node.simpleValue.F = raf.readFloat();
 				isSimple = true;
 				break;
 			case DBConstants.TYPE_KEY_INT:
+				node.initDataContainer();
 				node.type = DBConstants.CLASS_INT_TYPE;
 				node.simpleValue.I = raf.readInt();
 				isSimple = true;
 				break;
 			case DBConstants.TYPE_KEY_STRING:
+				node.initDataContainer();
 				node.type = DBConstants.CLASS_STRING_TYPE;
 				if (isNullString(raf))
 					node.simpleValue.S = null;
@@ -642,27 +648,32 @@ public class DBResourceIO {
 				isSimple = true;
 				break;
 			case DBConstants.TYPE_KEY_LONG:
+				node.initDataContainer();
 				node.type = DBConstants.CLASS_TIME_TYPE;
 				node.simpleValue.J = raf.readLong();
 				isSimple = true;
 				break;
 			// read array resource
 			case DBConstants.TYPE_KEY_OPAQUE:
+				node.initDataContainer();
 				node.type = DBConstants.CLASS_OPAQUE_TYPE;
 				readAB(node);
 				isSimple = true;
 				break;
 			case DBConstants.TYPE_KEY_INT_ARR:
+				node.initDataContainer();
 				node.type = DBConstants.CLASS_INT_ARR_TYPE;
 				readAI(node);
 				isSimple = true;
 				break;
 			case DBConstants.TYPE_KEY_LONG_ARR:
+				node.initDataContainer();
 				node.type = DBConstants.CLASS_TIME_ARR_TYPE;
 				readAJ(node);
 				isSimple = true;
 				break;
 			case DBConstants.TYPE_KEY_FLOAT_ARR:
+				node.initDataContainer();
 				node.type = DBConstants.CLASS_FLOAT_ARR_TYPE;
 				readAF(node);
 				isSimple = true;
@@ -670,11 +681,13 @@ public class DBResourceIO {
 			case DBConstants.TYPE_KEY_COMPLEX_ARR:
 				break;
 			case DBConstants.TYPE_KEY_BOOLEAN_ARR:
+				node.initDataContainer();
 				node.type = DBConstants.CLASS_BOOL_ARR_TYPE;
 				readAZ(node);
 				isSimple = true;
 				break;
 			case DBConstants.TYPE_KEY_STRING_ARR:
+				node.initDataContainer();
 				node.type = DBConstants.CLASS_STRING_ARR_TYPE;
 				readAS(node);
 				isSimple = true;
@@ -704,14 +717,21 @@ public class DBResourceIO {
 	private void setTypeFromName(TreeElementImpl node) {
 		try {
 			Class<?> type = database.getResourceType(node.typeName);
-			if (type == null)
-				type = database.addOrUpdateResourceType(Class.forName(node.typeName).asSubclass(Resource.class));
+			if (type == null) {
+				try {
+					type = Class.forName(node.typeName).asSubclass(Resource.class);
+				} catch (ClassNotFoundException e) {
+				}
+				if (type != null) {
+					type = database.addOrUpdateResourceType((Class<? extends Resource>) type);
+
+				}
+				else
+					logger.warn(String.format("Resouce class %s to the persistent data couldn't be loaded!",
+							node.typeName));
+			}
 			node.type = type;
-		} catch (ResourceAlreadyExistsException e) {
-			e.printStackTrace();
 		} catch (InvalidResourceTypeException e) {
-			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		}
 	}
@@ -740,7 +760,7 @@ public class DBResourceIO {
 		RandomAccessFile raf = resDataFiles.in;
 		try {
 			int length = raf.readInt();
-			String sArr[] = new String[length]; // node.simpleValue.aS;
+			String sArr[] = new String[length];
 			String val = null;
 			node.simpleValue.aS = sArr;
 			/*
@@ -915,16 +935,16 @@ public class DBResourceIO {
 		}
 
 		if (unsorted) {
-			if (DEBUG)
-				System.out.println("Unsorted resource " + e.path);
+			if (Configuration.LOGGING)
+				logger.debug("Unsorted resource " + e.path);
 			return false;
 		}
-		else if (DEBUG)
-			System.out.println("Hook up the resource " + e.path);
+		else if (Configuration.LOGGING)
+			logger.debug("Hook up the resource " + e.path);
 
 		// setup the tree for this type only if itsn't a ComplexArrayResourse or
 		// a reference
-		if (!e.complexArray && !e.reference)
+		if (!e.complexArray && !e.reference && e.type != null)
 			database.createTree(e);
 
 		// put the generated tree in the table of the top level resources.
@@ -950,13 +970,13 @@ public class DBResourceIO {
 		entry.parentID = raf.readInt();
 		// 4. setFlags
 		entry.setFlags(raf.read());
-		if (DEBUG && entry.complexArray)
+		if (Configuration.LOGGING && entry.complexArray)
 			System.out.println("ResourceList name:" + entry.typeName);
 		// 5. setTypeKey
 		entry.typeKey = raf.read();
 		// 6. set name and path strings
 		String path = raf.readUTF();
-		if (DEBUG)
+		if (Configuration.LOGGING)
 			System.out.println(path);
 		entry.path = path;
 		// separate the name from path if its a sub resource
@@ -965,12 +985,12 @@ public class DBResourceIO {
 			entry.name = path.substring(index + 1);
 		else
 			entry.name = path;
-		// 7. set number of requireds
+		// 7. set the owner app id
 		entry.appID = raf.readUTF();
-		// 8. set number of decorators
+		// 8. set the id of any referenced node. If no node is referenced, the id is read as 0
 		entry.refID = raf.readInt();
-		// 9. set number of references
-		// entry.numOfReferences = fileOut.readChar();
+		// 9. set the lastmodified time stamp
+		entry.lastModified = raf.readLong();
 	}
 
 	public void writeEntry() {
@@ -1022,7 +1042,7 @@ public class DBResourceIO {
 		if (resDataFiles.out == null)
 			return result;
 		result = dbFileInitialOffset + resDataFiles.out.size();
-		if (DEBUG)
+		if (Configuration.LOGGING)
 			System.out.println("Current file offset: " + result);
 		return result;
 	}

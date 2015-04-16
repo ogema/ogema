@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,12 +15,10 @@
  */
 package org.ogema.apps.climatestation;
 
-import java.util.Collection;
-
 public class Constants {
 
 	static final float RH2AH_FACTOR = 0.66f;
-	static final String SERVLET_PATH = "/climate_station_servlet";
+	static final String SERVLET_PATH = "/rcsservice";
 	static final String MESSAGES_PROPERTY_FILE = "properties/messages.properties";
 	static final String OUTSIDE_TEMP_SENS = "resourcePathTemperatureOutside";
 	static final String OUTSIDE_RH_SENSOR = "resourcePathHumidityOutside";
@@ -35,6 +32,12 @@ public class Constants {
 	static final String JSON_MESSAGE_NAME = "message";
 	static final String JSON_MESSAGEID_NAME = "messageID";
 	static final String JSON_PRIORITY_NAME = "prio";
+	static final String JSON_MOTIONIN_NAME = "motionIn";
+	static final String JSON_LIGHT_NAME = "light1";
+	static final String JSON_LIGHT2_NAME = "light2";
+	static final String JSON_AIR_NAME = "air";
+	static final String JSON_WATER_NAME = "water";
+	static final String JSON_SMOKE_NAME = "smoke";
 
 	static final int Priority_1 = 1;
 	static final int Priority_2 = 3;

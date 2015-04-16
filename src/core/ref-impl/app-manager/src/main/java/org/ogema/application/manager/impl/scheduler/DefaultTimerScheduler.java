@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,8 +17,6 @@ package org.ogema.application.manager.impl.scheduler;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.Executor;
@@ -60,19 +57,14 @@ public class DefaultTimerScheduler implements TimerScheduler, PropertyChangeList
                     }
                     long now = clock.getExecutionTime();
                     long next = timers.peek().getNextRunTime();
-                    List<ApplicationTimer> batch = new ArrayList<>(10);
-                    do {
-                        next = timers.peek().getNextRunTime();
-                        batch.add(timers.poll());
-                    } while (!timers.isEmpty() && (next = timers.peek().getNextRunTime()) < now);
-                    for (ApplicationTimer timer: batch){
-                        processTimer(timer, now);
+                    if (next <= now) {
+                        processTimer(timers.poll(), now);
                     }
                     try {
                         float factor = clock.getSimulationFactor();
                         long waitTime = factor != 0
                                 ? (long) ((next - now) / factor)
-                                : 1000;
+                                : next - now;
                         if (waitTime > 0) {
                             timers.wait(waitTime);
                         }

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -113,7 +112,7 @@ public class RestServlet extends HttpServlet implements Application {
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		if (!checkSecurity(req, resp)) {
+		if (!setAccessContext(req, resp)) {
 			return;
 		}
 		resp.setCharacterEncoding("UTF-8");
@@ -134,24 +133,31 @@ public class RestServlet extends HttpServlet implements Application {
 			return;
 		}
 
-		ResourceRequestInfo r = selectResource(req.getPathInfo());
-		if (r == null) {
-			resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-		}
-		else {
-			if (r.isSchedule()) {
-				w.writeSchedule((Schedule) r.getResource(), r.getStart(), r.getEnd(), resp.getWriter());
+		ResourceRequestInfo r;
+		try {
+			r = selectResource(req.getPathInfo());
+			if (r == null) {
+				resp.sendError(HttpServletResponse.SC_NOT_FOUND);
 			}
 			else {
-				w.write(r.getResource(), resp.getWriter());
+				if (r.isSchedule()) {
+					w.writeSchedule((Schedule) r.getResource(), r.getStart(), r.getEnd(), resp.getWriter());
+				}
+				else {
+					w.write(r.getResource(), resp.getWriter());
+				}
 			}
+			resp.flushBuffer();
+		} catch (SecurityException se) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+		} finally {
+			permMan.resetAccessContext();
 		}
-		resp.flushBuffer();
 	}
 
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		if (!checkSecurity(req, resp)) {
+		if (!setAccessContext(req, resp)) {
 			return;
 		}
 		resp.setCharacterEncoding("UTF-8");
@@ -181,6 +187,7 @@ public class RestServlet extends HttpServlet implements Application {
 			w.write(r.getResource(), resp.getWriter());
 		}
 		resp.flushBuffer();
+		permMan.resetAccessContext();
 	}
 
 	@Override
@@ -192,7 +199,7 @@ public class RestServlet extends HttpServlet implements Application {
 			return;
 		}
 		resp.setCharacterEncoding("UTF-8");
-		if (!checkSecurity(req, resp)) {
+		if (!setAccessContext(req, resp)) {
 			return;
 		}
 		resp.setContentType(w.contentType());
@@ -211,11 +218,12 @@ public class RestServlet extends HttpServlet implements Application {
 				w.write(resource, resp.getWriter());
 			}
 		}
+		permMan.resetAccessContext();
 	}
 
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		if (!checkSecurity(req, resp)) {
+		if (!setAccessContext(req, resp)) {
 			return;
 		}
 		resp.setCharacterEncoding("UTF-8");
@@ -233,7 +241,7 @@ public class RestServlet extends HttpServlet implements Application {
 			r.resource.delete();
 			resp.sendError(HttpServletResponse.SC_OK);
 		}
-
+		permMan.resetAccessContext();
 	}
 
 	protected ResourceRequestInfo selectResource(String pathInfo) {
@@ -316,7 +324,7 @@ public class RestServlet extends HttpServlet implements Application {
 		return sman;
 	}
 
-	protected boolean checkSecurity(HttpServletRequest req, HttpServletResponse resp) throws ServletException,
+	protected boolean setAccessContext(HttpServletRequest req, HttpServletResponse resp) throws ServletException,
 			IOException {
 		if (!SECURITY_ENABLED) {
 			return true;

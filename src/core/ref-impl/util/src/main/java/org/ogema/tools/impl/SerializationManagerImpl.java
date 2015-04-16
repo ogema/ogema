@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -276,9 +275,7 @@ public class SerializationManagerImpl implements SerializationManager {
 				xw.writeCharacters(mode.toString());
 				xw.writeEndElement();
 
-				//FIXME
-				//for (SampledValue sv: data.getValues(startTime, endTime, interval, mode)){
-				for (SampledValue sv : data.getValues(startTime, endTime)) {
+				for (SampledValue sv : data.getValues(startTime, endTime, interval, mode)) {
 					xw.writeStartElement("entry");
 					xw.writeAttribute(XSI_NS, "type", "og:SampledFloat");
 					{
@@ -326,10 +323,8 @@ public class SerializationManagerImpl implements SerializationManager {
             jg.writeStringField("reductionMode", mode.toString());
             
             jg.writeArrayFieldStart("entry");
-            //FIXME:
-            //for (SampledValue sv: data.getValues(startTime, endTime, interval, mode)){
-            for (SampledValue sv : data.getValues(startTime, endTime)) {
-                //jg.writeObjectFieldStart("SampledValue");
+
+            for (SampledValue sv: data.getValues(startTime, endTime, interval, mode)){
                 jg.writeStartObject();
                 jg.writeNumberField("time", sv.getTimestamp());
                 jg.writeStringField("quality", sv.getQuality().toString());

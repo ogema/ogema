@@ -27,4 +27,4 @@ allow { (java.util.PropertyPermission "org.apache.felix.*" "read") } "felix prop
 allow { [org.osgi.service.condpermadmin.BundleLocationCondition "file:./ogema/users/*"] (org.osgi.framework.PackagePermission "org.ogema.accesscontrol" "import") (org.osgi.framework.PackagePermission "org.osgi.*" "import") (org.osgi.framework.ServicePermission "org.ogema.accesscontrol.UserRightsProxy" "register") (org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register") (org.osgi.framework.ServicePermission "org.ogema.accesscontrol.PermissionManager" "get")} "urps"
 #
 # rest permissions
-#allow { [org.osgi.service.condpermadmin.BundleLocationCondition "file:./ogema/users/master/*"] (org.ogema.accesscontrol.ResourcePermission "path=*" "read,write") } "master-resource-access"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "file:./ogema/users/master/*"] (org.ogema.accesscontrol.ResourcePermission "path=*" "read,write") } "master-resource-access"

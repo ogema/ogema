@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,7 +16,9 @@
 package org.ogema.accesscontrol;
 
 import java.io.PrintStream;
+import java.security.AccessControlContext;
 import java.security.Permission;
+import java.util.Map;
 
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.AppID;
@@ -28,6 +29,8 @@ import org.ogema.core.model.Resource;
 import org.ogema.core.security.AppPermission;
 import org.ogema.core.security.WebAccessManager;
 import org.ogema.resourcetree.TreeElement;
+import org.osgi.framework.Bundle;
+import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
 
 /**
  * This class is the entry point to the functionality related to permission handling. It encapsulates the Java/OSGi
@@ -47,11 +50,12 @@ public interface PermissionManager {
 	 * AppPermissionTypes where each of them represents a named entry of the policy table. The AppPermission instance is
 	 * obtained by the call to {@link getPolicies}. Multiple entries, positive (permission) or negative(exception),
 	 * should be avoided, in order to prevent negative effects on the performance.
-	 * 
+	 *
 	 * @param perm
 	 *            AppPermission that contains the description of the permissions to be granted.
+	 * @return true, if successful
 	 */
-	public void installPerms(AppPermission perm);
+	public boolean installPerms(AppPermission perm);
 
 	/**
 	 * Get a list of access policy applied to the given application. It include all access permissions granted to this
@@ -86,6 +90,17 @@ public interface PermissionManager {
 	 * @return true if the permission is granted, false otherwise.
 	 */
 	public boolean handleSecurity(Permission perm);
+
+	/**
+	 * Checks if the given access control context contains the permission that implies the given permission.
+	 * 
+	 * @param perm
+	 *            The permission to be checked.
+	 * @param acc
+	 *            The context to be checked.
+	 * @return true if the permission is granted, false otherwise.
+	 */
+	boolean handleSecurity(Permission perm, AccessControlContext acc);
 
 	/**
 	 * Gets the reference to the {@link WebAccessManager} instance.
@@ -203,4 +218,49 @@ public interface PermissionManager {
 	 */
 	public boolean checkDeleteChannel(ChannelConfiguration configuration, DeviceLocator deviceLocator);
 
+	/**
+	 * Gets an AccessControlContext instance that includes the protection domain of the specified bundle only.
+	 * 
+	 * @param class1
+	 * 
+	 * @return AccessControlContext with bundles ProtectionDomain
+	 */
+	public AccessControlContext getBundleAccessControlContext(Class<?> class1);
+
+	/**
+	 * Removes a permission that was granted to the specified AppID before. The permission to be removed is specified by
+	 * the name of the permission class and the optional parameter filterString and actions.
+	 *
+	 * @param bundle
+	 *            The bundle its policy should be reduced.
+	 * @param permissionClassName
+	 *            The name of the permission to be removed.
+	 * @param filterString
+	 *            The filter of the permission to be removed.
+	 * @param actions
+	 *            The actions of the permission.
+	 * @return true, if the reduction of the policy could be achieved by removing of a permission from the policy table
+	 *         or false, if the reduction was achievable by adding of negative policy only.
+	 */
+	public boolean removePermission(Bundle bundle, String permissionClassName, String filterString, String actions);
+
+	/**
+	 * Sets an access context as the current threads relevant AccessControlContext. Dependent on the implementation the
+	 * permission manager can decide, if it uses the new context, the default context or any other implementation
+	 * specific context for the security checks.
+	 *
+	 * @param acc
+	 *            the new access context
+	 */
+	public void setAccessContext(AccessControlContext acc);
+
+	/**
+	 * Resets the access context that is set before as the current threads relevant AccessControlContext. After the
+	 * reset the permission manager uses the default access control context for security checks.
+	 */
+	public void resetAccessContext();
+
+	public Map<String, ConditionalPermissionInfo> getGrantedPerms(Bundle b);
+
+	public boolean isDefaultPolicy(String permtype, String permname, String actions);
 }

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,6 +20,7 @@
  */
 package org.ogema.impl.administration;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,6 +44,7 @@ import org.ogema.core.administration.RegisteredResourceDemand;
 import org.ogema.core.administration.RegisteredResourceListener;
 import org.ogema.core.administration.RegisteredStructureListener;
 import org.ogema.core.administration.RegisteredTimer;
+import org.ogema.core.administration.RegisteredValueListener;
 import org.ogema.core.application.TimerListener;
 import org.ogema.core.logging.LogLevel;
 import org.ogema.core.logging.LogOutput;
@@ -54,7 +55,7 @@ import org.ogema.core.logging.LogOutput;
  */
 @Component(specVersion = "1.1", immediate = true)
 @Properties( { @Property(name = "osgi.command.scope", value = "ogm"),
-		@Property(name = "osgi.command.function", value = { "apps", "clock", "loggers", "log" }) })
+		@Property(name = "osgi.command.function", value = { "apps", "clock", "loggers", "log", "dump_cache" }) })
 @Service(ShellCommands.class)
 @Descriptor("OGEMA administration commands")
 public class ShellCommands {
@@ -125,6 +126,10 @@ public class ShellCommands {
 					for (RegisteredResourceListener rrl : app.getResourceListeners()) {
 						System.out.printf("    %s: %s%n", rrl.getResource().getPath(), getListenerName(rrl
 								.getListener()));
+					}
+					for (RegisteredValueListener rvl : app.getValueListeners()) {
+						System.out.printf("    %s: %s (%s)%n", rvl.getResource().getPath(), getListenerName(rvl
+								.getValueListener()), rvl.isCallOnEveryUpdate() ? "on update" : "on change");
 					}
 				}
 				if (!app.getStructureListeners().isEmpty()) {
@@ -197,17 +202,30 @@ public class ShellCommands {
 	}
 
 	@Descriptor("Print recent log entries")
-	public void log(
+	public void log (
 			@Descriptor("set log message limit (use negative value to start from end of cache (most recent message))") @Parameter(names = {
-					"-l", "--limit" }, absentValue = "") int limit,
-			@Descriptor("regex for filtering log messages (case insensitive substring match)") String pattern) {
-		Pattern p = pattern == null || pattern.isEmpty() ? null : Pattern.compile(pattern);
-		printCache(System.out, p, limit);
+					"-l", "--limit" }, absentValue = "0") int limit,
+            @Descriptor("print log messages to file instead of console, does not work with -l")
+            @Parameter(names = {"-f", "--file" }, absentValue = "") String filename,
+			@Descriptor("regex for filtering log messages (case insensitive substring match)") String pattern)  throws IOException {
+		Pattern p = pattern == null || pattern.isEmpty() ? null : Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
+        if (!filename.isEmpty()){
+            try (PrintStream out = new PrintStream(filename, "UTF-8")){
+                printCache(out, p, limit);
+                System.out.printf("log written to %s%n", filename);
+            }
+        } else {
+            printCache(System.out, p, limit);
+        }
 	}
 
-	@Descriptor("Print all recent log entries")
-	public void log() {
-		log(0, "");
+	@Descriptor("Print recent log entries")
+	public void log(
+			@Descriptor("set log message limit (use negative value to start from end of cache (most recent message))") @Parameter(names = {
+					"-l", "--limit" }, absentValue = "0") int limit,
+			@Descriptor("print log messages to file instead of console, does not work with -l") @Parameter(names = {
+					"-f", "--file" }, absentValue = "") String filename) throws IOException {
+		log(0, "", "");
 	}
 
 	public void printCache(PrintStream out, Pattern filter, int limit) {
@@ -230,4 +248,11 @@ public class ShellCommands {
 			out.print(s);
 		}
 	}
+
+	@Descriptor("writes the current logger cache to disk")
+	public void dump_cache() {
+		boolean success = admin.getAllLoggers().get(0).saveCache();
+		System.out.println(success ? "ok" : "failed");
+	}
+
 }

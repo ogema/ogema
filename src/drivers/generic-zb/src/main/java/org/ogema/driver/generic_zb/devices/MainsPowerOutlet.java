@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -51,57 +50,23 @@ public class MainsPowerOutlet extends Generic_ZbDevice implements ResourceListen
 	private Generic_ZbConfig toggleCmdConfig;
 	private Generic_ZbConfig onOffConfig;
 	private SingleSwitchBox mainsPowerOutlet;
+	private String deviceName;
 
 	public MainsPowerOutlet(Generic_ZbDriver driver, ApplicationManager appManager, Generic_ZbConfig config) {
 		super(driver, appManager, config);
 
 	}
 
-	public MainsPowerOutlet(Generic_ZbDriver driver, ApplicationManager appManager, DeviceLocator deviceLocator) {
+	public MainsPowerOutlet(Generic_ZbDriver driver, ApplicationManager appManager, DeviceLocator deviceLocator,
+			String name) {
 		super(driver, appManager, deviceLocator);
+		deviceName = name;
 		addMandatoryChannels();
-
-		// new Thread(new Runnable() {
-		// @Override
-		// public void run() {
-		// // TODO remove after successful testing
-		// try {
-		// Thread.sleep(20000);
-		// } catch (InterruptedException e) {
-		// // TODO Auto-generated catch block
-		// e.printStackTrace();
-		// }
-		// System.out.println("onOff");
-		// onOff.setValue(false);
-		// try {
-		// Thread.sleep(20000);
-		// } catch (InterruptedException e) {
-		// // TODO Auto-generated catch block
-		// e.printStackTrace();
-		// }
-		// System.out.println("onOff");
-		// onOff.setValue(true);
-		// try {
-		// Thread.sleep(20000);
-		// } catch (InterruptedException e) {
-		// // TODO Auto-generated catch block
-		// e.printStackTrace();
-		// }
-		// System.out.println("onOff");
-		// onOff.setValue(false);
-		// try {
-		// Thread.sleep(20000);
-		// } catch (InterruptedException e) {
-		// // TODO Auto-generated catch block
-		// e.printStackTrace();
-		// }
-		// System.out.println("onOff");
-		// onOff.setValue(true);
-		// }
-		// }).start();
 	}
 
 	private void addMandatoryChannels() {
+		if (deviceName != null)
+			generic_ZbConfig.resourceName = deviceName;
 		offCmdConfig = new Generic_ZbConfig();
 		offCmdConfig.interfaceId = generic_ZbConfig.interfaceId;
 		offCmdConfig.deviceAddress = generic_ZbConfig.interfaceId;

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -78,7 +77,7 @@ public interface MemoryTimeSeries extends TimeSeries, Cloneable {
 	 * Memory schedules do not live in an OGEMA resource framework and hence may
 	 * not have a notion of a framework time. Therefore, this returns -1 for memory
 	 * schedules.
-	 * @return Always returns -1 for memory schedules.
+	 * @return Always returns null for memory schedules.
 	 */
 	@Override
 	Long getTimeOfLatestEntry();

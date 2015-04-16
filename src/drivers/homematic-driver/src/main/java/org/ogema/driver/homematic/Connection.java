@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -29,7 +28,7 @@ public class Connection {
 	private final String interfaceId;
 	private final String parameterString;
 	private final Map<String, Device> devices;
-	protected final LocalDevice localDevice;
+	protected LocalDevice localDevice;
 	ApplicationManager applicationManager;
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("homematic-driver");
 	private boolean hasConnection = false;
@@ -44,10 +43,11 @@ public class Connection {
 		Thread connectUsb = new Thread() {
 			@Override
 			public void run() {
-				while (!hasConnection) {
+				while (!hasConnection && Activator.bundleIsRunning) {
 					if (usbConnection.connect()) {
 						synchronized (connectionLock) {
 							hasConnection = true;
+							localDevice = new LocalDevice(parameterString, usbConnection);
 							connectionLock.notify();
 						}
 					}
@@ -60,9 +60,7 @@ public class Connection {
 			}
 		};
 		connectUsb.start();
-
 		devices = new HashMap<>();
-		localDevice = new LocalDevice(parameterString, usbConnection);
 	}
 
 	public Device findDevice(DeviceLocator device) {

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,6 +16,7 @@
 package org.ogema.impl.security;
 
 import static org.ogema.impl.security.WebAccessManagerImpl.OLDREQ_ATTR_NAME;
+
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -57,6 +57,10 @@ import org.slf4j.Logger;
  * /applicationID/directory/file.ext/info getRequestURI() /applicationID getContextPath() /directory/file.ext
  * getServletPath() /info getPathInfo()
  * 
+ */
+/**
+ * @author Zekeriya Mansuroglu
+ *
  */
 public class OgemaHttpContext implements HttpContext {
 
@@ -137,11 +141,13 @@ public class OgemaHttpContext implements HttpContext {
 		HttpSession httpses = request.getSession();
 		SessionAuth ses;
 		if ((ses = (SessionAuth) httpses.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME)) == null) {
-			// handle new session
-//			ses = wam.handleNewSession(request, response);
 			
 			 // Store the request, so that it could be responded after successful login.
-			httpses.setAttribute(OLDREQ_ATTR_NAME, request);
+            if (!request.getRequestURL().toString().endsWith("favicon.ico")
+            		&& !request.getRequestURI().toString().equals("/ogema")) {
+                httpses.setAttribute(OLDREQ_ATTR_NAME, request.getRequestURL().toString());
+            }
+
 			try {
 				request.getRequestDispatcher(LoginServlet.LOGIN_SERVLET_PATH).forward(request, response);
 			} catch (ServletException e) {
@@ -162,13 +168,19 @@ public class OgemaHttpContext implements HttpContext {
 
 		// Look for access right of the user to the app sites according this http context.
 		User usr = ses.getUsr();
-		boolean permitted = pm.getAccessManager().isAppPermitted(usr, owner);
+		boolean permitted = false;
+		try {
+			permitted = pm.getAccessManager().isAppPermitted(usr, owner);
+		} catch (Throwable e) {
+			e.printStackTrace();
+		}
 		if (!permitted) {
+                        
+                        request.getSession().invalidate();
+                        response.sendRedirect("/ogema/login");
+                        
 			if (Configuration.DEBUG)
 				logger.debug("User authorization failed.");
-			// send unauthorized
-			// response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-			// response.flushBuffer();
 			return false;
 		}
 		else {

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,6 +22,7 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.schedule.DefinitionSchedule;
 import org.ogema.core.model.schedule.ForecastSchedule;
+import org.ogema.core.recordeddata.RecordedData;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.persistence.impl.faketree.ScheduleTreeElement;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
@@ -59,7 +59,6 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 		checkWritePermission();
 		getSchedule().addValue(timestamp, value);
 		getSchedule().setLastUpdateTime(m_appMan.getFrameworkTime());
-		//FIXME no change check
 		handleResourceUpdate(true);
 		return true;
 	}
@@ -72,7 +71,6 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 		checkWritePermission();
 		getSchedule().addValues(values);
 		getSchedule().setLastUpdateTime(m_appMan.getFrameworkTime());
-		//FIXME no change check
 		handleResourceUpdate(true);
 		return true;
 	}
@@ -90,7 +88,6 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 		checkWritePermission();
 		getSchedule().replaceValuesFixedStep(startTime, values, stepSize);
 		getSchedule().setLastUpdateTime(m_appMan.getFrameworkTime());
-		//FIXME no change check
 		handleResourceUpdate(true);
 		return true;
 	}
@@ -103,7 +100,6 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 		checkWritePermission();
 		getSchedule().addValue(timestamp, value, timeOfCalculation);
 		getSchedule().setLastUpdateTime(m_appMan.getFrameworkTime());
-		//FIXME no change check
 		handleResourceUpdate(true);
 		return true;
 	}
@@ -116,7 +112,6 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 		checkWritePermission();
 		getSchedule().addValues(values, timeOfCalculation);
 		getSchedule().setLastUpdateTime(m_appMan.getFrameworkTime());
-		//FIXME no change check
 		handleResourceUpdate(true);
 		return true;
 	}
@@ -134,7 +129,6 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 		checkWritePermission();
 		getSchedule().replaceValuesFixedStep(startTime, values, stepSize, timeOfCalculation);
 		getSchedule().setLastUpdateTime(m_appMan.getFrameworkTime());
-		//FIXME no change check
 		handleResourceUpdate(true);
 		return true;
 	}
@@ -152,7 +146,6 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 		checkWritePermission();
 		getSchedule().deleteValues();
 		getSchedule().setLastUpdateTime(m_appMan.getFrameworkTime());
-		//FIXME no change check
 		handleResourceUpdate(true);
 		return true;
 	}
@@ -165,7 +158,6 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 		checkWritePermission();
 		getSchedule().deleteValues(endTime);
 		getSchedule().setLastUpdateTime(m_appMan.getFrameworkTime());
-		//FIXME no change check
 		handleResourceUpdate(true);
 		return true;
 	}
@@ -178,7 +170,6 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 		checkWritePermission();
 		getSchedule().deleteValues(startTime, endTime);
 		getSchedule().setLastUpdateTime(m_appMan.getFrameworkTime());
-		//FIXME no change check
 		handleResourceUpdate(true);
 		return true;
 	}
@@ -191,7 +182,6 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 		checkWritePermission();
 		getSchedule().replaceValues(startTime, endTime, values);
 		getSchedule().setLastUpdateTime(m_appMan.getFrameworkTime());
-		//FIXME no change check
 		handleResourceUpdate(true);
 		return true;
 	}
@@ -203,7 +193,6 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 		}
 		checkWritePermission();
 		getSchedule().setInterpolationMode(mode);
-		//FIXME no change check
 		handleResourceUpdate(true);
 		return true;
 	}
@@ -236,6 +225,12 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 	@Override
 	public Long getTimeOfLatestEntry() {
 		return getSchedule().getLastCalculationTime();
+	}
+
+	// TODO: Do not use the deprecated method here but implement it the other way round.
+	@Override
+	public long getLastUpdateTime() {
+		return getTimeOfLatestEntry();
 	}
 
 }

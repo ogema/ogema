@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,9 +15,9 @@
  */
 package org.ogema.driver.xbee;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +59,7 @@ public class XBeeDriver implements ChannelDriver, HardwareListener {
 	private ChannelAccess channelAccess;
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("xbee-driver");
 
-	public XBeeDriver(ChannelAccess channelAccess, HardwareManager hwMngr, File remoteDevicesFile) {
+	public XBeeDriver(ChannelAccess channelAccess, HardwareManager hwMngr) {
 		connectionsMap = new HashMap<String, Connection>();
 		listenerMap = new HashMap<>();
 		hwMngr.addListener(this);
@@ -68,26 +67,23 @@ public class XBeeDriver implements ChannelDriver, HardwareListener {
 
 		// Check if the portname property is set
 		String portName = System.getProperty(Constants.STATIC_IF_NAME);
-
-		// Check some known hardware descriptors
-		// FIXME here a file with hardware descriptors should be read to detect an ZigBee stick
-		HardwareDescriptor descr = null;
-		if (portName == null) {
-			descr = hwMngr.getDescriptor("usb:1-1.2.4.1:1.0:0403:6001:");
-			if (descr != null)
-				portName = ((UsbHardwareDescriptor) descr).getPortName();
-		}
-
-		if (portName == null) {
-			descr = hwMngr.getDescriptor("usb:1-1.2:1.0:0403:6001:");
-			if (descr != null)
-				portName = ((UsbHardwareDescriptor) descr).getPortName();
-		}
-
 		if (portName != null) {
 			Connection con = new Connection(portName, this);
-			addConnection(con);
+			if (con.localDevice != null)
+				addConnection(con);
 		}
+		else {
+			Collection<HardwareDescriptor> descriptors = hwMngr.getHardwareDescriptors(".+:0403:6001:");
+			for (HardwareDescriptor descr : descriptors) {
+				portName = ((UsbHardwareDescriptor) descr).getPortName();
+				if (portName != null) {
+					Connection con = new Connection(portName, this);
+					if (con.localDevice != null)
+						addConnection(con);
+				}
+			}
+		}
+
 	}
 
 	protected void removeConnection(String interfaceId) {
@@ -135,7 +131,7 @@ public class XBeeDriver implements ChannelDriver, HardwareListener {
 		else {
 			Set<Entry<String, Connection>> connections = connectionsMap.entrySet();
 			if (connections.size() <= 0)
-				logger.error("Currently there are no connections alive to ZigBee coordinator hardware.");
+				logger.debug("Currently there are no connections alive to ZigBee coordinator hardware.");
 			else
 				for (Entry<String, Connection> con : connections) {
 					success = scanConnection(con.getValue(), listener);
@@ -370,13 +366,6 @@ public class XBeeDriver implements ChannelDriver, HardwareListener {
 	public void hardwareAdded(HardwareDescriptor descriptor) {
 
 		logger.debug("hardware added: " + descriptor.getIdentifier());
-		String[] splitIdentifier = descriptor.getIdentifier().split(":");
-		String deviceString = splitIdentifier[splitIdentifier.length - 2] + ":"
-				+ splitIdentifier[splitIdentifier.length - 1];
-
-		if (!Activator.hardwareIds.contains(deviceString)) {
-			return;
-		}
 
 		String portName = null;
 

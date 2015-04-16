@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -59,7 +58,7 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 		super(el, path, appman);
 		elementsNode = el.getChild(ELEMENTS);
 		elements = new ArrayList<>();
-		elementType = (Class<T>) el.getType();
+		elementType = (Class<T>) el.getResourceListType();
         if (elementType == null && !el.isDecorator()){
             elementType = (Class<T>) findElementTypeOnParent();
         }
@@ -103,7 +102,7 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 			elementType = (Class<T>) findElementTypeOnParent();
 		}
 		if (elementType == null) {
-			elementType = (Class<T>) r.getResourceType();
+			elementType = (Class<T>) getEl().getResourceListType();
 		}
 		else {
 			if (!elementType.isAssignableFrom(r.getResourceType())) {
@@ -213,6 +212,18 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	}
 
 	@Override
+	public <S extends T> S add(Class<S> type) {
+		Objects.requireNonNull(type, "type must not be null");
+		if (elementType == null) {
+			throw new IllegalStateException("array element type has not been set.");
+		}
+		synchronized (elements) {
+			String name = findNewName();
+			return addDecorator(name, type);
+		}
+	}
+
+	@Override
 	public void remove(T element) {
 		for (T e : getAllElements()) {
 			if (e.equalsLocation(element)) {
@@ -236,6 +247,7 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 			throw new IllegalStateException("resource type already set");
 		}
 		elementType = (Class<T>) resType;
+		getEl().setResourceListType(resType);
 	}
 
 	@Override

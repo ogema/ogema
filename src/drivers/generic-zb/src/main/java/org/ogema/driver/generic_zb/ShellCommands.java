@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -231,15 +230,13 @@ public class ShellCommands implements HLDriverInterface {
 
 	public void deviceScan(@Descriptor("The interface ID/Port name.") String interfaceId) {
 		try {
-			driver.appManager.getChannelAccess().discoverDevices("xbee-driver", interfaceId, null, driver);
+			if (driver.appManager != null) // do it only if the HLD app is running
+				driver.appManager.getChannelAccess().discoverDevices("xbee-driver", interfaceId, null, driver);
 		} catch (UnsupportedOperationException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (NoSuchInterfaceException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (NoSuchDriverException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}

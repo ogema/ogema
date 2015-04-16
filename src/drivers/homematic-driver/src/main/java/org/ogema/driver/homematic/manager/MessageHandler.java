@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,6 +21,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.ogema.driver.homematic.Activator;
+import org.ogema.driver.homematic.manager.RemoteDevice.InitStates;
 import org.ogema.driver.homematic.manager.Messages.Message;
 import org.slf4j.Logger;
 
@@ -85,6 +86,7 @@ public class MessageHandler {
 
 		private String dest;
 		private int tries = 1;
+		private boolean success = true;
 
 		private volatile Map<Long, Message> unsentMessageQueue; // Messages waiting to be sent
 
@@ -96,10 +98,11 @@ public class MessageHandler {
 		@Override
 		public void run() {
 			try {
-				while (!this.unsentMessageQueue.isEmpty()) {
-					if (tries > 1 && tries < 6)
+				while (!this.unsentMessageQueue.isEmpty() && Activator.bundleIsRunning) {
+					if (tries > 1 && tries < 4)
 						SendThread.sleep(2000);
-					else if (tries >= 6) {
+					else if (tries >= 4) {
+						success = false;
 						break;
 					}
 					logger.debug("Try: " + tries);
@@ -118,7 +121,7 @@ public class MessageHandler {
 						}
 					}
 					if (sentMessageAwaitingResponse.contains(entry.getToken())) {
-						logger.warn("Response took to long ...");
+						logger.warn("Response from " + dest + " took to long ...");
 						tries++;
 						sentMessageAwaitingResponse.remove(entry.getToken());
 					}
@@ -129,7 +132,18 @@ public class MessageHandler {
 						timerThread.success = true;
 					}
 				}
-
+				RemoteDevice device = localDevice.getDevices().get(dest);
+				if (success) {
+					if (device.getInitState() == InitStates.PAIRING) {
+						device.setInitState(InitStates.PAIRED);
+						logger.info("Device " + dest + " paired");
+					}
+				}
+				else {
+					device.setInitState(InitStates.UNKNOWN);
+					localDevice.getDevices().remove(device.getAddress());
+					logger.warn("Device " + dest + " removed!");
+				}
 				logger.debug("Running Thread removed");
 				runningThreads.remove(this.getDest());
 			} catch (InterruptedException e) {

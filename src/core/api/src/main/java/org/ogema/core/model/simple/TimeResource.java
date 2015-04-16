@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,17 +15,16 @@
  */
 package org.ogema.core.model.simple;
 
-import org.ogema.core.model.SimpleResource;
 import org.ogema.core.model.schedule.DefinitionSchedule;
 import org.ogema.core.model.schedule.ForecastSchedule;
 import org.ogema.core.recordeddata.RecordedData;
 
 /**
- * Simple resource representing a time difference or a date. Time differences are given in milliseconds. Dates are
+ * Resource representing a time difference or a date. Time differences are given in milliseconds. Dates are
  * represented as "milliseconds since begin of 1970". Time differences always refer to physical time, not calendar time.
  * Dates are usually read from some system, so for dates the exact behavior with respect to leap seconds is not defined.
  */
-public interface TimeResource extends SimpleResource {
+public interface TimeResource extends SingleValueResource {
 
 	/**
 	 * Gets the time difference (in ms).

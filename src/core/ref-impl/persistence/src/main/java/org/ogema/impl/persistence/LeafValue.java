@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -47,28 +46,6 @@ public class LeafValue implements SimpleResourceData {
 		this.typeKey = owner.typeKey;
 		this.footprint = 0;
 	}
-
-	// public void initArray(int typeKey) {
-	// switch (typeKey) {
-	// case DBConstants.TYPE_KEY_OPAQUE:
-	// aB = new byte[INITIAL_SIMPLE_ARRAY_CAPACITY];
-	// case DBConstants.TYPE_KEY_INT_ARR:
-	// aI = new int[INITIAL_SIMPLE_ARRAY_CAPACITY];
-	// case DBConstants.TYPE_KEY_FLOAT_ARR:
-	// aF = new float[INITIAL_SIMPLE_ARRAY_CAPACITY];
-	// case DBConstants.TYPE_KEY_BOOLEAN_ARR:
-	// aZ = new boolean[INITIAL_SIMPLE_ARRAY_CAPACITY];
-	// case DBConstants.TYPE_KEY_STRING_ARR:
-	// aS = new String[INITIAL_SIMPLE_ARRAY_CAPACITY];
-	// case DBConstants.TYPE_KEY_LONG_ARR:
-	// aJ = new long[INITIAL_SIMPLE_ARRAY_CAPACITY];
-	// case DBConstants.TYPE_KEY_COMPLEX_ARR:
-	// break;
-	// default:
-	// break;
-	// }
-	//
-	// }
 
 	@Override
 	public boolean getBoolean() throws UnsupportedOperationException {

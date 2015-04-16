@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,6 +17,7 @@ package org.ogema.model.locations;
 
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.IntegerResource;
+import org.ogema.core.model.units.AreaResource;
 import org.ogema.model.sensors.CO2Sensor;
 import org.ogema.model.sensors.HumiditySensor;
 import org.ogema.model.sensors.LightSensor;
@@ -32,8 +32,6 @@ import org.ogema.model.prototypes.PhysicalElement;
  * this room belongs to can be inferred from the {@link #location() } of this room.
  */
 public interface Room extends PhysicalElement {
-	//	/** Reference to building property unit in which room is situated */
-	//	BuildingPropertyUnit propertyUnit();
 
 	/**
 	 * Type of room:<br>
@@ -41,6 +39,8 @@ public interface Room extends PhysicalElement {
 	 * 1: Living room (private)<br>
 	 * 2: Combined living room with kitchen (private)<br>
 	 * 3: Kitchen (private)<br>
+	 * 4: Private bath room (with bath / shower, may also contain toilet)<br>
+	 * 5: Toilet (without bath / shower)
 	 * 10: Bed room (private)<br>
 	 * 20: Garage (private)<br>
 	 * 100: Office room<br>
@@ -51,6 +51,14 @@ public interface Room extends PhysicalElement {
 	 * >=10.000: custom values
 	 */
 	IntegerResource type();
+
+	/**
+	 * Area of the room.
+	 */
+	AreaResource area();
+
+	/** Parts of room assigned to work places */
+	public ResourceList<WorkPlace> workPlaces();
 
 	/** Room temperature */
 	TemperatureSensor temperatureSensor();
@@ -69,9 +77,6 @@ public interface Room extends PhysicalElement {
 
 	/** Room occupancy */
 	OccupancySensor occupancySensor();
-
-	/** Parts of room assigned to work places */
-	public ResourceList<WorkPlace> workPlaces();
 
 	/**
 	 * Reference to meter that measures devices within in the room. Note that it is to be determined from electric

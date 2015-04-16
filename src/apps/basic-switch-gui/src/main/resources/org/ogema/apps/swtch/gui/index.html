@@ -1,0 +1,107 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html>
+<html ng-app="switch">
+    <head>
+        <title>Basic switch gui</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="lib/jquery-1.11.1.min.js"></script>
+        <link href="lib/bootstrap.min.css" rel="stylesheet" type="text/css"/> 
+        <style>
+        th {
+			    background-color: #00ccff;
+			}
+        </style>
+    </head>
+    <body>
+    	<div ng-controller="SwitchCtrl">
+	        <p>{{message}}</p>	
+	        <h3>Controllable on-off devices</h3>
+	        <div id="resourceContainer"></div>
+			<button class="btn btn-primary" ng-click="getSwitches()">Update</button><br><br>
+	        <table class="table table-striped table-hover">
+	        	<tr>
+	        	  <th>Name</th><th>On/Off</th><th>Controlled device</th><th>Location</th><th>Switch</th>
+	        	</tr>
+	        	<tr ng-repeat="res in switchesSet.getSwitchesLocation()">
+	        	  <td>{{getName(res)}}</td>
+	        	  <td>        	  	
+	        	  	{{getValue(res)}}
+	        	  </td>
+	        	  <td>{{getDevice(res)}}<br>(type {{getDeviceType(res)}})</td>
+	        	  <td>{{getLocation(res)}}</td>
+	        	  <td><button class="btn btn-danger" ng-click="toggleSwitch(res)">{{getSwitchBtnMsg(res)}}</button></td>
+	        	</tr>
+	        </table>
+	        <br>
+	        
+       
+      		<h3>Controllable multi-state devices</h3>
+	        <div id="resourceContainer2"></div>
+			<button class="btn btn-primary" ng-click="getSwitches()">Update</button><br><br>
+	        <table class="table table-striped table-hover">
+	        	<tr>
+	        	  <th class="col col-lg-3">Name</th><th class="col col-lg-2">State (in %)</th><th class="col col-lg-2">Location</th><th class="col col-lg-3">New value (in %)</th><th class="col col-lg-2">Set value</th>
+	        	</tr>
+	        	<tr ng-repeat="res in switchesSet.getMSwitchesLocation()">
+	        	  <td class="col col-lg-3">{{getMName(res)}}</td>
+	        	  <td class="col col-lg-2">        	  	
+	        	  	{{getMValue(res)}}
+	        	  </td>
+	        	  <td class="col col-lg-2">{{getMLocation(res)}}</td>
+	        	  <td class="col col-lg-3"><table><tr><td><input type="range" id="rangeinput-{{$index}}" ng-model="value[res]"/></td><td><output>{{value[res]}}</output></td></tr></table></td>
+	        	  <td class="col col-lg-2"><button class="btn btn-danger" ng-click="toggleMSwitch(res,value[res])">Set value</button></td>
+	        	</tr>  
+	     
+	        </table>
+	        <br>
+	          
+	        	        
+      		<h3>Controllable thermostats</h3>
+	        <div id="resourceContainer3"></div>
+			<button class="btn btn-primary" ng-click="getSwitches()">Update</button><br><br>
+	        <table class="table table-striped table-hover">
+	        	<tr>
+	        	  <th class="col col-lg-2">Name</th>
+	        	  <th class="col col-lg-1">Temperature</th>
+	        	  <th class="col col-lg-1">Valve position</th>
+	        	  <th class="col col-lg-1">Battery charge</th>
+	        	  <th class="col col-lg-1">Location</th>
+	        	  <th class="col col-lg-1">Setpoint</th>
+	        	  <th class="col col-lg-2">New value (in &deg;C)</th>
+	        	  <th class="col col-lg-2">Set temperature target</th>
+	        	</tr>
+	        	<tr ng-repeat="res in switchesSet.getTSwitchesLocation()">
+	        	  <td class="col col-lg-2">{{getTName(res)}}</td>
+	        	  <td class="col col-lg-1">{{getTValue(res)}} &deg;C</td>
+	        	  <td class="col col-lg-1">{{getTValve(res)}}%</td>
+	        	  <td class="col col-lg-1">{{getTCharge(res)}}%</td>
+	        	  <td class="col col-lg-1">{{getTLocation(res)}}</td>
+	        	  <td class="col col-lg-1">{{getTSetpoint(res)}} &deg;C</td>        	  
+	        	  <td class="col col-lg-2"><table><tr><td><input type="range" id="rangeinput-{{$index}}" ng-model="Tvalue[res]"/></td><td><output>{{getAllowedTempValue(Tvalue[res])}}</output></td></tr></table></td>
+	        	  <td class="col col-lg-2"><button class="btn btn-danger" ng-click="toggleTSwitch(res,getAllowedTempValue(Tvalue[res]))">Apply</button></td>
+	        	</tr>
+	        </table>
+	        <br>
+	        
+    	<script src="lib/angular.js"></script>
+    	<script src="app.js"></script>
+    </body>
+</html>
+</html>

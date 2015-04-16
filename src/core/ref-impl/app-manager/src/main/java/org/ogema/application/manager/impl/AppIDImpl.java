@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,6 +24,10 @@ import org.ogema.core.application.Application;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleReference;
 
+/**
+ * @author Zekeriya Mansuroglu
+ *
+ */
 public class AppIDImpl implements AppID {
 
 	/*
@@ -39,6 +42,8 @@ public class AppIDImpl implements AppID {
 	 * Id string
 	 */
 	String id;
+
+	String group, user, version;
 
 	@Override
 	public String getIDString() {
@@ -90,13 +95,11 @@ public class AppIDImpl implements AppID {
 
 	@Override
 	public Bundle getBundle() {
-		// TODO check AdminPermission
 		return bundle;
 	}
 
 	@Override
 	public Application getApplication() {
-		// TODO check AdminPermission
 		return app;
 	}
 
@@ -121,4 +124,18 @@ public class AppIDImpl implements AppID {
 		return "AppIDImpl{" + "bundle=" + bundle + ", app=" + app + '}';
 	}
 
+	@Override
+	public String getOwnerGroup() {
+		return group;
+	}
+
+	@Override
+	public String getOwnerUser() {
+		return user;
+	}
+
+	@Override
+	public String getVersion() {
+		return version;
+	}
 }

@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -362,7 +361,7 @@ public class PersistenceTest {
 		ConcurrentHashMap<String, Class<?>> typeClassByName = db.typeClassByName;
 		ConcurrentHashMap<String, Integer> resIDByName = db.resIDByName;
 		ConcurrentHashMap<Integer, TreeElementImpl> resNodeByID = db.resNodeByID;
-		ConcurrentHashMap<Class<?>, Vector<Integer>> resIDsByType = db.resIDsByType;
+		ConcurrentHashMap<String, Vector<Integer>> resIDsByType = db.resIDsByType;
 		// reinit the resource db
 		db.restart();
 		// compare the contents of the maps before and after the reinit
@@ -456,9 +455,9 @@ public class PersistenceTest {
 
 		// 5. resIDsByType list
 		{
-			Set<Entry<Class<?>, Vector<Integer>>> tlrs = resIDsByType.entrySet();
-			for (Map.Entry<Class<?>, Vector<Integer>> entry : tlrs) {
-				Class<?> clsOld = entry.getKey();
+			Set<Entry<String, Vector<Integer>>> tlrs = resIDsByType.entrySet();
+			for (Map.Entry<String, Vector<Integer>> entry : tlrs) {
+				String clsOld = entry.getKey();
 				// if (!db.resIDsByType.containsKey(clsOld)) {
 				// success = false;
 				// break;

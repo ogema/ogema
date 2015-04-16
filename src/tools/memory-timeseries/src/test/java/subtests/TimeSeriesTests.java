@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,6 +13,21 @@
  * You should have received a copy of the GNU General Public License
  * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
+/**
+ * This file is part of OGEMA.
+ *
+ * OGEMA is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * OGEMA is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ */
 package subtests;
 
 /**
@@ -21,9 +35,7 @@ package subtests;
  *
  * Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * Fraunhofer IIS
- * Fraunhofer ISE
- * Fraunhofer IWES
+ * Fraunhofer IIS Fraunhofer ISE Fraunhofer IWES
  *
  * All Rights reserved
  */
@@ -31,6 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import junit.framework.Assert;
+import static org.junit.Assert.assertNull;
 
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
@@ -42,6 +55,7 @@ import org.ogema.tools.timeseries.api.MemoryTimeSeries;
 /**
  * Tests for the functionalities defined in the TimeSeries interface. This is
  * the basis class containing tests valid for all data types.
+ *
  * @author Timo Fischer, Fraunhofer IWES
  */
 public abstract class TimeSeriesTests {
@@ -49,13 +63,14 @@ public abstract class TimeSeriesTests {
 	protected final MemoryTimeSeries m_timeSeries;
 
 	/**
-	 * Gets the value as a float, if possible. Booleans are converted in the sense
-	 * of "true"=1, "false"=0.
+	 * Gets the value as a float, if possible. Booleans are converted in the
+	 * sense of "true"=1, "false"=0.
 	 */
 	public abstract float getFloat(Value value);
 
 	/**
 	 * Returns a Value suitable for the TimeSeries data type
+	 *
 	 * @param x Float value to be wrapped into a Value container.
 	 */
 	public abstract Value getValue(float x);
@@ -80,7 +95,8 @@ public abstract class TimeSeriesTests {
 	}
 
 	/**
-	 * Test the equality of two lists in the sense of their entries being identical value-wise.
+	 * Test the equality of two lists in the sense of their entries being
+	 * identical value-wise.
 	 */
 	void testEquality(List<SampledValue> l1, List<SampledValue> l2) {
 		assert l1.size() == l2.size();
@@ -111,7 +127,7 @@ public abstract class TimeSeriesTests {
 		testInsertValues();
 		testReadWriteTimeSeries();
 		testInsertionDeletion();
-		testAddValueSchedule();
+		testReplaceValueFixedStep();
 		testAddValuesWorks();
 		testReplaceValuesWorks();
 	}
@@ -187,8 +203,7 @@ public abstract class TimeSeriesTests {
 		}
 
 		final SampledValue outOfBoundsValue = m_timeSeries.getValue(MAX + 1);
-		final Quality q = outOfBoundsValue.getQuality();
-		assert Quality.BAD == q;
+		assertNull(outOfBoundsValue);
 	}
 
 	public void testInsertionDeletion() {
@@ -218,7 +233,7 @@ public abstract class TimeSeriesTests {
 		assert scheduleValues.isEmpty();
 	}
 
-	public void testAddValueSchedule() {
+	public void testReplaceValueFixedStep() {
         m_timeSeries.deleteValues();
         final long N = 73; // must be an even number for this test.
         final long min = 0, delta = 100000, max = min + N * delta;
@@ -228,10 +243,10 @@ public abstract class TimeSeriesTests {
             values.add(getValue(1.f * i));
         }
 
-        m_timeSeries.addValueSchedule(min, delta, values, 6232);
+        m_timeSeries.replaceValuesFixedStep(min, values, delta, 6232);
         assert N == m_timeSeries.getValues(0).size();
         values.add(getValue(652.f));
-        m_timeSeries.addValueSchedule(min, delta, values, 6232);
+        m_timeSeries.replaceValuesFixedStep(min, values, delta, 6232);
         assert N + 1 == m_timeSeries.getValues(0).size();
     }
 
@@ -282,10 +297,10 @@ public abstract class TimeSeriesTests {
         m_timeSeries.addValues(values1);
         List<SampledValue> entries = m_timeSeries.getValues(0);
         testEquality(values1, entries);
-        
+
         m_timeSeries.shiftTimestamps(-100);
         List<SampledValue> shiftedEntries = m_timeSeries.getValues(0);
-        assert (shiftedEntries.size()==1);
+        assert (shiftedEntries.size() == 1);
         SampledValue shiftedValue = shiftedEntries.get(0);
         assertEquals(getFloat(shiftedValue.getValue()), 2.f, 0.01f);
     }

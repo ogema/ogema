@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,7 +31,7 @@ import org.ogema.driver.hmhl.Constants;
 import org.ogema.driver.hmhl.HM_hlConfig;
 import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
-import org.ogema.driver.hmhl.models.RemoteDataModel;
+import org.ogema.driver.hmhl.models.RemoteControl;
 import org.ogema.model.sensors.StateOfChargeSensor;
 
 public class Remote extends HM_hlDevice {
@@ -136,7 +135,7 @@ public class Remote extends HM_hlDevice {
 		 * Initialize the resource tree
 		 */
 		// Create top level resource
-		RemoteDataModel rem = resourceManager.createResource(hm_hlConfig.resourceName, RemoteDataModel.class);
+		RemoteControl rem = resourceManager.createResource(hm_hlConfig.resourceName, RemoteControl.class);
 		rem.activate(true);
 
 		StateOfChargeSensor eSens = rem.battery().chargeSensor().create();

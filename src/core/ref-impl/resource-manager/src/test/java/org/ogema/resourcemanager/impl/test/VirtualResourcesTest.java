@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -24,6 +23,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
+import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.schedule.DefinitionSchedule;
 import org.ogema.core.model.schedule.Schedule;
@@ -274,6 +274,27 @@ public class VirtualResourcesTest extends OsgiTestBase {
 		assertFalse(schedule.exists());
 		schedule.create();
 		assertTrue(schedule.exists());
+	}
+
+	@Test
+	public void virtualSchedulesAreReadable() { //...but return only null
+		final FloatResource resource = resMan.createResource(newResourceName(), FloatResource.class);
+		final DefinitionSchedule schedule = resource.program();
+		assertNotNull(schedule);
+		assertFalse(schedule.exists());
+		assertNull(schedule.getValue(42));
+		assertTrue(schedule.getValues(0).isEmpty());
+		assertNull(schedule.getTimeOfLatestEntry());
+	}
+
+	@Test
+	public void virtualSchedulesIgnoreWrites() {
+		final FloatResource resource = resMan.createResource(newResourceName(), FloatResource.class);
+		final DefinitionSchedule schedule = resource.program();
+		assertNotNull(schedule);
+		assertFalse(schedule.exists());
+		schedule.addValue(47, new FloatValue(11));
+		assertTrue(schedule.getValues(0).isEmpty());
 	}
 
 	@Test

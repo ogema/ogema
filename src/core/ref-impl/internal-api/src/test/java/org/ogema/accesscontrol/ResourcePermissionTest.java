@@ -2,9 +2,8 @@
  * This file is part of OGEMA.
  *
  * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
  * OGEMA is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -45,7 +44,7 @@ public class ResourcePermissionTest {
 		TestCase.assertEquals(1000, rp.count);
 		TestCase.assertEquals("myPath/myTopLevelResource/itsColor", rp.path);
 		TestCase.assertEquals(false, rp.wced);
-		TestCase.assertEquals(FloatResource.class, rp.type);
+		TestCase.assertEquals(FloatResource.class.getName(), rp.type);
 		TestCase.assertEquals(ResourcePermission.CREATE, rp.actions);
 		TestCase.assertEquals(ResourcePermission._CREATE, rp.actionsAsMask);
 	}
@@ -58,7 +57,7 @@ public class ResourcePermissionTest {
 		TestCase.assertEquals(222, rp.count);
 		TestCase.assertEquals("myPath/myTopLevelResource/itsColor/", rp.path);
 		TestCase.assertEquals(true, rp.wced);
-		TestCase.assertEquals(Resource.class, rp.type);
+		TestCase.assertEquals(Resource.class.getName(), rp.type);
 		TestCase.assertEquals(ResourcePermission.CREATE, rp.actions);
 		TestCase.assertEquals(ResourcePermission._CREATE, rp.actionsAsMask);
 	}
