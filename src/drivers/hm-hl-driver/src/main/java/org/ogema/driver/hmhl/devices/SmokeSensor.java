@@ -15,17 +15,14 @@
  */
 package org.ogema.driver.hmhl.devices;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
-import org.ogema.core.channelmanager.measurements.ByteArrayValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.driver.hmhl.Constants;
-import org.ogema.driver.hmhl.Converter;
 import org.ogema.driver.hmhl.HM_hlConfig;
 import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
@@ -48,31 +45,13 @@ public class SmokeSensor extends HM_hlDevice {
 
 	@Override
 	protected void parseValue(Value value, String channelAddress) {
-		byte[] array = null;
-
-		if (value instanceof ByteArrayValue) {
-			array = value.getByteArrayValue();
-		}
-		byte msgtype = array[array.length - 1];
-		byte[] msg = ArrayUtils.removeAll(array, array.length - 2, array.length - 1);
-
-		if (msgtype == 0x41) {
-			long status = Converter.toLong(msg[2]);
-			long err = Converter.toLong(msg[0]);
-
-			String err_str = ((err & 0x80) > 0) ? "low" : "ok";
-			float batt = ((err & 0x80) > 0) ? 5 : 95;
-			System.out.println("State of Battery: " + err_str);
-			batteryStatus.setValue(batt);
-
-			if (status > 1) {
-				System.out.println("Smoke Alert: true");
-				smokeAlert.setValue(true);
-			}
-			else {
-				System.out.println("Smoke Alert: false");
-				smokeAlert.setValue(false);
-			}
+		switch (channelAddress) {
+		case "ATTRIBUTE:0001":
+			smokeAlert.setValue(value.getBooleanValue());
+			break;
+		case "ATTRIBUTE:0002":
+			batteryStatus.setValue(value.getFloatValue());
+			break;
 		}
 	}
 
@@ -83,20 +62,29 @@ public class SmokeSensor extends HM_hlDevice {
 		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
 		attributeConfig.channelAddress = "ATTRIBUTE:0001";
 		attributeConfig.timeout = -1;
-		attributeConfig.resourceName = hm_hlConfig.resourceName + "_HomeMatic_SmokeDetector";
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "SmokeDetector";
+		attributeConfig.chLocator = addChannel(attributeConfig);
+
+		attributeConfig = new HM_hlConfig();
+		attributeConfig.driverId = hm_hlConfig.driverId;
+		attributeConfig.interfaceId = hm_hlConfig.interfaceId;
+		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
+		attributeConfig.channelAddress = "ATTRIBUTE:0002";
+		attributeConfig.timeout = -1;
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_BatteryStatus";
 		attributeConfig.chLocator = addChannel(attributeConfig);
 
 		SmokeDetector smokeDetector = resourceManager.createResource(hm_hlConfig.resourceName, SmokeDetector.class);
 
 		smokeAlert = (BooleanResource) smokeDetector.smokeAlert().create();
 		smokeAlert.activate(true);
-		//		smokeAlert.setValue(false);
+		// smokeAlert.setValue(false);
 		smokeAlert.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		StateOfChargeSensor eSens = (StateOfChargeSensor) smokeDetector.battery().create();
 		batteryStatus = (FloatResource) eSens.reading().create();
 		batteryStatus.activate(true);
-		//		batteryStatus.setValue(95);
+		// batteryStatus.setValue(95);
 		batteryStatus.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 	}
 

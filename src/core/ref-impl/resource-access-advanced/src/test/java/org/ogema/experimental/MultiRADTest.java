@@ -51,17 +51,17 @@ public class MultiRADTest extends OsgiTestBase {
 		public boolean available2 = false;
 		public boolean nonavailable1 = false;
 		public boolean nonavailable2 = false;
-		
+
 		public RADListener() {
 		}
 
 		@Override
 		public void patternAvailable(HeatPumpRad pump) {
-			switch ( pump.model.getLocation()) {
-			case "HPTestName1": 
+			switch (pump.model.getLocation()) {
+			case "HPTestName1":
 				available1 = true;
 				break;
-			case "HPTestName2": 
+			case "HPTestName2":
 				available2 = true;
 				break;
 			}
@@ -69,11 +69,11 @@ public class MultiRADTest extends OsgiTestBase {
 
 		@Override
 		public void patternUnavailable(HeatPumpRad pump) {
-			switch ( pump.model.getLocation()) {
-			case "HPTestName1": 
+			switch (pump.model.getLocation()) {
+			case "HPTestName1":
 				nonavailable1 = true;
 				break;
-			case "HPTestName2": 
+			case "HPTestName2":
 				nonavailable2 = true;
 				break;
 			}
@@ -84,7 +84,7 @@ public class MultiRADTest extends OsgiTestBase {
 	public void findLoseRad() throws InterruptedException {
 
 		RADListener listener = new RADListener();
-		
+
 		advAcc.addPatternDemand(HeatPumpRad.class, listener, AccessPriority.PRIO_LOWEST);
 		final HeatPumpRad rad1 = advAcc.createResource("HPTestName1", HeatPumpRad.class);
 		final HeatPumpRad rad2 = advAcc.createResource("HPTestName2", HeatPumpRad.class);
@@ -103,6 +103,5 @@ public class MultiRADTest extends OsgiTestBase {
 		Thread.sleep(3000);
 		assertTrue(listener.available2);
 	}
-
 
 }

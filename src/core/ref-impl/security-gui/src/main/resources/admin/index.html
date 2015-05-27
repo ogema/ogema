@@ -22,19 +22,19 @@
 <link rel="stylesheet" href="libs/jstree/themes/default/style.min.css" />
 <script src="libs/jquery/jquery.min.js"></script>
 <script src="libs/jquery-ui/jquery-ui.min.js"></script>
-<script src="commitPerms.js"></script>
-<script src="permsDialog.js"></script>
-<script src="NewPerms.js"></script>
 <script src="jsMain.js"></script>
 <script src="libs/jstree/jstree.js"></script>
-<title>Permission Management Interface</title>
+<title>OGEMA Installation Management</title>
 <body id="mainpageBody">
-	<div id="header"></div>
+	<div id="header">
+		<img src="images/ogema.png" alt="ogema-logo" align="right" style="margin-right: 15px; margin-top: 15px;" /></img>
+	</div>
 	<div id="wrap">
-		<h1 id="heading">
-			<strong style="font-size: 1.4em;">Admin Area</strong> <br> <em>Manage your OGEMA system</em>
-		</h1>
 		<div id="pre"></div>
+		<h1 id="heading">
+			<strong style="font-size: 1.4em;">Installation Manager</strong> <br> <em>Install new bundles or configure
+				installed bundles</em>
+		</h1>
 		<div id="app">
 			<p class="head"
 				style="font-size: 0.9em; padding-left: 10px; border-left: 10px solid #124791; padding-top: 0px; padding-bottom: 0px; cursor: pointer; margin-bottom: 2px;">
@@ -43,28 +43,27 @@
 			<div class="part">
 				<h1
 					style="position: relative; top: 5px; padding: 5px; font-size: 17px; font-weight: normal; border-bottom: 1px solid #124791; margin-bottom: 0px;">
-					Choose the Way to Install Bundles</h1>
+					Choose the Way to Install a new Bundle</h1>
 				<br>
+				<h1 style="position: relative; top: 5px; padding: 5px; font-size: 12px; font-weight: normal; margin-bottom: 0px;">
+					&bull; Click the arrow select a marketplace and press RETURN OR &bull; Click to browse and upload your own bundle
+					file</h1>
 				<div id='wrapContents'>
 					<div class="content" id="content1">
-						<!-- 					<h3>Suche nach Appstores</h3> -->
-
 						<div class="innerContent">
-							<!-- 						<p>Search for an appstore please. Type in or ask the server.</p> -->
 							<form action="apps.html" method="get">
-								<input type="text" id="store" name="store" value="enter an appstore..."
-									onfocus="if (this.value == 'enter an appstore...') {this.value = '';}"
-									onblur="if (this.value == '') {this.value = 'enter an appstore...'; changeTextColor(); }"
+								<input type="text" id="store" name="store" value="enter an marketplace..."
+									onfocus="if (this.value == 'enter an marketplace...') {this.value = '';}"
+									onblur="if (this.value == '') {this.value = 'enter an marketplace...'; changeTextColor(); }"
 									onkeyup="changeTextColor()" style="color: #C2C2C2;"> <img id="button" src="images/button.png">
 							</form>
-							<!-- 							<div id=wrapArrow></div> -->
 							<ul id="menu">
 							</ul>
 						</div>
 					</div>
 					<div class="content" id="content2">
 						<div class="innerContent">
-							<button id='initUp' type='button' onclick="openUploader()">Upload</button>
+							<button id='initUp' type='button' onclick="openUploader()">Install a local bundle File ...</button>
 							<div id="diaUpload" title="Uploader">
 								<form action="" method="post" enctype="multipart/form-data">
 									<br>
@@ -94,11 +93,15 @@
 					<!-- the system apps come into here, after GET -->
 				</div>
 				<div id="buttonSet">
-					<button id="showInfo" type="button" onclick="showAppInfo()">Information</button>
+					<!--
 					<button id="update" type="button" onclick="updateApp()">Update</button>
-					<button id="setPerms" type="button" onclick="setPerms()">Edit</button>
+					-->
+					<button id="start" type="button" onclick="startBundle()">Start</button>
+					<button id="stop" type="button" onclick="stopBundle()">Stop</button>
+					<button id="setPerms" type="button" onclick="editPerms()">Edit Permissions</button>
+					<button id="installPerms" type="button" onclick="installPerms()">Permission Demand</button>
 					<button id="webResources" type="button" onclick="showWebResources()">Webresources</button>
-					<button id="deleteApp" type="button" onclick="deleteApp()">Uninstall</button>
+					<button id="showInfo" type="button" onclick="showAppInfo()">Info</button>
 				</div>
 			</div>
 			<!-- 			Dialog -->
@@ -106,55 +109,28 @@
 			<div id="webResourceDisplay" title="Webressourcen">
 				<div id="treeWebRes"></div>
 			</div>
-			<div id="editWebResources" title="Edit Resources"></div>
+			<!-- 			<div id="editWebResources" title="Edit Resources"></div> -->
 		</div>
-		<br>
-		<div id='resources'>
-			<p class="head"
-				style="font-size: 0.9em; padding-left: 10px; border-left: 10px solid #124791; padding-top: 0px; padding-bottom: 0px; cursor: pointer;">
-				<strong>Resources</strong> <br /> See all resources for ResourcePermissions.
-			</p>
-			<div class='part'>
-				<h1>All available resources</h1>
-				<div id='jsTree_Resources'></div>
-			</div>
-
-			<div id='dialog_Resources' style='display: none'>
-				<p>test</p>
-			</div>
-		</div>
-		<br>
-		<div id="security">
-			<p class="head"
-				style="font-size: 0.9em; padding-left: 10px; border-left: 10px solid #124791; padding-top: 0px; padding-bottom: 0px; cursor: pointer;">
-				<strong>Security</strong> <br /> Check your Security.
-			</p>
-			<div class="part"></div>
-		</div>
-		<br>
-		<div id="log">
-			<p class="head"
-				style="font-size: 0.9em; padding-left: 10px; border-left: 10px solid #124791; padding-top: 0px; padding-bottom: 0px; cursor: pointer;">
-				<strong>Log</strong> <br /> Log Information.
-			</p>
-			<div class="part"></div>
-		</div>
+		<!-- 		<br> -->
+		<!-- 		<div id='resources'> -->
+		<!-- 			<p class="head" -->
+		<!-- 				style="font-size: 0.9em; padding-left: 10px; border-left: 10px solid #124791; padding-top: 0px; padding-bottom: 0px; cursor: pointer;"> -->
+		<!-- 				<strong>Resources</strong> <br /> See all resources for ResourcePermissions. -->
+		<!-- 			</p> -->
+		<!-- 			<div class='part'> -->
+		<!-- 				<h1>All available resources</h1> -->
+		<!-- 				<div id='jsTree_Resources'></div> -->
+		<!-- 			</div> -->
+		<!-- 		</div> -->
+		<!-- 		<br> -->
 	</div>
 	<div id="footer">
-		<div id="contact">Contact</div>
+		<div id="contact">
+			<a href="/ogema/frameworkadminindex/index.html#/applications" target="_blank">Framework Administration </a>
+		</div>
 		<div id="ogema">
 			<a href="http://ogema.org/" target="_blank">OGEMA Website</a>
 		</div>
 	</div>
-	<div id="resourceDialog" title="Set Actions">
-		<input type='checkbox' id='resDia1' name='read'><label for='resDia1'>read</label> <br> <input
-			type='checkbox' id='resDia2' name='write'><label for='resDia2'>write</label> <br> <input type='checkbox'
-			id='resDia3' name='addSub'><label for='resDia3'>addSub</label> <br> <input type='checkbox' id='resDia4'
-			name='create'><label for='resDia4'>create</label> <br> <input type='checkbox' id='resDia5' name='delete'><label
-			for='resDia5'>delete</label> <br> <input type='checkbox' id='resDia6' name='activity'><label
-			for='resDia6'>activity</label> <br>
-		<p>Apply actions recursively?</p>
-		<input type="radio" id="recursiveyes" name="recursive" value="YES" /> <label for="recursiveyes">YES</label> <input
-			type="radio" id="recursiveno" name="recursive" value="NO" /> <label for="recursiveno">NO</label>
-	</div>
+	<div id="resourceDialog" title="Set Actions"></div>
 </body>

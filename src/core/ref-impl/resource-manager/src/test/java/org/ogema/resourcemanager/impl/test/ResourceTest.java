@@ -25,7 +25,7 @@ import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.SimpleResource;
+import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.StringResource;
@@ -243,16 +243,33 @@ public class ResourceTest extends OsgiTestBase {
 	}
 
 	@Test(expected = ResourceAlreadyExistsException.class)
-	public void addDecoratorFailsOnOptionalElements() {
+	public void addDecoratorFailsOnOptionalElementIfTypeIsIncompatible() {
 		OnOffSwitch elSwitch = resMan.createResource("test" + counter++, OnOffSwitch.class);
 		elSwitch.addDecorator("physDim", OnOffSwitch.class);
 	}
 
 	@Test(expected = ResourceAlreadyExistsException.class)
-	public void addDecoratorWithReferenceFailsOnOptionalElements() {
+	public void addDecoratorWithReferenceFailsOnOptionalElementsIfTypeIsIncompatible() {
 		OnOffSwitch elSwitch = resMan.createResource("test", OnOffSwitch.class);
 		Resource physDim = elSwitch.physDim().create();
 		elSwitch.addDecorator("ratedValues", physDim);
+	}
+
+	@Test
+	public void addDecoratorWorksOnOptionalElementWithCompatibleType() {
+		OnOffSwitch elSwitch = resMan.createResource("test", OnOffSwitch.class);
+		Resource physDim = elSwitch.physDim().create();
+		elSwitch.addDecorator("ratedValues", BinaryRange.class);
+	}
+
+	@Test
+	public void addDecoratorWithReferenceWorksOnOptionalElementWithCompatibleType() {
+		OnOffSwitch elSwitch = resMan.createResource(newResourceName(), OnOffSwitch.class);
+		OnOffSwitch elSwitch2 = resMan.createResource(newResourceName(), OnOffSwitch.class);
+		elSwitch2.ratedValues().create();
+
+		Resource physDim = elSwitch.physDim().create();
+		elSwitch.addDecorator("ratedValues", elSwitch2.ratedValues());
 	}
 
 	@Test
@@ -307,7 +324,7 @@ public class ResourceTest extends OsgiTestBase {
         simpleSubresources.add(elSwitch.heatCapacity().create());
 
         assertEquals(booleanSubresources, new HashSet<>(elSwitch.getSubResources(BooleanResource.class, true)));
-        assertEquals(simpleSubresources, new HashSet<>(elSwitch.getSubResources(SimpleResource.class, true)));
+        assertEquals(simpleSubresources, new HashSet<>(elSwitch.getSubResources(ValueResource.class, true)));
 
         OnOffSwitch elSwitch2 = resMan.createResource(newResourceName(), OnOffSwitch.class);
         elSwitch.addDecorator("fnord", elSwitch2);
@@ -321,11 +338,11 @@ public class ResourceTest extends OsgiTestBase {
 
         // check that non-recusrive result has not changed
         assertEquals(booleanSubresources, new HashSet<>(elSwitch.getSubResources(BooleanResource.class, false)));
-        assertEquals(simpleSubresources, new HashSet<>(elSwitch.getSubResources(SimpleResource.class, false)));
+        assertEquals(simpleSubresources, new HashSet<>(elSwitch.getSubResources(ValueResource.class, false)));
 
         // check recursive result
         assertEquals(booleanSubresourcesRecursive, new HashSet<>(elSwitch.getSubResources(BooleanResource.class, true)));
-        assertEquals(simpleSubresourcesRecursive, new HashSet<>(elSwitch.getSubResources(SimpleResource.class, true)));
+        assertEquals(simpleSubresourcesRecursive, new HashSet<>(elSwitch.getSubResources(ValueResource.class, true)));
     }
 
 	@Test

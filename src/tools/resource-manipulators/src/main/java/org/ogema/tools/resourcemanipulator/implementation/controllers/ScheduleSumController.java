@@ -113,6 +113,7 @@ public class ScheduleSumController implements Controller, ResourceStructureListe
 	}
 
 	@Override
+	@SuppressWarnings("fallthrough")
 	public void resourceStructureChanged(ResourceStructureEvent event) {
 		switch (event.getType()) {
 		case RESOURCE_ACTIVATED:

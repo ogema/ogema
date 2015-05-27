@@ -47,20 +47,19 @@ import org.ogema.tools.grafana.base.InfluxFake;
 @Service(Application.class)
 public class GrafanaLogging implements Application, ResourceDemandListener<SimpleResource> {
 
-    protected OgemaLogger logger;
-    protected ApplicationManager am;
-    protected ResourceManagement rm;
-    protected ResourceAccess ra;
-    protected List<Class<? extends Resource>> resourceTypes;
-    protected Map<String,Map> panels;
-    protected long updateInterval = 5000;  // 5s
-    protected InfluxFake infl;
+	protected OgemaLogger logger;
+	protected ApplicationManager am;
+	protected ResourceManagement rm;
+	protected ResourceAccess ra;
+	protected List<Class<? extends Resource>> resourceTypes;
+	protected Map<String, Map> panels;
+	protected long updateInterval = 5000; // 5s
+	protected InfluxFake infl;
 
-    private String webResourceBrowserPath;
-    private String servletPath;
-   
+	private String webResourceBrowserPath;
+	private String servletPath;
 
-    @Override
+	@Override
     public void start(ApplicationManager am) {
         this.am = am;
         this.logger = am.getLogger();
@@ -82,38 +81,37 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Simpl
 
     }
 
-    @Override
-    public void stop(AppStopReason reason) {
-        am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
-        am.getWebAccessManager().unregisterWebResource(servletPath);
-    }
+	@Override
+	public void stop(AppStopReason reason) {
+		am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
+		am.getWebAccessManager().unregisterWebResource(servletPath);
+		ra.removeResourceDemand(SimpleResource.class, this);
+	}
 
-    public List<Class<? extends Resource>> getResourceTypes() {
-    	return resourceTypes;
-    }
+	public List<Class<? extends Resource>> getResourceTypes() {
+		return resourceTypes;
+	}
 
 	@Override
 	public void resourceAvailable(SimpleResource resource) {
 		Resource res = resource.getParent();
-		if (res == null || !(res instanceof Sensor || res instanceof Actor) ) return;
-		if (resource instanceof BooleanResource) return;
+		if (res == null || !(res instanceof Sensor || res instanceof Actor))
+			return;
+		//		if (resource instanceof BooleanResource) return;
 		Class<? extends Resource> type = res.getResourceType();
 		if (!resourceTypes.contains(type)) {
 			resourceTypes.add(type);
-			Map<String,Class<? extends Resource>> rowPanels = new LinkedHashMap<String,Class<? extends Resource>>();       
-			rowPanels.put(type.getSimpleName(),type);
-	        panels.put(type.getSimpleName(), rowPanels);
-	        infl.setPanels(panels);
+			Map<String, Class<? extends Resource>> rowPanels = new LinkedHashMap<String, Class<? extends Resource>>();
+			rowPanels.put(type.getSimpleName(), type);
+			panels.put(type.getSimpleName(), rowPanels);
+			infl.setPanels(panels);
 		}
-		//System.out.println("Panels: " + panels.toString()); // FIXME
+		//System.out.println("Panels: " + panels.toString());
 	}
 
 	@Override
-	public void resourceUnavailable(SimpleResource resource) {	
+	public void resourceUnavailable(SimpleResource resource) {
+		// TODO
 	}
-    
-   
-    
-
 
 }

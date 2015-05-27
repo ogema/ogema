@@ -19,7 +19,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.ogema.driver.homematic.Activator;
-import org.ogema.driver.homematic.manager.Messages.CmdMessage;
+import org.ogema.driver.homematic.manager.messages.CmdMessage;
+import org.ogema.driver.homematic.tools.DeviceDescriptor;
 import org.ogema.driver.homematic.usbconnection.IUsbConnection;
 import org.ogema.driver.homematic.usbconnection.UsbConnection;
 
@@ -29,7 +30,8 @@ public class LocalDevice {
 	private InputHandler inputHandler;
 	private Thread inputHandlerThread;
 	private MessageHandler messageHandler;
-	FileStorage fileStorage;
+	private FileStorage fileStorage;
+	private final DeviceDescriptor deviceDescriptor;
 
 	private String pairing = null; // null = nothing; 0000000000 = pair all; XXXXXXXXXX = pair serial
 
@@ -42,8 +44,8 @@ public class LocalDevice {
 
 	public LocalDevice(String port, UsbConnection con) {
 		connection = con;
-
 		devices = new ConcurrentHashMap<String, RemoteDevice>();
+		deviceDescriptor = new DeviceDescriptor();
 
 		messageHandler = new MessageHandler(this);
 
@@ -151,6 +153,10 @@ public class LocalDevice {
 
 	public FileStorage getFileStorage() {
 		return fileStorage;
+	}
+
+	public DeviceDescriptor getDeviceDescriptor() {
+		return deviceDescriptor;
 	}
 
 	public void setPairing(String val) {

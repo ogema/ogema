@@ -56,6 +56,7 @@ public interface ChannelAccess {
 	 *            the value that is used to update the channel.
 	 * 
 	 * @throws ChannelAccessException
+	 *             if set value failed (e.g. the channel does not exist)
 	 */
 	public void setChannelValue(ChannelLocator channelLocator, Value value) throws ChannelAccessException;
 
@@ -70,7 +71,9 @@ public interface ChannelAccess {
 	 * @param channelLocators
 	 *            a list of ChannelLocator objects describing the channels to access
 	 * @param values
-	 *            a list of
+	 *            a list of Values
+	 * @throws ChannelAccessException
+	 *             if set value failed (e.g. the channel does not exist)
 	 */
 	public void setMultipleChannelValues(List<ChannelLocator> channelLocators, List<Value> values)
 			throws ChannelAccessException;
@@ -79,32 +82,40 @@ public interface ChannelAccess {
 	 * Get the last value received on a single channel. Note that polling / subscription is organized by the
 	 * ChannelManger independently of read operations on the ChannelManager interface.
 	 * 
-	 * @param channelId
-	 *            the unique name of the channel
+	 * @param channelLocator
+	 *            the ChannelLocator object describing the channel to access
 	 * @return the value of the channel
+	 * @throws ChannelAccessException
+	 *             if get value failed (e.g. the channel does not exist)
 	 */
 	public SampledValue getChannelValue(ChannelLocator channelLocator) throws ChannelAccessException;
 
 	/**
 	 * Get the values of multiple channels
+	 * 
+	 * @param channelLocators
+	 *            a list of ChannelLocator objects describing the channels to access
+	 * @return List of values
 	 */
 	public List<SampledValue> getMultipleChannelValues(List<ChannelLocator> channelLocators);
 
 	/**
 	 * Register a listener that will be called if the value is updated.
 	 * 
-	 * @param channelId
-	 *            the unique name of the channel
+	 * @param channelLocator
+	 *            channelLocator of the channel to register listener to
 	 * @param listener
+	 *            listener will be called when the value was updated
 	 */
 	public void registerUpdateListener(List<ChannelLocator> channelLocator, ChannelEventListener listener);
 
 	/**
 	 * Register a listener that will be called when the value or quality of the channel changes.
 	 * 
-	 * @param channelId
-	 *            the unique name of the channel
+	 * @param channelLocator
+	 *            channelLocator of the channel to register listener to
 	 * @param listener
+	 *            listener will be called when the value or quality has changed
 	 */
 	public void registerChangedListener(List<ChannelLocator> channelLocator, ChannelEventListener listener);
 
@@ -113,6 +124,7 @@ public interface ChannelAccess {
 	 * will be returned. Otherwise a new ChannelConfiguration instance will be created.
 	 * 
 	 * @param channelLocator
+	 *            channelLocator of the channel to get configuration from
 	 * @return unique ChannelConfiguration object for the channel specified by ChannelLocator.
 	 */
 	public ChannelConfiguration getChannelConfiguration(ChannelLocator channelLocator);
@@ -121,30 +133,30 @@ public interface ChannelAccess {
 	 * Add a new channel to the channel manager configuration. The value for the channel will be polled by the
 	 * ChannelManager or a subscription to the value will be generated.
 	 * 
-	 * If the channel has already been configured a ChannelConfigurationException will be thrown.
-	 * 
-	 * @param channelName
 	 * @param configuration
+	 *            configuration of the channel to be added
 	 * @throws ChannelConfigurationException
+	 *             if the channel has already been configured
 	 */
 	public void addChannel(ChannelConfiguration configuration) throws ChannelConfigurationException;
 
 	/**
 	 * Delete an existing (configured) channel.
 	 * 
-	 * If the channel is not configured then a ChannelConfigurationException will be thrown.
-	 * 
 	 * @param channelLocator
-	 *            the ChannelLocator of the channel to delete.
+	 *            channelLocator of the channel to delete.
+	 * @throws ChannelConfigurationException
+	 *             if the channel is not configured
 	 */
 	public void deleteChannel(ChannelLocator channelLocator) throws ChannelConfigurationException;
 
 	/**
-	 * One time readout of device data that has not yet been configured as a channel This is intended to be used by
+	 * One time readout of device data that has not yet been configured as a channel. This is intended to be used by
 	 * driver/device specific configuration to determine the exact configuration of a device.
 	 * 
 	 * @param channelLocator
-	 * @return
+	 *            channelLocator of the channel to read.
+	 * @return SampledValueContainer which holds the read value of the channel
 	 */
 	public SampledValueContainer readUnconfiguredChannel(ChannelLocator channelLocator);
 
@@ -161,7 +173,7 @@ public interface ChannelAccess {
 	 * @param parameter
 	 *            communication parameter for the device. The syntax is driver specific.
 	 * 
-	 * @return
+	 * @return Instance of DeviceLocator
 	 */
 	public DeviceLocator getDeviceLocator(String driverId, String interfaceId, String deviceAddress, String parameters);
 
@@ -174,7 +186,7 @@ public interface ChannelAccess {
 	 *            the address of the channel. The syntax is driver specific.
 	 * @param deviceLocator
 	 *            reference to the device that contains the channel.
-	 * @return
+	 * @return Instance of ChannelLocator
 	 */
 	public ChannelLocator getChannelLocator(String channelAddress, DeviceLocator deviceLocator);
 
@@ -196,12 +208,37 @@ public interface ChannelAccess {
 	 *            set a filter to specify the scope of the search (driver specific - eg. address range, search method,
 	 *            device type ...)
 	 * 
-	 * @throws
+	 * @throws UnsupportedOperationException
+	 *             if this operation is not supported by the driver
+	 * @throws NoSuchInterfaceException
+	 *             if the interface does not exist
+	 * @throws NoSuchDriverException
+	 *             thrown when the driverId doesn't exist
+	 * @throws IOException
+	 *             if an error occurs during the device scan
 	 */
 	public List<DeviceLocator> discoverDevices(String driverId, String interfaceId, String filter)
 			throws UnsupportedOperationException, NoSuchInterfaceException, NoSuchDriverException, IOException;
 
-	/** Asynchronous version of discoverDevices */
+	/**
+	 * Asynchronous version of discoverDevices
+	 * 
+	 * @param driverId
+	 *            The unique ID that identifies the driver to handle this interface (see getDriverIds)
+	 * @param interfaceId
+	 *            ID of the interface (e.g. /dev/ttyS0, eth1, IP network address ...)
+	 * @param filter
+	 *            set a filter to specify the scope of the search (driver specific - eg. address range, search method,
+	 *            device type ...)
+	 * @param listener
+	 *            is called when a device was found or the scan has finished
+	 * @throws UnsupportedOperationException
+	 *             if this operation is not supported by the driver
+	 * @throws NoSuchInterfaceException
+	 *             if the interface does not exist
+	 * @throws NoSuchDriverException
+	 *             thrown when the driverId doesn't exist
+	 */
 	public void discoverDevices(String driverId, String interfaceId, String filter, DeviceScanListener listener)
 			throws UnsupportedOperationException, NoSuchInterfaceException, NoSuchDriverException;
 
@@ -212,10 +249,26 @@ public interface ChannelAccess {
 	 * @param device
 	 *            the device locator of the device to discover
 	 * @return List of ChannelLocator instances that describe the discovered channels
+	 * 
+	 * @throws UnsupportedOperationException
+	 *             if this operation is not supported by the driver
+	 * @throws NoSuchInterfaceException
+	 *             if the interface does not exist
+	 * @throws NoSuchDriverException
+	 *             thrown when the driverId doesn't exist
+	 * @throws IOException
+	 *             if an error occurs during the device scan
 	 */
 	public List<ChannelLocator> discoverChannels(DeviceLocator device) throws UnsupportedOperationException,
 			NoSuchInterfaceException, NoSuchDriverException, IOException;
 
-	/** Asynchronous version of discoverChannels */
+	/**
+	 * Asynchronous version of discoverChannels
+	 * 
+	 * @param device
+	 *            the device locator of the device to discover
+	 * @param listener
+	 *            is called when a channel was found or the scan has finished
+	 */
 	public void discoverChannels(DeviceLocator device, ChannelScanListener listener);
 }

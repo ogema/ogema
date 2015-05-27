@@ -117,6 +117,7 @@ public class SumTest extends OsgiAppTestBase {
 
 		tool.stop();
 		tool.deleteAllConfigurations();
+		sleep(1000);
 
 		List<ManipulatorConfiguration> leftoverRules = tool.getConfigurations(ManipulatorConfiguration.class);
 		assertTrue(leftoverRules.isEmpty());
@@ -179,9 +180,10 @@ public class SumTest extends OsgiAppTestBase {
 
 		tool.stop();
 		tool.deleteAllConfigurations();
+		sleep(1000);
 
 		List<ManipulatorConfiguration> leftoverRules = tool.getConfigurations(ManipulatorConfiguration.class);
-		assertTrue(leftoverRules.isEmpty());
+		assertTrue("Not all ManipulatorConfigurations were deleted", leftoverRules.isEmpty());
 	}
 
 	private List<FloatResource> createAndActivateFloatResources(int n) {
@@ -251,6 +253,14 @@ public class SumTest extends OsgiAppTestBase {
 
 		private void setLatch(CountDownLatch latch) {
 			this.latch = latch;
+		}
+	}
+
+	private void sleep(int millis) {
+		try {
+			Thread.sleep(millis);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
 	}
 }

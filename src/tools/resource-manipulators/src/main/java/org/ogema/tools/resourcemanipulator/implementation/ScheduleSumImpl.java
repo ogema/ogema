@@ -19,12 +19,15 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+
 import org.ogema.tools.resourcemanipulator.ResourceManipulatorImpl;
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.schedule.DefinitionSchedule;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.tools.resourcemanipulator.configurations.ScheduleSum;
 import org.ogema.tools.resourcemanipulator.model.ScheduleSumModel;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation for a schedule sum configuration.
@@ -69,6 +72,16 @@ public class ScheduleSumImpl implements ScheduleSum {
 			return false;
 		}
 
+		for (Schedule schedule : m_inputs) {
+			if (schedule.getLocation().equals(m_output.getLocation())) {
+				String msg = this.getClass().getSimpleName() + ": input schedule "
+						+ "is referencing output schedule! Aborting computation ..."
+						+ "location of referenced schedule -> " + schedule.getLocation();
+				LoggerFactory.getLogger(this.getClass()).error(msg);
+				return false;
+			}
+		}
+
 		// Check that all schedules are of type FloatValue
 		for (Schedule schedule : m_inputs) {
 			final Resource parent = schedule.getParent();
@@ -78,7 +91,7 @@ public class ScheduleSumImpl implements ScheduleSum {
 				return false;
 		}
 
-		// delete the old configuration if it exsited.
+		// delete the old configuration if it existed.
 		if (m_config != null)
 			m_config.delete();
 

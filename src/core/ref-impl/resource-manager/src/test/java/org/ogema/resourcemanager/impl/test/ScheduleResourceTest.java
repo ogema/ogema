@@ -50,7 +50,6 @@ import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.ResourceException;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
@@ -195,7 +194,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 			final Value value = new FloatValue((float) t);
 			schedule.addValue(t, value, t);
 		}
-		assertEquals(schedule.getLastCalculationTime().longValue(), MAX);
+		assertEquals(MAX, (long) schedule.getLastCalculationTime());
 
 		schedule.setInterpolationMode(InterpolationMode.LINEAR);
 		assertEquals(InterpolationMode.LINEAR, schedule.getInterpolationMode());
@@ -223,7 +222,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 			final Value value = new BooleanValue(t % (2 * STEP) == 0);
 			schedule.addValue(t, value, t);
 		}
-		assertEquals(schedule.getLastCalculationTime().longValue(), MAX);
+		assertEquals(MAX, (long) schedule.getLastCalculationTime());
 
 		schedule.setInterpolationMode(InterpolationMode.LINEAR);
 		assertEquals(InterpolationMode.LINEAR, schedule.getInterpolationMode());
@@ -254,7 +253,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 			final Value value = new LongValue(t);
 			schedule.addValue(t, value, t);
 		}
-		assertEquals(schedule.getLastCalculationTime().longValue(), MAX);
+		assertEquals(MAX, (long) schedule.getLastCalculationTime());
 
 		schedule.setInterpolationMode(InterpolationMode.LINEAR);
 		assertEquals(InterpolationMode.LINEAR, schedule.getInterpolationMode());
@@ -283,7 +282,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 			final Value value = new IntegerValue((int) t);
 			schedule.addValue(t, value, t);
 		}
-		assertEquals(schedule.getLastCalculationTime().longValue(), MAX);
+		assertEquals(MAX, (long) schedule.getLastCalculationTime());
 
 		schedule.setInterpolationMode(InterpolationMode.LINEAR);
 		assertEquals(InterpolationMode.LINEAR, schedule.getInterpolationMode());
@@ -311,7 +310,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 			final Value value = new StringValue((new Long(t)).toString());
 			schedule.addValue(t, value, t);
 		}
-		assertEquals(schedule.getLastCalculationTime().longValue(), MAX);
+		assertEquals(MAX, (long) schedule.getLastCalculationTime());
 
 		schedule.setInterpolationMode(InterpolationMode.NEAREST);
 		assertEquals(InterpolationMode.NEAREST, schedule.getInterpolationMode());
@@ -444,7 +443,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		assertEquals(2, schedule.getValue(2).getValue().getIntegerValue());
 	}
 
-	/**
+	/*
 	 * Tests that callbacks are received for newly created schedules.
 	 */
 	@Test
@@ -461,13 +460,13 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		// TODO check for DefinitionSchedule and ForecastSchedule.
 	}
 
-	/**
+	/*
 	 * Checks that a callback is received when a value in a schedule is updated.
 	 */
 	@Test
 	public void addValueCallbackWorks() throws InterruptedException {
 		final CountDownLatch callbackCount = new CountDownLatch(1);
-		final ResourceListener listener = new ResourceListener() {
+		final ResourceValueListener<Resource> listener = new ResourceValueListener<Resource>() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
@@ -477,7 +476,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 
 		final Schedule schedule = getSchedule(FloatResource.class);
 		schedule.activate(true);
-		schedule.addResourceListener(listener, false);
+		schedule.addValueListener(listener, true);
 
 		schedule.addValue(26, new FloatValue(4.3f));
 		assertTrue("did not receive update callback", callbackCount.await(5, TimeUnit.SECONDS));
@@ -511,7 +510,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		final int N = 10;
 		schedule.activate(true);
 		final CountDownLatch latch = new CountDownLatch(1);
-		schedule.addResourceListener(new ResourceListener() {
+		schedule.addValueListener(new ResourceValueListener<Resource>() {
 
 			@Override
 			public void resourceChanged(Resource resource) {

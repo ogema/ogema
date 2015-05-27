@@ -1,0 +1,83 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html>
+<html>
+    <head>
+        
+        <script src="/ogema/jslib/jquery/jquery-1.11.1.min.js"></script>
+        <script src="/ogema/jslib/bootstrap/bootstrap.min.js"></script>
+        <script src="/ogema/jslib/GenericWidget.js"></script>
+        <script src="/ogema/jslib/widgetLoader.js"></script> 
+        <link href="/ogema/jslib/bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css"/> 
+        <link href="templateStyle.css" rel="stylesheet" type="text/css"/> 
+        
+        <title>OGEMA sample GUI with widgets</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+        
+        <div class="row margin-top-10" align="center">
+            <div class="col-xs-6 col-sm-4"></div>
+            <div class="col-xs-6 col-sm-4">
+                
+                <h3>This is an example page to show how to use widgets in OGEMA. Not all widgets are shown below.</h3>
+                <hr>
+                
+                <h1>Button</h1>
+                <p align="left"> This widget handles requests when clicked on it. It is straight forward to use and comes in different styles. Three of them are shown below. Clicking on one of the buttons should give you a message on the OGEMA console.</p>
+                <div id="ogemaButton1" class="margin-top-20"></div>
+                <div id="ogemaButton2" class="margin-top-10"></div>
+                <div id="ogemaButton3" class="margin-top-10"></div>
+                <hr>
+                
+                <h1>Label</h1>
+                <p align="left"> Labels hold a simple Text and come in different styles. </p>
+                <div id="ogemaLabel1" class="margin-top-20"></div>
+                <div id="ogemaLabel2" class="margin-top-10"></div>
+                <div id="ogemaLabel3" class="margin-top-10"></div>
+                <hr>
+                
+                <h1>Slider</h1>
+                <p align="left"> A Slider can be used to set values without typing them in. Minimum and maximum values can be set to nearly any number. This slider posts its value when the value was changed. Different slider styles are also possible. </p>
+                <div id="ogemaSlider" class="margin-top-20"></div>
+                <hr>
+                
+                <h1>TextField</h1>
+                <p align="left"> This widgets is mostly used in combination with other widgets. It also shows how the OGEMA widgets can be used to trigger actions on each other. Clicking the button widget below the textfield posts the input of the textfield to the OGEMA console. </p>
+                <div id="ogemaTextField" class="margin-top-20"></div>
+                <div id="ogemaButtonForTextField" class="margin-top-10"></div>
+                <hr>
+                
+                <h1>Chart</h1>
+                <p align="left"> A Chart can be used to display timelines or functions if given as a list of values. You can zoom in and out of the graph with mousewheel-up and mousehweel-down. Hovering over the datapoints should give you the values in a small popup window. When zoomed in you can drag the chart with the left mouse button to the left or the right.</p>
+                <div id="ogemaChart" class="margin-top-20"></div>
+                <hr>
+                
+                <h1>Table</h1>
+                <p align="left"> Tables are more complex than the widgets above. They have the possiblity to update their rows dynamically in a given interval. Rows inside a table are templates that are generated in Java. See <i>TableRowTemplate.java</i> for more information.  </p>
+                <div id="ogemaTable" class="margin-top-20"></div>
+                <hr>
+            
+            </div>
+            <div class="col-xs-6 col-sm-4"></div>
+        </div>
+   
+    </body>
+</html>
+

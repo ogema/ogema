@@ -22,7 +22,7 @@ import org.ogema.core.resourcemanager.pattern.PatternListener;
 import org.ogema.apps.swtch.patterns.ThermostatPattern;
 
 public class ThermostatPatternListener implements PatternListener<ThermostatPattern> {
-	
+
 	private final List<ThermostatPattern> list;
 
 	public ThermostatPatternListener() {
@@ -41,13 +41,12 @@ public class ThermostatPatternListener implements PatternListener<ThermostatPatt
 		try {
 			list.remove(pattern);
 		} catch (Exception e) {
-			 System.out.println("Could not remove pattern " + pattern.model.getLocation() +": " + e);
+			System.out.println("Could not remove pattern " + pattern.model.getLocation() + ": " + e);
 		}
-	} 
+	}
 
 	public List<ThermostatPattern> getPatterns() {
-		return new LinkedList<ThermostatPattern>(list);  // avoid concurrency problems and manipulation from outside by copying
+		return new LinkedList<ThermostatPattern>(list); // avoid concurrency problems and manipulation from outside by copying
 	}
-	
 
 }

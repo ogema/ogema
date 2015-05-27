@@ -319,41 +319,12 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	}
 
 	private Bundle installURPBundle(String userName) {
-		String destFileName = SECURITY_URP_FILE + userName;
-		File source = new File(SECURITY_URP_SOURCE_DIR, SECURITY_URP_FILE);
-		File dest = new File(SECURITY_URP_DEST_DIR + "/" + userName);
-
-		/*
-		 * If the user rights proxy template doesn't exist give up.
-		 */
-		if (!source.exists())
-			return null;
-		/*
-		 * If the destination user proxy location dir not exists, create it.
-		 */
-		if (!dest.exists())
-			dest.mkdirs();
-		dest = new File(dest, destFileName);
-
-		/*
-		 * If an older version of the user rights proxy file exists, remove it before copying the new one.
-		 */
-		if (dest.exists())
-			dest.delete();
-
-		try {
-			Files.copy(source.toPath(), dest.toPath());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 		Bundle b = null;
 		try {
-			String relative = "file:./"
-					+ new URI(new File("./").toURI().relativize(dest.toURI()).toString()).toString();
-			b = this.osgi.installBundle(relative);
+			b = this.osgi.installBundle("urp:" + userName);
 			logger.info(String.format("User rights proxy installed: %s", b.getLocation()));
 			b.start();
-		} catch (BundleException | URISyntaxException e) {
+		} catch (BundleException e) {
 			if (b == null)
 				logger.info("Installation of user rights proxy bundle failed.");
 			else {

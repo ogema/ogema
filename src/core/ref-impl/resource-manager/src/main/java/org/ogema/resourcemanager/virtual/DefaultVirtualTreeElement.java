@@ -29,6 +29,13 @@ import java.util.Set;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
+import org.ogema.core.model.array.ArrayResource;
+import org.ogema.core.model.array.BooleanArrayResource;
+import org.ogema.core.model.array.ByteArrayResource;
+import org.ogema.core.model.array.FloatArrayResource;
+import org.ogema.core.model.array.IntegerArrayResource;
+import org.ogema.core.model.array.StringArrayResource;
+import org.ogema.core.model.array.TimeArrayResource;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceNotFoundException;
@@ -347,7 +354,11 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
 			}
 			assert !parent.isVirtual();
 			Object userObject = el.getResRef();
-			setEl(getRealElement(parent.addChild(getName(), getType(), isDecorator())));
+			Class<? extends Resource> type = getType();
+			setEl(getRealElement(parent.addChild(getName(), type, isDecorator())));
+			// Quickfix for bug when storing schedule resources
+			initEmptyArrays(type);
+			
 			if (userObject != null) {
 				el.setResRef(userObject);
 			}
@@ -356,6 +367,29 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
 		}
 		else {
 			return false;
+		}
+	}
+
+	private void initEmptyArrays(Class<? extends Resource> type) {
+		if(ArrayResource.class.isAssignableFrom(type)) {
+			if (BooleanArrayResource.class.isAssignableFrom(type)) {
+				el.getData().setBooleanArr(new boolean[0]);
+			}
+			if (ByteArrayResource.class.isAssignableFrom(type)) {
+				el.getData().setByteArr(new byte[0]);
+			}
+			if (FloatArrayResource.class.isAssignableFrom(type)) {
+				el.getData().setFloatArr(new float[0]);
+			}
+			if (IntegerArrayResource.class.isAssignableFrom(type)) {
+				el.getData().setIntArr(new int[0]);
+			}
+			if (StringArrayResource.class.isAssignableFrom(type)) {
+				el.getData().setStringArr(new String[0]);
+			}
+			if (TimeArrayResource.class.isAssignableFrom(type)) {
+				el.getData().setLongArr(new long[0]);
+			}
 		}
 	}
 

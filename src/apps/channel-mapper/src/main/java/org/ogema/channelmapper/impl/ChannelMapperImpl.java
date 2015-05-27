@@ -43,6 +43,7 @@ import org.ogema.core.channelmanager.measurements.BooleanValue;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.IllegalConversionException;
 import org.ogema.core.channelmanager.measurements.IntegerValue;
+import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.logging.OgemaLogger;
@@ -506,44 +507,54 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 			Resource resource = resourceAndMore.resource;
 
 			if (resource != null) {
+
 				try {
-					logger.info("ChannelEvent at the ChannelMapper!!!");
+
 					Value value = container.getSampledValue().getValue();
 
-					if (resource instanceof FloatResource) {
-						float floatValue = (float) ((value.getFloatValue() * resourceAndMore.scalingFactor) + resourceAndMore.valueOffset);
-						((FloatResource) resource).setValue(floatValue);
-
-					}
-					else if (resource instanceof IntegerResource) {
-						int intValue = (int) ((value.getIntegerValue() * resourceAndMore.scalingFactor) + resourceAndMore.valueOffset);
-						((IntegerResource) resource).setValue(intValue);
-
-					}
-					else if (resource instanceof StringResource) {
-						((StringResource) resource).setValue(value.getStringValue());
-
-					}
-					else if (resource instanceof OpaqueResource) {
-						((OpaqueResource) resource).setValue(value.getByteArrayValue());
-
-					}
-					else if (resource instanceof BooleanResource) {
-
-						((BooleanResource) resource).setValue(value.getBooleanValue());
-
-					}
-					else if (resource instanceof TimeResource) {
-						((TimeResource) resource).setValue(container.getSampledValue().getTimestamp());
+					if (container.getSampledValue().getQuality() == Quality.BAD) {
+						logger.info(container.getChannelLocator() + ": Quality.BAD");
 
 					}
 					else {
-						logger.warn("Channel value of unknown type!");
+						logger.info(container.getChannelLocator() + ": Quality.GOOD");
+
+						if (resource instanceof FloatResource) {
+
+							float floatValue = (float) ((value.getFloatValue() * resourceAndMore.scalingFactor) + resourceAndMore.valueOffset);
+							((FloatResource) resource).setValue(floatValue);
+
+						}
+						else if (resource instanceof IntegerResource) {
+							int intValue = (int) ((value.getIntegerValue() * resourceAndMore.scalingFactor) + resourceAndMore.valueOffset);
+							((IntegerResource) resource).setValue(intValue);
+
+						}
+						else if (resource instanceof StringResource) {
+							((StringResource) resource).setValue(value.getStringValue());
+
+						}
+						else if (resource instanceof OpaqueResource) {
+							((OpaqueResource) resource).setValue(value.getByteArrayValue());
+
+						}
+						else if (resource instanceof BooleanResource) {
+
+							((BooleanResource) resource).setValue(value.getBooleanValue());
+
+						}
+						else if (resource instanceof TimeResource) {
+							((TimeResource) resource).setValue(container.getSampledValue().getTimestamp());
+
+						}
+						else {
+							logger.warn("Channel value of unknown type!");
+						}
 					}
+
 				} catch (IllegalConversionException e) {
 					logger.warn("Unexpected type");
 				}
-
 			}
 		}
 	}

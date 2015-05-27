@@ -110,7 +110,7 @@ tr {
 	border-bottom: 1px solid #7D7D7D;
 }
 /* table data and head elements */
-th,td {
+th, td {
 	background: #FFFFFF;
 	color: #56555A;
 	font-size: 1em;
@@ -133,7 +133,7 @@ td {
 	border-bottom: 1px solid grey;
 }
 
-tr:last-child,tr:last-child>td {
+tr:last-child, tr:last-child>td {
 	border: none;
 }
 
@@ -145,15 +145,15 @@ tr:hover td {
 
 .highlightHeading {
 	padding-bottom: 10px;
-	border-bottom: 2px solid #124791;
-	border-left: 15px solid #124791;
+	border-bottom: 2px solid #759cd4;
+	border-left: 15px solid #759cd4;
 	padding-left: 10px;
 	margin-bottom: 10px;
-	padding-top: 8px;
+	padding-top: 140px;
 	margin-top: 20px;
+	font-size: 1em;
 	font-weight: normal;
 	color: #124791;
-	font-size: 1em;
 }
 
 label:hover {
@@ -236,7 +236,7 @@ html body#appsBody div.ui-dialog div.ui-dialog-titlebar {
 
 /* DIALOG */
 /* Wraps over each permission (.additional is the wrap over the additional permission) */
-div.wrapsOnePerm,div.additional {
+div.wrapsOnePerm, div.additional {
 	margin-top: 0px;
 	border-bottom: 1px solid grey;
 	padding: 5px;
@@ -373,31 +373,8 @@ div.conditions {
 	min-height: 40px;
 }
 
-.wrapActions input,label {
+.wrapActions input, label {
 	margin-top: 10px;
-}
-
-div.justShowActions {
-	background:
-		url("jquery-ui-1.10.4.custom/css/black-tie/images/ui-bg_glass_40_111111_1x400.png")
-		repeat-x scroll 50% 50% !important; /* #e7f4f9 */
-	color: white;
-	padding: 5px;
-	-webkit-border-radius: 5px;
-	-moz-border-radius: 5px;
-	border-radius: 5px;
-	width: 370px;
-}
-
-div.justShowActions:before {
-	content: ' ';
-	height: 0;
-	position: absolute;
-	width: 0;
-	left: 10px;
-	top: -20px;
-	border: 10px solid transparent;
-	border-bottom-color: #2E2E2E; /* #e7f4f9 */
 }
 
 #toMainPage {

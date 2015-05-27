@@ -17,7 +17,7 @@ package org.ogema.tools.impl;
 
 import java.util.HashSet;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.Schedule;
+import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 import org.ogema.core.tools.SerializationManager;
 
 /**
@@ -49,7 +49,7 @@ public class StateController {
         return visitedResources.add(resource) //the given resource is not visited twice (graph-cycle termination criteria)
                 && (currentDepth++ <= serializationManager.getMaxDepth()) // and we still are in range of the allowed depth
                 && (resource.isReference(false) ? serializationManager.getFollowReferences() : true) //and we are allowed to follow references  
-                && (resource instanceof Schedule ? serializationManager.getSerializeSchedules() : true); //and the resource is no or serializeShedules flag is true
+                && (resource instanceof ReadOnlyTimeSeries ? serializationManager.getSerializeSchedules() : true); //and the resource is no or serializeShedules flag is true
     }
     
     public boolean isRquestedRootResource(Resource resource){

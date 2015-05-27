@@ -17,9 +17,10 @@ package org.ogema.resourcemanager.impl.model;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
+
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.SimpleResource;
+import org.ogema.core.model.array.ArrayResource;
 import org.ogema.core.model.array.BooleanArrayResource;
 import org.ogema.core.model.array.ByteArrayResource;
 import org.ogema.core.model.array.FloatArrayResource;
@@ -30,7 +31,7 @@ import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
-import org.ogema.core.model.simple.OpaqueResource;
+import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.model.units.AngleResource;
@@ -143,7 +144,7 @@ public class ResourceFactory {
 	/*
 	 * Creates a resource object of the suitable type.
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "deprecation"})
 	public final <T extends Resource, ResourceBase> T createResource(Class<? extends Resource> resType,
 			VirtualTreeElement el, String path) {
 
@@ -223,7 +224,7 @@ public class ResourceFactory {
 		}
 
 		// simple resources and array resources.
-		if (SimpleResource.class.isAssignableFrom(resType)) {
+		if (SingleValueResource.class.isAssignableFrom(resType)) {
 			if (resType.equals(BooleanResource.class)) {
 				result = new DefaultBooleanResource(el, path, m_resMan);
 			}
@@ -239,7 +240,15 @@ public class ResourceFactory {
 			else if (resType.equals(TimeResource.class)) {
 				result = new DefaultTimeResource(el, path, m_resMan);
 			}
-            else if (resType.equals(BooleanArrayResource.class)) {
+			else {
+				throw new UnsupportedOperationException("Cannot create a resource object for SingleValueResource of type "
+						+ resType.getCanonicalName() + ": Case is not implemented.");
+			}
+			return (T) result;
+		}
+		
+		if (ArrayResource.class.isAssignableFrom(resType)) {		
+			if (resType.equals(BooleanArrayResource.class)) {
 				result = new DefaultBooleanArrayResource(el, path, m_resMan);
 			}
             else if (resType.equals(ByteArrayResource.class)) {
@@ -257,11 +266,11 @@ public class ResourceFactory {
 			else if (resType.equals(TimeArrayResource.class)) {
 				result = new DefaultTimeArrayResource(el, path, m_resMan);
 			}
-            else if (resType.equals(OpaqueResource.class)) {
+            else if (resType.equals(org.ogema.core.model.simple.OpaqueResource.class)) {
 				result = new DefaultOpaqueResource(el, path, m_resMan);
 			}
 			else {
-				throw new UnsupportedOperationException("Cannot create a resource object for SimpleResource of type "
+				throw new UnsupportedOperationException("Cannot create a resource object for ArrayResource of type "
 						+ resType.getCanonicalName() + ": Case is not implemented.");
 			}
 			return (T) result;

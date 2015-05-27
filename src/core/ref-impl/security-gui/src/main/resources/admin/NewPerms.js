@@ -73,7 +73,7 @@ function NewPerms() {
 		if (curStore == "localAppDirectory" || curStore == "remoteFHGAppStore") {
 
 			$("h1#appstore").addClass("highlightHeading");
-			var welcome = "<strong style='font-size: 1.4em;'> Appstore </strong> <br> <em>" + curStore + "</em>";
+			var welcome = "<strong style='font-size: 1.4em;'> Marketplace </strong> <br> <em>" + curStore + "</em>";
 
 			document.getElementById("appstore").innerHTML = welcome;
 			$("div#vorwort").css("display", "inline");
@@ -223,138 +223,6 @@ function NewPerms() {
 		});
 	}
 
-	// function appendDialogDemand(appid) {
-	//
-	// // insert dialog for this app
-	// // $('div#wrap').append(
-	// // "<div class='dia' title='Permissions for " + "here comes the appname"
-	// // + "' id='dialog" + appid
-	// // + "'><form name='permForm' id='permissionForm'> </form></div>");
-	//
-	// $("#wrap").dialog({
-	// autoOpen : false,
-	// resizeable : false,
-	// draggable : true,
-	// height : $(window).height() - 200,
-	// minWidth : 650,
-	// minHeight : 400,
-	// dialogClass : 'no-close',
-	// close : function() {
-	// emptyDia($(this));
-	// },
-	// open : function() {
-	// $('.ui-dialog-buttonpane').find('button:contains("Save
-	// settings")').button({
-	// icons : {
-	// primary : 'ui-icon-check'
-	// }
-	// });
-	// $('.ui-dialog-buttonpane').find('button:contains("Cancel")').button({
-	// icons : {
-	// primary : 'ui-icon-close'
-	// }
-	// });
-	// },
-	// buttons : [ {
-	// text : "Cancel",
-	// class : "cancelButton",
-	// click : function() {
-	// $(this).dialog("close");
-	// // $('div#header').css('opacity',
-	// // '1.0');
-	// // $('div#wrap').css('opacity',
-	// // '1.0');
-	// // $('div#footer').css('opacity',
-	// // '1.0');
-	// $(this).find("input[type=checkbox]").prop("checked", false);
-	// }
-	// },
-	// // Save-Button
-	// {
-	// text : "Save settings",
-	// class : "installButton",
-	// click : function() {
-	//
-	// // validate
-	// // input
-	// /**
-	// * Check the input for the content of this dialog.
-	// *
-	// * @param {Object}
-	// * $(this) Current dialog
-	// * @return {boolean} True if it is ok. False if something is
-	// * wrong.
-	// */
-	// var checkInput = checkingInput($(this));
-	//
-	// /**
-	// * Check resource. There must be a resource plus Validation.
-	// *
-	// * @param {Object}
-	// * $(this) Current dialog
-	// * @return {boolean} True for okay. False if something is
-	// * wrong.
-	// */
-	// var checkInputText = checkingRessourceInput($(this));
-	//
-	// // if
-	// // validation
-	// // is ok
-	// if (checkInput == true) {
-	// if (checkInputText == true) {
-	// // if
-	// // everything
-	// // is
-	// // ok,
-	// // get
-	// // the
-	// // filled
-	// // in
-	// // input
-	// // and
-	// // do
-	// // something
-	// // with
-	// // it....
-	// /**
-	// * Get JSON-String for chosen permissions for the
-	// * current app.
-	// *
-	// * @param {Object}
-	// * $(this) Current dialog
-	// * @return {String} JSON-String of permissions.
-	// */
-	// var jsonContent = getDemandBack($(this));
-	//
-	// // uncheck all checkboxes
-	// // $(this).find("input[type=checkbox]").prop("checked",
-	// // false);
-	//
-	// /**
-	// * Sends chosen permissions for current app to
-	// * server.
-	// *
-	// * @param {String}
-	// * curApp Current app.
-	// * @param {String}
-	// * jsonContent JSON-String for the app.
-	// */
-	// sendPermsToServer(curAppId, jsonContent);
-	// // close dialog
-	// // $(this).dialog("close");
-	//
-	// setTimeout(function() {
-	// getGrantedPerms(curAppId, parentOfDialog, formOfDialog);
-	// }, 3000);
-	// } else {
-	// alert("Invalid input.");
-	// }
-	// }
-	// }
-	// } ]
-	// });
-	// }
-
 	function appendDialog(appid) {
 		$("#wrap").dialog({
 			autoOpen : false,
@@ -373,18 +241,20 @@ function NewPerms() {
 						primary : 'ui-icon-check'
 					}
 				});
-				$('.ui-dialog-buttonpane').find('button:contains("Cancel")').button({
+				$('.ui-dialog-buttonpane').find('button:contains("Quit")').button({
 					icons : {
 						primary : 'ui-icon-close'
 					}
 				});
 			},
 			buttons : [ {
-				text : "Cancel",
+				text : "Quit",
 				class : "cancelButton",
 				click : function() {
-					$(this).dialog("close");
-					$(this).find("input[type=checkbox]").prop("checked", false);
+					// $(this).dialog("close");
+					// $(this).find("input[type=checkbox]").prop("checked",
+					// false);
+					window.close();
 				}
 			},
 			// Save-Button
@@ -417,18 +287,6 @@ function NewPerms() {
 
 	// get permissions from server for the given url
 	function evalPermData(json, appNumber, dialog, form) {
-		// var numberToIdentify;
-		// if (diaClass == 'uploadDia') {
-		// var diaId = "#dialUpload";
-		// uploadApp = appName;
-		// numberToIdentify = 2;
-		// $(diaId).parent().find(".ui-dialog-titlebar
-		// .ui-dialog-title").text("Permissions for " + appName);
-		// } else {
-		// var diaId = "#dialog" + appNumber;
-		// numberToIdentify = 1;
-		// }
-		// clear the dialog before for-loop
 		$(dialog).dialog("option", "title", "Permissions demanded by bundle " + json.name);
 		$(form).empty();
 		// loops through each permission-string
@@ -440,10 +298,13 @@ function NewPerms() {
 			var permResource = getPermResource(json.permissions[i]);
 			// get permission method
 			var permMethod = getPermMethod(json.permissions[i]);
+			var id = "" + appNumber + i;
 			// write elements in dialog
-			writeInDia(permName, permResource, permMethod, i, appNumber, form);
+			writeInDia(permName, permResource, permMethod, id, form, "grant");
 			numberOfPermEntry++;
 		}
+		if (i > 0)
+			$("#heading").add("<br> <em>Check the box to customize demanded permission</em>");
 
 		$(form).append(additionalPermButton);
 
@@ -527,15 +388,16 @@ function getGrantedPerms(appNumber, dialog, form) {
 					var permResource = entry.filter;
 					// get permission method
 					var permMethod = methodsToArray(entry.actions);
+					var id = "" + appNumber + i + j;
 					// write elements in dialog
-					writeInDia(permName, permResource, permMethod, "" + i + j, appNumber, form);
-					var selector = "#c" + appNumber + i + j;
-					changeGrantedHeadline(selector, appNumber, "" + i + j, json.policies[i].name, entry);
+					writeInDia(permName, permResource, permMethod, id, form, modename);
+					var selector = "#c" + id;
+					changeGrantedHeadline(id, json.policies[i].name, entry, appNumber);
 					$(selector).hide();
 					numberOfPermEntry++;
-					if (modename.toLowerCase() == "deny")
-						$(selector).parent().css('background-color', '#FF6600');
 				}
+				if (j > 0)
+					$("#heading").add("<br> <em>Remove or customize granted permissions</em>");
 			}
 
 			$(form).append(additionalPermButton);
@@ -577,7 +439,7 @@ function getGrantedPerms(appNumber, dialog, form) {
  * @return {boolean} isAllPerm False: Not AllPerm. Extra additional
  *         permission-option at the end.
  */
-function writeInDia(name, resource, method, index, appNumber, form) {
+function writeInDia(name, resource, method, id, form, modename) {
 
 	// adds dialog widget
 	$(".dialogActions").dialog({
@@ -600,38 +462,43 @@ function writeInDia(name, resource, method, index, appNumber, form) {
 		isResourcePerm = false;
 	}
 
-	// is it an array of methods or a single method?
-	// var isArray;
 	if (typeof (method) != "object") {
 		var tmpmethod = [];
-		tmpmethod.push(method);
+		if (method != "")
+			tmpmethod.push(method);
 		method = tmpmethod;
-		// isArray = true;
 	}
 	if (name == "")
 		return;
 	// only for not-AllPermissions
-	if (isAllPerm) { // if it is an AllPermission only
-		// write
-		// its name
-		appendAllPerm(form, appNumber, index, name);
+	if (isAllPerm) { // if it is an AllPermission only write its name
+		appendAllPerm(form, id, name);
 		return;
 	}
 	// only for Not-Array (single) method
 	if (isResourcePerm == false) { // if it is not an
 		// resource permission
-		appendAnyPermission(form, appNumber, index, method, resource, name);
+		appendAnyPermission(form, id, method, resource, name);
 	} else { // if it is an resource permission
-		appendResourcePerm(form, appNumber, index, method, resource, name);
+		appendResourcePerm(form, id, method, resource, name);
+	}
+
+	// change headline color if the permission is in negative mode
+	var selector = "#c" + id;
+	if (modename.toLowerCase() == "deny") {
+		$(selector).parent().css('background-color', '#FF6600');
+		$(selector).parent().append("<meta name='mode' content='deny'></meta>");
+	} else {
+		$(selector).parent().append("<meta name='mode' content='allow'></meta>");
 	}
 }
 
-function appendAllPerm(form, appNumber, index, name) {
-	var part = "<div class='wrapsOnePerm'>" + headline(appNumber, index, name) + "<div class='bodyOfPerm'> </div> </div>";
+function appendAllPerm(form, id, name) {
+	var part = "<div class='wrapsOnePerm' id='permContainer" + id + "' >" + headline(id, name) + "<div class='bodyOfPerm'> </div> </div>";
 	$(form).append(part);
 }
 
-function appendAnyPermission(form, appNumber, index, method, resource, name) { // if
+function appendAnyPermission(form, id, method, resource, name) { // if
 	// it
 	// is
 	// not an
@@ -640,8 +507,8 @@ function appendAnyPermission(form, appNumber, index, method, resource, name) { /
 
 	for (var v = 0; v < method.length; v++) { // for each
 		// method
-		txt = txt + "<input type='checkbox' onchange='singleHighlight(" + appNumber + index + v + ")' class='m' id='m" + appNumber + index + v
-				+ "'> <label class='lb' for='m" + appNumber + index + v + "'>" + method[v] + "</label>";
+		txt = txt + "<input type='checkbox' onchange='singleHighlight(" + id + v + ")' class='m' id='m" + id + v + "'> <label class='lb' for='m" + id + v
+				+ "'>" + method[v] + "</label>";
 		if (v != method.length - 1) {
 			txt = txt + "<br>";
 
@@ -650,12 +517,13 @@ function appendAnyPermission(form, appNumber, index, method, resource, name) { /
 		}
 	}
 
-	var part = "<div class='wrapsOnePerm'>" + headline(appNumber, index, name) + "<div class='bodyOfPerm'> Filter: <br> <input type='text' value='" + resource
-			+ "' title='Please provide the resource.'> <br> Action: <br>" + txt + " </div> </div>";
+	var part = "<div class='wrapsOnePerm' id='permContainer" + id + "'>" + headline(id, name)
+			+ "<div class='bodyOfPerm'> Filter: <br> <input type='text' value='" + resource + "' title='Please provide the resource.'> <br> Action: <br>" + txt
+			+ " </div> </div>";
 	$(form).append(part);
 }
 
-function appendResourcePerm(form, appNumber, index, method, resource, name) { // if
+function appendResourcePerm(form, id, method, resource, name) { // if
 	// it
 	// is
 	// an
@@ -665,8 +533,8 @@ function appendResourcePerm(form, appNumber, index, method, resource, name) { //
 
 	for (var v = 0; v < method.length; v++) { // for each
 		// method
-		txt = txt + "<input type='checkbox' onchange='singleHighlight(" + appNumber + index + v + ")' class='m' id='m" + appNumber + index + v
-				+ "'> <label class='lb' for='m" + appNumber + index + v + "'>" + method[v] + "</label>";
+		txt = txt + "<input type='checkbox' onchange='singleHighlight(" + id + v + ")' class='m' id='m" + id + v + "'> <label class='lb' for='m" + id + v
+				+ "'>" + method[v] + "</label>";
 		if (v != method.length - 1) {
 			txt = txt + "<br>";
 
@@ -675,95 +543,84 @@ function appendResourcePerm(form, appNumber, index, method, resource, name) { //
 		}
 	}
 
-	var part = "<div class='wrapsOnePerm'>"
-			+ headline(appNumber, index, name)
+	var part = "<div class='wrapsOnePerm' id='permContainer"
+			+ id
+			+ "'>"
+			+ headline(id, name)
 			+ "<div class='bodyOfPerm'> Filter: <br> <input type='text' value='"
 			+ resource
 			+ "' title='Please provide the resource.'> <br> Action: <br>"
 			+ txt
 			+ " <div class='resDiv' style='display:none;'> <div class='testTree' id='testTree"
-			+ appNumber
-			+ index
+			+ id
 			+ "'> </div>  </div> <div id='actions"
-			+ appNumber
-			+ index
+			+ id
 			+ "' style='display: none;'> <p> </p> <div class='wrapActions' style='display:none;'> <input type='checkbox' id='1"
-			+ appNumber
-			+ index
+			+ id
 			+ "' name='read'><label for='1"
-			+ appNumber
-			+ index
+			+ id
 			+ "'>read</label> <input type='checkbox' id='2"
-			+ appNumber
-			+ index
+			+ id
 			+ "' name='write'><label for='2"
-			+ appNumber
-			+ index
+			+ id
 			+ "'>write</label><input type='checkbox' id='3"
-			+ appNumber
-			+ index
+			+ id
 			+ "' name='addSub'><label for='3"
-			+ appNumber
-			+ index
+			+ id
 			+ "'>addSub</label><input type='checkbox' id='4"
-			+ appNumber
-			+ index
+			+ id
 			+ "' name='create'><label for='4"
-			+ appNumber
-			+ index
+			+ id
 			+ "'>create</label><input type='checkbox' id='5"
-			+ appNumber
-			+ index
+			+ id
 			+ "' name='delete'><label for='5"
-			+ appNumber
-			+ index
+			+ id
 			+ "'>delete</label><div class='checkResActions'> Set Actions </div> </div> <div class=justShowActions  style='display:none;'> <input type='checkbox' id='1"
-			+ appNumber + index + "' name='read'><label for='1" + appNumber + index + "'>read</label> <input type='checkbox' id='2" + appNumber + index
-			+ "' name='write'><label for='2" + appNumber + index + "'>write</label><input type='checkbox' id='3" + appNumber + index
-			+ "' name='addSub'><label for='3" + appNumber + index + "'>addSub</label><input type='checkbox' id='4" + appNumber + index
-			+ "' name='create'><label for='4" + appNumber + index + "'>create</label><input type='checkbox' id='5" + appNumber + index
-			+ "' name='delete'><label for='5" + appNumber + index + "'>delete</label> <input type='checkbox' id='6" + appNumber + index
-			+ "' name='activity'><label for='6" + appNumber + index
-			+ "'>activity</label> <input type='radio' id='recursiveyes' name='recursive' value='YES'> <label"
+			+ id + "' name='read'><label for='1" + id + "'>read</label> <input type='checkbox' id='2" + id + "' name='write'><label for='2" + id
+			+ "'>write</label><input type='checkbox' id='3" + id + "' name='addSub'><label for='3" + id + "'>addSub</label><input type='checkbox' id='4" + id
+			+ "' name='create'><label for='4" + id + "'>create</label><input type='checkbox' id='5" + id + "' name='delete'><label for='5" + id
+			+ "'>delete</label> <input type='checkbox' id='6" + id + "' name='activity'><label for='6" + id
+			+ "'>activity</label> Recursive:  <input type='radio' id='recursiveyes' name='recursive' value='YES'><label"
 			+ "for='recursiveyes'>YES</label> <input type='radio' id='recursiveno' name='recursive' value='NO'> <label"
 			+ "for='recursiveno'>NO</label> </div> </div> </div>";
 	$(form).append(part);
-
 }
 
-function headline(appNumber, index, name) {
-	var removeButtonPlaceHolder = "<div id='removePermission" + appNumber + index
-	"'></div>";
+function headline(id, name) {
+	var buttonContainer = "<div id='grantedButtons" + id + "' align='right'></div>";
 
-	return "<div class='headLine'><input type='checkbox' onchange='boxCheck(" + appNumber + index + ")' class='p' id='c" + appNumber + index
-			+ "'> <label class='lb' for='c" + appNumber + index + "'>" + name + "</label></div>";
-
+	return "<div class='headLine'><input type='checkbox' onchange='boxCheck(" + id + ")' class='p' id='c" + id + "'> <label class='lb' for='c" + id + "'>"
+			+ name + "</label>" + buttonContainer + "</div>";
 }
 
-function changeGrantedHeadline(selector, appNumber, index, policyname, permDescr) {
+function changeGrantedHeadline(id, policyname, permDescr, appNumber) {
+	var selector = "#grantedButtons" + id;
 	// Create an input type dynamically.
 	var removeButton = document.createElement("input");
 	removeButton.type = "button";
 	removeButton.value = "Remove";
+	removeButton.setAttribute("align", "right");
 	// Assign different attributes to the element.
 	removeButton.onclick = function() { // Note this is a function
 		sendRemovePermission(appNumber, policyname, permDescr);
 	};
 	removeButton.className = ".ui-button.cancelButton";
 	// Append the element in page (in span).
-	$(selector).parent().append(removeButton);
+	$(selector).append(removeButton);
 
 	var customizeButton = document.createElement("input");
 	customizeButton.type = "button";
 	customizeButton.value = "Customize";
-	var id = 'cB' + appNumber + index;
-	customizeButton.id = id;
+	customizeButton.setAttribute("align", "right");
+	var buttonId = 'cB' + id;
+	customizeButton.id = buttonId;
+	var container = $('#permContainer' + id)
 	// Assign different attributes to the element.
 	customizeButton.onclick = function() { // Note this is a function
-		customizePermission("" + appNumber + index, id);
+		customizePermission("" + id, container);
 	};
 	// Append the element in page (in span).
-	$(selector).parent().append(customizeButton);
+	$(selector).append(customizeButton);
 }
 
 function sendRemovePermission(appNumber, policyname, permDescr) {
@@ -797,32 +654,3 @@ function toMainPage() {
 }
 // --------------------------------- E N D - F U N C T I O N S
 // -------------------------------------
-
-function additionalPrepareBoxCheck() {
-	// var identifyCheck = "input#addPermCheck";
-	var permName = $("input#addPermName").val();
-	var filter = $("input#addPermFilter").val();
-	var actions = $("input#addPermActions").val();
-	// if current box is checked
-	// if ($(identifyCheck).prop("checked")) {
-	// check sub boxes
-	// checkSubBoxes(identifyCheck);
-	// show the resources
-	// showRessources(num);
-	removeAdditionalMask();
-	writeInDia(permName, filter, actions, numberOfPermEntry++, curAppId, formOfDialog);
-	$(formOfDialog).append(additionalPermButton);
-	// }
-	// $(identifyCheck).parent().parent().find("div:last-child").css("background",
-	// "#89A5CC");
-	// $(identifyCheck).parent().parent().find("div:last-child").find("input[type='text']").addClass("highlightInputText");
-	// } else {
-	// // showRessources(num);
-	//
-	// $("#conArgs" + num).parent().next().hide("fast");
-	// uncheckSubBoxes(identifyCheck);
-	// $(identifyCheck).parent().parent().find("div:last-child").css("background",
-	// "white");
-	// $(identifyCheck).parent().parent().find("div:last-child").find("input[type='text']").removeClass("highlightInputText");
-	// }
-}

@@ -16,13 +16,14 @@
 package org.ogema.impl.security;
 
 import java.io.PrintStream;
-import java.lang.reflect.Array;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.Permission;
 import java.security.PrivilegedAction;
 import java.security.ProtectionDomain;
+import java.util.Dictionary;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +51,6 @@ import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.model.Resource;
 import org.ogema.core.security.AppPermission;
-import org.ogema.core.security.AppPermissionType;
 import org.ogema.core.security.WebAccessManager;
 import org.ogema.resourcetree.TreeElement;
 import org.osgi.framework.Bundle;
@@ -64,6 +64,8 @@ import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
 import org.osgi.service.condpermadmin.ConditionalPermissionUpdate;
 import org.osgi.service.http.HttpService;
 import org.osgi.service.permissionadmin.PermissionInfo;
+import org.osgi.service.url.URLConstants;
+import org.osgi.service.url.URLStreamHandlerService;
 import org.osgi.service.useradmin.UserAdmin;
 import org.slf4j.Logger;
 
@@ -98,6 +100,7 @@ public class PermissionManagerImpl implements PermissionManager {
 	private AppDomainCombiner domainCombiner;
 
 	private ServiceRegistration<PermissionManager> sreg;
+    private ServiceRegistration<URLStreamHandlerService> urpHandlerRegistratrion;
 
 	AppPermissionImpl defaultPolicies;
 
@@ -125,6 +128,12 @@ public class PermissionManagerImpl implements PermissionManager {
 				throw new BundleException(
 						"ConditinalPermissionAdmin service is not available. OGEMA Security is disabled.");
 			}
+            
+            //@Property(name = URLConstants.URL_HANDLER_PROTOCOL, value = UrpUrlHandler.PROTOCOL)
+            Dictionary<String, Object> urlHandlerProperties = new Hashtable<>();
+            urlHandlerProperties.put(URLConstants.URL_HANDLER_PROTOCOL, UrpUrlHandler.PROTOCOL);
+            urpHandlerRegistratrion =
+                    bc.registerService(URLStreamHandlerService.class, new UrpUrlHandler(), urlHandlerProperties);
 
 			this.accessMan = new AccessManagerImpl(ua, bc, this);
 			bc.addBundleListener(this.accessMan);
@@ -144,6 +153,9 @@ public class PermissionManagerImpl implements PermissionManager {
 		if (sreg != null) {
 			sreg.unregister();
 		}
+        if (urpHandlerRegistratrion != null) {
+            urpHandlerRegistratrion.unregister();
+        }
 	}
 
 	@Override
@@ -600,6 +612,10 @@ public class PermissionManagerImpl implements PermissionManager {
 	}
 
 	protected int compareActions(String actions, String actions2) {
+		if (actions == null && actions2 == null) // both null ->match
+			return 0;
+		if (actions == null || actions2 == null) // not both null but one of them -> not match
+			return -1;
 		if (actions.equals(actions2))
 			return 0;
 		else

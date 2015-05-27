@@ -15,16 +15,13 @@
  */
 package org.ogema.driver.hmhl.devices;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
-import org.ogema.core.channelmanager.measurements.ByteArrayValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.units.ConcentrationResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.driver.hmhl.Constants;
-import org.ogema.driver.hmhl.Converter;
 import org.ogema.driver.hmhl.HM_hlConfig;
 import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
@@ -45,36 +42,11 @@ public class CO2Detector extends HM_hlDevice {
 
 	@Override
 	protected void parseValue(Value value, String channelAddress) {
-		byte[] array = null;
-
-		if (value instanceof ByteArrayValue) {
-			array = value.getByteArrayValue();
+		switch (channelAddress) {
+		case "ATTRIBUTE:0001":
+			concentration.setValue(value.getFloatValue());
+			break;
 		}
-		byte msgtype = array[array.length - 1];
-		byte[] msg = ArrayUtils.removeAll(array, array.length - 2, array.length - 1);
-
-		if (type.equals("0056") || type.equals("009F")) {
-			if ((msgtype == 0x02 && msg[0] == 0x01) || (msgtype == 0x10 && msg[0] == 0x06) || (msgtype == 0x41)) {
-				long lvl = Converter.toLong(msg[2]);
-
-				if (type.equals("009F"))
-					System.out.println("Level: " + lvl);
-				System.out.println("State: " + lvl);
-				concentration.setValue(lvl);
-			}
-		}
-		else if (msgtype == 0x10 && msg[0] == 0x06) {
-			// long err = Converter.toLong(msg[3]);
-			long state = Converter.toLong(msg[2]);
-			String state_str = (state > 2) ? "off" : "smoke-Alarm";
-
-			System.out.println("Level: " + state);
-			concentration.setValue(state);
-			// String err_str = ((err & 0x80) > 0) ? "low" : "ok";
-			System.out.println("State: " + state_str);
-		}
-		System.out.println("#######################\tCO2\t#############################");
-		System.out.println("Concentration: " + concentration.getValue());
 	}
 
 	private void addMandatoryChannels() {
@@ -84,7 +56,7 @@ public class CO2Detector extends HM_hlDevice {
 		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
 		attributeConfig.channelAddress = "ATTRIBUTE:0001";
 		attributeConfig.timeout = -1;
-		attributeConfig.resourceName = hm_hlConfig.resourceName + "_HomeMatic_CO2Sensor";
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_CO2Contentration";
 		attributeConfig.chLocator = addChannel(attributeConfig);
 
 		/*
@@ -94,10 +66,10 @@ public class CO2Detector extends HM_hlDevice {
 		// The connection attribute and its children, current, voltage, power,
 		// frequency
 		CO2Sensor co2 = resourceManager.createResource(attributeConfig.resourceName, CO2Sensor.class);
-//		co2.activate(true);
+		//		co2.activate(true);
 
 		concentration = (ConcentrationResource) co2.reading().create();
-//		concentration.activate(true);
+		//		concentration.activate(true);
 		//		concentration.setValue(0);
 		concentration.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 		co2.activate(true);

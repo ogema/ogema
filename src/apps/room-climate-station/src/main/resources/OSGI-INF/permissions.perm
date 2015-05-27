@@ -11,4 +11,4 @@
 
 (org.osgi.framework.PackagePermission "org.osgi.framework" "import")
 
-(org.ogema.accesscontrol.ResourcePermission "path=MyHome*,type=org.ogema.core.model.ResourceList" "read,write,addsub,create,activity,delete")
+(org.ogema.accesscontrol.ResourcePermission "type=*" "read,write,addsub,create,activity,delete")

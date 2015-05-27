@@ -17,14 +17,8 @@ package org.ogema.recordeddata.slotsdb;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
-
-import org.apache.commons.io.FileUtils;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.Quality;
@@ -36,17 +30,12 @@ import org.ogema.recordeddata.RecordedDataStorage;
 
 public class RecordedDataTest {
 
-	@BeforeClass
-	public static void deleteSlotsDBData() {
-		try {
-			FileUtils.deleteDirectory(new File(System.getProperty("user.dir") + "/data/slotsdb"));
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
 	@Test
+	/**
+	 * Writes a single value to a slotsdb and reads it back
+	 *  
+	 * @throws DataRecorderException
+	 */
 	public void writeReadTest() throws DataRecorderException {
 
 		SlotsDb sdb = new SlotsDb();
@@ -130,7 +119,7 @@ public class RecordedDataTest {
 			assertEquals(1, 0);
 		}
 
-		sdb.deleteRecordedDataStorage("test2");
+		sdb.deleteRecordedDataStorage("flexibleTest1");
 
 	}
 
@@ -147,7 +136,7 @@ public class RecordedDataTest {
 
 		int numberOfValues = 50000;
 		for (int i = 1; i <= numberOfValues; i++) {
-			sdbs.insertValue(new SampledValue(new FloatValue(i), i + 10000, Quality.GOOD));
+			sdbs.insertValue(new SampledValue(new FloatValue(i), i * 1000, Quality.GOOD));
 		}
 
 		RecordedDataStorage sdbs2 = sdb.getRecordedDataStorage("flexibleTest3");

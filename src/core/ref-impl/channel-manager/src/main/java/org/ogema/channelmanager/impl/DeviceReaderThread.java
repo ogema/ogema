@@ -15,6 +15,7 @@
  */
 package org.ogema.channelmanager.impl;
 
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -296,13 +297,18 @@ public class DeviceReaderThread extends Thread {
 			driver.readChannels(nextChannels, new DeviceReaderChannelUpdateListener(nextChannels, oldValues));
 		}
 		else {
+
 			try {
 				driver.readChannels(nextChannels);
-
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-
+			} catch (UnsupportedOperationException e) {
 				e.printStackTrace();
+			} catch (IOException e) {
+				// Value is set to null here. If an other default value is needed than the driver should handle the
+				// IOException itself.
+				for (SampledValueContainer container : nextChannels) {
+					long now = System.currentTimeMillis();
+					container.setSampledValue(new SampledValue(null, now, Quality.BAD));
+				}
 			}
 
 			checkForEvents(oldValues, nextChannels);

@@ -96,7 +96,6 @@ public class SumController implements Controller, ResourceStructureListener,
 				else {
 					m_logger.warn("Invalid input - make sum for " + value.getClass().getName()
 							+ " while making sum for " + clazz.getName());
-					continue;
 				}
 			}
 
@@ -137,7 +136,6 @@ public class SumController implements Controller, ResourceStructureListener,
 				else {
 					m_logger.warn("Invalid input - make sum for " + value.getClass().getName()
 							+ " while making sum for " + clazz.getName());
-					continue;
 				}
 			}
 
@@ -175,6 +173,7 @@ public class SumController implements Controller, ResourceStructureListener,
 	}
 
 	@Override
+	@SuppressWarnings("fallthrough")
 	public void resourceStructureChanged(ResourceStructureEvent event) {
 		switch (event.getType()) {
 		case RESOURCE_ACTIVATED:

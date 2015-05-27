@@ -17,12 +17,18 @@ package org.ogema.serialization;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
-import org.ogema.core.model.SimpleResource;
+import org.ogema.core.model.array.ArrayResource;
+import org.ogema.core.model.array.BooleanArrayResource;
+import org.ogema.core.model.array.ByteArrayResource;
+import org.ogema.core.model.array.FloatArrayResource;
+import org.ogema.core.model.array.IntegerArrayResource;
+import org.ogema.core.model.array.StringArrayResource;
+import org.ogema.core.model.array.TimeArrayResource;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
-import org.ogema.core.model.simple.OpaqueResource;
+import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.tools.SerializationManager;
@@ -53,8 +59,9 @@ public class JaxbFactory {
 	/**
 	 * Creates a {@link JaxbResource} wrapper for an OGEMA resource.
 	 */
+	@SuppressWarnings("deprecation")
 	static JaxbResource createJaxbResource(Resource resource, SerializationStatus status) {
-		if (resource instanceof SimpleResource) {
+		if (resource instanceof SingleValueResource) {
 			if (resource instanceof BooleanResource) {
 				return new JaxbBoolean((BooleanResource) resource, status);
 			}
@@ -64,8 +71,8 @@ public class JaxbFactory {
 			if (resource instanceof IntegerResource) {
 				return new JaxbInteger((IntegerResource) resource, status);
 			}
-			if (resource instanceof OpaqueResource) {
-				return new JaxbOpaque((OpaqueResource) resource, status);
+			if (resource instanceof org.ogema.core.model.simple.OpaqueResource) {
+				return new JaxbOpaque((org.ogema.core.model.simple.OpaqueResource) resource, status);
 			}
 			if (resource instanceof StringResource) {
 				return new JaxbString((StringResource) resource, status);
@@ -73,6 +80,31 @@ public class JaxbFactory {
 			if (resource instanceof TimeResource) {
 				return new JaxbTime((TimeResource) resource, status);
 			}
+		}
+
+		if (resource instanceof ArrayResource) {
+			if (resource instanceof BooleanArrayResource) {
+				return new JaxbBooleanArray((BooleanArrayResource) resource, status);
+			}
+			if (resource instanceof ByteArrayResource) {
+				return new JaxbByteArray((ByteArrayResource) resource, status);
+			}
+			if (resource instanceof FloatArrayResource) {
+				return new JaxbFloatArray((FloatArrayResource) resource, status);
+			}
+			if (resource instanceof IntegerArrayResource) {
+				return new JaxbIntegerArray((IntegerArrayResource) resource, status);
+			}
+			if (resource instanceof org.ogema.core.model.simple.OpaqueResource) {
+				return new JaxbOpaque((org.ogema.core.model.simple.OpaqueResource) resource, status);
+			}
+			if (resource instanceof StringArrayResource) {
+				return new JaxbStringArray((StringArrayResource) resource, status);
+			}
+			if (resource instanceof TimeArrayResource) {
+				return new JaxbTimeArray((TimeArrayResource) resource, status);
+			}
+			throw new UnsupportedOperationException("fixme: unsupported array type " + resource.getResourceType());
 		}
 
 		if (resource instanceof ResourceList) {

@@ -94,8 +94,11 @@ public class LoggingAppServlet extends HttpServlet {
 			if (record) {
 				configuration.setStorageType(StorageType.valueOf(logType));
 				configuration.setFixedInterval(intv);
+				rd.setConfiguration(configuration);
 			}
-			rd.setConfiguration(configuration);
+			else {
+				rd.setConfiguration(null);
+			}
 			response = response + "New configuration for " + location + ":";
 			try {
 				response = response + " interval " + String.valueOf(rd.getConfiguration().getFixedInterval())

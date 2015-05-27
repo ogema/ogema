@@ -25,7 +25,6 @@ import org.ogema.core.model.array.TimeArrayResource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
-import org.ogema.core.model.simple.OpaqueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 
@@ -41,7 +40,8 @@ public interface AllSimpleTypes extends Resource {
 
 	IntegerResource integerResource();
 
-	OpaqueResource opaqueResource();
+	@SuppressWarnings("deprecation")
+	org.ogema.core.model.simple.OpaqueResource opaqueResource();
 
 	StringResource stringResource();
 

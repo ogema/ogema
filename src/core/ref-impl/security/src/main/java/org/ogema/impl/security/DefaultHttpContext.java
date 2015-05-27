@@ -40,7 +40,7 @@ public class DefaultHttpContext implements HttpContext {
 	LinkedHashMap<String, String> resources;
 	HashMap<String, AppID> servlets;
 
-	private Bundle bundle;
+	private final Bundle bundle;
 
 	// test szenario:
 	// Mimes.get(str) was tested - see Mimes
@@ -64,8 +64,9 @@ public class DefaultHttpContext implements HttpContext {
 	 * 
 	 * @see org.osgi.service.http.HttpContext#getResource(java.lang.String)
 	 */
+	@Override
 	public URL getResource(String name) {
-		return (URL) bundle.getResource(name);
+		return bundle.getResource(name);
 		// this should only return the bundles jar resources
 		// permissions are checked inside
 	}
@@ -76,6 +77,7 @@ public class DefaultHttpContext implements HttpContext {
 	 * 
 	 * @see org.osgi.service.http.HttpContext#getMimeType(java.lang.String)
 	 */
+	@Override
 	public String getMimeType(String str) {
 		return null;
 	}
@@ -87,6 +89,7 @@ public class DefaultHttpContext implements HttpContext {
 	 * @see org.osgi.service.http.HttpContext#handleSecurity(javax.servlet.http.HttpServletRequest,
 	 * javax.servlet.http.HttpServletResponse)
 	 */
+	@Override
 	public boolean handleSecurity(HttpServletRequest httpservletrequest, HttpServletResponse httpservletresponse)
 			throws IOException {
 		// this is a correct implementation of a default HttpContext

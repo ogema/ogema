@@ -29,7 +29,7 @@ import org.ogema.core.resourcemanager.ResourceAccess;
 // The annotations encapsule the OSGi required. They expose the service Application
 // to OSGi, which the OGEMA framework uses to detect this piece of code as an
 // OGEMA application.
-@Component(specVersion = "1.1", immediate=true)
+@Component(specVersion = "1.2", immediate=true)
 @Service(Application.class)
 public class ${app-name} implements Application {
 

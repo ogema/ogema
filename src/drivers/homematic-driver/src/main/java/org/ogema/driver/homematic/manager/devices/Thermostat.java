@@ -1,0 +1,162 @@
+/**
+ * This file is part of OGEMA.
+ *
+ * OGEMA is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
+ *
+ * OGEMA is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.ogema.driver.homematic.manager.devices;
+
+import org.ogema.core.channelmanager.measurements.FloatValue;
+import org.ogema.core.channelmanager.measurements.Value;
+import org.ogema.driver.homematic.manager.DeviceAttribute;
+import org.ogema.driver.homematic.manager.DeviceCommand;
+import org.ogema.driver.homematic.manager.RemoteDevice;
+import org.ogema.driver.homematic.manager.StatusMessage;
+import org.ogema.driver.homematic.manager.SubDevice;
+import org.ogema.driver.homematic.tools.Converter;
+
+public class Thermostat extends SubDevice {
+
+	public Thermostat(RemoteDevice rd) {
+		super(rd);
+	}
+
+	@Override
+	protected void addMandatoryChannels() {
+		deviceCommands.put((byte) 0x01, new DeviceCommand(this, (byte) 0x01, "desiredTemp", true));
+		deviceAttributes.put((short) 0x0001, new DeviceAttribute((short) 0x0001, "desiredTemp", true, true));
+		deviceAttributes.put((short) 0x0002, new DeviceAttribute((short) 0x0002, "currentTemp", true, true));
+		deviceAttributes.put((short) 0x0003, new DeviceAttribute((short) 0x0003, "ValvePosition", true, true));
+		deviceAttributes.put((short) 0x0004, new DeviceAttribute((short) 0x0004, "batteryStatus", true, true));
+	}
+
+	@Override
+	public void parseValue(StatusMessage msg) {
+		if (remoteDevice.getDeviceType().equals("0095")) {
+			if ((msg.msg_type == 0x10 && msg.msg_data[0] == 0x0A) || (msg.msg_type == 0x02 && msg.msg_data[0] == 0x01)) {
+				float bat = 0;
+				float remoteCurrentTemp = 0;
+				long desTemp = 0;
+				long valvePos = 0;
+				long err = 0;
+				String err_str = "";
+				long ctrlMode = 0;
+				String ctrlMode_str = "";
+
+				if (msg.msg_type == 0x10) {
+					bat = ((float) (Converter.toLong(msg.msg_data[3] & 0x1F))) / 10 + 1.5F;
+					remoteCurrentTemp = ((float) (Converter.toLong(msg.msg_data, 1, 2) & 0x3FF)) / 10;
+					desTemp = (Converter.toLong(msg.msg_data, 1, 2) >> 10);
+					valvePos = Converter.toLong(msg.msg_data[4] & 0x7F);
+					err = Converter.toLong(msg.msg_data[3] >> 5);
+				}
+				else {
+					desTemp = Converter.toLong(msg.msg_data, 1, 2);
+					err = Converter.toLong(msg.msg_data[3] >> 1);
+				}
+				float remoteDesiredTemp = (desTemp & 0x3f) / 2;
+				deviceAttributes.get((short) 0x0001).setValue(new FloatValue(remoteDesiredTemp));
+				err = err & 0x7;
+				ctrlMode = Converter.toLong((msg.msg_data[5] >> 6) & 0x3);
+
+				if (msg.msg_len >= 7) { // Messages with Party Mode
+					// TODO: Implement Party features
+				}
+
+				if ((msg.msg_len >= 6) && (ctrlMode == 3)) { // Msg with Boost
+					// TODO: Calculation with Boost Time
+				}
+				switch (Converter.toInt(err)) {
+				case 0:
+					err_str = "OK";
+					break;
+				case 1:
+					err_str = "ralve tight";
+					break;
+				case 2:
+					err_str = "adjust range too large";
+					break;
+				case 3:
+					err_str = "adjust range too small";
+					break;
+				case 4:
+					err_str = "communication error";
+					break;
+				case 5:
+					err_str = "unknown";
+					break;
+				case 6:
+					err_str = "low Battery";
+					break;
+				case 7:
+					err_str = "valve error position";
+					break;
+				}
+
+				switch (Converter.toInt(ctrlMode)) {
+				case 0:
+					ctrlMode_str = "auto";
+					break;
+				case 1:
+					ctrlMode_str = "manual";
+					break;
+				case 2:
+					ctrlMode_str = "party(urlaub)";
+					break;
+				case 3:
+					ctrlMode_str = "boost";
+					break;
+				default:
+					ctrlMode_str = Long.toHexString(ctrlMode);
+					break;
+				}
+
+				System.out.println("Measured Temperature: " + remoteCurrentTemp + " C");
+				deviceAttributes.get((short) 0x0002).setValue(new FloatValue(remoteCurrentTemp));
+				System.out.println("Desired Temperature: " + remoteDesiredTemp + " C");
+				System.out.println("Battery Voltage: " + bat + " V");
+				deviceAttributes.get((short) 0x0004).setValue(new FloatValue(bat));
+				System.out.println("Valve Position: " + valvePos + " %");
+				deviceAttributes.get((short) 0x0003).setValue(new FloatValue(valvePos / 100));
+				System.out.println("Error: " + err_str);
+				System.out.println("Control Mode: " + ctrlMode_str);
+
+			}
+			else if (msg.msg_type == 0x59) { // inform about new value
+				// TODO: team msg
+			}
+			else if (msg.msg_type == 0x3F) { // Timestamp request important!
+				// TODO: push @ack,$shash,"${mNo}803F$ioId${src}0204$s2000";
+			}
+
+		}
+	}
+
+	@Override
+	public void channelChanged(byte identifier, Value value) {
+		if (identifier == 0x01) { // desiredTemp
+			float localDesiredTemp = value.getFloatValue();
+			localDesiredTemp = (float) (Math.ceil(localDesiredTemp * 2) / 2);
+			if (localDesiredTemp > 31.5)
+				localDesiredTemp = 31.5f;
+			if (localDesiredTemp < 0)
+				localDesiredTemp = 0;
+			float f = (localDesiredTemp * 2.0f);
+			int i = (int) f;
+			byte b = (byte) (i & 0x000000FF);
+			String bs = Converter.toHexString(b);
+			// Syntax: Commando + Desiredtemp * 2 + Flag + Type
+			this.remoteDevice.pushCommand((byte) 0xB0, (byte) 0x11, "8104" + bs);
+		}
+	}
+
+}

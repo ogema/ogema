@@ -15,15 +15,14 @@
  */
 package org.ogema.driver.homematic.manager;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.apache.commons.lang3.ArrayUtils;
-import org.ogema.core.channelmanager.measurements.ByteArrayValue;
-import org.ogema.core.channelmanager.measurements.LongValue;
-import org.ogema.driver.homematic.tools.Converter;
-import org.slf4j.Logger;
+import org.ogema.driver.homematic.manager.devices.CO2Detector;
+import org.ogema.driver.homematic.manager.devices.MotionDetector;
+import org.ogema.driver.homematic.manager.devices.PowerMeter;
+import org.ogema.driver.homematic.manager.devices.Remote;
+import org.ogema.driver.homematic.manager.devices.SmokeSensor;
+import org.ogema.driver.homematic.manager.devices.THSensor;
+import org.ogema.driver.homematic.manager.devices.Thermostat;
+import org.ogema.driver.homematic.manager.devices.ThreeStateSensor;
 
 /**
  * Represents a remote endpoint in a Homematic network.
@@ -32,8 +31,6 @@ import org.slf4j.Logger;
  * 
  */
 public class RemoteDevice {
-
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger("homematic-driver");
 
 	// TODO: AES-Key !
 	public enum InitStates {
@@ -44,6 +41,8 @@ public class RemoteDevice {
 	private final String type;
 	private final String serial;
 
+	private final SubDevice subDevice;
+
 	// Message
 	private String owner;
 	private long msg_num;
@@ -52,30 +51,29 @@ public class RemoteDevice {
 	private InitStates initState = InitStates.UNKNOWN;
 	private LocalDevice localdevice;
 
-	// ChannelManagerImpl
-	public Map<Byte, DeviceCommand> deviceCommands = new HashMap<Byte, DeviceCommand>();
-	public Map<Short, DeviceAttribute> deviceAttributes = new HashMap<Short, DeviceAttribute>();
-
+	// Used from inputhandler for new devices
 	public RemoteDevice(LocalDevice localdevice, StatusMessage msg) {
 		this.address = msg.source;
 		this.owner = localdevice.getOwnerid();
-		this.type = new String(Converter.toHexString(msg.msg_data, 1, 2));
-		this.serial = new String(Arrays.copyOfRange(msg.msg_data, 3, 13));
+		this.type = msg.parseType();
+		this.serial = msg.parseSerial();
 		this.msg_num = 1;
-
 		this.localdevice = localdevice;
+		this.subDevice = createSubDevice();
 	}
 
+	// Used if device file is loading device
 	public RemoteDevice(LocalDevice localdevice, String address, String type, String serial) {
 		this.address = address;
 		this.owner = localdevice.getOwnerid();
 		this.type = type;
 		this.serial = serial;
 		this.msg_num = 1;
-
 		this.localdevice = localdevice;
+		this.subDevice = createSubDevice();
+		this.subDevice.addMandatoryChannels();
 		setInitState(InitStates.PAIRED);
-		createChannels();
+		// createChannels();
 	}
 
 	public void init() {
@@ -86,25 +84,36 @@ public class RemoteDevice {
 		setInitState(InitStates.PAIRING);
 		// AES aktivieren
 		// pushConfig("01", "01", "0801");
-		createChannels();
+		this.subDevice.addMandatoryChannels();
 	}
 
-	private void createChannels() {
-		deviceAttributes.put((short) 0x0001, new DeviceAttribute((short) 0x0001, "MessagePayload", true, true));
-		deviceAttributes.put((short) 0x0002, new DeviceAttribute((short) 0x0002, "Uptime", true, true));
-		deviceAttributes.put((short) 0x0003, new DeviceAttribute((short) 0x0003, "RSSI", true, true));
-		deviceAttributes.put((short) 0x0004, new DeviceAttribute((short) 0x0004, "Status", true, true));
-		deviceAttributes.put((short) 0x0005, new DeviceAttribute((short) 0x0005, "Condition", true, true));
-
-		deviceCommands.put((byte) 0x01, new DeviceCommand(this, (byte) 0x01, "StandardCommand", true));
-		deviceCommands.put((byte) 0x02, new DeviceCommand(this, (byte) 0x02, "Config", true));
+	private SubDevice createSubDevice() {
+		switch (localdevice.getDeviceDescriptor().getSubType(type)) {
+		case "THSensor":
+			return new THSensor(this);
+		case "threeStateSensor":
+			return new ThreeStateSensor(this);
+		case "thermostat":
+			return new Thermostat(this);
+		case "powerMeter":
+			return new PowerMeter(this);
+		case "smokeDetector":
+			return new SmokeSensor(this);
+		case "CO2Detector":
+			return new CO2Detector(this);
+		case "motionDetector":
+			return new MotionDetector(this);
+		case "remote":
+		case "pushbutton":
+		case "swi":
+			return new Remote(this);
+		default:
+			throw new RuntimeException("Type not supported");
+		}
 	}
 
 	public void parseMsg(StatusMessage msg) {
-		this.deviceAttributes.get((short) 0x0002).setValue(new LongValue(msg.uptime));
-		this.deviceAttributes.get((short) 0x0003).setValue(new LongValue(msg.rssi));
-		this.deviceAttributes.get((short) 0x0004).setValue(new LongValue(msg.status));
-		this.deviceAttributes.get((short) 0x0005).setValue(new LongValue(msg.cond));
+		subDevice.parseValue(msg);
 		this.msg_num = msg.msg_num + 1;
 	}
 
@@ -116,32 +125,6 @@ public class RemoteDevice {
 		localdevice.sendCmdMessage(this, (byte) 0xA0, (byte) 0x01, channel + "0500000000" + list);
 		localdevice.sendCmdMessage(this, (byte) 0xA0, (byte) 0x01, channel + "08" + configs);
 		localdevice.sendCmdMessage(this, (byte) 0xA0, (byte) 0x01, channel + "06");
-	}
-
-	public void setValue(byte[] data, byte msgflag, byte msgtype) {
-		byte[] value = ArrayUtils.add(data, msgflag);
-		value = ArrayUtils.add(value, msgtype);
-		this.deviceAttributes.get((short) 0x0001).setValue(new ByteArrayValue(value));
-	}
-
-	public void performCommand(byte identifier, byte[] data) {
-		byte[] msg = null;
-		switch (identifier) {
-		case 0x01:
-			byte msgFlag = data[data.length - 2];
-			byte msgType = data[data.length - 1];
-			msg = ArrayUtils.removeAll(data, data.length - 2, data.length - 1);
-			pushCommand(msgFlag, msgType, Converter.toHexString(msg));
-			break;
-		case 0x02:
-			String chn = Converter.toHexString(data[data.length - 2]);
-			String lst = Converter.toHexString(data[data.length - 1]);
-			msg = ArrayUtils.removeAll(data, data.length - 2, data.length - 1);
-			pushConfig(chn, lst, Converter.toHexString(msg));
-			break;
-		default:
-			logger.error("Command Channel Identifier Error");
-		}
 	}
 
 	public String getAddress() {
@@ -172,11 +155,67 @@ public class RemoteDevice {
 		this.msg_num = msg_num;
 	}
 
+	public SubDevice getSubDevice() {
+		return this.subDevice;
+	}
+
 	public InitStates getInitState() {
 		return initState;
 	}
 
 	public void setInitState(InitStates initState) {
 		this.initState = initState;
+	}
+
+	public String[] getChannels() {
+		return localdevice.getDeviceDescriptor().getChannels(type);
+	}
+
+	public void getConfig() { // 00040000000000: chNUM[1]| |peer[4]|lst[1]
+		localdevice.sendCmdMessage(this, (byte) 0xA0, (byte) 0x01, "00040000000000"); // TODO: last byte should be
+		// listnumber, first byte the channel number!
+		String[] channels = localdevice.getDeviceDescriptor().getChannels(type);
+		String[] lists = localdevice.getDeviceDescriptor().getLists(type);
+		if (channels.length == 1)
+			channels[0] = "autocreate:1:1";
+		for (String chnstr : channels) {
+			String[] channel = chnstr.split(":");
+			if (lists.length != 0) {
+				boolean pReq = false;
+				for (String listEntry : lists) {
+					boolean peerReq = false;
+					boolean chnValid = false;
+					String[] lstPart = listEntry.split(":");
+					if (lstPart.length == 1) {
+						chnValid = true;
+						if (lstPart[0].equals("p") || lstPart[0].equals("3") || lstPart[0].equals("4"))
+							peerReq = true;
+					}
+					else {
+						String test = new String(lstPart[1]);
+						String[] chnLst = test.split("\\.");
+						for (String lchn : chnLst) {
+							if (lchn.contains(channel[2]))
+								chnValid = true;
+							if (chnValid && lchn.contains("p"))
+								peerReq = true;
+						}
+					}
+
+					if (chnValid) {
+						if (peerReq) {
+							if (!pReq) {
+								pReq = true;
+								localdevice.sendCmdMessage(this, (byte) 0xA0, (byte) 0x01, "0" + channel[2] + "03");
+							}
+						}
+						else {
+							localdevice.sendCmdMessage(this, (byte) 0xA0, (byte) 0x01, "0" + channel[2] + "04000000000"
+									+ lstPart[0]);
+						}
+					}
+				}
+			}
+		}
 	}
 }

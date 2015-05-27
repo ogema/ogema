@@ -215,7 +215,7 @@ public class ResourceDBManager {
 			if (el.isReference()) {
                 TreeElement r = el;
                 while(r.isReference()){
-                    r = el.getReference();
+                    r = r.getReference();
                     assert r != el : "reference loop at " + el.getPath();
                 }
                 ElementInfo info = getElementInfo(r);

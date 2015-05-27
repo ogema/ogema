@@ -40,32 +40,34 @@ function createActionsdialog() {
  */
 function boxCheck(num) {
 	var identifyCheck = "input#c" + num;
+	var container = $(identifyCheck).parent().parent();
 	// if current box is checked
 	if ($(identifyCheck).prop("checked")) {
+
 		// check sub boxes
-		checkSubBoxes(identifyCheck);
+		checkSubBoxes(container);
 		// show the resources
 		showRessources(num, true);
-		$(identifyCheck).parent().parent().find("div:last-child").css("background", "#89A5CC");
-		$(identifyCheck).parent().parent().find("div:last-child").find("input[type='text']").addClass("highlightInputText");
+		container.find("div:last-child").css("background", "#89A5CC");
+		container.find("div:last-child").find("input[type='text']").addClass("highlightInputText");
 	} else {
 		showRessources(num, false);
 
 		// $("#conArgs" + num).parent().next().hide("fast");
-		uncheckSubBoxes(identifyCheck);
-		$(identifyCheck).parent().parent().find("div:last-child").css("background", "white");
-		$(identifyCheck).parent().parent().find("div:last-child").find("input[type='text']").removeClass("highlightInputText");
+		uncheckSubBoxes(container);
+		container.find("div:last-child").css("background", "white");
+		container.find("div:last-child").find("input[type='text']").removeClass("highlightInputText");
 	}
 }
 
-function customizePermission(num, buttonID) {
-	var identifyCheck = '#' + buttonID;
+function customizePermission(num, permContainer) {
+	// var identifyCheck = '#' + buttonID;
 	// check sub boxes
-	checkSubBoxes(identifyCheck);
+	checkSubBoxes(permContainer);
 	// show the resources
 	showRessources(num, true);
-	$(identifyCheck).parent().parent().find("div:last-child").css("background", "#89A5CC");
-	$(identifyCheck).parent().parent().find("div:last-child").find("input[type='text']").addClass("highlightInputText");
+	permContainer.find("div:last-child").css("background", "#89A5CC");
+	permContainer.find("div:last-child").find("input[type='text']").addClass("highlightInputText");
 
 	// Check the hidden checkbox as flag for later usage
 	$("input#c" + num).prop("checked", true);
@@ -77,8 +79,7 @@ function customizePermission(num, buttonID) {
  * @param {String}
  *            obj String-ID of checkbox.
  */
-function checkSubBoxes(obj) {
-	var parent = $(obj).parent().parent();
+function checkSubBoxes(parent) {
 	parent.find("div:last-child>input[type='checkbox'].m").prop('checked', true);
 	parent.find("div>input[type='text']").addClass("highlight");
 	parent.find("div:last-child").find("label.lb").addClass("highlight");
@@ -90,8 +91,7 @@ function checkSubBoxes(obj) {
  * @param {String}
  *            obj String-ID of checkbox.
  */
-function uncheckSubBoxes(obj) {
-	var parent = $(obj).parent().parent();
+function uncheckSubBoxes(parent) {
 	parent.find("div>input[type='checkbox'].m").prop('checked', false);
 	parent.find("div>input[type='text']").removeClass("highlight");
 	parent.find("div:last-child").find("label.lb").removeClass("highlight");
@@ -121,11 +121,8 @@ function singleHighlight(num) {
  */
 function showRessources(num, check) {
 	var display = $("#conArgs" + num).parent().next().css("display");
-	// if (display == "none") {
 	if (check) {
 		writeResourceInDia(num);
-		// $("#conArgs" + num).parent().next().show();
-		// $("#conArgs" + num).parent().next().next().show();
 	} else {
 		$("#conArgs" + num).parent().next().hide();
 		$("#conArgs" + num).parent().next().next().hide();
@@ -213,31 +210,9 @@ function writeResourceInDia(num) {
 			var currentNode;
 			var currentMethod;
 
-			// if (parentIsSelected) {
-			//
-			// var parent = $("#testTree" +
-			// num).jstree(true).get_node(parentOfSelected).parent;
-			// var parentIsSel = $("#testTree" + num).jstree("is_selected",
-			// parent);
-			// if (parentIsSel) {
-			// while (parentIsSel == true) {
-			// parent = $("#testTree" +
-			// num).jstree(true).get_node(parent).parent;
-			// parentIsSel = $("#testTree" + num).jstree("is_selected", parent);
-			// }
-			// currentNode = parent;
-			// } else {
-			// currentNode = parentOfSelected;
-			// }
-			// currentSelectedResourceNode = $("#testTree" +
-			// num).jstree(true).get_node(currentNode);
-			// currentMethod = $("#testTree" +
-			// num).jstree(true).get_node(currentNode).original.method;
-			// } else {
 			currentNode = nodeSelectedID;
 			currentSelectedResourceNode = $("#testTree" + num).jstree(true).get_node(currentNode);
 			currentMethod = $("#testTree" + num).jstree(true).get_node(currentNode).original.method;
-			// }
 			$("#resourceDialog").find("input[type='checkbox']").prop("checked", false);
 			RELOADselectMethodsForThis(currentMethod);
 
@@ -261,14 +236,20 @@ function writeResourceInDia(num) {
 					var node = $("#testTree" + num).jstree(true).get_node(newNodeID);
 					var checkbox = $.jstree.plugins.checkbox;
 					if (node.length != 0 /* && checkbox.is_checked(node) */) {
-						var lastNodeMethod = $("#testTree" + num).jstree(true).get_node(newNodeID).original.method;
-						var isReady = showPreMethodsForThis(lastNodeMethod, num);
+						var lastNodeMethod = node.original.method;
+						var recursive = node.original.recursive;
+						var isReady = showPreMethodsForThis(lastNodeMethod, num, recursive);
+
+						var bodyRect = document.body.getBoundingClientRect();
+						var elemRect = tree[0].getBoundingClientRect();
+						var offset = elemRect.top - bodyRect.top;
 
 						if (isReady == true) {
-							var offset = $("#testTree" + num).find("#" + newNodeID).offset().top;
+							// var offset = $("#testTree" + num).find("#" +
+							// newNodeID).offset().top;
 							$("#actions" + num).show("fast");
 							$("#actions" + num).find(" div.justShowActions").css("position", "fixed");
-							$("#actions" + num).find(" div.justShowActions").css("top", offset + 33);
+							$("#actions" + num).find(" div.justShowActions").css("top", offset - 55);
 							$("#actions" + num).find(" div.justShowActions").show("50");
 						}
 					}
@@ -327,6 +308,7 @@ var additionalPerMaskBussy = false;
 function insertAdditionalMask() {
 	if (!additionalPerMaskBussy) {
 		$("#additionalPermButton").before(additionalPermMask);
+		$("input#addGrantCheck").prop("checked", true);
 		additionalPerMaskBussy = true;
 	}
 }
@@ -335,91 +317,6 @@ function removeAdditionalMask() {
 	$("#additionalMask").remove();
 	$("#additionalPermButton").remove();
 	additionalPerMaskBussy = false;
-}
-// if not AllPermission: additional PermDiv
-/**
- * Add an additional permission-option.
- * 
- * @param {number}
- *            appNumber Number of the app (is same as number of dialog)
- *            concerning all apps in appstore.
- * 
- */
-function writeEndDia(appNumber, dia) {
-	ind++;
-	$(dia + " form button")
-			.before(
-					"<div class='additional'><div class='headLine'><input type='checkbox' onchange='additionalPrepareBoxCheck("
-							+ appNumber
-							+ ind
-							+ ")' class='p' id='c"
-							+ appNumber
-							+ ind
-							+ "'> <input style='margin-left: 0px; width: 420px !important' type='text' id='text"
-							+ appNumber
-							+ ind
-							+ "' title='Please provide the permission name.'> </input> <br> <input type='checkbox' class='p' id='c"
-							+ appNumber
-							+ ind
-							+ 1
-							+ "' onchange = 'checkGrantDeny("
-							+ appNumber
-							+ ind
-							+ 1
-							+ ", "
-							+ 1
-							+ ")'> <label for='c"
-							+ appNumber
-							+ ind
-							+ 1
-							+ "'> Grant </label> <input type='checkbox' class='p' id='c"
-							+ appNumber
-							+ ind
-							+ 2
-							+ "' onchange = 'checkGrantDeny("
-							+ appNumber
-							+ ind
-							+ 2
-							+ ", "
-							+ 2
-							+ ")'> <label for = 'c"
-							+ appNumber
-							+ ind
-							+ 2
-							+ "'> Deny </label> </div> <div class='bodyOfPerm'> Filter: <br> <input type='text' title='Please provide the resource.'> <br> Action: <br> <input type='text' title='Please provide the specific methods.'></input></div></div>");
-
-}
-
-/**
- * Style if checkbox for GRANT or DENY is checked. Uncheck the other box.
- * 
- * @param {number}
- *            idNum Number at the end of the checkbox-id.
- * @param {number}
- *            gdNum Can be 1 or 2. First box (GRANT) is 1 and second box (DENY)
- *            is 2. For identifying, if checked or denied.
- */
-function checkGrantDeny(idNum, gdNum) {
-	var identify = "c" + idNum;
-	if (gdNum == 1) {
-		if ($("#" + identify).prop("checked") == true) {
-			$("#" + identify).next().css("font-weight", "bold");
-			// if GRANT is checked, uncheck DENY
-			$("#" + identify).next().next("input[type='checkbox']").prop("checked", false);
-			$("#" + identify).next().next().next().css("font-weight", "normal");
-		} else {
-			$("#" + identify).next().css("font-weight", "normal");
-		}
-	} else if (gdNum == 2) {
-		if ($("#" + identify).prop("checked") == true) {
-			$("#" + identify).next().css("font-weight", "bold");
-			// if DENY is checked, uncheck GRANT
-			$("#" + identify).prev().prev("input[type='checkbox']").prop("checked", false);
-			$("#" + identify).prev().css("font-weight", "normal");
-		} else {
-			$("#" + identify).next().css("font-weight", "normal");
-		}
-	}
 }
 
 function checkGrant() {
@@ -446,6 +343,19 @@ function checkDeny() {
 	}
 }
 
+function additionalPrepareBoxCheck() {
+	var permName = $("input#addPermName").val();
+	var filter = $("input#addPermFilter").val();
+	var actions = $("input#addPermActions").val();
+	var mode = $("input#addGrantCheck").prop("checked");
+	var modename = "grant";
+	if (!mode)
+		modename = "deny";
+	removeAdditionalMask();
+	writeInDia(permName, filter, actions, "" + numberOfPermEntry++ + curAppId, formOfDialog, modename);
+	$(formOfDialog).append(additionalPermButton);
+}
+
 function RELOADselectMethodsForThis(currentMethod) {
 	if (currentMethod.indexOf(",") != -1) {
 		var methods;
@@ -459,7 +369,7 @@ function RELOADselectMethodsForThis(currentMethod) {
 
 }
 
-function showPreMethodsForThis(currentMethod, num) {
+function showPreMethodsForThis(currentMethod, num, recursive) {
 	if (currentMethod.indexOf(",") != -1) {
 		var methods;
 		methods = currentMethod.split(",");
@@ -469,6 +379,10 @@ function showPreMethodsForThis(currentMethod, num) {
 	} else {
 		$("#actions" + num + " .justShowActions").find("input[name='" + currentMethod + "']").prop("checked", true);
 	}
+	if (recursive)
+		$("#actions" + num + " .justShowActions").find("input[id='recursiveyes']").prop("checked", true);
+	else
+		$("#actions" + num + " .justShowActions").find("input[id='recursiveno']").prop("checked", true);
 	return true;
 }
 

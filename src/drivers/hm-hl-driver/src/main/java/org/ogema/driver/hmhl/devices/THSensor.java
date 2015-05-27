@@ -15,10 +15,8 @@
  */
 package org.ogema.driver.hmhl.devices;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
-import org.ogema.core.channelmanager.measurements.ByteArrayValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
@@ -26,7 +24,6 @@ import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.driver.hmhl.Constants;
-import org.ogema.driver.hmhl.Converter;
 import org.ogema.driver.hmhl.HM_hlConfig;
 import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
@@ -38,9 +35,16 @@ import org.ogema.model.sensors.TemperatureSensor;
 
 public class THSensor extends HM_hlDevice {
 
-	private FloatResource rHumidity;
-	private TemperatureResource tRes;
+	private FloatResource humidity;
+
+	public enum Status_hum {
+		DISABLED, UNKNOWN, ENABLED
+	}
+
+	Status_hum humidityEnabled = Status_hum.UNKNOWN;
+	private TemperatureResource temperature;
 	private FloatResource batteryStatus;
+	private SensorDevice thDevice;
 
 	public THSensor(HM_hlDriver driver, ApplicationManager appManager, HM_hlConfig config) {
 		super(driver, appManager, config);
@@ -53,50 +57,30 @@ public class THSensor extends HM_hlDevice {
 
 	@Override
 	protected void parseValue(Value value, String channelAddress) {
-		byte[] array = null;
-		long temp = 0;
-		long hum = 0;
-		long err = 0;
-		String err_str = "";
-		float batt = 95;
-
-		if (value instanceof ByteArrayValue) {
-			array = value.getByteArrayValue();
+		switch (channelAddress) {
+		case "ATTRIBUTE:0001":
+			temperature.setValue(value.getFloatValue());
+			break;
+		case "ATTRIBUTE:0002":
+			if (humidityEnabled == Status_hum.UNKNOWN) {
+				float hum = 0;
+				try {
+					hum = value.getFloatValue();
+				} catch (NullPointerException e) {
+					humidityEnabled = Status_hum.DISABLED;
+				}
+				if (!(humidityEnabled == Status_hum.DISABLED)) {
+					enableHumidity();
+					humidity.setValue(hum);
+				}
+			}
+			else if (humidityEnabled == Status_hum.ENABLED)
+				humidity.setValue(value.getFloatValue());
+			break;
+		case "ATTRIBUTE:0003":
+			batteryStatus.setValue(value.getFloatValue());
+			break;
 		}
-		else {
-			throw new IllegalArgumentException("unsupported value type: " + value);
-		}
-		byte msgtype = array[array.length - 1];
-		// byte msgflag = array[array.length - 2];
-		byte[] msg = ArrayUtils.removeAll(array, array.length - 2, array.length - 1);
-
-		if (msgtype == 0x70) {
-			temp = Converter.toLong(msg, 0, 2);
-			err_str = ((temp & 0x8000) > 0) ? "low" : "ok";
-			batt = ((temp & 0x8000) > 0) ? 5 : 95;
-			if ((temp & 0x4000) > 0)
-				temp -= 0x8000;
-
-			if (msg.length > 2)
-				hum = Converter.toLong(msg, 2, 1);
-		}
-		else if (msgtype == 0x53) {
-			temp = Converter.toLong(msg, 2, 2);
-			if ((temp & 0xC00) > 0)
-				temp -= 0x10000;
-			err = Converter.toLong(msg[0]);
-			err_str = ((err & 0x80) > 0) ? "low" : "ok";
-			batt = ((temp & 0x8000) > 0) ? 5 : 95;
-		}
-
-		//		System.out.println("Temperatur: " + ((float) temp) / 10 + " C");
-		//		System.out.println("State of Battery: " + err_str);
-		tRes.setCelsius(temp / 10f);
-		if (hum < 100) {
-			//			System.out.println("Humidity: " + hum + "%");
-			rHumidity.setValue(hum);
-		}
-		batteryStatus.setValue(batt);
 	}
 
 	private void addMandatoryChannels() {
@@ -106,31 +90,43 @@ public class THSensor extends HM_hlDevice {
 		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
 		attributeConfig.channelAddress = "ATTRIBUTE:0001";
 		attributeConfig.timeout = -1;
-		attributeConfig.resourceName = hm_hlConfig.resourceName + "_Attribute";
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_Temperature";
+		attributeConfig.chLocator = addChannel(attributeConfig);
+
+		attributeConfig = new HM_hlConfig();
+		attributeConfig.driverId = hm_hlConfig.driverId;
+		attributeConfig.interfaceId = hm_hlConfig.interfaceId;
+		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
+		attributeConfig.channelAddress = "ATTRIBUTE:0002";
+		attributeConfig.timeout = -1;
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_Humidity";
+		attributeConfig.chLocator = addChannel(attributeConfig);
+
+		attributeConfig = new HM_hlConfig();
+		attributeConfig.driverId = hm_hlConfig.driverId;
+		attributeConfig.interfaceId = hm_hlConfig.interfaceId;
+		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
+		attributeConfig.channelAddress = "ATTRIBUTE:0003";
+		attributeConfig.timeout = -1;
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_BatteryStatus";
 		attributeConfig.chLocator = addChannel(attributeConfig);
 
 		/*
 		 * Initialize the resource tree
 		 */
 		// Create top level resource
-		SensorDevice thDevice = resourceManager.createResource(hm_hlConfig.resourceName, SensorDevice.class);
+		thDevice = resourceManager.createResource(hm_hlConfig.resourceName, SensorDevice.class);
 
 		thDevice.sensors().create();
 		thDevice.sensors().activate(true);
 
-		HumiditySensor hSensor = thDevice.sensors().addDecorator("humidity", HumiditySensor.class);
-		rHumidity = hSensor.reading().create();
-		rHumidity.activate(true);
-		rHumidity.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
-		hSensor.activate(true);
-
 		TemperatureSensor tSensor = thDevice.sensors().addDecorator("temperature", TemperatureSensor.class);
-		tRes = tSensor.reading().create();
-		tRes.activate(true);
-		//		tRes.setKelvin(0);
-		tRes.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
-		tSensor.activate(true);
-		thDevice.activate(true);
+		temperature = tSensor.reading().create();
+		temperature.activate(true);
+		temperature.setKelvin(0);
+		temperature.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
+		tSensor.activate(false);
+		thDevice.activate(false);
 
 		ElectricityStorage battery = thDevice.electricityStorage().create();
 		IntegerResource batteryType = battery.type().create();
@@ -139,10 +135,19 @@ public class THSensor extends HM_hlDevice {
 		StateOfChargeSensor eSens = battery.chargeSensor().create();
 		batteryStatus = eSens.reading().create();
 		batteryStatus.activate(true);
-		//		batteryStatus.setValue(95);
+		// batteryStatus.setValue(95);
 		batteryStatus.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 		eSens.activate(true);
 		battery.activate(true);
+	}
+
+	private void enableHumidity() {
+		humidityEnabled = Status_hum.ENABLED;
+		HumiditySensor hSensor = thDevice.sensors().addDecorator("humidity", HumiditySensor.class);
+		humidity = hSensor.reading().create();
+		humidity.activate(true);
+		humidity.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
+		hSensor.activate(false);
 	}
 
 	@Override

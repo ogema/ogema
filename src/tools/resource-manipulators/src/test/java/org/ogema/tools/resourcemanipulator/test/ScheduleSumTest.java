@@ -16,6 +16,8 @@
 package org.ogema.tools.resourcemanipulator.test;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -126,30 +128,31 @@ public class ScheduleSumTest extends OsgiAppTestBase {
 		for(int i = 0; i < values.size(); ++i) {
 			float result = values.get(i).getValue().getFloatValue();
 			Float expectedResult = sum.get(i);
-			assertTrue("Sum for timestamp " + i + " is not correct! Expected: " +
-					expectedResult + ", but got: " + result + ", seed: " + seed,
-					nearlyEqual(result, expectedResult, EPSILON));
+			assertEquals("Sum for timestamp " + i + " is not correct! Expected: " +
+					expectedResult + ", but got: " + result + ", seed: " + seed, expectedResult,
+					result, EPSILON);
 		}
 		
 		tool.stop();
 		tool.deleteAllConfigurations();
+		// wait a second so the system can delete the configurations ... -> maybe register listener
+		// and count down?
+		sleep(1000);
 
         List<ManipulatorConfiguration> leftoverRules = tool.getConfigurations(ManipulatorConfiguration.class);
-        assertTrue(leftoverRules.isEmpty());
+        assertTrue("Not all ManipulatorConfigurations were deleted", leftoverRules.isEmpty());
+	}
+
+	private void sleep(int millis) {
+		try {
+			Thread.sleep(millis);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Test
 	public void testInputSchedReferencesOutputSched() {
-		final CountDownLatch latch = new CountDownLatch(1);
-		getApplicationManager().addExceptionListener(new ExceptionListener() {
-			@Override
-			public void exceptionOccured(Throwable exception) {
-				if(exception instanceof IllegalArgumentException) {
-					latch.countDown();
-				}
-			}
-		});
-		
 		final ResourceManipulator tool = new ResourceManipulatorImpl(getApplicationManager());
 		tool.start();
 		
@@ -168,21 +171,8 @@ public class ScheduleSumTest extends OsgiAppTestBase {
 		ScheduleSum scheduleSum = tool.createConfiguration(ScheduleSum.class);
 		scheduleSum.setAddends(inputs, out);
 		scheduleSum.setDelay(1000);
-		scheduleSum.commit();
+		assertFalse(scheduleSum.commit());
 		
-		for(int i = 0; i < 5; ++i) {
-			for(Schedule s : inputs) {
-				float nextFloat = 1;
-				s.addValue(i, new FloatValue(nextFloat));
-			}
-		}
-		
-		try {
-			assertTrue(latch.await(3, TimeUnit.SECONDS));
-		} catch (InterruptedException ignore) {
-		}
-
-		assertTrue(latch.getCount() == 0);
 	}
 
 	private int scheduleCounter = 0;
@@ -201,28 +191,6 @@ public class ScheduleSumTest extends OsgiAppTestBase {
 		result.program().setAsReference(ref);
 		result.activate(true);
 		return result.program();
-	}
-
-	/**
-	 * We use our own comparison for double values here because
-	 * Double.compare(...) won't use an epsilon due to rounding errors.
-	 *
-	 * @return <code>true</code> if a and b are nearly equal, <code>false</code>
-	 * otherwise.
-	 */
-	private boolean nearlyEqual(float a, float b, float epsilon) {
-		if (Double.compare(a, b) == 0) {
-			return true;
-		}
-		double diff = Math.abs(a - b);
-		if (a == 0 || b == 0 || diff < Float.MIN_NORMAL) {
-			// a or b is zero or both are extremely close to it
-			// relative error is less meaningful here
-			return diff < (epsilon * Float.MIN_NORMAL);
-		}
-		else { // use relative error
-			return diff / (Math.abs(a) + Math.abs(b)) < epsilon;
-		}
 	}
 
 	private class SumValueListener implements ResourceValueListener<Schedule> {

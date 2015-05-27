@@ -46,8 +46,7 @@ public class JaxbLink {
 
 	@XmlElement
 	public String getLink() {
-		// FIXME
-		return res.getPath("/");
+		return res.getLocation("/");
 	}
 
 	@XmlElement

@@ -47,8 +47,7 @@ return function(callback) {
 	    rows : [],
 	    services : {}
 	};
-
-	dashboard.title = "Log Data";
+	dashboard.title = "Schedule viewer";
 	dashboard.editable = true;
 	dashboard.pulldowns = pulldowns;
 	//dashboard.refresh = "5s";  // set below
@@ -56,6 +55,7 @@ return function(callback) {
 	  from: "now-5m",
 	  to: "now"
 	};
+	var refreshBak;
 	
 	$.ajax({
 		method: 'GET',
@@ -66,15 +66,20 @@ return function(callback) {
 	   console.log("Parameter callback received ", paramsResult);
 	   var params = JSON.parse(paramsResult)[0].parameters;
 	   var refr = params.updateInterval;
+	   dashboard.refresh = "1s";	   
 	   if (refr > 0) {
-		   dashboard.refresh = String(refr/1000) + "s";
-	   }
+		  // dashboard.refresh = String(refr/1000) + "s";
+		  refreshBak = String(refr/1000) + "s";
+	   } 
 	   var rows = params.panels;
 	   var panels = {};
 	   var isReady = {};
 	   var counter = {};
 	   var span = {};
 	   var panelId = 1;
+	   var restrictions = {};
+	   if (params.hasOwnProperty("restrictions")) restrictions = params.restrictions;
+	   console.log("restrictions is",restrictions);
 	   Object.keys(rows).forEach(function(rowName) {
 		 isReady[rowName] = false;
 		 counter[rowName] = 0;
@@ -86,7 +91,12 @@ return function(callback) {
          if (divisor > 4) {
         	 divisor = 4;
          }
-         span[rowName] = span[rowName]/divisor;         
+         span[rowName] = span[rowName]/divisor;    
+         var rowRestr = {};
+         if (restrictions.hasOwnProperty(rowName)) {
+         	rowRestr = restrictions[rowName];
+         }
+          console.log("rowRest is",rowRestr);
          Object.keys(resourceTypes).forEach(function(pnl) {
         // for (var ct=0;ct<resourceTypes.length;ct++) {
         	 var resType  = resourceTypes[pnl];
@@ -97,7 +107,10 @@ return function(callback) {
         	 } else {
         		 queryParam  = 'resourceType=' + resType;
         	 }
-        	// console.log("   queryParam",queryParam);
+        	 if (rowRestr.hasOwnProperty(pnl)) {
+        	 	queryParam = queryParam + '&restrictions=' + rowRestr[pnl]; 
+        	 }
+        	console.log("   queryParam",queryParam);
 	       	 $.ajax({
 				    method: 'GET',
 				    url:  SERVLET_ADDRESS + '/series?' + queryParam, 
@@ -178,6 +191,16 @@ return function(callback) {
 	  tick(); 
     });  // end rows loop
 
+	// make sure values are received once, then set update interval to desired value
+    setTimeout(function() {
+    	if (typeof(refreshBak) == "undefined") {
+    		helper.set_interval();
+    	}
+    	else {
+    		helper.set_interval(refreshBak);
+  	 	}  
+    }   ,2000);
+    
     // when dashboard is composed call the callback function and pass the dashboard
     callback(dashboard);
   });

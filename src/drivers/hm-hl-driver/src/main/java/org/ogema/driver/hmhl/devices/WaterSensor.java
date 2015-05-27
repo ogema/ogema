@@ -15,17 +15,14 @@
  */
 package org.ogema.driver.hmhl.devices;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
-import org.ogema.core.channelmanager.measurements.ByteArrayValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.driver.hmhl.Constants;
-import org.ogema.driver.hmhl.Converter;
 import org.ogema.driver.hmhl.HM_hlConfig;
 import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
@@ -48,43 +45,14 @@ public class WaterSensor extends HM_hlDevice {
 
 	@Override
 	protected void parseValue(Value value, String channelAddress) {
-		byte[] array = null;
-		long state = 0;
-		long err = 0;
-		String state_str = "";
-		float batt;
-
-		if (value instanceof ByteArrayValue) {
-			array = value.getByteArrayValue();
+		switch (channelAddress) {
+		case "ATTRIBUTE:0001":
+			highWater.setValue(value.getStringValue());
+			break;
+		case "ATTRIBUTE:0002":
+			batteryStatus.setValue(value.getFloatValue());
+			break;
 		}
-		byte msgtype = array[array.length - 1];
-		// byte msgflag = array[array.length - 2];
-		byte[] msg = ArrayUtils.removeAll(array, array.length - 2, array.length - 1);
-
-		if ((msgtype == 0x10 && msg[0] == 0x06) || (msgtype == 0x02 && msg[0] == 0x01)) {
-			state = Converter.toLong(msg[1]);
-			err = Converter.toLong(msg[2]);
-
-		}
-		else if (msgtype == 0x41) {
-			state = Converter.toLong(msg[2]);
-			err = Converter.toLong(msg[0]);
-		}
-
-		String err_str = ((err & 0x80) > 0) ? "low" : "ok";
-		batt = ((err & 0x80) > 0) ? 5 : 95;
-
-		if (state == 0x00)
-			state_str = "dry";
-		else if (state == 0x64)
-			state_str = "damp";
-		else if (state == 0xC8)
-			state_str = "wet";
-
-		System.out.println("State of HighWater: " + state_str);
-		System.out.println("State of Battery: " + err_str);
-		highWater.setValue(state_str);
-		batteryStatus.setValue(batt);
 	}
 
 	private void addMandatoryChannels() {
@@ -94,7 +62,16 @@ public class WaterSensor extends HM_hlDevice {
 		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
 		attributeConfig.channelAddress = "ATTRIBUTE:0001";
 		attributeConfig.timeout = -1;
-		attributeConfig.resourceName = hm_hlConfig.resourceName + "_State";
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_HighWater";
+		attributeConfig.chLocator = addChannel(attributeConfig);
+
+		attributeConfig = new HM_hlConfig();
+		attributeConfig.driverId = hm_hlConfig.driverId;
+		attributeConfig.interfaceId = hm_hlConfig.interfaceId;
+		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
+		attributeConfig.channelAddress = "ATTRIBUTE:0002";
+		attributeConfig.timeout = -1;
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_BatteryStatus";
 		attributeConfig.chLocator = addChannel(attributeConfig);
 
 		WaterDetector threeStateDevice = resourceManager.createResource(hm_hlConfig.resourceName, WaterDetector.class);

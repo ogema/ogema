@@ -18,7 +18,9 @@ package org.ogema.tools.resourcemanipulator.test;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
 import static org.junit.Assert.*;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ogema.core.logging.OgemaLogger;
@@ -85,7 +87,7 @@ public class ThresholdTest extends OsgiAppTestBase {
 		}
 	};
 
-	private final ResourceValueListener valueListener = new ResourceValueListener() {
+	private final ResourceValueListener<Resource> valueListener = new ResourceValueListener<Resource>() {
 
 		@Override
 		public void resourceChanged(Resource resource) {
@@ -135,9 +137,17 @@ public class ThresholdTest extends OsgiAppTestBase {
 
 		tool.stop();
 		tool.deleteAllConfigurations();
+		sleep(1000);
 
 		List<ManipulatorConfiguration> leftoverRules = tool.getConfigurations(ManipulatorConfiguration.class);
-		assertTrue(leftoverRules.isEmpty());
+		assertTrue("Not all ManipulatorConfigurations were deleted", leftoverRules.isEmpty());
 	}
 
+	private void sleep(int millis) {
+		try {
+			Thread.sleep(millis);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
 }

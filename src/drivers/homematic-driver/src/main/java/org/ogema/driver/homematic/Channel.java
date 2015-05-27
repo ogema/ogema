@@ -24,7 +24,7 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
 
 /**
- * Each channel represents a ZigBee Cluster Command/Attribute
+ * Each channel represents a Homematic Command/Attribute
  * 
  * @author puschas,baerthbn
  * 

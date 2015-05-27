@@ -15,7 +15,7 @@
  */
 package org.ogema.model.ranges;
 
-import org.ogema.core.model.SimpleResource;
+import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.model.prototypes.Data;
 
@@ -30,13 +30,13 @@ public interface Range extends Data {
 	 * Upper range threshold. If this is not set, the range is unlimited towards the upper end.
 	 * Unit: Defined in the model extending this prototype.
 	 */
-	SimpleResource upperLimit();
+	ValueResource upperLimit();
 
 	/**
 	 * Lower range threshold. If this is not set, the range is unlimited towards the lower end.
 	 * Unit: Defined in the model extending this prototype.
 	 */
-	SimpleResource lowerLimit();
+	ValueResource lowerLimit();
 
 	/**
 	 * If true the upper limit is considered part of the range, otherwise the upper limit value is considered outside

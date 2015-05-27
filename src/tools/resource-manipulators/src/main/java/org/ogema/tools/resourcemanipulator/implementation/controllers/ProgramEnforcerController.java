@@ -172,6 +172,7 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 	 * @param t0 time that shall be considered "now" for the purpose of
 	 * re-scheduling (i.e. the time of the entry last written).
 	 */
+	@SuppressWarnings("fallthrough")
 	private void restartTimer(long t0) {
 		final InterpolationMode interpolation = program.getInterpolationMode();
 		switch (interpolation) {
@@ -227,6 +228,7 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 	 *
 	 * @param eventType
 	 */
+	@SuppressWarnings("fallthrough")
 	private void scheduleStructureChanged(ResourceStructureEvent.EventType eventType) {
 		switch (eventType) { // react to changes that may effect the target resource.
 		case RESOURCE_ACTIVATED:
@@ -241,6 +243,7 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 	/**
 	 * Structure of the target resource has been changed.
 	 */
+	@SuppressWarnings("fallthrough")
 	private void targetStructureChanged(ResourceStructureEvent.EventType eventType) {
 		switch (eventType) { // react to changes that may effect the target resource.
 		case RESOURCE_CREATED:

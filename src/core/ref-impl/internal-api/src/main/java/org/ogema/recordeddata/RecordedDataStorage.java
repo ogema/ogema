@@ -16,6 +16,7 @@
 package org.ogema.recordeddata;
 
 import java.util.List;
+import java.util.Map;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.recordeddata.RecordedData;
@@ -38,6 +39,8 @@ public interface RecordedDataStorage extends RecordedData {
 	 *            list of new values to be inserted
 	 */
 	public void insertValues(List<SampledValue> values) throws DataRecorderException;
+
+	public Map<String, RecordedDataConfiguration> getPersistenConfigurationMap();
 
 	/**
 	 * Update the configuration of the time series storage.

@@ -27,62 +27,67 @@ import org.ogema.model.prototypes.PhysicalElement;
 @SuppressWarnings("unused")
 public class ControllableMultiPattern extends ResourcePattern<MultiSwitch> {
 
-//	private final ApplicationManager appMan;
-	
+	//	private final ApplicationManager appMan;
+
 	public ControllableMultiPattern(Resource match) {
 		super(match);
 	}
-	
-	private FloatResource stateControl = model.stateControl();  
-	
-	private FloatResource stateFeedback = model.stateFeedback(); 
-	
-	@Equals(value=1)
-	private BooleanResource controllable = model.controllable(); 
-	
+
+	@Existence(required = CreateMode.OPTIONAL)
+	private FloatResource stateControl = model.stateControl();
+
+	private FloatResource stateFeedback = model.stateFeedback();
+
+	@Equals(value = 1)
+	private BooleanResource controllable = model.controllable();
+
 	public Resource getUppermostParent() {
 		Resource res = model;
-		while (res.getParent() != null) res = res.getParent();
+		while (res.getParent() != null)
+			res = res.getParent();
 		return res;
 	}
-	
+
 	public String getName() {
 		PhysicalElement parent;
 		try {
 			parent = (PhysicalElement) getUppermostParent();
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			parent = model;
 		}
-		if (parent.name().isActive()) return parent.name().getValue();
-		else return parent.getName();
+		if (parent.name().isActive())
+			return parent.name().getValue();
+		else
+			return parent.getLocation();
 	}
-	
+
 	public String getValue() {
-		if (!stateFeedback.isActive()) return "0";
+		if (!stateFeedback.isActive())
+			return "0";
 		return String.valueOf(stateFeedback.getValue());
 	}
-	
+
 	public String getType() {
 		return getUppermostParent().getResourceType().getSimpleName();
 	}
-	
+
 	public String getRoom() {
 		PhysicalElement parent;
 		try {
 			parent = (PhysicalElement) getUppermostParent();
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			parent = model;
 		}
 		try {
-			if (parent.location().room().name().isActive()) return parent.location().room().name().getValue();
-			else if (parent.location().room().isActive()) return parent.location().room().getLocation();
-			else return "";
+			if (parent.location().room().name().isActive())
+				return parent.location().room().name().getValue();
+			else if (parent.location().room().isActive())
+				return parent.location().room().getLocation();
+			else
+				return "";
 		} catch (Exception e) {
 			return "";
 		}
 	}
-	
 
 }

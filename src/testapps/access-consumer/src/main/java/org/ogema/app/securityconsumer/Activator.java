@@ -1,4 +1,19 @@
 /**
+ * This file is part of OGEMA.
+ *
+ * OGEMA is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
+ *
+ * OGEMA is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ */
+/**
  * Copyright 2009 - 2014
  *
  * Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
@@ -15,73 +30,28 @@ import java.io.IOException;
 
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.ServiceReference;
-//import org.ogema.app.securityprovider.Access;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
-import org.ogema.model.devices.sensoractordevices.SensorDevice;
-import org.ogema.model.locations.Room;
 
 public class Activator implements BundleActivator, Application {
-	// Access us;
+	public static boolean bundleIsRunning = true;
 
 	public void start(BundleContext bc) throws IOException {
 		bc.registerService(Application.class, this, null);
-		// ServiceReference<?> sRef = bc.getServiceReference(Access.class.getName());
-		// if (sRef != null) {
-		// us = (Access) bc.getService(sRef);
-		// if (us != null) {
-		//
-		// Thread run = new Thread(new Runnable() {
-		//
-		// @Override
-		// public void run() {
-		// // Action trough a privileged action by the service provider.
-		// // The app doesn't need to have a permission for that.
-		// us.login("admin");
-		//
-		// // The app must have a permission to make the following actions.
-		// // The service provider (e.g. ResourceManager) uses the
-		// // PermissionManager to make the
-		// // checks needed.
-		//
-		// // SecurityException expected
-		// boolean exception = false;
-		// try {
-		// us.getResource("type=*,path=/top1/sub1");
-		// } catch (Exception e) {
-		// exception = true;
-		// }
-		// if (exception) {
-		// System.out.println("!FAILED! SecurityException shouldn't be thrown now. Test failed!");
-		// throw new RuntimeException();
-		// }
-		//
-		// us.getResourcesOfType(SensorDevice.class.getName());
-		// us.getChannel("busid=*,devaddr=11 16 22,chaddr=12 176 201");
-		//
-		// }
-		// });
-		// run.start();
-		// }
-		// bc.ungetService(sRef);
-		// }
 	}
 
 	public void stop(BundleContext bc) throws IOException {
-		// ServiceReference<?> sRef = bc.getServiceReference(Access.class.getName());
-		// if (sRef != null) {
-		// Access us = (Access) bc.getService(sRef);
-		// if (us != null) {
-		// us.logout();
-		// }
-		// bc.ungetService(sRef);
-		// }
+		bundleIsRunning = false;
 	}
 
 	@Override
 	public void start(ApplicationManager appManager) {
-		Room r = appManager.getResourceManagement().createResource("ExamProbe", Room.class);
+		try {
+			new Zwave(appManager);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		new HMPowerboxTest(appManager.getResourceAccess());
 	}
 
 	@Override

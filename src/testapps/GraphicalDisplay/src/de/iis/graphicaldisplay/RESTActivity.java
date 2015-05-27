@@ -499,44 +499,45 @@ public String getIPAddressFromTextField() {
 		    			while((line = br.readLine()) != null) result = result + line;
 		    			in.close();
 		    	
-						JSONObject jsonObj = new JSONObject(result);
-						
-						if(jsonObj != null) {
+		    			
+		    			if(result.length() > 1)
+		    			{
+							JSONObject jsonObj = new JSONObject(result);
 							
-							JSONArray jsonArr = jsonObj.getJSONArray("values");
-						
-							if(!jsonArr.isNull(0))
-							{
-								if(jsonArr.getBoolean(0) == true) toggle1Status = "on";
-								else toggle1Status = "off";
-							}
+							if(jsonObj != null) {
+								
+								JSONArray jsonArr = jsonObj.getJSONArray("values");
 							
-							if(!jsonArr.isNull(1))
-							{
-								if(jsonArr.getBoolean(1) == true) toggle2Status = "on";
-								else toggle2Status = "off";
+								if(!jsonArr.isNull(0))
+								{
+									if(jsonArr.getBoolean(0) == true) toggle1Status = "on";
+									else toggle1Status = "off";
+								}
+								
+								if(!jsonArr.isNull(1))
+								{
+									if(jsonArr.getBoolean(1) == true) toggle2Status = "on";
+									else toggle2Status = "off";
+								}
+								
+								if(!jsonArr.isNull(2))
+								{
+									if(jsonArr.getBoolean(2) == true) toggle3Status = "on";
+									else toggle3Status = "off";
+								}
+								
+								if(!jsonArr.isNull(3))
+								{
+									if(jsonArr.getBoolean(3) == true) toggle4Status = "on";
+									else toggle4Status = "off";
+								}
 							}
-							
-							if(!jsonArr.isNull(2))
-							{
-								if(jsonArr.getBoolean(2) == true) toggle3Status = "on";
-								else toggle3Status = "off";
-							}
-							
-							if(!jsonArr.isNull(3))
-							{
-								if(jsonArr.getBoolean(3) == true) toggle4Status = "on";
-								else toggle4Status = "off";
-							}
-						}
-						
-						
+		    			}
 		    		}
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-	    	   
-	    	  
+	 
 	    	   
 			return ""; 	
 		 }

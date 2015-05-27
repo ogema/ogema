@@ -25,7 +25,6 @@ import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceException;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceGraphException;
 import org.ogema.core.resourcemanager.ResourceValueListener;
@@ -64,12 +63,14 @@ public class RootResource implements Resource {
 	}
 
 	@Override
-	public void addResourceListener(ResourceListener listener, boolean recursive) {
+	@Deprecated
+	public void addResourceListener(org.ogema.core.resourcemanager.ResourceListener listener, boolean recursive) {
 		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
 	@Override
-	public boolean removeResourceListener(ResourceListener listener) {
+	@Deprecated
+	public boolean removeResourceListener(org.ogema.core.resourcemanager.ResourceListener listener) {
 		throw new UnsupportedOperationException("Not supported yet.");
 	}
 

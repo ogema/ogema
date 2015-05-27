@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.ogema.driver.homematic.Activator;
 import org.ogema.driver.homematic.manager.RemoteDevice.InitStates;
-import org.ogema.driver.homematic.manager.Messages.Message;
+import org.ogema.driver.homematic.manager.messages.Message;
 import org.slf4j.Logger;
 
 /**
@@ -46,10 +46,9 @@ public class MessageHandler {
 
 	public void messageReceived(StatusMessage msg) {
 		RemoteDevice device = localDevice.getDevices().get(msg.source);
-		device.parseMsg(msg);
 		logger.debug("Received ?-token: " + msg.rtoken);
 		if (msg.type == 'E') { // Must be parsed
-			device.setValue(msg.msg_data, msg.msg_flag, msg.msg_type);
+			device.parseMsg(msg);
 
 		}
 		else { // is "R"
@@ -69,9 +68,8 @@ public class MessageHandler {
 	}
 
 	public void sendMessage(Message message) {
-		SendThread sendThread;
-		if (runningThreads.containsKey(message.getDest())) {
-			sendThread = runningThreads.get(message.getDest());
+		SendThread sendThread = runningThreads.get(message.getDest());
+		if (sendThread != null) {
 			sendThread.addMessage(message);
 		}
 		else {

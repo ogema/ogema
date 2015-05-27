@@ -16,6 +16,7 @@
 package org.ogema.tools.impl;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.JsonGenerator;
@@ -24,6 +25,7 @@ import org.codehaus.jackson.map.SerializerProvider;
 import org.codehaus.jackson.map.ser.std.SerializerBase;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.schedule.Schedule;
+import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 import org.ogema.core.tools.SerializationManager;
 import org.ogema.serialization.JaxbFactory;
 import org.ogema.serialization.JaxbLink;
@@ -35,7 +37,7 @@ import org.ogema.serialization.JaxbResource;
  */
 public class ResourceSerializer extends SerializerBase<Resource> {
 
-	private ObjectMapper mapper;
+	private final ObjectMapper mapper;
 
 	public ResourceSerializer(ObjectMapper mapper) {
 		super(Resource.class);
@@ -45,11 +47,11 @@ public class ResourceSerializer extends SerializerBase<Resource> {
 	@Override
 	public void serialize(Resource t, JsonGenerator jg, SerializerProvider sp) throws IOException,
 			JsonGenerationException {
-		if (t instanceof Schedule) {
+		if (t instanceof ReadOnlyTimeSeries) {
 			sp.defaultSerializeValue(new JaxbLink(t), jg);
 		}
 		else {
-			JaxbResource jr = JaxbFactory.createJaxbResource(t, (SerializationManager) null);// new JaxbResource(t,
+			JaxbResource jr = JaxbFactory.createJaxbResource(t, null);// new JaxbResource(t,
 			// true, true, true);
 			sp.defaultSerializeValue(jr, jg);
 		}

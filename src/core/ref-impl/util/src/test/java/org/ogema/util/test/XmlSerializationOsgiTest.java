@@ -16,8 +16,10 @@
 package org.ogema.util.test;
 
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.xml.bind.JAXBContext;
@@ -31,6 +33,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.core.model.Resource;
+import org.ogema.core.model.array.BooleanArrayResource;
+import org.ogema.core.model.array.ByteArrayResource;
+import org.ogema.core.model.array.FloatArrayResource;
+import org.ogema.core.model.array.IntegerArrayResource;
+import org.ogema.core.model.array.StringArrayResource;
+import org.ogema.core.model.array.TimeArrayResource;
 import org.ogema.core.model.schedule.DefinitionSchedule;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.IntegerResource;
@@ -271,6 +280,45 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		Unmarshaller u = ctx.createUnmarshaller();
 		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
 		Assert.assertTrue("workplaces is not a ResourceList: " + r, r instanceof ResourceList);
+	}
+
+	@Test
+	public void arrayResourceValidation() throws Exception {
+		Resource arrays = resman.createResource(newResourceName(), Resource.class);
+
+		arrays.addDecorator("booleans", BooleanArrayResource.class).setValues(new boolean[] { true, false, true });
+		arrays.addDecorator("bytes", ByteArrayResource.class).setValues(new byte[] { 0x1b, 0x2b });
+		arrays.addDecorator("floats", FloatArrayResource.class).setValues(new float[] { 2f, 3, 4, 5 });
+		arrays.addDecorator("ints", IntegerArrayResource.class).setValues(new int[] { 0, 1, 2, 3 });
+
+		arrays.addDecorator("strings", StringArrayResource.class).setValues(new String[] { "a", "b", "c" });
+		arrays.addDecorator("longs", TimeArrayResource.class).setValues(new long[] { 0xdeadbeefL, 1, 2, 3 });
+
+		StringWriter output = new StringWriter();
+		sman.setMaxDepth(100);
+		sman.writeXml(output, arrays);
+		System.out.println(output);
+
+		sman.writeJson(new OutputStreamWriter(System.out), arrays);
+
+		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		validateOgemaXml(output.toString());
+
+		Unmarshaller u = ctx.createUnmarshaller();
+		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
+
+		Assert.assertEquals(Arrays.asList(true, false, true), ((org.ogema.serialization.jaxb.BooleanArrayResource) r
+				.get("booleans")).getValues());
+		Assert.assertTrue(Arrays.equals(new byte[] { 0x1b, 0x2b }, ((org.ogema.serialization.jaxb.ByteArrayResource) r
+				.get("bytes")).getValues()));
+		Assert.assertEquals(Arrays.asList(2f, 3f, 4f, 5f), ((org.ogema.serialization.jaxb.FloatArrayResource) r
+				.get("floats")).getValues());
+		Assert.assertEquals(Arrays.asList(0, 1, 2, 3), ((org.ogema.serialization.jaxb.IntegerArrayResource) r
+				.get("ints")).getValues());
+		Assert.assertEquals(Arrays.asList("a", "b", "c"), ((org.ogema.serialization.jaxb.StringArrayResource) r
+				.get("strings")).getValues());
+		Assert.assertEquals(Arrays.asList(0xdeadbeefL, 1L, 2L, 3L), ((org.ogema.serialization.jaxb.TimeArrayResource) r
+				.get("longs")).getValues());
 	}
 
 }

@@ -44,6 +44,7 @@ var client = null;
 var selectedApp;
 var permContentToSend = "";
 var uploadApp = "";
+var appstoreListHint = "Click the arrow to get the list of the registered marketplaces.";
 
 $(function() {
 
@@ -54,87 +55,12 @@ $(function() {
 		$("#store").parent().css("border", "1px solid grey");
 	});
 
-	$("#dialUpload").dialog({
-		autoOpen : false,
-		resizeable : true,
-		draggable : true,
-		close : function() {
-			clearAppDisplay();
-			$('div#wrap').css('opacity', '1.0');
-			$('div#footer').css('opacity', '1.0');
-			$('div#header').css('opacity', '1.0');
-		},
-		open : function() {
-			$('div#wrap').css('opacity', '0.3');
-			$('div#footer').css('opacity', '0.3');
-			$('div#header').css('opacity', '0.3');
-		},
-		buttons : [ {
-			text : "Submit",
-			click : function() {
-				var jsonContent = getInputBack($(this));
-				$(this).dialog("close");
-				// function in jsApps.js
-				console.log(uploadApp);
-				sendPermsToServer(uploadApp, jsonContent, "localTempDirectory");
-				uploadApp = "";
-			}
-		} ],
-		minWidth : 300,
-		minHeight : 100,
-		width : $("div#wrap").width(),
-		height : $(window).height() - 500
-	});
-	$("#dialUpload").html("<form></form>");
-
 	$("#webResourceDisplay").dialog({
 		autoOpen : false,
 		resizeable : true,
 		draggable : true,
 		close : function() {
 			clearAppDisplay();
-			$('div#wrap').css('opacity', '1.0');
-			$('div#footer').css('opacity', '1.0');
-			$('div#header').css('opacity', '1.0');
-		},
-		open : function() {
-			$('div#wrap').css('opacity', '0.3');
-			$('div#footer').css('opacity', '0.3');
-			$('div#header').css('opacity', '0.3');
-		},
-		minWidth : 300,
-		minHeight : 100,
-		width : $("div#wrap").width(),
-		height : $(window).height() - 500
-	});
-
-	$("#editWebResources").dialog({
-		autoOpen : false,
-		resizeable : true,
-		draggable : true,
-		buttons : [ {
-			text : "Submit",
-			click : function() {
-				// POST settings to server
-				var isReady = getPermContentToSend();
-				// wait until getPermContentToSend() is done
-				if (isReady == true) {
-					var portletID = $(".selectedPortlet")[0].id;
-					$.post("/security/config/installedapps?action=setPermission&app=" + portletID, {
-						settings : "" + permContentToSend
-					}, function(data, status) { // if
-						// successfull
-						alert(status);
-					}).fail(function(xhr) {
-						alert(xhr);
-					});
-					$(this).dialog("close");
-				}
-			}
-		} ],
-		close : function() {
-			$(this).html("");
-			permContentToSend = "";
 			$('div#wrap').css('opacity', '1.0');
 			$('div#footer').css('opacity', '1.0');
 			$('div#header').css('opacity', '1.0');
@@ -207,17 +133,8 @@ $(function() {
 		listSysApps();
 	});
 
-	$("div#resources .head").click(function() {
-		var display = $("div#resources .part").css("display");
-		if (display == "block") {
-			$("#jsTree_Resources").jstree("destroy");
-		} else {
-			showResources();
-		}
-	});
-
 	// ------------ APP MANAGEMENT
-	$("#store").val("enter an appstore...");
+	$("#store").val(appstoreListHint);
 	changeTextColor();
 	$('input:text').button().css({
 		'text-align' : 'left',
@@ -274,9 +191,6 @@ $(function() {
 				$("ul#menu").toggle("slide", {
 					direction : "up"
 				});
-				// $("#wrapArrow").toggle("slide", {
-				// direction : "up"
-				// });
 			});
 		});
 	}
@@ -292,14 +206,6 @@ $(function() {
 			$("#menu").html("");
 			$("#menu").css("display", "none");
 		}
-
-		// $("#menu").toggle("slide", {
-		// direction : "up"
-		// });
-
-		// $("#wrapArrow").toggle("slide", {
-		// direction : "up"
-		// });
 	});
 
 	// click on head toggles its part
@@ -313,8 +219,6 @@ $(function() {
 			}, 'fast')
 		});
 	});
-
-//	pageAction();
 });
 
 // ------------------------------ FUNCTIONS ---------------------------- //
@@ -379,14 +283,24 @@ function listSysApps() {
 				primary : "ui-icon-gear"
 			}
 		});
-		$("button#deleteApp").button({
+		$("button#installPerms").button({
 			icons : {
-				primary : "ui-icon-trash"
+				primary : "ui-icon-wrench"
 			}
 		});
 		$("button#webResources").button({
 			icons : {
 				primary : "ui-icon-folder-collapsed"
+			}
+		});
+		$("button#start").button({
+			icons : {
+				primary : "ui-icon-play"
+			}
+		});
+		$("button#stop").button({
+			icons : {
+				primary : "ui-icon-stop"
 			}
 		});
 	});
@@ -442,195 +356,6 @@ function fillAppDisplay(appName, policyArr) {
 	}
 }
 
-function fillEditDisplay(appName, policyArr) {
-	$("#editWebResources").html("");
-	var countActions;
-	var actions;
-	var actionForThis;
-	for (var i = 0; i < policyArr.length; i++) { // Anzahl POLICIES
-		// For each Policy one DIV.wrapPolicies with slideCheckbox
-		$("#editWebResources").append(
-				"<div class='wrapPols' id='wrapPolicy" + i + "'><div class='slide'><input class='slideCheck' type='checkbox' onchange='policyChecked(" + i
-						+ ")' value='none' id='slide" + i + "' name='check' /><label for='slide" + i + "'></label></div></div><br>");
-
-		// In each policyWrap there is one DIV for permissions and one DIV for
-		// conditions
-		$("#wrapPolicy" + i).append(
-				"<div class='polPermissions' id='polPerm" + i + "'><strong>Permissions</strong><br><br></div> <br> <div class='polConditions' id='polCond" + i
-						+ "'><strong>Conditions</strong><br><br></div><br>");
-		for (var k = 0; k < policyArr[i].conditions.length; k++) {
-			$("#polCond" + i).append(
-					"<div class='wrapOnePolCond' id='wrapPolCond" + i + k + "'><input type='text' value='" + policyArr[i].conditions[k].type
-							+ "' id='condtype_" + i + k + "' class='condType'><label for='condtype_" + i + k + "'>Type</label>"
-							+ "<br><input type='text' value='" + policyArr[i].conditions[k].arg1 + "' id='arg1_" + i + k
-							+ "' class='condArg1'><label for='arg1_" + i + k + "'>Arg1</label>" + "<br><input type='text' value='"
-							+ policyArr[i].conditions[k].arg2 + "' id='arg2_" + i + k + "' class='condArg2'><label for='arg2_" + i + k + "'>Arg2</label>");
-		}
-
-		// Start value of the slideCheckboxes
-		if (policyArr[i].mode == "allow") {
-			$("#slide" + i).prop("checked", "true");
-			$("#slide" + i).parent().css("background", "#454545");
-		} else {
-			$("#slide" + i).prop("checked", "false");
-			$("#slide" + i).parent().css("background", "#E8E8E8");
-		}
-
-		for (var j = 0; j < policyArr[i].permissions.length; j++) { // In one
-			// Policy
-			// Anzahl an
-			// PERMISSIONS
-
-			var actions = policyArr[i].permissions[j].actions;
-			if (actions == "") {
-				countActions = 0;
-			} else {
-				if (actions.indexOf(",") != -1) {
-					countActions = 2;
-					actionForThis = actions.split(",");
-				} else {
-					countActions = 1;
-					actionForThis = actions;
-				}
-			}
-
-			if (countActions == 1) {
-				$("#polPerm" + i).append(
-						"<div class='wrapOnePolPerm' id='wrapPolPerm" + i + j + "'><button class='allowPerButton' onclick='deletePermission(" + i + "," + j
-								+ ")'></button>Actions<br><input type='checkbox' id='action" + i + j + "' name='" + actionForThis
-								+ "' checked><label for='action" + i + j + "'>" + policyArr[i].permissions[j].actions
-								+ "</label><br><br><input type='text' value='" + policyArr[i].permissions[j].type + "' id='type" + i + j
-								+ "' class='permType'><label for='type" + i + j + "'>Type</label>" + "<br><input type='text' value='"
-								+ policyArr[i].permissions[j].filter + "' id='filter" + i + j + "' class='permFilter'><label for='filter" + i + j
-								+ "'>Filter</label>" + "<br></div>");
-			}
-			if (countActions == 0) {
-				$("#polPerm" + i).append(
-						"<div class='wrapOnePolPerm' id='wrapPolPerm" + i + j + "'><button class='allowPerButton' onclick='deletePermission(" + i + "," + j
-								+ ")'></button>Actions: none<br><br><input type='text' value='" + policyArr[i].permissions[j].type + "' id='type" + i + j
-								+ "' class='permType'><label for='type" + i + j + "'>Type</label>" + "<br><input type='text' value='"
-								+ policyArr[i].permissions[j].filter + "' id='filter" + i + j + "' class='permFilter'><label for='filter" + i + j
-								+ "'>Filter</label>" + "<br></div>");
-			}
-			if (countActions == 2) {
-				var actionsInput = "";
-				for (var x = 0; x < actionForThis.length; x++) {
-					actionsInput = actionsInput + "<input type='checkbox' id='action" + i + j + x + "' name='" + actionForThis[x]
-							+ "' checked><label for='action" + i + j + x + "'>" + actionForThis[x] + "</label><br>";
-				}
-				$("#polPerm" + i).append(
-						"<div class='wrapOnePolPerm' id='wrapPolPerm" + i + j + "'><button class='allowPerButton' onclick='deletePermission(" + i + "," + j
-								+ ")'></button>Actions<br>" + actionsInput + "<br><br><input type='text' value='" + policyArr[i].permissions[j].type
-								+ "' id='type" + i + j + "' class='permType'><label for='type" + i + j + "'>Type</label>" + "<br><input type='text' value='"
-								+ policyArr[i].permissions[j].filter + "' id='filter" + i + j + "' class='permFilter'><label for='filter" + i + j
-								+ "'>Filter</label>" + "<br></div>");
-			}
-		}
-	}
-	$(".allowPerButton").button({
-		icons : {
-			primary : "ui-icon-close"
-		},
-		text : false
-	});
-	if ($("#appDisplay").html() != "") {
-		$("#appDisplay").dialog("open");
-	}
-}
-
-function deletePermission(i, j) {
-	var permId = "wrapPolPerm" + i + j;
-	$("#" + permId).remove();
-}
-
-function policyChecked(num) {
-	var idOfCheckbox = "slide" + num;
-	if ($("#" + idOfCheckbox).prop("checked") == true) {
-		$("#" + idOfCheckbox).parent().css("background", "#454545");
-	} else {
-		$("#" + idOfCheckbox).parent().css("background", "#E8E8E8");
-	}
-}
-
-function getPermContentToSend() {
-	var thisDia = $("div#editWebResources");
-	var countPolicies = $("div#editWebResources").find("div.wrapPols").length;
-	var countPermsInOnePolicy;
-	var countCondsInOnePolicy;
-
-	var permString = "";
-	var condString = "";
-	var jsonString = "";
-	var allPolicies = "";
-	var jsonToSend = "";
-	var mode = "";
-
-	// for each POLICY
-	for (var x = 0; x < countPolicies; x++) {
-		var isChecked = thisDia.find("div#wrapPolicy" + x).find(".slide").find(".slideCheck").prop("checked");
-		if (isChecked == true) {
-			mode = "ALLOW";
-		} else {
-			mode = "DENY";
-		}
-		countPermsInOnePolicy = thisDia.find("div#wrapPolicy" + x).find(".polPermissions").find(".wrapOnePolPerm").length;
-		countCondsInOnePolicy = thisDia.find("div#wrapPolicy" + x).find(".polConditions").find(".wrapOnePolCond").length;
-
-		for (var h = 0; h < countPermsInOnePolicy; h++) {
-			var currentPerm = thisDia.find("div#wrapPolicy" + x).find(".polPermissions").find(".wrapOnePolPerm")[h].id;
-			var permType = $("#" + currentPerm).find(".permType").val();
-			var permFilter = $("#" + currentPerm).find(".permFilter").val();
-			var actionsAsArray = $("#" + currentPerm).find("input:checkbox:checked").map(function() {
-				return $(this).next("label").text().split(' ');
-			});
-
-			var actionsAsString = "";
-			for (var a = 0; a < actionsAsArray.length; a++) {
-				if (actionsAsString != "") {
-					actionsAsString = actionsAsString + "," + actionsAsArray[a];
-				} else {
-					actionsAsString = actionsAsArray[a];
-				}
-			}
-
-			if (permString == "") {
-				permString = permString + '{"type":"' + permType + '", "filter":"' + permFilter + '", "actions":"' + actionsAsString + '"}';
-			} else {
-				permString = permString + ', {"type":"' + permType + '", "filter":"' + permFilter + '", "actions":"' + actionsAsString + '"}';
-			}
-			jsonString = '{"mode":"' + mode + '", "permissions":[' + permString + '], "conditions":[';
-
-		}
-
-		for (var m = 0; m < countCondsInOnePolicy; m++) {
-			var condType = thisDia.find("div#wrapPolicy" + x).find(".polConditions").find("#wrapPolCond" + x + m).find(".condType").val();
-			var condArg1 = thisDia.find("div#wrapPolicy" + x).find(".polConditions").find("#wrapPolCond" + x + m).find(".condArg1").val();
-			var condArg2 = thisDia.find("div#wrapPolicy" + x).find(".polConditions").find("#wrapPolCond" + x + m).find(".condArg2").val();
-
-			if (condString == "") {
-				condString = condString + '{"type":"' + condType + '", "arg1":"' + condArg1 + '", "arg2":"' + condArg2 + '"}';
-			} else {
-				condString = condString + ', {"type":"' + condType + '", "arg1":"' + condArg1 + '", "arg2":"' + condArg2 + '"}';
-			}
-		}
-		jsonString = jsonString + condString + ']}';
-		if (allPolicies == "") {
-			allPolicies = allPolicies + jsonString;
-		} else {
-			allPolicies = allPolicies + ", " + jsonString;
-		}
-
-		jsonToSend = '{"policies":[' + allPolicies + ']}';
-
-		jsonString = "";
-		condString = "";
-		permString = "";
-	}
-	permContentToSend = jsonToSend;
-	jsonToSend = "";
-	return true;
-}
-
 function clearAppDisplay() { // if not hover
 	$("#appDisplay").html("");
 }
@@ -658,28 +383,61 @@ function updateApp() {
 		$.getJSON("/security/config/installedapps?action=update&app=" + portletID, function(json) {
 			alert(json.statusInfo);
 		});
-		// var xName = "Beispielname";
-		// $("#sortableApps").find(".selectedPortlet").parent().find(
-		// ".portlet-content").text(xName);
-		// selectedApp = xName;
 	} else {
 		alert("Wählen Sie ein Bundle!");
 	}
 }
 
-// Edit appPortlets permissionSettings
-function setPerms() {
+function startBundle() {
+
 	if ($(".selectedPortlet")[0]) {
 		var portletID = $(".selectedPortlet")[0].id;
-		$.getJSON("/security/config/installedapps?action=getInfo&app=" + portletID, function(json, xhr) {
-			fillEditDisplay(selectedApp, json.policies);
-			$("#editWebResources").dialog("open");
-		}).fail(function(xhr, textStatus, errorThrown) {
-			console.log("FAIL : " + textStatus);
+		$.getJSON("/security/config/installedapps?action=start&app=" + portletID, function(json) {
+			alert(json.statusInfo);
 		});
 	} else {
 		alert("Wählen Sie ein Bundle!");
 	}
+}
+
+function stopBundle() {
+
+	if ($(".selectedPortlet")[0]) {
+		var portletID = $(".selectedPortlet")[0].id;
+		$.getJSON("/security/config/installedapps?action=stop&app=" + portletID, function(json) {
+			alert(json.statusInfo);
+		});
+	} else {
+		alert("Wählen Sie ein Bundle!");
+	}
+}
+
+function editPerms() {
+	if ($(".selectedPortlet")[0]) {
+		var portletID = $(".selectedPortlet")[0].id;
+		var url = "/security-gui/editperms.html?action=editperms&id=" + portletID;
+		var win = window.open(url, '_blank');
+		win.focus();
+	} else {
+		alert("Wählen Sie ein Bundle!");
+	}
+}
+
+function installPerms() {
+	if ($(".selectedPortlet")[0]) {
+		var portletID = $(".selectedPortlet")[0].id;
+		var url = "/security-gui/editperms.html?action=newperms&id=" + portletID;
+		var win = window.open(url, '_blank');
+		win.focus();
+	} else {
+		alert("Wählen Sie ein Bundle!");
+	}
+}
+
+function installPermsByID(portletID) {
+	var url = "/security-gui/editperms.html?action=newperms&id=" + portletID;
+	var win = window.open(url, '_blank');
+	win.focus();
 }
 
 function showWebResources() {
@@ -754,84 +512,13 @@ function deleteApp() {
 // ------------------ APPSTORE //
 // text-input style, if focused or not
 function changeTextColor() {
-	if ($("#store").val() == "enter an appstore...") {
+	if ($("#store").val() == appstoreListHint) {
 		$("#store").css("font-style", "italic");
 		$("#store").css("color", "#ADADAD");
 	} else {
 		$("#store").css("font-style", "normal");
 		$("#store").css("color", "black");
 	}
-}
-
-// ------------------ RESOURCES //
-// when tab is clicked
-function showResources() {
-	// destroy old tree and build new one
-	$("#jsTree_Resources").jstree("destroy");
-	if (!($("#jsTree_Resources").hasClass("jstree"))) {
-		$("#jsTree_Resources").jstree({
-			"core" : {
-				"animation" : 0,
-				"check_callback" : true,
-				"themes" : {
-					"stripes" : true
-				},
-				'data' : {
-					"url" : "/service/resourceview",
-					'data' : function(node) {
-						return {
-							'id' : node.id,
-							'text' : node.text
-						};
-					}
-				}
-			},
-			"checkbox" : {
-				"whole_node" : true
-			},
-			"plugins" : [ "wholerow", "types" ]
-		}).bind(
-				"select_node.jstree",
-				function(event, data) {
-					// close the resource-dialog
-					$("#dialog_Resources").dialog("close");
-
-					// id of selected node
-					var currentNode = data.node.id;
-					// get the node by id
-					var currentSelected;
-					currentSelected = $("#jsTree_Resources").jstree(true).get_node(currentNode);
-
-					// check if the current selected node is NOT a
-					// parent node (has NO children)
-					if (!$("#jsTree_Resources").jstree("is_parent", data.node)) {
-						$("#dialog_Resources").parent().find(".ui-dialog-title").text(currentSelected.text);
-						// fill dialog with the value of the node
-						$("#dialog_Resources").html(
-								"<span><b>Value: </b></span><span>" + currentSelected.original.value + "</span>" + "<br><span><b>Type: </b></span><span>"
-										+ currentSelected.original.type + "</span>");
-						// open the dialog
-						$("#dialog_Resources").dialog("open");
-					}
-				})
-	}
-
-	// creates dialog
-	$("#dialog_Resources").dialog({
-		autoOpen : false,
-		draggable : true,
-		position : [ 'center', 'center' ],
-		minWidth : 450,
-		minHeight : 200,
-		dialogClass : 'no-close',
-		clickOutside : true,
-		clickOutsideTrigger : ".jstree-anchor"
-	});
-
-	// clickoutside closes dialog
-	$("#dialog_Resources").bind('clickoutside', function() {
-		$("#dialog_Resources").dialog('close');
-	});
 }
 
 // ------------------ APP UPLOAD //
@@ -913,12 +600,9 @@ function uploadFile() {
 				client.onreadystatechange = function() {
 					if (client.readyState == 4 && client.status == 200) {
 						var json = JSON.parse(client.response);
-						// clear the dialog before for-loop
-						$("dialUpload").empty();
-						getPerms(json, file.name, "1", "uploadDia");
+						installPermsByID(json.id);
 						setTimeout(function() {
 							$("#diaUpload").dialog("close");
-							$("#dialUpload").dialog("open");
 						}, 1000);
 					}
 				}
@@ -947,12 +631,9 @@ function uploadFile() {
 				client.onreadystatechange = function() {
 					if (client.readyState == 4 && client.status == 200) {
 						var json = JSON.parse(client.response);
-						// clear the dialog before for-loop
-						$("dialUpload").empty();
 						getPerms(json, file.name, "1", "uploadDia");
 						setTimeout(function() {
 							$("#diaUpload").dialog("close");
-							$("#dialUpload").dialog("open");
 						}, 1000);
 					}
 				}

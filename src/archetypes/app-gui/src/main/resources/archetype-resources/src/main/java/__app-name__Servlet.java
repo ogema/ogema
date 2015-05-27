@@ -63,5 +63,4 @@ private final ApplicationManager appMan;
 		return myStringBuilder.reverse().toString();
 	}
 
-
 }

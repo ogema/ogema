@@ -39,7 +39,6 @@ import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
-import org.ogema.core.model.simple.OpaqueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
@@ -120,6 +119,7 @@ public class TransactionImpl implements Transaction {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void addResource(Resource resource) {
         final Class<? extends Resource> resType = resource.getResourceType();
         final String path = resource.getPath();
@@ -135,7 +135,7 @@ public class TransactionImpl implements Transaction {
             m_intMap.put(path, new RwPair<Integer>());
             return;
         }
-        if (OpaqueResource.class.isAssignableFrom(resType)) {
+        if (org.ogema.core.model.simple.OpaqueResource.class.isAssignableFrom(resType)) {
             m_byteArrayMap.put(path, new RwPair<byte[]>());
             return;
         }
@@ -326,7 +326,9 @@ public class TransactionImpl implements Transaction {
     }
 
     @Override
-    public byte[] getByteArray(OpaqueResource resource) throws NoSuchResourceException {
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    public byte[] getByteArray(org.ogema.core.model.simple.OpaqueResource resource) throws NoSuchResourceException {
         final byte[] values = getReadEntry(resource, m_byteArrayMap);
         return (values != null) ? values.clone() : null;
     }
@@ -419,7 +421,9 @@ public class TransactionImpl implements Transaction {
     }
 
     @Override
-    public void setByteArray(OpaqueResource resource, byte[] values) throws NoSuchResourceException {
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    public void setByteArray(org.ogema.core.model.simple.OpaqueResource resource, byte[] values) throws NoSuchResourceException {
         final String path = resource.getPath();
         if (!m_byteArrayMap.containsKey(path)) {
             throw new NoSuchResourceException("Can not set a value for resource " + resource.toString() + " in transaction: Resource had not been registered before. Be sure to register the resource to the transaction with addResource(...) before trying to set a value for it");
@@ -490,6 +494,7 @@ public class TransactionImpl implements Transaction {
 
     // ---- Read and Write ----
     @Override
+    @SuppressWarnings("deprecation")
     public void read() {
         final ResourceAccess resAcc = m_appMan.getResourceAccess();
         // start transaction: lock resource graph.
@@ -521,8 +526,8 @@ public class TransactionImpl implements Transaction {
             final RwPair<byte[]> pair = m_byteArrayMap.get(path);
             pair.read = value;                                
             } else
-            if (untypedResource instanceof OpaqueResource) { // case for deprecated OpaqueResources
-            final OpaqueResource resource = (OpaqueResource) untypedResource;
+            if (untypedResource instanceof org.ogema.core.model.simple.OpaqueResource) { // case for deprecated OpaqueResources
+            final org.ogema.core.model.simple.OpaqueResource resource = (org.ogema.core.model.simple.OpaqueResource) untypedResource;
             final byte[] value = (resource.exists()) ? resource.getValue() : null;
             final RwPair<byte[]> pair = m_byteArrayMap.get(path);
             pair.read = value;                
@@ -580,6 +585,7 @@ public class TransactionImpl implements Transaction {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void write() throws VirtualResourceException {
         final ResourceAccess resAcc = m_appMan.getResourceAccess();
         // start transaction: lock resource graph.
@@ -639,8 +645,8 @@ public class TransactionImpl implements Transaction {
             } else {
                 pair.read = null;
             }                                
-            } else if (untypedResource instanceof OpaqueResource) {
-            final OpaqueResource resource = (OpaqueResource) untypedResource;
+            } else if (untypedResource instanceof org.ogema.core.model.simple.OpaqueResource) {
+            final org.ogema.core.model.simple.OpaqueResource resource = (org.ogema.core.model.simple.OpaqueResource) untypedResource;
             final RwPair<byte[]> pair = m_byteArrayMap.get(path);
             final byte[] value = pair.write;
             if (resource.exists() && value != null) {

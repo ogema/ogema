@@ -24,7 +24,7 @@ import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
 
-@Component(specVersion = "1.1", immediate=true)
+@Component(specVersion = "1.2", immediate=true)
 @Service(Application.class)
 public class ${app-name} implements Application {
 
@@ -32,9 +32,6 @@ public class ${app-name} implements Application {
 	protected ApplicationManager appMan;
 	protected ResourceManagement resMan;
 	protected ResourceAccess resAcc;
-
-        private String webResourceBrowserPath;
-        private String servletPath;
 
 	@Override
 	public void start(ApplicationManager appManager) {
@@ -45,31 +42,18 @@ public class ${app-name} implements Application {
 
 		logger.debug("{} started", getClass().getName());
 
-                String webResourcePackage = "${package}";
-                webResourcePackage = webResourcePackage.replace(".", "/");
-
-                String appNameLowerCase = "${app-name}";
-                appNameLowerCase = appNameLowerCase.toLowerCase();
-
-                //path to find the index.html /ogema/<this app name>/index.html
-                webResourceBrowserPath = "/ogema/" + appNameLowerCase;
-                //package/path to find the resources inside this application
-                String webResourcePackagePath = webResourcePackage + "/gui";
-                //path for the http servlet /apps/ogema/<this app name>
-                servletPath = "/apps/ogema/" + appNameLowerCase;
-
-                appManager.getWebAccessManager().registerWebResource(webResourceBrowserPath,
-				webResourcePackagePath);
-		appManager.getWebAccessManager().registerWebResource(servletPath,
-				new ${app-name}Servlet(appMan));
+                String webResourcePackage = "${package}".replace(".", "/");
+  
+                appManager.getWebAccessManager().registerWebResourcePath("/" , webResourcePackage + "/gui");
+                appManager.getWebAccessManager().registerWebResourcePath("/servlet", new ${app-name}Servlet(appMan));
 
 
 	}
 
         @Override
 	public void stop(AppStopReason reason) {
-		appMan.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
-		appMan.getWebAccessManager().unregisterWebResource(servletPath);
+		appMan.getWebAccessManager().unregisterWebResourcePath("/");
+		appMan.getWebAccessManager().unregisterWebResourcePath("/servlet");
 	}
 
 }

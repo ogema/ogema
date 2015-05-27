@@ -15,17 +15,14 @@
  */
 package org.ogema.driver.hmhl.devices;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
-import org.ogema.core.channelmanager.measurements.ByteArrayValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.driver.hmhl.Constants;
-import org.ogema.driver.hmhl.Converter;
 import org.ogema.driver.hmhl.HM_hlConfig;
 import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
@@ -38,13 +35,8 @@ import org.ogema.model.sensors.StateOfChargeSensor;
 public class MotionDetector extends HM_hlDevice {
 
 	private BooleanResource motion;
-	private FloatResource batteryStatus;
 	private FloatResource brightness;
-
-	private long old_cnt = 0;
-	private boolean motionInRun = false;
-	private Thread timer = new Thread();
-	private int nextTr = 0;
+	private FloatResource batteryStatus;
 
 	public MotionDetector(HM_hlDriver driver, ApplicationManager appManager, HM_hlConfig config) {
 		super(driver, appManager, config);
@@ -57,95 +49,16 @@ public class MotionDetector extends HM_hlDevice {
 
 	@Override
 	protected void parseValue(Value value, String channelAddress) {
-		byte[] array = null;
-
-		if (value instanceof ByteArrayValue) {
-			array = value.getByteArrayValue();
-		}
-		else {
-			throw new IllegalArgumentException("unsupported value type: " + value);
-		}
-		byte msgtype = array[array.length - 1];
-		// byte msgflag = array[array.length - 2];
-		byte[] msg = ArrayUtils.removeAll(array, array.length - 2, array.length - 1);
-
-		// long state = Converter.toLong(msg[2]); // Is also brightness
-
-		if ((msgtype == 0x10 || msgtype == 0x02) && msg[0] == 0x06 && msg[1] == 0x01) {
-			long err = Converter.toLong(msg[3]);
-			String err_str;
-			// long brightness = Converter.toLong(msg[2]);
-
-			if (type.equals("004A"))
-				System.out.println("SabotageError: " + (((err & 0x0E) > 0) ? "on" : "off"));
-			else
-				System.out.println("Cover: " + (((err & 0x0E) > 0) ? "open" : "closed"));
-
-			err_str = ((err & 0x80) > 0) ? "low" : "ok";
-			float batt = ((err & 0x80) > 0) ? 5 : 95;
-			System.out.println("Battery: " + err_str);
-			batteryStatus.setValue(batt);
-		}
-		else if (msgtype == 0x41) {
-			long cnt = Converter.toLong(msg[1]);
-			long brightn = Converter.toLong(msg[2]);
-			switch (msg[3]) {
-			case (byte) 0x40:
-				nextTr = 15;
-				break;
-			case (byte) 0x50:
-				nextTr = 30;
-				break;
-			case (byte) 0x60:
-				nextTr = 60;
-				break;
-			case (byte) 0x70:
-				nextTr = 120;
-				break;
-			case (byte) 0x80:
-				nextTr = 240;
-				break;
-			}
-
-			if (cnt != old_cnt) {
-				old_cnt = cnt;
-				System.out.println("State: motion");
-				motion.setValue(true);
-				System.out.println("MotionCount: " + cnt + " next Trigger: " + nextTr + "s");
-				System.out.println("Brightness: " + brightn);
-				brightness.setValue(brightn);
-				if (timer.isAlive()) {
-					motionInRun = true;
-				}
-				else {
-					timer = new Thread() {
-						@Override
-						public void run() {
-							boolean repeat = true;
-							while (repeat) {
-								try {
-									Thread.sleep((nextTr + 1) * 1000);
-								} catch (InterruptedException e) {
-									e.printStackTrace();
-								}
-								if (motionInRun) {
-									motionInRun = false;
-								}
-								else {
-									repeat = false;
-									motion.setValue(false); // release
-									System.out.println("reset State: no motion");
-								}
-							}
-						}
-					};
-					timer.start();
-
-				}
-			}
-		}
-		else if (msgtype == 0x70 && msg[0] == 0x7F) {
-			// TODO: NYI
+		switch (channelAddress) {
+		case "ATTRIBUTE:0001":
+			motion.setValue(value.getBooleanValue());
+			break;
+		case "ATTRIBUTE:0002":
+			brightness.setValue(value.getFloatValue());
+			break;
+		case "ATTRIBUTE:0003":
+			batteryStatus.setValue(value.getFloatValue());
+			break;
 		}
 	}
 
@@ -156,15 +69,26 @@ public class MotionDetector extends HM_hlDevice {
 		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
 		attributeConfig.channelAddress = "ATTRIBUTE:0001";
 		attributeConfig.timeout = -1;
-		attributeConfig.resourceName = hm_hlConfig.resourceName + "_State";
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_Motion";
 		attributeConfig.chLocator = addChannel(attributeConfig);
 
-		HM_hlConfig commandConfig = new HM_hlConfig();
-		commandConfig.driverId = hm_hlConfig.driverId;
-		commandConfig.interfaceId = hm_hlConfig.interfaceId;
-		commandConfig.channelAddress = "COMMAND:01";
-		commandConfig.resourceName = hm_hlConfig.resourceName + "_Command";
-		commandConfig.chLocator = addChannel(commandConfig);
+		attributeConfig = new HM_hlConfig();
+		attributeConfig.driverId = hm_hlConfig.driverId;
+		attributeConfig.interfaceId = hm_hlConfig.interfaceId;
+		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
+		attributeConfig.channelAddress = "ATTRIBUTE:0002";
+		attributeConfig.timeout = -1;
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_Brightness";
+		attributeConfig.chLocator = addChannel(attributeConfig);
+
+		attributeConfig = new HM_hlConfig();
+		attributeConfig.driverId = hm_hlConfig.driverId;
+		attributeConfig.interfaceId = hm_hlConfig.interfaceId;
+		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
+		attributeConfig.channelAddress = "ATTRIBUTE:0003";
+		attributeConfig.timeout = -1;
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_BatteryStatus";
+		attributeConfig.chLocator = addChannel(attributeConfig);
 
 		SensorDevice motionDetector = resourceManager.createResource(hm_hlConfig.resourceName, SensorDevice.class);
 
@@ -189,7 +113,7 @@ public class MotionDetector extends HM_hlDevice {
 
 		ElectricityStorage battery = motionDetector.electricityStorage().create();
 		battery.type().setValue(1); // magic number: generic battery
-		battery.activate(true);
+		battery.activate(false);
 		StateOfChargeSensor eSens = battery.chargeSensor().create();
 		batteryStatus = eSens.reading().create();
 		batteryStatus.activate(true);

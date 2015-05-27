@@ -35,7 +35,6 @@ import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
-import org.ogema.core.model.simple.OpaqueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
@@ -178,9 +177,12 @@ public class TransactionTest extends OsgiTestBase {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	public void transactionWritesOpaqueValues() {
-		final OpaqueResource res1 = resMan.createResource("o1", OpaqueResource.class);
-		final OpaqueResource res2 = resMan.createResource("o2", OpaqueResource.class);
+		final org.ogema.core.model.simple.OpaqueResource res1 = resMan.createResource("o1",
+				org.ogema.core.model.simple.OpaqueResource.class);
+		final org.ogema.core.model.simple.OpaqueResource res2 = resMan.createResource("o2",
+				org.ogema.core.model.simple.OpaqueResource.class);
 
 		final Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(res1);

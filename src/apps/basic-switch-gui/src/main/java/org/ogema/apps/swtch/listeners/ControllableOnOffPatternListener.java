@@ -22,7 +22,7 @@ import org.ogema.core.resourcemanager.pattern.PatternListener;
 import org.ogema.apps.swtch.patterns.ControllableOnOffPattern;
 
 public class ControllableOnOffPatternListener implements PatternListener<ControllableOnOffPattern> {
-	
+
 	private final List<ControllableOnOffPattern> list;
 
 	public ControllableOnOffPatternListener() {
@@ -41,13 +41,12 @@ public class ControllableOnOffPatternListener implements PatternListener<Control
 		try {
 			list.remove(pattern);
 		} catch (Exception e) {
-			System.out.println("Could not remove pattern " + pattern.model.getLocation() +": " + e);
+			System.out.println("Could not remove pattern " + pattern.model.getLocation() + ": " + e);
 		}
-	} 
+	}
 
 	public List<ControllableOnOffPattern> getPatterns() {
 		return new LinkedList<ControllableOnOffPattern>(list);
 	}
-	
 
 }

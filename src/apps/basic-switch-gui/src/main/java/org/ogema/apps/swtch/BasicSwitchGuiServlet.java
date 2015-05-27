@@ -18,7 +18,6 @@ package org.ogema.apps.swtch;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -52,13 +51,12 @@ public class BasicSwitchGuiServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 6951206236759267713L;
 	private final ApplicationManager appMan;
-	private final List<PatternListener> listeners;
+	private final List<PatternListener<?>> listeners;
 
-	public BasicSwitchGuiServlet(ApplicationManager appMan,List<PatternListener> listeners) {
+	public BasicSwitchGuiServlet(ApplicationManager appMan, List<PatternListener<?>> listeners) {
 		this.appMan = appMan;
 		this.listeners = listeners;
 	}
-	
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Override
@@ -132,7 +130,6 @@ public class BasicSwitchGuiServlet extends HttpServlet {
 		resp.setStatus(200);
 	}
 
-	
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 
@@ -157,45 +154,49 @@ public class BasicSwitchGuiServlet extends HttpServlet {
 					SingleSwitchBox switchBox = (SingleSwitchBox) res;
 					switchBox.onOffSwitch().stateControl().setValue(!switchBox.onOffSwitch().stateControl().getValue());
 				}*/
-				BooleanResource stateControl = res.getSubResource("onOffSwitch",OnOffSwitch.class).stateControl();
-				BooleanResource stateFeedback = res.getSubResource("onOffSwitch",OnOffSwitch.class).stateFeedback();
+				BooleanResource stateControl = res.getSubResource("onOffSwitch", OnOffSwitch.class).stateControl()
+						.create();
+				BooleanResource stateFeedback = res.getSubResource("onOffSwitch", OnOffSwitch.class).stateFeedback();
 				if (stateControl.exists() && stateFeedback.isActive()) {
 					stateControl.setValue(!stateFeedback.getValue());
+					stateControl.activate(false);
 				}
 			}
 			else if (jo.has("mswtch")) {
 				String swtch = jo.get("mswtch").getTextValue();
 				MultiSwitch res = appMan.getResourceAccess().getResource(swtch);
-				float value = (float) jo.get("value").asDouble()/100;
-				FloatResource stateControl = res.stateControl();
-				if (stateControl.isActive()) {
+				float value = (float) jo.get("value").asDouble() / 100;
+				if (value >= 0 && value <= 1) {
+					FloatResource stateControl = res.stateControl().create();
 					stateControl.setValue(value);
+					stateControl.activate(false);
 				}
-			} else if (jo.has("thermo")) {
+			}
+			else if (jo.has("thermo")) {
 				String swtch = jo.get("thermo").getTextValue();
 				Thermostat res = appMan.getResourceAccess().getResource(swtch);
 				float value = (float) jo.get("value").asDouble();
 				res.temperatureSensor().settings().setpoint().setCelsius(value);
 			}
 			Thread.sleep(100); // do this in order to allow drivers to transfer stateControl value to stateFeedback
-		}
-		catch (Exception e) {
-			appMan.getLogger().warn("Error in POST method ",e);
+		} catch (Exception e) {
+			appMan.getLogger().warn("Error in POST method ", e);
 		}
 
 		resp.getWriter().write(sb.toString());
 		resp.setStatus(200);
 
 	}
-	
+
 	private String cutValue(float val) {
 		String take1 = String.valueOf(val);
 		int idx = take1.indexOf(".");
-		if (idx < 0) return take1;
+		if (idx < 0)
+			return take1;
 		if (take1.substring(idx).length() > 3) {
-			return take1.substring(0,idx+3);
+			return take1.substring(0, idx + 3);
 		}
 		return take1;
 	}
-	
+
 }

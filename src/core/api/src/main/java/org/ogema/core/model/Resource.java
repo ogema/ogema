@@ -408,7 +408,7 @@ public interface Resource {
 	 *            resource type of decorator
 	 * @return newly added sub-resource or compatible already-existing resource.
 	 * @throws ResourceAlreadyExistsException
-	 *             if the name is that of an optional element defined for this resource, or there already exists a
+	 *             if the name is that of an optional element with incompatible type, or there already exists a
 	 *             decorator with the same name and incompatible type.
 	 * @throws NoSuchResourceException
 	 *             if the name is not a legal resource name.
@@ -436,7 +436,7 @@ public interface Resource {
 	 * @param <T>
 	 *            the type of the decorator.
 	 * @throws ResourceAlreadyExistsException
-	 *             if the name is that of an optional element defined for this resource, or there already exists a
+	 *             if the name is that of an optional element with incompatible type, or there already exists a
 	 *             decorator with the same name and incompatible type.
 	 * @throws NoSuchResourceException
 	 *             if the name is not a legal resource name.

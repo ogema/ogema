@@ -63,7 +63,7 @@ public class ValueListenerScheduleTest extends OsgiTestBase {
     @Test
 	public void addValueCausesCallback() throws InterruptedException {
 		final CountDownLatch callbackCount = new CountDownLatch(1);
-		final ResourceValueListener listener = new ResourceValueListener<Schedule>() {
+		final ResourceValueListener<Schedule> listener = new ResourceValueListener<Schedule>() {
 
 			@Override
 			public void resourceChanged(Schedule resource) {
@@ -82,7 +82,7 @@ public class ValueListenerScheduleTest extends OsgiTestBase {
     @Test
 	public void addValuesCausesCallback() throws InterruptedException {
 		final CountDownLatch callbackCount = new CountDownLatch(1);
-		final ResourceValueListener listener = new ResourceValueListener<Schedule>() {
+		final ResourceValueListener<Schedule> listener = new ResourceValueListener<Schedule>() {
 
 			@Override
 			public void resourceChanged(Schedule resource) {
@@ -101,7 +101,7 @@ public class ValueListenerScheduleTest extends OsgiTestBase {
     @Test
 	public void deleteValuesCausesCallback() throws InterruptedException {
 		final CountDownLatch callbackCount = new CountDownLatch(1);
-		final ResourceValueListener listener = new ResourceValueListener<Schedule>() {
+		final ResourceValueListener<Schedule> listener = new ResourceValueListener<Schedule>() {
 
 			@Override
 			public void resourceChanged(Schedule resource) {
@@ -121,7 +121,7 @@ public class ValueListenerScheduleTest extends OsgiTestBase {
     @Test
 	public void replaceValuesCausesCallback() throws InterruptedException {
 		final CountDownLatch callbackCount = new CountDownLatch(1);
-		final ResourceValueListener listener = new ResourceValueListener<Schedule>() {
+		final ResourceValueListener<Schedule> listener = new ResourceValueListener<Schedule>() {
 
 			@Override
 			public void resourceChanged(Schedule resource) {
@@ -141,7 +141,7 @@ public class ValueListenerScheduleTest extends OsgiTestBase {
     @Test
 	public void replaceValuesFixedStepCausesCallback() throws InterruptedException {
 		final CountDownLatch callbackCount = new CountDownLatch(1);
-		final ResourceValueListener listener = new ResourceValueListener<Schedule>() {
+		final ResourceValueListener<Schedule> listener = new ResourceValueListener<Schedule>() {
 
 			@Override
 			public void resourceChanged(Schedule resource) {

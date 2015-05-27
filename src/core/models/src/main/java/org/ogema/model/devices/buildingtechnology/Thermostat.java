@@ -49,5 +49,6 @@ public interface Thermostat extends PhysicalElement {
 	 * The thermal connection that is influenced by the thermostat.
 	 * @deprecated The thermal connection now is contained in {@link #valve()#connection()}.
 	 */
+	@Deprecated
 	ThermalConnection connection();
 }

@@ -15,6 +15,12 @@
  */
 package org.ogema.recordeddata.slotsdb;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,8 +39,6 @@ import org.slf4j.LoggerFactory;
 @Component(immediate = true)
 @Service(DataRecorder.class)
 public class SlotsDb implements DataRecorder {
-
-	private static Logger logger = LoggerFactory.getLogger(SlotsDb.class.getName());
 
 	/*
 	 * File extension for SlotsDB files. Only these Files will be loaded.
@@ -57,6 +61,9 @@ public class SlotsDb implements DataRecorder {
 	 */
 	public static String DB_TEST_ROOT_FOLDER = "testdata/";
 
+	public static String SLOTS_DB_STORAGE_ID_PATH = DEFAULT_DB_ROOT_FOLDER + "slotsDbStorageIDs.ser";
+	public static String CONFIGURATION_PATH = DEFAULT_DB_ROOT_FOLDER + "configurations.ser";
+
 	/*
 	 * limit open files in Hashmap
 	 * 
@@ -69,8 +76,9 @@ public class SlotsDb implements DataRecorder {
 	public static int MAX_OPEN_FOLDERS_DEFAULT = 512;
 
 	/*
-	 * configures the data flush period. The less you flush, the faster SLOTSDB will be. unset this System Property (or
-	 * set to 0) to flush data directly to disk.
+	 * configures the data flush period. The less you flush, the faster SLOTSDB
+	 * will be. unset this System Property (or set to 0) to flush data directly
+	 * to disk.
 	 */
 	public static String FLUSH_PERIOD = System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase()
 			+ ".flushperiod");
@@ -98,7 +106,8 @@ public class SlotsDb implements DataRecorder {
 	public static int INITIAL_DELAY = 10000;
 
 	/*
-	 * Interval for scanning expired, old data. Set this to 86400000 to scan every 24 hours.
+	 * Interval for scanning expired, old data. Set this to 86400000 to scan
+	 * every 24 hours.
 	 */
 	public static int DATA_EXPIRATION_CHECK_INTERVAL = 5000;
 
@@ -117,11 +126,30 @@ public class SlotsDb implements DataRecorder {
 	@Override
 	public RecordedDataStorage createRecordedDataStorage(String id, RecordedDataConfiguration configuration)
 			throws DataRecorderException {
+		List<String> persistentSlotsDbStorageIDs = new ArrayList<String>();
+		Map<String, RecordedDataConfiguration> persistentConfigurations = new HashMap<String, RecordedDataConfiguration>();
+
 		if (storagesMap.containsKey(id)) {
 			throw new DataRecorderException("Storage with given ID exists already");
 		}
 		SlotsDbStorage storage = new SlotsDbStorage(id, configuration, this);
 		storagesMap.put(id, storage);
+		File configFile = new File(CONFIGURATION_PATH);
+
+		persistentSlotsDbStorageIDs = this.getAllRecordedDataStorageIDs();
+
+		if (configFile.exists()) {
+			persistentConfigurations = storage.getPersistenConfigurationMap();
+		}
+
+		if (!persistentSlotsDbStorageIDs.contains(id)) {
+			persistentSlotsDbStorageIDs.add(id);
+			this.setPersistentIdMap(persistentSlotsDbStorageIDs);
+		}
+
+		persistentConfigurations.put(id, configuration);
+		this.setPersistentConfigurationMap(persistentConfigurations);
+
 		return storage;
 	}
 
@@ -141,11 +169,64 @@ public class SlotsDb implements DataRecorder {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public List<String> getAllRecordedDataStorageIDs() {
-		List<String> ids = new ArrayList<>(storagesMap.size());
-		ids.addAll(storagesMap.keySet());
-		return ids;
 
+		List<String> persistentRecordedDataStorageIDs = new ArrayList<String>();
+		ObjectInputStream ois = null;
+		File file = new File(SLOTS_DB_STORAGE_ID_PATH);
+
+		if (file.exists()) {
+			try {
+				ois = new ObjectInputStream(new FileInputStream(SLOTS_DB_STORAGE_ID_PATH));
+				persistentRecordedDataStorageIDs = (ArrayList<String>) ois.readObject();
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				if (ois != null) {
+					try {
+						ois.close();
+					} catch (IOException e) {
+					}
+				}
+			}
+		}
+		return persistentRecordedDataStorageIDs;
+
+	}
+
+	private void setPersistentConfigurationMap(Map<String, RecordedDataConfiguration> persistentConfigurations) {
+		ObjectOutputStream oosConfig = null;
+		try {
+			oosConfig = new ObjectOutputStream(new FileOutputStream(CONFIGURATION_PATH));
+			oosConfig.writeObject(persistentConfigurations);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (oosConfig != null) {
+				try {
+					oosConfig.close();
+				} catch (IOException e) {
+				}
+			}
+		}
+	}
+
+	private void setPersistentIdMap(List<String> persistentSlotsDbStorageIDs) {
+		ObjectOutputStream oosConfig = null;
+		try {
+			oosConfig = new ObjectOutputStream(new FileOutputStream(SLOTS_DB_STORAGE_ID_PATH));
+			oosConfig.writeObject(persistentSlotsDbStorageIDs);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (oosConfig != null) {
+				try {
+					oosConfig.close();
+				} catch (IOException e) {
+				}
+			}
+		}
 	}
 }

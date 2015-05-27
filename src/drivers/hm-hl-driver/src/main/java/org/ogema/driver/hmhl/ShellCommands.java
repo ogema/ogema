@@ -22,6 +22,7 @@ import org.apache.felix.service.command.Descriptor;
 import org.ogema.core.channelmanager.NoSuchDriverException;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
+import org.ogema.core.channelmanager.measurements.Value;
 import org.osgi.framework.BundleContext;
 
 public class ShellCommands {
@@ -98,7 +99,7 @@ public class ShellCommands {
 			@Descriptor("The interface ID/Port name.") String interfaceId,
 			@Descriptor("The device address in form of DeviceId e. g. 000000.") String deviceAddress,
 			@Descriptor("The channel address in form of Type:Id e. g. Type:Attribute:0000.") String channelAddress,
-			@Descriptor("The value as a string with hex characters e. g. 0AFF. Byte order needs to be in Little Endian Byte order") String writeValue) {
+			@Descriptor("The value as a string with hex characters e. g. 0AFF. Byte order needs to be in Little Endian Byte order") Value writeValue) {
 		HM_hlDevice device = driver.devices.get(interfaceId + ":" + deviceAddress.toUpperCase());
 		ChannelLocator locator = device.attributeChannel.get(channelAddress.toUpperCase());
 		if (locator == null) {
@@ -110,7 +111,7 @@ public class ShellCommands {
 	@Descriptor("Write to a channel. This can mean overwriting a Attribute or sending a Command.")
 	public void writeChannel(
 			@Descriptor("The resourceId.") String resourceId,
-			@Descriptor("The value as a string with hex characters e. g. 0AFF. Byte order needs to be in Little Endian Byte order") String writeValue) {
+			@Descriptor("The value as a string with hex characters e. g. 0AFF. Byte order needs to be in Little Endian Byte order") Value writeValue) {
 		ChannelLocator channelLocator = driver.channelMap.get(resourceId);
 		HM_hlDevice device = driver.devices.get(channelLocator.getDeviceLocator().getInterfaceName() + ":"
 				+ channelLocator.getDeviceLocator().getDeviceAddress().toUpperCase());

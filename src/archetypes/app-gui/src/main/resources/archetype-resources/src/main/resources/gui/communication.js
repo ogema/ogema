@@ -1,7 +1,6 @@
 #set( $dollar = "$")
 
-var path = "/apps/ogema/${app-name}";
-path = path.toLowerCase();
+var path = "servlet";
 
 function sendGET() {
     ${dollar}.get(path,processGET); 

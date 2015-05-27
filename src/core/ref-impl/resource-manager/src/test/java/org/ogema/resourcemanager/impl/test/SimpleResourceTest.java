@@ -30,7 +30,6 @@ import org.ogema.core.model.schedule.ForecastSchedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
-import org.ogema.core.model.simple.OpaqueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.ResourceException;
@@ -133,10 +132,10 @@ public class SimpleResourceTest extends OsgiTestBase {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	public void settingOpaqueValueWorks() throws ResourceException {
-		OpaqueResource opaqueRes = resMan.createResource(RESNAME + counter++, OpaqueResource.class);
-		//		res.addOptionalElement("newFirmware");
-		//		OpaqueResource opaqueRes = res.newFirmware();
+		org.ogema.core.model.simple.OpaqueResource opaqueRes = resMan.createResource(newResourceName(),
+				org.ogema.core.model.simple.OpaqueResource.class);
 		opaqueRes.getValue();
 		byte[] newVal = new byte[10];
 		ByteBuffer.wrap(newVal).putLong(0xCAFEBABEL);

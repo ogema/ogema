@@ -50,21 +50,48 @@ class ConnectedResource {
 	private final Resource m_resource;
 	private final CompletionListener m_listener;
 	private final ResourceFieldInfo m_info;
+	private final ResourceValueListener<Resource> initValueListener;
+	private boolean equalsAnnotation = false;
+	private boolean listenValue = false;
+	private boolean valueListenerActive = false;
 
 	private boolean m_complete = false;
 
-	public ConnectedResource(Resource resource, ResourceFieldInfo info, CompletionListener listener) {
+	public ConnectedResource(Resource resource, ResourceFieldInfo info, final CompletionListener listener) {
 		m_resource = resource;
 		m_info = info;
 		m_listener = listener;
+		// this listener is used to check both @Equals and @ValueChangedListener annotations
+		initValueListener = new ResourceValueListener<Resource>() {
+
+			@Override
+			public void resourceChanged(Resource resource) {
+				boolean complete_bak = m_complete;
+				if (equalsAnnotation) {
+					ConnectedResource.this.recheckCompletion();
+					if (m_complete != complete_bak) {
+						if (m_complete)
+							m_listener.resourceAvailable(ConnectedResource.this);
+						else
+							m_listener.resourceUnavailable(ConnectedResource.this, !m_resource.exists());
+					}
+				}
+				if (listenValue && complete_bak == m_complete) {
+					listener.valueChanged(ConnectedResource.this);
+				}
+			}
+		};
 	}
 
 	public void start() {
 		m_resource.addStructureListener(structureListener);
 		m_resource.addAccessModeListener(accessListener);
 		if (m_info.isEqualityRequired()) {
+			equalsAnnotation = true;
 			//System.out.println("   Adding value listener " + m_resource.getLocation());
-			m_resource.addValueListener(valueListener);
+			//m_resource.addValueListener(valueListener);
+			m_resource.addValueListener(initValueListener);
+			valueListenerActive = true;
 		}
 		m_resource.requestAccessMode(m_info.getMode(), m_info.getPrio());
 		if (this.meetsRequirements()) {
@@ -82,7 +109,28 @@ class ConnectedResource {
 		m_resource.removeAccessModeListener(accessListener);
 		if (m_info.isEqualityRequired()) {
 			//System.out.println("   Removing value listener " + m_resource.getLocation());
-			m_resource.removeValueListener(valueListener);
+			//m_resource.removeValueListener(valueListener);
+			m_resource.removeValueListener(initValueListener);
+		}
+		stopValueListener();
+	}
+
+	public void startValueListener() {
+		//stopValueListener(); // make sure the listener is not registered twice
+		//m_resource.addValueListener(initValueListener);
+		listenValue = true;
+		if (!valueListenerActive) {
+			m_resource.addValueListener(initValueListener);
+			valueListenerActive = true;
+		}
+	}
+
+	public void stopValueListener() {
+		//m_resource.removeValueListener(initValueListener);
+		listenValue = false;
+		if (!equalsAnnotation) {
+			m_resource.removeValueListener(initValueListener);
+			valueListenerActive = false;
 		}
 	}
 
@@ -91,13 +139,13 @@ class ConnectedResource {
 			if (this.meetsRequirements())
 				return;
 			m_complete = false;
-			m_listener.resourceUnavailable(this, !m_resource.exists());
+			//m_listener.resourceUnavailable(this, !m_resource.exists()); // callbacks now issued in resourceStructureChanged method
 		}
 		else {
 			if (!this.meetsRequirements())
 				return;
 			m_complete = true;
-			m_listener.resourceAvailable(this);
+			//m_listener.resourceAvailable(this);
 		}
 	}
 
@@ -105,6 +153,7 @@ class ConnectedResource {
 
 		@Override
 		public void accessModeChanged(Resource resource) {
+			//System.out.println(" Access mode changed " + resource.getLocation() + ", " + resource.getAccessMode().name());
 			if (!resource.equalsPath(m_resource)) { // sanity check.
 				if (resource.equalsLocation(m_resource)) {
 					//					System.err.println("Got an accessModeChanged callback on correct resource location="
@@ -120,7 +169,14 @@ class ConnectedResource {
 							+ resource.getLocation() + ". Expected resource at " + m_resource.getLocation());
 				}
 			}
+			boolean complete_bak = m_complete;
 			ConnectedResource.this.recheckCompletion();
+			if (complete_bak == m_complete)
+				return;
+			else if (m_complete)
+				m_listener.resourceAvailable(ConnectedResource.this);
+			else
+				m_listener.resourceUnavailable(ConnectedResource.this, !m_resource.exists());
 		}
 	};
 
@@ -128,13 +184,17 @@ class ConnectedResource {
 	 * Listener in the resource values in case that an @Equals annotation had
 	 * been issued in the RAD.
 	 */
-	private final ResourceValueListener valueListener = new ResourceValueListener() {
+	/*	private final ResourceValueListener valueListener = new ResourceValueListener() {
 
-		@Override
-		public void resourceChanged(Resource resource) {
-			ConnectedResource.this.recheckCompletion();
-		}
-	};
+	 @Override
+	 public void resourceChanged(Resource resource) {
+	 boolean complete_bak = m_complete;
+	 ConnectedResource.this.recheckCompletion();
+	 if (complete_bak == m_complete) return;
+	 else if (m_complete) m_listener.resourceAvailable(ConnectedResource.this);
+	 else m_listener.resourceUnavailable(ConnectedResource.this, !m_resource.exists());
+	 }
+	 }; */
 
 	/**
 	 * Listener to changes of the resource (activation, deactivation, deletion,
@@ -144,6 +204,7 @@ class ConnectedResource {
 
 		@Override
 		public void resourceStructureChanged(ResourceStructureEvent event) {
+			//System.out.println("Structure change: " + event.getChangedResource().getLocation() + ": "+ event.getType().name());
 			final EventType eventType = event.getType();
 			//			System.out.printf("ConnectedResource(complete=%b)-- %s %s %s%n", m_complete, event.getSource().getPath(),
 			//					event.getType(), event.getChangedResource());
@@ -151,6 +212,15 @@ class ConnectedResource {
 				return;
 			}
 			ConnectedResource.this.recheckCompletion();
+			if (eventType == EventType.RESOURCE_DELETED || eventType == EventType.RESOURCE_DEACTIVATED) {
+				m_listener.resourceUnavailable(ConnectedResource.this, !m_resource.exists());
+			}
+			// FIXME: the latter condition can occur if a resource is added as a reference... this is a bit strange
+			else if (eventType == EventType.RESOURCE_ACTIVATED
+					|| (m_resource.isActive() && (eventType == EventType.REFERENCE_ADDED || eventType == EventType.RESOURCE_CREATED))) {
+				m_listener.resourceAvailable(ConnectedResource.this);
+			}
+
 			//			System.out.printf("complete: %b%n", m_complete);
 		}
 	};
@@ -200,4 +270,9 @@ class ConnectedResource {
 	public final boolean isRequired() {
 		return (m_info.getCreateMode() == CreateMode.MUST_EXIST);
 	}
+
+	public final boolean requiresValueListener() {
+		return m_info.requiresValueListener();
+	}
+
 }

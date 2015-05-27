@@ -32,17 +32,17 @@ import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
-import org.ogema.core.model.SimpleResource;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
-import org.ogema.core.model.simple.OpaqueResource;
+import org.ogema.core.model.simple.SingleValueResource;
+import org.ogema.core.model.simple.StringResource;
+import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.model.units.PhysicalUnit;
 import org.ogema.core.model.units.PhysicalUnitResource;
 import org.ogema.core.tools.SerializationManager;
-import org.ogema.serialization.jaxb.StringResource;
-import org.ogema.serialization.jaxb.TimeResource;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -82,7 +82,7 @@ public class FastJsonGenerator {
 		try {
 			this.serializeResource(resource);
 		} catch (Throwable e) {
-			e.printStackTrace();
+			LoggerFactory.getLogger(getClass()).error("error in serialization", e);
 		}
 		jGen.flush();
 	}
@@ -94,8 +94,10 @@ public class FastJsonGenerator {
 	 * @param serializationManager
 	 * @throws IOException
 	 */
+	/* FIXME?: this will always serialize embedded schedules (timeseries) as link */
 	public void serialize(Writer writer, Object obj, SerializationManager serializationManager) throws IOException {
-		jGen = jsonFactory.createJsonGenerator(writer).useDefaultPrettyPrinter().setCodec(new ObjectMapper());
+		ObjectMapper mapper = SerializationCore.createJacksonMapper(true);
+		jGen = jsonFactory.createJsonGenerator(writer).useDefaultPrettyPrinter().setCodec(mapper);
 		jGen.writeObject(obj);
 		jGen.flush();
 	}
@@ -177,11 +179,15 @@ public class FastJsonGenerator {
 	 * @param resource
 	 * @throws IOException
 	 */
+	@SuppressWarnings("deprecation")
 	private void writeSimpleResourceValue(Resource resource) throws IOException {
+		if (!(resource instanceof SingleValueResource)) {
+			return;
+		}
 		if (resource instanceof BooleanResource) {
 			jGen.writeBooleanField("value", ((BooleanResource) resource).getValue());
 		}
-		if (resource instanceof FloatResource) {
+		else if (resource instanceof FloatResource) {
 			jGen.writeNumberField("value", ((FloatResource) resource).getValue());
 			if (resource instanceof PhysicalUnitResource) {
 				PhysicalUnit u = ((PhysicalUnitResource) resource).getUnit();
@@ -190,18 +196,18 @@ public class FastJsonGenerator {
 				}
 			}
 		}
-		if (resource instanceof IntegerResource) {
+		else if (resource instanceof IntegerResource) {
 			jGen.writeNumberField("value", ((IntegerResource) resource).getValue());
 		}
-		if (resource instanceof TimeResource) {
+		else if (resource instanceof TimeResource) {
 			jGen.writeNumberField("value", ((TimeResource) resource).getValue());
 		}
-		if (resource instanceof StringResource) {
+		else if (resource instanceof StringResource) {
 			jGen.writeStringField("value", ((StringResource) resource).getValue());
 		}
-		if (resource instanceof OpaqueResource) {
+		else if (resource instanceof org.ogema.core.model.simple.OpaqueResource) {
 			// Jackson default Base64 variant (which is Base64Variants.MIME_NO_LINEFEEDS)
-			jGen.writeBinaryField("value", ((OpaqueResource) resource).getValue());
+			jGen.writeBinaryField("value", ((org.ogema.core.model.simple.OpaqueResource) resource).getValue());
 		}
 	}
 
@@ -240,6 +246,7 @@ public class FastJsonGenerator {
 		serializeEntrys(definitionSchedule, 0, Long.MAX_VALUE);
 	}
 
+	@SuppressWarnings("deprecation")
 	private void serializeEntrys(Schedule definitionSchedule, long start, long end) throws IOException {
 		if (definitionSchedule.getTimeOfLatestEntry() != null) {
 			jGen.writeNumberField("lastUpdateTime", definitionSchedule.getTimeOfLatestEntry());
@@ -336,7 +343,7 @@ public class FastJsonGenerator {
 	 */
 	private String figgureOutResourceType(Resource resource) {
 
-		if (resource instanceof SimpleResource) {
+		if (resource instanceof SingleValueResource) {
 			if (resource instanceof FloatResource) {
 				return FloatResource.class.getSimpleName();
 			}

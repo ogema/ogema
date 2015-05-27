@@ -15,7 +15,7 @@
  */
 package org.ogema.model.targetranges;
 
-import org.ogema.core.model.SimpleResource;
+import org.ogema.core.model.ValueResource;
 import org.ogema.model.prototypes.Data;
 import org.ogema.model.ranges.Range;
 
@@ -37,7 +37,7 @@ public interface TargetRange extends Data {
 	 * this with a suitable simple resource to define the meaning and the unit
 	 * of measurement.
 	 */
-	SimpleResource setpoint();
+	ValueResource setpoint();
 
 	/**
 	 * Range which the sensor value shall lie as a result of control, if possible. The range is considered as soft

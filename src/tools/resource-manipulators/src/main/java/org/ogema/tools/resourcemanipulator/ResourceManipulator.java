@@ -36,6 +36,7 @@ public interface ResourceManipulator {
 	 * start of the application using the manipulator.
 	 * @deprecated Current implementation passes application manager upon creation.
 	 */
+	@Deprecated
 	void start(ApplicationManager applicationManager);
 
 	/**

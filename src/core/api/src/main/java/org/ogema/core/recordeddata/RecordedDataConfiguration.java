@@ -15,11 +15,18 @@
  */
 package org.ogema.core.recordeddata;
 
+import java.io.Serializable;
+
 /**
  * Defines the configuration for one RecordedData database
  * 
  */
-public class RecordedDataConfiguration {
+public class RecordedDataConfiguration implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
 	/**
 	 * FIXED_INTERVAL - all values to be written are matched to the fixed time interval. In one interval there is only
 	 * one value possible. Missing values will be filled with ??? data. Read-out values have fixed timestamp interval

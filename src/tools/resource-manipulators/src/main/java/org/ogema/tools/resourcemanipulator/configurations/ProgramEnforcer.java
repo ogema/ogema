@@ -15,7 +15,7 @@
  */
 package org.ogema.tools.resourcemanipulator.configurations;
 
-import org.ogema.core.model.SimpleResource;
+import org.ogema.core.model.ValueResource;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.timeseries.InterpolationMode;
 
@@ -44,14 +44,16 @@ public interface ProgramEnforcer extends ManipulatorConfiguration {
 	 * @param updateInterval time interval in which the value shall be updated in case the interpolation mode is linear.
 	 * @param priority Access priority to use for exclusive writing to the target resource. Set to null if no exclusive access is required.
 	 */
-	void enforceProgram(SimpleResource resource, long updateInterval, AccessPriority priority);
+	void enforceProgram(ValueResource resource, long updateInterval, AccessPriority priority);
 
 	/**
 	 * Enforces the program for the target resource, but does not request an exclusive write access.
 	 * This is the same as calling {@link #enforceProgram(org.ogema.core.model.simple.FloatResource, long, org.ogema.core.resourcemanager.AccessPriority) }
 	 * with an access priority of null.
+	 * @param resource Float resource for which the program shall be enforced.
+	 * @param updateInterval time interval in which the value shall be updated in case the interpolation mode is linear.
 	 */
-	void enforceProgram(SimpleResource resource, long updateInterval);
+	void enforceProgram(ValueResource resource, long updateInterval);
 
 	/**
 	 * Gets the currently configured access priority.

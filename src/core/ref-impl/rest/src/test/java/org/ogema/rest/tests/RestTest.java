@@ -18,26 +18,33 @@ package org.ogema.rest.tests;
 import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+
 import javax.inject.Inject;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.transform.stream.StreamSource;
+
 import org.apache.http.StatusLine;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.client.fluent.Response;
 import org.apache.http.entity.ContentType;
+
 import static org.joox.JOOX.*;
+
 import org.joox.Match;
 import org.junit.Assert;
+
 import static org.junit.Assert.*;
+
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.model.schedule.DefinitionSchedule;
 import org.ogema.core.model.schedule.Schedule;
-import org.ogema.core.model.simple.OpaqueResource;
+import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
@@ -88,6 +95,7 @@ public class RestTest extends OsgiAppTestBase {
 	}
 
 	@Before
+	@SuppressWarnings("deprecation")
 	public void setup() throws Exception {
 		ApplicationManager appMan = getApplicationManager();
 		ResourceManagement resMan = appMan.getResourceManagement();
@@ -105,7 +113,8 @@ public class RestTest extends OsgiAppTestBase {
 		sw.stateFeedback().create();
 		sw.stateFeedback().setValue(true);
 
-		OpaqueResource opaque = sw.addDecorator("opaque", OpaqueResource.class);
+		org.ogema.core.model.simple.OpaqueResource opaque = sw.addDecorator("opaque",
+				org.ogema.core.model.simple.OpaqueResource.class);
 		ByteBuffer bb = ByteBuffer.wrap(new byte[8]);
 		bb.order(ByteOrder.BIG_ENDIAN);
 		bb.putLong(0xdeadbeefL);
@@ -268,6 +277,58 @@ public class RestTest extends OsgiAppTestBase {
 		org.ogema.core.model.Resource newResource = getApplicationManager().getResourceAccess().getResource(newName);
 		assertNotNull(newResource);
 		assertTrue(response.contains(newName));
+	}
+
+	@Test
+	public void restPostWorksWithReferences() throws Exception {
+		waitForServer();
+		String toplevelRes = "postWithReferenceTest";
+		String actualResource = "actualResource";
+		String directReference = "directReference";
+		String referenceToReference = "referenceToReference";
+		String postContent = "<og:resource xmlns:og=\"http://www.ogema-source.net/REST\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
+				+ "<name>"
+				+ toplevelRes
+				+ "</name><type>org.ogema.model.sensors.HumiditySensor</type>"
+				+ "<resourcelink><link>"
+				+ toplevelRes
+				+ "/"
+				+ directReference
+				+ "</link><type>org.ogema.core.model.simple.FloatResource</type><name>"
+				+ referenceToReference
+				+ "</name></resourcelink>"
+				+ "<resourcelink><link>"
+				+ toplevelRes
+				+ "/"
+				+ actualResource
+				+ "</link><type>org.ogema.core.model.simple.FloatResource</type><name>"
+				+ directReference
+				+ "</name></resourcelink>"
+				+ "<resource xsi:type=\"og:FloatResource\"><name>"
+				+ actualResource
+				+ "</name><type>org.ogema.core.model.simple.FloatResource</type><value>42.0</value></resource>"
+				+ "</og:resource>"; // one top-level resource with three subresources, where subRes3 references subRes2 references subRes1, and subRes3 is created first
+
+		//FIXME: output with &references=true seems to be broken
+		Request post = Request.Post(baseUrl + "?depth=100").addHeader("Accept", "application/xml").bodyString(
+				postContent, ContentType.APPLICATION_XML);
+		System.out.println(postContent);
+		System.out.println(post.execute().returnContent().asString());
+		org.ogema.core.model.Resource newResource = getApplicationManager().getResourceAccess()
+				.getResource(toplevelRes);
+		assertNotNull(newResource);
+		assertNotNull("link '" + actualResource + "' is missing", newResource.getSubResource(actualResource));
+		assertNotNull("link '" + directReference + "' is missing", newResource.getSubResource(directReference));
+		assertNotNull("link '" + referenceToReference + "' is missing", newResource
+				.getSubResource(referenceToReference));
+
+		final String url = baseUrl + "/" + toplevelRes + "?depth=100";
+		Request req = Request.Get(url).addHeader("Accept", "application/xml");
+		String xml2 = req.execute().returnContent().asString();
+		//System.out.println("xml2: " + xml2);
+		String referenceXML = "<link>" + toplevelRes + "/" + actualResource + "</link>";
+		assertTrue("XML serialization for references misses the location of the referenced resource", xml2
+				.contains(referenceXML));
 	}
 
 	/**

@@ -39,14 +39,15 @@ import org.ogema.core.channelmanager.driverspi.ValueContainer;
 import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.openmuc.jmbus.DataRecord;
 import org.openmuc.jmbus.DecodingException;
 import org.openmuc.jmbus.HexConverter;
-import org.openmuc.jmbus.VariableDataBlock;
-import org.openmuc.jmbus.VariableDataResponse;
-import org.openmuc.jmbus.wireless.MBusRfMode;
-import org.openmuc.jmbus.wireless.WMBusListener;
-import org.openmuc.jmbus.wireless.WMBusMessage;
-import org.openmuc.jmbus.wireless.WMBusSapAmber;
+import org.openmuc.jmbus.SecondaryAddress;
+import org.openmuc.jmbus.VariableDataStructure;
+import org.openmuc.jmbus.WMBusDataMessage;
+import org.openmuc.jmbus.WMBusListener;
+import org.openmuc.jmbus.WMBusMode;
+import org.openmuc.jmbus.WMBusSapAmber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -126,8 +127,10 @@ public class WirelessMBusDriver implements ChannelDriver, WMBusListener {
 				final WMBusSapAmber mBusSap = (WMBusSapAmber) handle.getMBusSap();
 
 				handle.setListener(listener);
-				mBusSap.setKey(connection.getChannelLocator().getDeviceLocator().getDeviceAddress(),
-						hexStringToByteArray(connection.getChannelLocator().getDeviceLocator().getParameters()));
+				mBusSap.setKey(SecondaryAddress.getFromWMBusLinkLayerHeader(HexConverter
+						.getByteArrayFromShortHexString(connection.getChannelLocator().getDeviceLocator()
+								.getDeviceAddress()), 0), hexStringToByteArray(connection.getChannelLocator()
+						.getDeviceLocator().getParameters()));
 				if (!handle.isOpen()) {
 					try {
 
@@ -224,7 +227,7 @@ public class WirelessMBusDriver implements ChannelDriver, WMBusListener {
 		String tranceciverSting = substringAfter(string, ":");
 		String modeAsSting = substringAfter(string, "!");
 		modeAsSting = substringBefore(modeAsSting, ":");
-		MBusRfMode mode = MBusRfMode.S;
+		WMBusMode mode = WMBusMode.S;
 		TRANCECIVER tranceciver = TRANCECIVER.AMBER;
 
 		switch (tranceciverSting) {
@@ -241,20 +244,16 @@ public class WirelessMBusDriver implements ChannelDriver, WMBusListener {
 
 		switch (modeAsSting) {
 		case "S":
-			mode = MBusRfMode.S;
+			mode = WMBusMode.S;
 			break;
 
-		case "T1":
-			mode = MBusRfMode.T1;
+		case "T":
+			mode = WMBusMode.T;
 			break;
-		case "T2":
-			mode = MBusRfMode.T2;
-			break;
-
 		default:
 			logger.info("THE MODE ISN'T CORRECT, (S,T1,T2 ARE POSSIBLE). YOUR MODE: " + modeAsSting);
 			logger.info("Used mode is now:S");
-			mode = MBusRfMode.S;
+			mode = WMBusMode.S;
 			break;
 		}
 
@@ -339,35 +338,35 @@ public class WirelessMBusDriver implements ChannelDriver, WMBusListener {
 	}
 
 	@Override
-	public void newMessage(WMBusMessage message) {
+	public void newMessage(WMBusDataMessage message) {
 
 		long timestamp = System.currentTimeMillis();
 		try {
 
 			message.decodeDeep();
-			VariableDataResponse vdr = message.getVariableDataResponse();
+			VariableDataStructure vdr = message.getVariableDataResponse();
 
-			List<VariableDataBlock> vdbs = vdr.getVariableDataBlocks();
+			List<DataRecord> vdbs = vdr.getDataRecords();
 			String[] dibvibs = new String[vdbs.size()];
 
 			int i = 0;
-			for (VariableDataBlock vdb : vdbs) {
+			for (DataRecord vdb : vdbs) {
 				dibvibs[i++] = bytesToHexString(vdb.getDIB()) + ':' + bytesToHexString(vdb.getVIB());
 			}
 			i = 0;
 			logger.info("Message received, Time:" + System.currentTimeMillis() + "\t DeviceAddress: "
-					+ HexConverter.getShortHexStringFromByteArray(message.getMBusId().asByteArray()));
+					+ HexConverter.getShortHexStringFromByteArray(message.getSecondaryAddress().asByteArray()));
 			List<SampledValueContainer> list = new LinkedList<SampledValueContainer>();
 			for (ConnectionHandle connectionHandle : tranciverList) {
 
-				for (VariableDataBlock vdb : vdr.getVariableDataBlocks()) {
+				for (DataRecord vdb : vdr.getDataRecords()) {
 
 					for (SampledValueContainer sampledValueContainer : sampledValueContainers) {
 						String channelAddress = sampledValueContainer.getChannelLocator().getChannelAddress();
 						String deviceAddress = sampledValueContainer.getChannelLocator().getDeviceLocator()
 								.getDeviceAddress();
 						String deviceAddressFromMessage = HexConverter.getShortHexStringFromByteArray(message
-								.getMBusId().asByteArray());
+								.getSecondaryAddress().asByteArray());
 
 						if (channelAddress.equals(dibvibs[i]) && deviceAddress.equals(deviceAddressFromMessage)) {
 

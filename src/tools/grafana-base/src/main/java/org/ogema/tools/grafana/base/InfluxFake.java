@@ -101,6 +101,8 @@ public class InfluxFake extends HttpServlet {
 	 * The full type name must be given, e.g. org.ogema.core.model.simple.FloatResource
 	 */
 	protected Map<String,Map> panels;
+	// the field below is used for a hack to filter the resources shown by the resource type of their parent (typically applied to schedules)
+	protected Map<String,Map<String,Class<? extends Resource>>> restrictions;
 	protected boolean strictMode = false;
 	protected DataType dataType = DataType.LOG_DATA; 
 	protected List<String> loggedResources;
@@ -190,6 +192,7 @@ public class InfluxFake extends HttpServlet {
          initializeClassLoaders();
          this.loggedResources = new ArrayList<String>();
          this.dataType = dataType;
+         this.restrictions = new HashMap<String,Map<String,Class<? extends Resource>>>();
          //System.out.println("Created new InfluxFake!!!");
      }
     
@@ -263,6 +266,15 @@ public class InfluxFake extends HttpServlet {
 	public void setDataType(DataType dataType) {
 		this.dataType = dataType;
 	}
+
+	public Map<String, Map<String,Class<? extends Resource>>> getRestrictions() {
+		return restrictions;
+	}
+
+	public void setRestrictions(Map<String, Map<String,Class<? extends Resource>>> restrictions) {
+		this.restrictions = restrictions;
+	}
+
 
 
     /**************** Servlet methods ****************/
@@ -351,10 +363,17 @@ public class InfluxFake extends HttpServlet {
 				return;
 			}
 			List<? extends Resource> ress = ra.getResources(clazz);
+			
+			Class<? extends Resource> parentClazz = null;
+			if (params.containsKey("restrictions")) {
+				String clzz = params.get("restrictions")[0];
+				parentClazz = getClass(clzz);
+			}
 			loggedResources.clear();
 			JSONArray resources = new JSONArray();
 			for (Resource res: ress) {
 				if (!isResourceLogged(res,params)) continue; 
+				if (parentClazz != null && (res.isTopLevel() || !res.getParent().getResourceType().equals(parentClazz))) continue;
 				if (strictMode) {
 					Class <? extends Resource > clazz2 = res.getResourceType();
 					if (!clazz.equals(clazz2)) continue;
@@ -378,8 +397,10 @@ public class InfluxFake extends HttpServlet {
 			}
 			Object obj = list.get(pl);
 			List<? extends Resource> ress = (List<? extends Resource>) obj;
+			//Class<? extends Resource> parentClass = restrictions.get(pl);
 			for (Resource res: ress) {
 				if (!isResourceLogged(res,params)) continue; 
+				//if (parentClass != null && (res.isTopLevel() ||  !res.getParent().getResourceType().equals(parentClass))) continue; 
 				resources.put(res.getLocation());
 				loggedResources.add(res.getLocation());
 			}
@@ -390,6 +411,9 @@ public class InfluxFake extends HttpServlet {
 			pr.put("updateInterval", updateInterval);
 			//System.out.println("  Panels " + panels.toString());
 			pr.put("panels", panels);		
+			if (!restrictions.isEmpty()) {
+				pr.put("restrictions",getStringRestrictionsMap());
+			}
 			obj1.put("parameters",pr);
 		}
 		results.put(obj1);	
@@ -506,24 +530,28 @@ public class InfluxFake extends HttpServlet {
 	}
 		
 	private long[] getQueryInterval(String query) {
-		//System.out.println("Determining query interval from: " + query);
+//		System.out.println("Determining query interval from: " + query);
 		long st=0l;
-		long end=4100000000000l;
+		long end=am.getFrameworkTime();
 		try {
 			 int idxStart = query.indexOf(" time > ");
 			 int idxEnd = query.indexOf(" time < ");
 			 if (idxStart > -1) {
-				 st = getTimestamp(query.substring(idxStart + 8),st);
+				 try{
+					 st = getTimestamp(query.substring(idxStart + 8),st);
+				 } catch (Exception ee) {
+					 logger.warn("Could not determine queried time interval, " + ee);
+				 }
 			 }
 			 if (idxEnd > -1) {
-				 end = getTimestamp(query.substring(idxEnd + 8),end);
+				 end = getEndTimestamp(query.substring(idxEnd + 8),end);
 			 }
 			
 		} catch (Exception e) {
-			logger.warn("Could not determine queried time interval, " + e.getStackTrace().toString());
+			logger.warn("Could not determine queried time interval, " + e);
 		}
 		long[] interval = {st,end};
-		//System.out.println("Query interval: [" + String.valueOf(interval[0]) + ", " +String.valueOf(interval[1]) + "]");
+//		System.out.println("Query interval: [" + String.valueOf(interval[0]) + ", " +String.valueOf(interval[1]) + "]");
 		return interval;
 	}
 	
@@ -539,7 +567,7 @@ public class InfluxFake extends HttpServlet {
 			} catch (Exception e) {
 				scan.close();
 				scanner.close();
-				logger.warn("Exception trying to parse query time, " + e.getStackTrace().toString());
+				logger.error("Exception trying to parse query time from " + subquery + ", "  + e);
 				return defaultVal;
 			}
 			scan.close();
@@ -566,6 +594,43 @@ public class InfluxFake extends HttpServlet {
 			long ts = am.getFrameworkTime() - factor*((long) number);
 			return ts;
 		}
+		else if (subquery.length() > 7 && subquery.substring(0, 8).equals("now() + ")) {
+			String timeStr = subquery.substring(8);
+			Scanner scanner = new Scanner(timeStr);
+			Scanner scan = scanner.useDelimiter("\\D");  // "not a number"
+			int number = 0;
+			try {
+				number = scan.nextInt();
+			} catch (Exception e) {
+				scan.close();
+				scanner.close();
+				logger.error("Exception trying to parse query time from " + subquery + ", "  + e);
+				return defaultVal;
+			}
+			scan.close();
+			scanner.close();
+			int idx = String.valueOf(number).length();
+			char ch = timeStr.charAt(idx);
+			long factor;
+			switch (ch) {
+			case 's':
+				factor = 1000l; 
+				break;
+			case 'm': 
+				factor = 1000l*60l;
+				break;
+			case 'h':
+				factor = 1000l*60l*60l;
+				break;
+			case 'd':
+				factor = 1000l*60l*60l*24l;
+				break;
+			default:
+				return defaultVal;			
+			}
+			long ts = am.getFrameworkTime() + factor*((long) number);
+			return ts;
+		}
 		else if (subquery.substring(0,1).matches("\\d")) {
 			Scanner scanner = new Scanner(subquery);
 			Scanner scan = scanner.useDelimiter("\\D");  // "not a number"
@@ -575,7 +640,7 @@ public class InfluxFake extends HttpServlet {
 			} catch (Exception e) {
 				scan.close();
 				scanner.close();
-				logger.warn("Exception trying to parse query time, " + e.getStackTrace().toString());
+				logger.error("Exception trying to parse query time from " + subquery + ", "  + e);
 				return defaultVal;
 			}
 			scan.close();
@@ -584,9 +649,59 @@ public class InfluxFake extends HttpServlet {
 			//System.out.println("Calculated timestamp " + String.valueOf(number*1000l) + " from query " + subquery); // FIXME
 			return number * 1000l;
 		}
-			
+		else if (subquery.length() > 4 && subquery.substring(0, 5).equals("now()")) {
+			return am.getFrameworkTime();
+		}	
 		return defaultVal; //FIXME
 	}
+	
+	private long getEndTimestamp(String subquery, long defaultVal) {
+		if (subquery == null || subquery.length() == 0) return defaultVal;
+		if (subquery.length() > 7 && subquery.substring(0, 8).equals("now() - ")) {
+			return getTimestamp(subquery, defaultVal);
+		}
+		else if (subquery.length() > 6 && subquery.substring(0,6).matches("\\d+")) {
+			return getTimestamp(subquery, defaultVal);
+		}
+		else if (subquery.substring(0,1).matches("\\d")) {
+			Scanner scanner = new Scanner(subquery);
+			Scanner scan = scanner.useDelimiter("\\D");  // "not a number"
+			int number = 0;
+			try {
+				number = scan.nextInt();
+			} catch (Exception e) {
+				scan.close();
+				scanner.close();
+				logger.error("Exception trying to parse query time from " + subquery + ", "  + e);
+				return defaultVal;
+			}
+			scan.close();
+			scanner.close();
+			int idx = String.valueOf(number).length();
+			char ch = subquery.charAt(idx);
+			long factor;
+			switch (ch) {
+			case 's':
+				factor = 1000l; 
+				break;
+			case 'm': 
+				factor = 1000l*60l;
+				break;
+			case 'h':
+				factor = 1000l*60l*60l;
+				break;
+			case 'd':
+				factor = 1000l*60l*60l*24l;
+				break;
+			default:
+				return defaultVal;			
+			}
+			long ts = am.getFrameworkTime() + factor*((long) number);
+			return ts;
+		}	
+		return defaultVal; //FIXME
+	}
+	
 	
 	private int initializeClassLoaders() {
 		// TODO add further class loaders for custom types
@@ -622,6 +737,24 @@ public class InfluxFake extends HttpServlet {
 		}
 		//System.out.println("   returning " + clazz);
 		return clazz;
+	}
+	
+	private Map<String,Map<String,String>> getStringRestrictionsMap() {
+		Map<String,Map<String,String>> map = new HashMap<>();		
+		Iterator<Entry<String, Map<String,Class<? extends Resource>>>> it = restrictions.entrySet().iterator();
+		while(it.hasNext()) {
+			Entry<String,Map<String,Class<? extends Resource>>> entr = it.next();
+			Map<String,Class<? extends Resource>> submap = entr.getValue();
+			Map<String,String> subStrMap = new HashMap<String, String>();
+			Iterator<Entry<String, Class<? extends Resource>>> subit = submap.entrySet().iterator();
+			while(subit.hasNext()) {
+				Entry<String,Class<? extends Resource>> entry = subit.next();
+				Class<? extends Resource> clzz = entry.getValue();
+				subStrMap.put(entry.getKey(), entry.getValue().getName());		
+			}
+			map.put(entr.getKey(), subStrMap);
+		}
+		return map;
 	}
 	
 	private String getDeviceLocation(String resLoc) {

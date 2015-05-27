@@ -32,13 +32,13 @@ import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.units.PowerResource;
 import org.ogema.core.model.units.ThermalEnergyCapacityResource;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.devices.whitegoods.CoolingDevice;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 
 @ExamReactorStrategy(PerClass.class)
+@SuppressWarnings("deprecation")
 public class ResourceListenerTest extends OsgiTestBase {
 
 	String RESNAME = getClass().getSimpleName();
@@ -48,7 +48,7 @@ public class ResourceListenerTest extends OsgiTestBase {
 		final CountDownLatch callbackCount = new CountDownLatch(1);
 		OnOffSwitch sw = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
 
-		ResourceListener l = new ResourceListener() {
+		org.ogema.core.resourcemanager.ResourceListener l = new org.ogema.core.resourcemanager.ResourceListener() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
@@ -71,7 +71,7 @@ public class ResourceListenerTest extends OsgiTestBase {
 		sw.addOptionalElement("controllable");
 		sw.controllable().activate(true);
 
-		ResourceListener l = new ResourceListener() {
+		org.ogema.core.resourcemanager.ResourceListener l = new org.ogema.core.resourcemanager.ResourceListener() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
@@ -91,7 +91,7 @@ public class ResourceListenerTest extends OsgiTestBase {
 		final CountDownLatch callbackCount = new CountDownLatch(1);
 		final OnOffSwitch sw = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
 
-		ResourceListener listener = new ResourceListener() {
+		org.ogema.core.resourcemanager.ResourceListener listener = new org.ogema.core.resourcemanager.ResourceListener() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
@@ -114,7 +114,7 @@ public class ResourceListenerTest extends OsgiTestBase {
 		final CountDownLatch callbackCount = new CountDownLatch(1);
 		final OnOffSwitch sw = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
 
-		ResourceListener listener = new ResourceListener() {
+		org.ogema.core.resourcemanager.ResourceListener listener = new org.ogema.core.resourcemanager.ResourceListener() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
@@ -138,7 +138,7 @@ public class ResourceListenerTest extends OsgiTestBase {
 		final OnOffSwitch sw = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
 		final OnOffSwitch sw2 = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
 
-		ResourceListener l = new ResourceListener() {
+		org.ogema.core.resourcemanager.ResourceListener l = new org.ogema.core.resourcemanager.ResourceListener() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
@@ -161,7 +161,7 @@ public class ResourceListenerTest extends OsgiTestBase {
 		final CountDownLatch callbackCount = new CountDownLatch(1);
 		final OnOffSwitch sw = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
 
-		ResourceListener l = new ResourceListener() {
+		org.ogema.core.resourcemanager.ResourceListener l = new org.ogema.core.resourcemanager.ResourceListener() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
@@ -184,7 +184,7 @@ public class ResourceListenerTest extends OsgiTestBase {
 		final CyclicBarrier barrier = new CyclicBarrier(2);
 		OnOffSwitch sw = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
 
-		ResourceListener l = new ResourceListener() {
+		org.ogema.core.resourcemanager.ResourceListener l = new org.ogema.core.resourcemanager.ResourceListener() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
@@ -220,7 +220,7 @@ public class ResourceListenerTest extends OsgiTestBase {
 		final CountDownLatch cdl = new CountDownLatch(2);
 		OnOffSwitch sw = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
 
-		ResourceListener l = new ResourceListener() {
+		org.ogema.core.resourcemanager.ResourceListener l = new org.ogema.core.resourcemanager.ResourceListener() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
@@ -255,7 +255,7 @@ public class ResourceListenerTest extends OsgiTestBase {
 
 		final CyclicBarrier barrier = new CyclicBarrier(2);
 
-		ResourceListener l = new ResourceListener() {
+		org.ogema.core.resourcemanager.ResourceListener l = new org.ogema.core.resourcemanager.ResourceListener() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
@@ -339,7 +339,7 @@ public class ResourceListenerTest extends OsgiTestBase {
 
 		final CountDownLatch cdl = new CountDownLatch(1);
 		final Resource[] res = new Resource[1];
-		ResourceListener l = new ResourceListener() {
+		org.ogema.core.resourcemanager.ResourceListener l = new org.ogema.core.resourcemanager.ResourceListener() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
@@ -390,7 +390,7 @@ public class ResourceListenerTest extends OsgiTestBase {
 		assertTrue("no callback received", lStoredReference.await());
 	}
 
-	static class ChangeTestListener implements ResourceListener {
+	static class ChangeTestListener implements org.ogema.core.resourcemanager.ResourceListener {
 
 		Resource changedResource;
 		int callbackCount;

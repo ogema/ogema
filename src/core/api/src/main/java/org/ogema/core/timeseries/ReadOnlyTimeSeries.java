@@ -90,6 +90,7 @@ public interface ReadOnlyTimeSeries {
 	 * @deprecated Only schedules can sensibly support this. For getting the time
 	 * of the last write entry into a schedule, use {@link ValueResource#getLastUpdateTime() }, instead.
 	 */
+	@Deprecated
 	Long getTimeOfLatestEntry();
 
 }

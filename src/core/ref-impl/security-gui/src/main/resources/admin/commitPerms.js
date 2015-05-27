@@ -124,108 +124,7 @@ function sendPermsToServer(appid, permContentForApp) {
  *            obj Current dialog. return {String} finalJSON JSON-String of the
  *            chosen permissions.
  */
-// function getDemandBack(obj) {
-// var recursive = false;
-// var pName = "";
-// var pRessource = "";
-// var pMethod;
-// var pCondition;
-// var pCondArgs;
-// var countChecked = $("form > div div:first-child
-// input:first-child:checked").length;
-// var arrayOfChecked = $("form > div div:first-child
-// input:first-child:checked");
-// var permStringArray = [];
-// // var resPermResources = "";
-// // var idNumOnly;
-//
-// for (var x = 0; x < countChecked; x++) {
-// pName = "";
-// pRessource = "";
-// pMethod = "";
-// pCondition = "";
-// pCondArgs = "";
-// // resPermResources = "";
-// if ($("form > div obj div:first-child input").prop("checked", true)) {
-// var eachId = arrayOfChecked[x].id;
-// var selector = "input#" + eachId;
-// var thisNext = $(selector).next();
-// var parentLabel = $(selector).parent().find("label");
-// var parentInputText = $(selector).parent().find("input[type='text']");
-// var divLastChild = $(selector).parent().parent().find("div:last-child");
-// var parentNextDivConds = $(selector).parent().next().find("div.conditions");
-//
-// // if only one label in head (label is name)
-// if (parentLabel.length == 1) {
-// pName = parentLabel.text();
-// } else if (parentLabel.length == 0) { // if
-// // no
-// // label
-// // (text-input
-// // is
-// // name)
-// pName = parentInputText.val();
-// } else if (parentLabel.length > 1) { // if
-// // more
-// // than
-// // one
-// // label
-// // (additional
-// // perm,
-// // first
-// // label
-// // is
-// // name)
-// // grant or deny checked
-// pName =
-// $(selector).parent().find("input:checkbox:checked").next("label").text();
-// // get name of text-input
-// pName = pName + parentInputText.val();
-// }
-// pRessource = divLastChild.find("input[type='text']").val();
-// if (divLastChild.find("input[type='checkbox']").length > 0) {
-// pMethod = divLastChild.find("input:checkbox:checked").map(function() {
-// return $(this).next("label").text().split(' ');
-// });
-// } else {
-// pMethod = divLastChild.find("input[type='text']").next().next().next().val();
-// }
-// if (parentNextDivConds.length == 1) {
-// pCondition = parentNextDivConds.find("input[type='text']").val();
-// pCondArgs = parentNextDivConds.find("input:last-child").val();
-// }
-//
-// if (thisNext.text().indexOf("ResourcePermission") != -1) {
-// var treeId = eachId.replace("c", "");
-// // resPermResources = getResources(idNumOnly);
-// // var checkedLen = $("#testTree" +
-// // idNumOnly).jstree("get_selected").length;
-// var policy = transformWithResources(pName, pMethod, pCondition, pCondArgs, /*
-// resPermResources, */"#testTree" + treeId);
-// // if (checkedLen != 0) {
-// if (policy != "") {
-// permStringArray[x] = policy;
-// } else {
-// permStringArray[x] = transformInput(pName, pRessource, pMethod, pCondition,
-// pCondArgs);
-// }
-// } else {
-// permStringArray[x] = transformInput(pName, pRessource, pMethod, pCondition,
-// pCondArgs);
-// }
-// }
-// }
-//
-// // create JSON-form
-// var finalJSON = '{"permissions":[' + permStringArray + ']}';
-//
-// // reset
-// // eachId = [];
-// // countChecked = 0;
-// // permStringArray = [];
-// //
-// return finalJSON;
-// }
+
 function getGrantedBack(obj) {
 	var recursive = false;
 	var pName = "";
@@ -251,6 +150,13 @@ function getGrantedBack(obj) {
 			var parentInputText = $(selector).parent().find("input[type='text']");
 			var divLastChild = $(selector).parent().parent().find("div:last-child");
 			var parentNextDivConds = $(selector).parent().next().find("div.conditions");
+
+			// check if its an grant or an deny policy
+			var mode = $(selector).parent().find("meta");
+			var modename = mode.attr("name");
+			modename = mode.attr("content");
+			if (modename != "deny")
+				modename = "allow";
 
 			// if only one label in head (label is name)
 			if (parentLabel.length == 1) {
@@ -280,14 +186,14 @@ function getGrantedBack(obj) {
 
 			if (thisNext.text().indexOf("ResourcePermission") != -1) {
 				var treeId = eachId.replace("c", "");
-				var policy = transformWithResources(pName, pMethod, pCondition, pCondArgs, "#testTree" + treeId);
+				var policy = transformWithResources(pName, pMethod, pCondition, pCondArgs, "#testTree" + treeId, modename);
 				if (policy != "") {
 					permStringArray[x] = policy;
 				} else {
-					permStringArray[x] = transformInput(pName, pRessource, pMethod, pCondition, pCondArgs);
+					permStringArray[x] = transformInput(pName, pRessource, pMethod, pCondition, pCondArgs, modename);
 				}
 			} else {
-				permStringArray[x] = transformInput(pName, pRessource, pMethod, pCondition, pCondArgs);
+				permStringArray[x] = transformInput(pName, pRessource, pMethod, pCondition, pCondArgs, modename);
 			}
 		}
 	}
@@ -306,7 +212,7 @@ resourcePerm.prototype = {
 	'wc' : undefined
 };
 
-function transformWithResources(name, methods, condition, conditionArgs, /* resPermResources, */selector) {
+function transformWithResources(name, methods, condition, conditionArgs, selector, mode) {
 	{
 		var allSelected = $(selector).jstree("get_checked", true);
 		var allTops = $(selector).jstree("get_top_checked", true);
@@ -336,7 +242,7 @@ function transformWithResources(name, methods, condition, conditionArgs, /* resP
 		if (props.wc)
 			resourceName += "/*";
 		resourceActions = props.actions; // node.original.method;
-		var transformed = transformInput(name, "path=" + resourceName, resourceActions, condition, conditionArgs);
+		var transformed = transformInput(name, "path=" + resourceName, resourceActions, condition, conditionArgs, mode);
 		pre += transformed;
 	}
 	return pre;
@@ -353,16 +259,10 @@ function wrapChildren(value, methods, selecteds, isTop, selector) {
 		nodeprops.actions = value.original.method;
 		nodeprops.wc = value.original.recursive;
 		selecteds.push(nodeprops);
-		// if (isWildcard(value, selector)) {
-		// nodeprops.wc = true;
-		// return; // the top selected is wildcarded, nothing todo anymore
-		// } else
-		// nodeprops.wc = false;
 	}
 	for (var i = 0; i < length; i++) {
 		var child = value.children[i];
 		var chNode = $(selector).jstree(true).get_node(child);
-		// var method = chNode.original.method;
 		isChecked = $(selector).jstree("is_checked", chNode);
 		if (isChecked) {
 			nodeprops = new resourcePerm();
@@ -371,12 +271,6 @@ function wrapChildren(value, methods, selecteds, isTop, selector) {
 			nodeprops.actions = chNode.original.method;
 			nodeprops.wc = value.original.recursive;
 			selecteds.push(nodeprops);
-			// if (isWildcard(chNode, selector)) {
-			// nodeprops.wc = true;
-			// continue; // dont wrap children, proceed with the sister
-			// // node
-			// } else
-			// nodeprops.wc = false;
 		}
 		wrapChildren(chNode, methods, selecteds, false, selector);
 	}
@@ -420,7 +314,7 @@ function isWildcard(value, selector) {
  *            conditionArgs Arguments
  * @return {String} permString Permission-String (One permission)
  */
-function transformInput(name, ressource, methods, condition, conditionArgs) {
+function transformInput(name, ressource, methods, condition, conditionArgs, mode) {
 	var methodString = "";
 	// count of methods
 	if (methods != null || methods != "") {
@@ -477,23 +371,9 @@ function transformInput(name, ressource, methods, condition, conditionArgs) {
 	}
 
 	var permString;
-	if (name == "" && ressource == "" && methods == "") {
-		// if nothing, no permstring
-		permString = "";
-	} else if (name.indexOf("Grant") != -1 || name.indexOf("Deny") != -1) {
-		if (name.indexOf("Grant") != -1) {
-			name = name.slice(7);
-			permString = '{"mode":"ALLOW","name":"' + name + '","filter":"' + ressource + '","action":"' + methodString + '","condition":"' + condition
-					+ '","conditionArgs":' + argString + '}';
-		} else if (name.indexOf("Deny") != -1) {
-			name = name.slice(6);
-			permString = '{"mode":"DENY","name":"' + name + '","filter":"' + ressource + '","action":"' + methodString + '","condition":"' + condition
-					+ '","conditionArgs":' + argString + '}';
-		}
-	} else {
-		permString = '{"mode":"ALLOW","name":"' + name + '","filter":"' + ressource + '","action":"' + methodString + '","condition":"' + condition
-				+ '","conditionArgs":' + argString + '}';
-	}
+
+	permString = '{"mode":"' + mode + '","name":"' + name + '","filter":"' + ressource + '","action":"' + methodString + '","condition":"' + condition
+			+ '","conditionArgs":' + argString + '}';
 	// final permission-string for sending to the server
 	return permString;
 }

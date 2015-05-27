@@ -324,7 +324,7 @@ public class Iec61850Driver implements ChannelDriver {
 
 		ClientAssociation clientAssociation;
 		try {
-			clientAssociation = clientSap.associate(address, remotePort, null);
+			clientAssociation = clientSap.associate(address, remotePort, null, null);
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}

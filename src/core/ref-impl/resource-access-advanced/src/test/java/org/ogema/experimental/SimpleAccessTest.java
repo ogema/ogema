@@ -66,6 +66,38 @@ public class SimpleAccessTest extends OsgiTestBase {
 		}
 	}
 
+	class UninitListener implements PatternListener<UninitializedRad> {
+
+		public CountDownLatch foundLatch = new CountDownLatch(1);
+		public CountDownLatch lostLatch = new CountDownLatch(1);
+		public UninitializedRad lastAvailable = null;
+
+		@Override
+		public void patternAvailable(UninitializedRad pattern) {
+			lastAvailable = pattern;
+			foundLatch.countDown();
+		}
+
+		@Override
+		public void patternUnavailable(UninitializedRad pattern) {
+			lostLatch.countDown();
+		}
+	};
+
+	@Test
+	public void findRADwithUninitializedField() throws InterruptedException {
+		UninitListener listener = new UninitListener();
+		advAcc.addPatternDemand(UninitializedRad.class, listener, AccessPriority.PRIO_LOWEST);
+		UninitializedRad rad = advAcc.createResource("HPName1", UninitializedRad.class);
+		rad.model.activate(true);
+		listener.foundLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.foundLatch.getCount());
+		assertNotNull(listener.lastAvailable);
+		listener.lastAvailable.model.delete();
+		listener.lostLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.lostLatch.getCount());
+	}
+
 	@Test
 	public void findLoseRad() throws InterruptedException {
 

@@ -29,6 +29,7 @@ import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.ResourceGraphException;
 import org.ogema.model.locations.Room;
 import org.ogema.model.actors.OnOffSwitch;
+import org.ogema.model.devices.generators.ElectricHeater;
 import org.ogema.model.locations.PhysicalDimensions;
 import org.ogema.model.time.CalendarEntry;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
@@ -46,15 +47,6 @@ public class ReferenceTest extends OsgiTestBase {
 	@Before
 	@Override
 	public void doBefore() {
-	}
-
-	@Ignore
-	@Test
-	public void replaceReferenceByItself() {
-		OnOffSwitch sw1 = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
-		BooleanResource reference = resMan.createResource(RESNAME + counter++, BooleanResource.class);
-		sw1.stateControl().setAsReference(reference);
-		sw1.stateControl().setAsReference(reference);
 	}
 
 	/*
@@ -125,6 +117,7 @@ public class ReferenceTest extends OsgiTestBase {
 		OnOffSwitch sw1 = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
 		sw1.heatCapacity().create();
 		sw1.heatCapacity().setValue(1);
+		sw1.heatCapacity().addDecorator("test", FloatResource.class);
 
 		OnOffSwitch sw2 = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
 		sw2.heatCapacity().create();
@@ -139,7 +132,42 @@ public class ReferenceTest extends OsgiTestBase {
 		sw2.addDecorator("foo", sw2.heatCapacity());
 		assertEquals(2, ((FloatResource) (sw2.getSubResource("foo"))).getValue(), 0f);
 
+		assertTrue(sw1.heatCapacity().exists());
+		assertTrue(sw1.heatCapacity().getSubResource("test").exists());
+
 		assertEquals(2, foo.getValue(), 0f);
+	}
+
+	@Test
+	public void referencesToTopLevelCanBeSafelyReplaced() {
+		OnOffSwitch sw1 = resMan.createResource(newResourceName(), OnOffSwitch.class);
+		OnOffSwitch sw2 = resMan.createResource(newResourceName(), OnOffSwitch.class);
+		ElectricHeater heater = resMan.createResource(newResourceName(), ElectricHeater.class);
+
+		sw1.stateControl().create();
+		sw2.stateControl().create();
+
+		heater.onOffSwitch().setAsReference(sw1);
+		assertTrue(heater.onOffSwitch().stateControl().exists());
+
+		heater.onOffSwitch().setAsReference(sw2);
+		assertTrue(heater.onOffSwitch().stateControl().exists());
+		assertTrue(heater.onOffSwitch().stateControl().equalsLocation(sw2.stateControl()));
+
+		assertTrue("sw1 is still complete", sw1.stateControl().exists());
+	}
+
+	@Test
+	public void referencesToTopLevelCanBeSafelyDeleted() {
+		OnOffSwitch sw1 = resMan.createResource(newResourceName(), OnOffSwitch.class);
+		ElectricHeater heater = resMan.createResource(newResourceName(), ElectricHeater.class);
+		sw1.stateControl().create();
+
+		heater.onOffSwitch().setAsReference(sw1);
+
+		assertTrue(heater.onOffSwitch().stateControl().equalsLocation(sw1.stateControl()));
+		heater.onOffSwitch().delete();
+		assertTrue("sw1 is still complete", sw1.stateControl().exists());
 	}
 
 	/* when an application holds a resource R which is a reference and this
@@ -294,12 +322,24 @@ public class ReferenceTest extends OsgiTestBase {
 		assertTrue(stateControl.equalsLocation(stateFeedback));
 	}
 
+	/** @see #replaceReferenceByItself()  */
 	@Test(expected = ResourceGraphException.class)
 	public void replacingResourceWithAReferenceToItselfCausesException() {
 		final OnOffSwitch swtch = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
+		final OnOffSwitch swtch2 = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
 		final Resource stateControl = swtch.stateControl().create();
 		assertNotNull(stateControl);
-		final Resource stateControl2 = swtch.stateControl().setAsReference(stateControl);
+		swtch2.stateControl().setAsReference(stateControl);
+		final Resource stateControl2 = swtch.stateControl().setAsReference(swtch2.stateControl());
+	}
+
+	/** @see #replacingResourceWithAReferenceToItselfCausesException() */
+	@Test
+	public void replaceReferenceByItself() {
+		OnOffSwitch sw1 = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
+		BooleanResource reference = resMan.createResource(RESNAME + counter++, BooleanResource.class);
+		sw1.stateControl().setAsReference(reference);
+		sw1.stateControl().setAsReference(reference);
 	}
 
 }

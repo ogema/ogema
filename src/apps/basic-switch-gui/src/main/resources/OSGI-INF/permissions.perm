@@ -17,3 +17,4 @@
 (org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.location.Room" "read,write,addsub,create,activity")
 (org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.devices.buildingtechnology.Thermostat" "read,write,addsub,create,activity")
 
+("java.lang.RuntimePermission" "accessDeclaredMembers")

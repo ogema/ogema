@@ -20,6 +20,7 @@ import java.net.ConnectException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Iterator;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.felix.scr.annotations.Component;
@@ -40,10 +41,15 @@ import org.ogema.core.channelmanager.driverspi.ValueContainer;
 import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.core.channelmanager.measurements.Value;
 import org.openmuc.jmbus.DecodingException;
 import org.openmuc.jmbus.MBusSap;
-import org.openmuc.jmbus.VariableDataBlock;
-import org.openmuc.jmbus.VariableDataResponse;
+import org.ogema.driver.mbus.ConnectionHandle;
+import org.openmuc.jmbus.VariableDataStructure;
+import org.openmuc.jmbus.DataRecord;
+
+//import org.openmuc.jmbus.VariableDataBlock;
+//import org.openmuc.jmbus.VariableDataResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,59 +99,76 @@ public class MBusDriver implements ChannelDriver {
 	}
 
 	@Override
-	public void readChannels(List<SampledValueContainer> channels) throws UnsupportedOperationException, IOException {
+	public synchronized void readChannels(List<SampledValueContainer> channels) throws UnsupportedOperationException,
+			IOException {
+
+		long timestamp = System.currentTimeMillis();
 
 		for (SampledValueContainer connection : channels) {
-			ConnectionHandle connectionHandle = connections.get(connection.getChannelLocator().getDeviceLocator()
-					.getInterfaceName());
 
+			DeviceLocator deviceLocator = connection.getChannelLocator().getDeviceLocator();
+			ConnectionHandle connectionHandle = connections.get(deviceLocator.getInterfaceName());
 			MBusSap mBusSap = connectionHandle.getMBusSap();
 
-			VariableDataResponse response = null;
+			VariableDataStructure response = null;
 			try {
-				response = mBusSap.read(connection.getChannelLocator().getDeviceLocator().getDeviceAddress());
-			} catch (IOException e1) {
-				connectionHandle.close();
-				connectionHandle.getMBusSap().close();
-				connections.remove(connection.getChannelLocator().getDeviceLocator().getInterfaceName());
-			} catch (TimeoutException e1) {
 
-			}
-
-			long timestamp = System.currentTimeMillis();
-
-			List<VariableDataBlock> vdbs = response.getVariableDataBlocks();
-			String[] dibvibs = new String[vdbs.size()];
-
-			int i = 0;
-			for (VariableDataBlock vdb : vdbs) {
-				dibvibs[i++] = bytesToHexString(vdb.getDIB()) + ':' + bytesToHexString(vdb.getVIB());
-			}
-			i = 0;
-			for (VariableDataBlock vdb : response.getVariableDataBlocks()) {
-
-				if (dibvibs[i++].equalsIgnoreCase(connection.getChannelLocator().getChannelAddress())) {
-
-					try {
-						vdb.decode();
-					} catch (DecodingException e) {
-						logger.debug("Unable to parse VariableDataBlock received via M-Bus", e);
-						break;
-					}
-					connection.setSampledValue(new SampledValue(new DoubleValue(vdb.getScaledDataValue()), timestamp,
-							Quality.GOOD));
-					break;
-
+				if (!connectionHandle.isConnected()) {
+					logger.info("********* called open for: " + deviceLocator.getInterfaceName());
+					mBusSap.open();
+					connectionHandle.setConnected(true);
 				}
 
-			}
+				response = mBusSap.read(new Integer(deviceLocator.getDeviceAddress().substring(1,
+						deviceLocator.getDeviceAddress().length())));
 
-			if (connection.getSampledValue() == null) {
-				System.out.println("YOU FAILD HARD!!!!");
+				if (response != null) {
+					try {
+						response.decode();
+						DoubleValue scaledValue = getScaledValue(response, connection);
+						connection.setSampledValue(new SampledValue(scaledValue, timestamp, Quality.GOOD));
+					} catch (DecodingException e) {
+						logger.error("Couldn't decode mbus resopnse.", e);
+						connection.setSampledValue(new SampledValue(new DoubleValue(0), timestamp, Quality.BAD));
+					}
+				} else {
+					throw new IOException("read response = null");
+				}
+
+			} catch (IOException | TimeoutException e) {
+				logger.info("run into exception for device:" + deviceLocator.getInterfaceName(), e);
+				connection.setSampledValue(new SampledValue(new DoubleValue(0), timestamp, Quality.BAD));
+				connectionHandle.setConnected(false);
+				connectionHandle.getMBusSap().close();
+
 			}
 
 		}
 
+	}
+
+	private DoubleValue getScaledValue(VariableDataStructure response, SampledValueContainer connection)
+			throws DecodingException {
+
+		List<DataRecord> vdbs = response.getDataRecords();
+		String[] dibvibs = new String[vdbs.size()];
+		int i = 0;
+
+		DoubleValue returnValue = null;
+
+		for (DataRecord vdb : vdbs) {
+			dibvibs[i++] = bytesToHexString(vdb.getDIB()) + ':' + bytesToHexString(vdb.getVIB());
+		}
+
+		i = 0;
+		for (DataRecord vdb : response.getDataRecords()) {
+			if (dibvibs[i++].equalsIgnoreCase(connection.getChannelLocator().getChannelAddress())) {
+				vdb.decode();
+				returnValue = new DoubleValue(vdb.getScaledDataValue());
+			}
+		}
+
+		return returnValue;
 	}
 
 	@Override
@@ -177,64 +200,35 @@ public class MBusDriver implements ChannelDriver {
 
 	@Override
 	public void reset() {
-		// TODO Auto-generated method stub
 
+		/*Iterator<Map.Entry<String, ConnectionHandle>> it = connections.entrySet().iterator();
+
+		while (it.hasNext()) {
+			String key = it.next().getKey();
+			ConnectionHandle handle = connections.get(key);
+			handle.getMBusSap().close();
+
+		}
+		connections.clear();*/
 	}
 
 	@Override
 	public void channelAdded(ChannelLocator channel) {
-
+		DeviceLocator deviceLocator = channel.getDeviceLocator();
 		ConnectionHandle connectionHandle = connections.get(channel.getDeviceLocator().getInterfaceName());
-
 		if (connectionHandle == null) {
-			MBusSap mBusSap = new MBusSap(channel.getDeviceLocator().getInterfaceName());
-			try {
-				mBusSap.open(Integer.parseInt(channel.getDeviceLocator().getParameters()));
-			} catch (IOException e1) {
-				e1.printStackTrace();
-				try {
-					throw new ConnectException("Unable to bind local interface: "
-							+ channel.getDeviceLocator().getInterfaceName());
-				} catch (ConnectException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			} catch (IllegalArgumentException e) {
-				try {
-					throw new Exception();
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-			}
-
-			try {
-				mBusSap.read(channel.getDeviceLocator().getDeviceAddress());
-			} catch (Exception e) {
-				e.printStackTrace();
-				mBusSap.close();
-				try {
-					throw new Exception(e);
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-			}
-
-			connectionHandle = new ConnectionHandle(mBusSap, channel.getDeviceLocator().getDeviceAddress());
-			connections.put(channel.getDeviceLocator().getInterfaceName(), connectionHandle);
-
+			MBusSap mBusSap = new MBusSap(deviceLocator.getInterfaceName(), new Integer(deviceLocator.getParameters()));
+			connectionHandle = new ConnectionHandle(mBusSap, deviceLocator.getDeviceAddress());
+			connections.put(deviceLocator.getInterfaceName(), connectionHandle);
 		}
-		else {
-			connectionHandle.increaseDeviceCounter();
-		}
+
 	}
 
 	@Override
 	public void channelRemoved(ChannelLocator channel) {
 		// TODO Auto-generated method stub
 		ConnectionHandle connectionHandle = connections.get(channel.getDeviceLocator().getInterfaceName());
-		if (!connectionHandle.isOpen()) {
+		if (!connectionHandle.isConnected()) {
 			return;
 		}
 		connectionHandle.decreaseDeviceCounter();
@@ -246,6 +240,7 @@ public class MBusDriver implements ChannelDriver {
 	}
 
 	private String bytesToHexString(byte[] bytes) {
+
 		StringBuilder sb = new StringBuilder();
 		for (byte b : bytes) {
 			sb.append(String.format("%1$02X", b));

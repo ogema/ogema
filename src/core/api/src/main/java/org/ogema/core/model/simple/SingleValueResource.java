@@ -15,12 +15,12 @@
  */
 package org.ogema.core.model.simple;
 
-import org.ogema.core.model.SimpleResource;
 import org.ogema.core.model.ValueResource;
 
 /**
  * Marker interface for resource types whose nodes contain a single value.
  */
-public interface SingleValueResource extends ValueResource, SimpleResource {
+@SuppressWarnings("deprecation")
+public interface SingleValueResource extends ValueResource, org.ogema.core.model.SimpleResource {
 
 }

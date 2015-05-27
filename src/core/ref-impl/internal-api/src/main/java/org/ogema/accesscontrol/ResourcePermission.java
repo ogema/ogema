@@ -164,11 +164,6 @@ public class ResourcePermission extends Permission {
 		try {
 			// pType = PermissionType.QUERY;
 			parseActions(action);
-			/*
-			 * This constructor is used only for the actions other than CREATE. Check it.
-			 */
-			//			if ((actionsAsMask & _CREATE) != 0)
-			//				throw new IllegalArgumentException();
 			this.count = maxNumber;
 			Class<?> type = te.getType();
 			if (type == null)
@@ -195,7 +190,7 @@ public class ResourcePermission extends Permission {
 	}
 
 	private void parsePath(String value) {
-		// throw leading /
+		// skip leading /
 		try {
 			if (value.indexOf('/') == 0)
 				value = value.substring(1);
@@ -289,10 +284,15 @@ public class ResourcePermission extends Permission {
 				else if (wcindex == value.length() - 1) {
 					this.path = value.substring(0, value.length() - 1);
 					wced = true;
-					break;
 				}
 				else
 					throw new IllegalArgumentException("Invalid filter string: " + filter);
+				// remove /'s at the end of path
+				value = this.path;
+				int len = this.path.length();
+				if (value.charAt(len - 1) == '/')
+					this.path = value.substring(0, len - 1);
+				break;
 			case "type":
 				if (value.equals("*")) {
 					this.type = null;
@@ -528,7 +528,7 @@ public class ResourcePermission extends Permission {
 		 * If a granted type is specified, the queried resource must be from the same type as the granted one or it must
 		 * be a any sub resource of a resource from this type. First the path is searched backwards, if an element of
 		 * the granted type is found – starting with the queried resource. If type is Null, the queried resource is the
-		 * element. If no element of the type was found, the permission is denied.
+		 * element to be considered in further checks. If no element of the type was found, the permission is denied.
 		 */
 		if (this.type != null) {
 			if (qp.node == null) {

@@ -1,0 +1,24 @@
+/* text between tags */
+.pln 
+{
+color: #00F2F3;
+}
+/* tags */
+.tag
+{
+color:  #002233;
+}
+/* attributes */
+.atn
+{
+color: #BBAA44;
+}
+/* attribute values */
+.atv
+{
+color: #772211;
+}
+/* background color */
+.prettyprint {
+background: #888;
+}

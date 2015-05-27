@@ -23,6 +23,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -344,7 +345,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 					}
 
 					e.complexArray = true;
-//					initSimpleNode(e);
+					// initSimpleNode(e);
 				}
 
 				// init node
@@ -715,13 +716,14 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 
 	@Override
 	public Collection<TreeElement> getFilteredNodes(Map<String, String> dict) {
-		Vector<TreeElement> result = new Vector<TreeElement>();
+		HashSet<TreeElement> result = new HashSet<TreeElement>();
 		String type = dict.get("type");
 		String path = dict.get("path");
 		String owner = dict.get("owner");
 		String residStr = dict.get("id");
 
-		if (residStr != null && !residStr.equals("#")) {
+		boolean isRoot = residStr.equals("#");
+		if (residStr != null && !isRoot) {
 
 			int residInt = Integer.valueOf(residStr);
 			TreeElementImpl element = resNodeByID.get(residInt);
@@ -729,6 +731,18 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 				return element.getChildren();
 			else
 				return result;
+		}
+
+		// In case of root node id but not a top level path
+		if (isRoot && path != null) {
+			int firstslash = path.indexOf('/');
+			if (firstslash == 0 && path.length() > 1) {
+				path = path.substring(1);
+				firstslash = path.indexOf('/');
+			}
+			int lastslash = path.lastIndexOf('/');
+			if (firstslash != -1 && firstslash != lastslash)
+				path = path.substring(0, firstslash);
 		}
 
 		// 1. filter by path
@@ -788,11 +802,19 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 					TreeElementImpl e = resNodeByID.get(id);
 					if (owner != null) {
 						if (e.appID.equals(owner))
-							if (!e.reference)
-								result.add(e);
+							if (!e.reference) {
+								if (!e.isToplevel())
+									result.add(e.topLevelParent);
+								else
+									result.add(e);
+							}
 					}
-					else if (!e.reference)
-						result.add(e);
+					else if (!e.reference) {
+						if (!e.isToplevel())
+							result.add(e.topLevelParent);
+						else
+							result.add(e);
+					}
 				}
 			return result;
 		}

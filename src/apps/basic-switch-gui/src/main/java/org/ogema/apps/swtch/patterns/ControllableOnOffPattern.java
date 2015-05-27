@@ -24,46 +24,52 @@ import org.ogema.model.prototypes.PhysicalElement;
 @SuppressWarnings("unused")
 public class ControllableOnOffPattern extends ResourcePattern<PhysicalElement> {
 
-//	private final ApplicationManager appMan;
-	
+	//	private final ApplicationManager appMan;
+
 	public ControllableOnOffPattern(Resource match) {
 		super(match);
 	}
-	
-	private BooleanResource stateControl = model.getSubResource("onOffSwitch", OnOffSwitch.class).stateControl();  // FIXME requires that name of the subresource is "onOffSwitch"
-	
-	private BooleanResource stateFeedback = model.getSubResource("onOffSwitch", OnOffSwitch.class).stateFeedback(); 
-	
-	@Equals(value=1)
-	private BooleanResource controllable = model.getSubResource("onOffSwitch", OnOffSwitch.class).controllable();  
-	
+
+	@Existence(required = CreateMode.OPTIONAL)
+	private BooleanResource stateControl = model.getSubResource("onOffSwitch", OnOffSwitch.class).stateControl(); // FIXME requires that name of the subresource is "onOffSwitch"
+
+	private BooleanResource stateFeedback = model.getSubResource("onOffSwitch", OnOffSwitch.class).stateFeedback();
+
+	@Equals(value = 1)
+	private BooleanResource controllable = model.getSubResource("onOffSwitch", OnOffSwitch.class).controllable();
+
 	public String getName() {
-		if (model.name().isActive()) return model.name().getValue();
-		else return model.getName();
+		if (model.name().isActive())
+			return model.name().getValue();
+		else
+			return model.getName();
 	}
-	
+
 	public String getValue() {
-		if (!stateFeedback.isActive()) return "off";
-		return stateFeedback.getValue() ? "on": "off";
+		if (!stateFeedback.isActive())
+			return "off";
+		return stateFeedback.getValue() ? "on" : "off";
 	}
-	
+
 	public String getType() {
 		return model.getResourceType().getSimpleName();
 	}
-	
+
 	public String getRoom() {
 		try {
-			if (model.location().room().name().isActive()) return model.location().room().name().getValue();
-			else if (model.location().room().isActive()) return model.location().room().getLocation();
-			else return "";
+			if (model.location().room().name().isActive())
+				return model.location().room().name().getValue();
+			else if (model.location().room().isActive())
+				return model.location().room().getLocation();
+			else
+				return "";
 		} catch (Exception e) {
 			return "";
 		}
 	}
-	
+
 	public boolean isReference() {
 		return model.getSubResource("onOffSwitch", OnOffSwitch.class).isReference(false);
 	}
-	
 
 }

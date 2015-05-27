@@ -1,0 +1,9 @@
+#resource_graph {
+	border: 1px solid lightgray;
+	height: 800px;
+	width: 100%; 
+}
+
+form {
+	display: inline;
+}

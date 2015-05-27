@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.ogema.accesscontrol.ResourceAccessRights;
 
 import org.ogema.core.model.Resource;
@@ -44,7 +45,6 @@ import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceException;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceGraphException;
 import org.ogema.core.resourcemanager.ResourceValueListener;
@@ -93,6 +93,8 @@ public abstract class ResourceBase implements ConnectedResource {
 	}
 
 	@Override
+	@JsonIgnore
+	//FIXME! annotation does not belong here
 	public TreeElement getTreeElement() {
 		return getEl();
 	}
@@ -197,14 +199,18 @@ public abstract class ResourceBase implements ConnectedResource {
 	}
 
 	@Override
-	public void addResourceListener(ResourceListener listener, boolean recursive) {
+	@SuppressWarnings("deprecation")
+	@Deprecated
+	public void addResourceListener(org.ogema.core.resourcemanager.ResourceListener listener, boolean recursive) {
 		ResourceListenerRegistration reg = new ResourceListenerRegistrationImpl(this, listener, recursive);
 		resMan.registeredListeners.put(reg, listener);
 		reg.performRegistration();
 	}
 
 	@Override
-	public boolean removeResourceListener(ResourceListener listener) {
+	@SuppressWarnings("deprecation")
+	@Deprecated
+	public boolean removeResourceListener(org.ogema.core.resourcemanager.ResourceListener listener) {
 		ResourceListenerRegistration reg = new ResourceListenerRegistrationImpl(this, listener, true);
 		if (resMan.registeredListeners.remove(reg) != null) {
 			reg.unregister();
@@ -214,19 +220,19 @@ public abstract class ResourceBase implements ConnectedResource {
 	}
 
 	@Override
-	public void addValueListener(ResourceValueListener listener) {
+	public void addValueListener(ResourceValueListener<?> listener) {
 		addValueListener(listener, false);
 	}
 
 	@Override
-	public void addValueListener(ResourceValueListener listener, boolean callOnEveryUpdate) {
+	public void addValueListener(ResourceValueListener<?> listener, boolean callOnEveryUpdate) {
 		ValueListenerRegistration reg = new ValueListenerRegistration(this, listener, callOnEveryUpdate);
 		resMan.registeredListeners.put(reg, listener);
 		reg.performRegistration();
 	}
 
 	@Override
-	public boolean removeValueListener(ResourceValueListener listener) {
+	public boolean removeValueListener(ResourceValueListener<?> listener) {
 		ValueListenerRegistration reg = new ValueListenerRegistration(this, listener, false);
 		if (resMan.registeredListeners.remove(reg) != null) {
 			reg.unregister();
@@ -740,10 +746,13 @@ public abstract class ResourceBase implements ConnectedResource {
 					+ " is not a valid resource name. Will not add the element."));
 		}
 		checkAddPermission();
-		Class<?> checkForOptional = getOptionalElementType(name);
-		if (checkForOptional != null) {
-			throw (new ResourceAlreadyExistsException(String.format(
-					"invalid decorator: '%s' is an optional element in type %s", name, getEl().getType())));
+		Class<?> optionalElementType = getOptionalElementType(name);
+		if (optionalElementType != null) {
+			if (!optionalElementType.isAssignableFrom(resourceType)) {
+				throw (new ResourceAlreadyExistsException(String.format(
+						"invalid decorator type: '%s' already defined as optional element with type %s", name,
+						optionalElementType)));
+			}
 		}
 		try {
 			resMan.getDatabaseManager().getStructureLock().writeLock().lock();
@@ -776,18 +785,22 @@ public abstract class ResourceBase implements ConnectedResource {
 					+ " is not a valid resource name. Will not add the element."));
 		}
 		checkAddPermission();
-		Class<?> checkForOptional = getOptionalElementType(name);
-		if (checkForOptional != null) {
-			throw (new ResourceAlreadyExistsException(String.format(
-					"invalid decorator: '%s' is an optional element in type %s", name, getEl().getType())));
+		Class<?> optionalElementType = getOptionalElementType(name);
+		if (optionalElementType != null) {
+			if (!optionalElementType.isAssignableFrom(decorator.getResourceType())) {
+				throw (new ResourceAlreadyExistsException(String.format(
+						"invalid decorator type: '%s' already defined as optional element with type %s", name,
+						optionalElementType)));
+			}
 		}
-
 		try {
 			resMan.getDatabaseManager().getStructureLock().writeLock().lock();
 			TreeElement decoratorElement = ((ConnectedResource) decorator).getTreeElement();
+			/*
 			while (decoratorElement.isReference()) {
 				decoratorElement = decoratorElement.getReference();
 			}
+			 */
 			TreeElement existingDecorator = getEl().getChild(name);
 			if (existingDecorator != null) {
 				if (getSubResource(name).equalsLocation(decorator)) {
@@ -962,12 +975,19 @@ public abstract class ResourceBase implements ConnectedResource {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public <T extends Resource> T setAsReference(T reference) throws NoSuchResourceException, ResourceException,
 			ResourceGraphException, VirtualResourceException {
 		Objects.requireNonNull(reference, "reference must not be null");
 		if (reference.equalsLocation(this)) {
-			throw new ResourceGraphException(String.format(
-					"cannot replace resource %s with a reference to itself (%s)", this.getPath(), reference.getPath()));
+			if (reference.isReference(false)) {
+				throw new ResourceGraphException(String.format(
+						"cannot replace resource %s with a reference to itself (%s)", this.getPath(), reference
+								.getPath()));
+			}
+			else {
+				return (T) this;
+			}
 		}
 		if (getParent() == null) {
 			throw (new ResourceGraphException("cannot set a top level resource as reference"));
@@ -1001,11 +1021,12 @@ public abstract class ResourceBase implements ConnectedResource {
 		}
 		resMan.getDatabaseManager().getStructureLock().writeLock().lock();
 		try {
-			for (Resource sub : getDirectSubResources(false)) {
-				sub.delete();
-			}
-
-			if (!isReference(false)) { //delete references to this resource
+			if (!isReference(false)) {
+				//delete sub resources only if this is not a reference
+				for (Resource sub : getDirectSubResources(false)) {
+					sub.delete();
+				}
+				//delete references to this resource
 				for (Resource referer : getReferencingResources(Resource.class)) {
 					for (Resource sub : referer.getSubResources(getResourceType(), false)) {
 						if (sub.isReference(false) && sub.equalsLocation(this)) {

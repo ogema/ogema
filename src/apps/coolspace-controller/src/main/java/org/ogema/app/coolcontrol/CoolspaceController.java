@@ -58,7 +58,7 @@ public class CoolspaceController {
 	 * cooling device changes and possibly changes the on/off settings if the
 	 * temperature left the set constraints.
 	 */
-	private final ResourceValueListener m_tempChange = new ResourceValueListener() {
+	private final ResourceValueListener<Resource> m_tempChange = new ResourceValueListener<Resource>() {
 
 		@Override
 		public void resourceChanged(Resource resource) {

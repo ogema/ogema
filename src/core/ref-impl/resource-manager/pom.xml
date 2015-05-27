@@ -4,11 +4,11 @@
     <parent>
         <artifactId>ref-impl</artifactId>
         <groupId>org.ogema.ref-impl</groupId>
-        <version>2.0.2</version>
+        <version>2.0.3</version>
     </parent>
     
     <artifactId>resource-manager</artifactId>
-    <version>2.0.2</version>
+    <version>2.0.3</version>
     <name>OGEMA ref-impl :: resource-manager</name>
 
     <packaging>bundle</packaging>
@@ -33,7 +33,9 @@
                             org.ogema.resourcemanager.impl,
 			    org.ogema.persistence.impl.faketree
                         </Export-Package>
-                        <Import-Package>org.objectweb.*;resolution:=optional,*</Import-Package>
+                        <Import-Package>org.objectweb.*;resolution:=optional,
+                            org.codehaus.jackson.annotate;resolution:=optional,
+                            *</Import-Package>
                         <DynamicImport-Package>*</DynamicImport-Package>
                     </instructions>
                 </configuration>
@@ -112,7 +114,7 @@
         <dependency>
             <groupId>org.ogema.ref-impl</groupId>
             <artifactId>security</artifactId>
-            <version>2.0.2</version>
+            <version>2.0.3</version>
             <scope>test</scope>
         </dependency>
         <dependency>

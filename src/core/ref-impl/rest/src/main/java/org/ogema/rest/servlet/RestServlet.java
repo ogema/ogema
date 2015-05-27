@@ -103,11 +103,14 @@ public class RestServlet extends HttpServlet implements Application {
 		} catch (ServletException | NamespaceException ex) {
 			appman.getLogger().error("could not register servlet");
 		}
+		
+		appman.getWebAccessManager().registerWebResourcePath("/rest-gui", "rest/gui");
 	}
 
 	@Override
 	public void stop(AppStopReason reason) {
 		http.unregister(alias);
+		appman.getWebAccessManager().unregisterWebResourcePath("/rest-gui");
 	}
 
 	@Override

@@ -19,7 +19,6 @@
 // Any modifications to this file will be lost upon recompilation of the source schema. 
 // Generated on: 2013.09.13 at 08:01:54 AM CEST 
 //
-
 package org.ogema.serialization.jaxb;
 
 import java.util.ArrayList;
@@ -37,20 +36,23 @@ import org.codehaus.jackson.annotate.JsonTypeInfo;
 import org.ogema.serialization.JaxbResource;
 
 /**
- * 
- * Common basis class for a resource. All resources are either primitive (FloatResource, BooleanResource, ...) or
- * non-primitive (type Resource) or schedules (FloatSchedule, ...). This defines common entries that all resources can
- * have. The same xml structures are used for PUT/POST and GET commands. Therefore, few of the fields are defined as
- * required, allowing PUT/POST commands to be reduced to the minimum amount of information. For GET requests, however,
- * OGEMA should send as complete documents as possible.
- * 
- * 
+ *
+ * Common basis class for a resource. All resources are either primitive
+ * (FloatResource, BooleanResource, ...) or non-primitive (type Resource) or
+ * schedules (FloatSchedule, ...). This defines common entries that all
+ * resources can have. The same xml structures are used for PUT/POST and GET
+ * commands. Therefore, few of the fields are defined as required, allowing
+ * PUT/POST commands to be reduced to the minimum amount of information. For GET
+ * requests, however, OGEMA should send as complete documents as possible.
+ *
+ *
  * <p>
  * Java class for Resource complex type.
- * 
+ *
  * <p>
- * The following schema fragment specifies the expected content contained within this class.
- * 
+ * The following schema fragment specifies the expected content contained within
+ * this class.
+ *
  * <pre>
  * &lt;complexType name="Resource">
  *   &lt;complexContent>
@@ -60,20 +62,25 @@ import org.ogema.serialization.JaxbResource;
  *   &lt;/complexContent>
  * &lt;/complexType>
  * </pre>
- * 
- * 
+ *
+ *
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "Resource", propOrder = { "name", "type", "path", "decorating", "active", "referencing", "subresources" })
 @XmlSeeAlso( { OpaqueResource.class, FloatResource.class, IntegerResource.class, StringResource.class,
 		BooleanResource.class, ScheduleResource.class, TimeResource.class, BooleanSchedule.class, FloatSchedule.class,
-		IntegerSchedule.class, StringSchedule.class, TimeSchedule.class, ResourceList.class })
+		IntegerSchedule.class, StringSchedule.class, TimeSchedule.class, ResourceList.class,
+		BooleanArrayResource.class, ByteArrayResource.class, FloatArrayResource.class, IntegerArrayResource.class,
+		StringArrayResource.class, TimeArrayResource.class })
 @XmlRootElement(name = "resource", namespace = JaxbResource.NS_OGEMA_REST)
 @JsonSubTypes( { @JsonSubTypes.Type(BooleanResource.class), @JsonSubTypes.Type(FloatResource.class),
 		@JsonSubTypes.Type(IntegerResource.class), @JsonSubTypes.Type(OpaqueResource.class),
 		@JsonSubTypes.Type(StringResource.class), @JsonSubTypes.Type(TimeResource.class),
 		@JsonSubTypes.Type(ScheduleResource.class), @JsonSubTypes.Type(FloatSchedule.class),
-		@JsonSubTypes.Type(ResourceList.class) })
+		@JsonSubTypes.Type(ResourceList.class), @JsonSubTypes.Type(BooleanArrayResource.class),
+		@JsonSubTypes.Type(ByteArrayResource.class), @JsonSubTypes.Type(FloatArrayResource.class),
+		@JsonSubTypes.Type(IntegerArrayResource.class), @JsonSubTypes.Type(StringArrayResource.class),
+		@JsonSubTypes.Type(TimeArrayResource.class) })
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY)
 public class Resource {
 
@@ -92,9 +99,9 @@ public class Resource {
 
 	/**
 	 * Gets the value of the name property.
-	 * 
+	 *
 	 * @return possible object is {@link String }
-	 * 
+	 *
 	 */
 	public String getName() {
 		return name;
@@ -102,10 +109,9 @@ public class Resource {
 
 	/**
 	 * Sets the value of the name property.
-	 * 
-	 * @param value
-	 *            allowed object is {@link String }
-	 * 
+	 *
+	 * @param value allowed object is {@link String }
+	 *
 	 */
 	public void setName(String value) {
 		this.name = value;
@@ -113,9 +119,9 @@ public class Resource {
 
 	/**
 	 * Gets the value of the type property.
-	 * 
+	 *
 	 * @return possible object is {@link String }
-	 * 
+	 *
 	 */
 	public String getType() {
 		return type;
@@ -123,10 +129,9 @@ public class Resource {
 
 	/**
 	 * Sets the value of the type property.
-	 * 
-	 * @param value
-	 *            allowed object is {@link String }
-	 * 
+	 *
+	 * @param value allowed object is {@link String }
+	 *
 	 */
 	public void setType(String value) {
 		this.type = value;
@@ -138,9 +143,9 @@ public class Resource {
 
 	/**
 	 * Gets the value of the path property.
-	 * 
+	 *
 	 * @return possible object is {@link String }
-	 * 
+	 *
 	 */
 	public String getPath() {
 		return path;
@@ -148,10 +153,9 @@ public class Resource {
 
 	/**
 	 * Sets the value of the path property.
-	 * 
-	 * @param value
-	 *            allowed object is {@link String }
-	 * 
+	 *
+	 * @param value allowed object is {@link String }
+	 *
 	 */
 	public void setPath(String value) {
 		this.path = value;
@@ -159,9 +163,9 @@ public class Resource {
 
 	/**
 	 * Gets the value of the decorating property.
-	 * 
+	 *
 	 * @return possible object is {@link Boolean }
-	 * 
+	 *
 	 */
 	public Boolean isDecorating() {
 		return decorating;
@@ -169,10 +173,9 @@ public class Resource {
 
 	/**
 	 * Sets the value of the decorating property.
-	 * 
-	 * @param value
-	 *            allowed object is {@link Boolean }
-	 * 
+	 *
+	 * @param value allowed object is {@link Boolean }
+	 *
 	 */
 	public void setDecorating(Boolean value) {
 		this.decorating = value;
@@ -180,9 +183,9 @@ public class Resource {
 
 	/**
 	 * Gets the value of the active property.
-	 * 
+	 *
 	 * @return possible object is {@link Boolean }
-	 * 
+	 *
 	 */
 	public Boolean isActive() {
 		return active;
@@ -190,10 +193,9 @@ public class Resource {
 
 	/**
 	 * Sets the value of the active property.
-	 * 
-	 * @param value
-	 *            allowed object is {@link Boolean }
-	 * 
+	 *
+	 * @param value allowed object is {@link Boolean }
+	 *
 	 */
 	public void setActive(Boolean value) {
 		this.active = value;
@@ -201,9 +203,9 @@ public class Resource {
 
 	/**
 	 * Gets the value of the referencing property.
-	 * 
+	 *
 	 * @return possible object is {@link String }
-	 * 
+	 *
 	 */
 	public String getReferencing() {
 		return referencing;
@@ -211,10 +213,9 @@ public class Resource {
 
 	/**
 	 * Sets the value of the referencing property.
-	 * 
-	 * @param value
-	 *            allowed object is {@link String }
-	 * 
+	 *
+	 * @param value allowed object is {@link String }
+	 *
 	 */
 	public void setReferencing(String value) {
 		this.referencing = value;
@@ -222,24 +223,26 @@ public class Resource {
 
 	/**
 	 * Gets the value of the subresources property.
-	 * 
+	 *
 	 * <p>
-	 * This accessor method returns a reference to the live list, not a snapshot. Therefore any modification you make to
-	 * the returned list will be present inside the JAXB object. This is why there is not a <CODE>set</CODE> method for
-	 * the subresources property.
-	 * 
+	 * This accessor method returns a reference to the live list, not a
+	 * snapshot. Therefore any modification you make to the returned list will
+	 * be present inside the JAXB object. This is why there is not a
+	 * <CODE>set</CODE> method for the subresources property.
+	 *
 	 * <p>
 	 * For example, to add a new item, do as follows:
-	 * 
+	 *
 	 * <pre>
 	 * getSubresources().add(newItem);
 	 * </pre>
-	 * 
-	 * 
+	 *
+	 *
 	 * <p>
-	 * Objects of the following type(s) are allowed in the list {@link Resource } {@link ResourceLink }
-	 * 
-	 * 
+	 * Objects of the following type(s) are allowed in the list {@link Resource } {@link ResourceLink
+	 * }
+	 *
+	 *
 	 */
 	public List<Object> getSubresources() {
 		if (subresources == null) {

@@ -17,6 +17,7 @@ package org.ogema.resourcemanager.impl.timeseries;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.recordeddata.RecordedDataConfiguration;
@@ -68,26 +69,33 @@ public class EmptyRecordedData implements RecordedDataStorage {
 
 	@Override
 	public void setConfiguration(RecordedDataConfiguration configuration) {
-		throw new UnsupportedOperationException("Not supported yet.");
+		throw new UnsupportedOperationException("Not supported.");
 	}
 
 	@Override
 	public SampledValue getNextValue(long time) {
-		throw new UnsupportedOperationException("Not supported yet.");
+		return null;
 	}
 
 	@Override
 	public InterpolationMode getInterpolationMode() {
-		throw new UnsupportedOperationException("Not supported yet.");
+		return InterpolationMode.NONE;
 	}
 
 	@Override
+	@Deprecated
 	public Long getTimeOfLatestEntry() {
-		throw new UnsupportedOperationException("Not supported yet.");
+		return -1l;
 	}
 
 	@Override
 	public void update(RecordedDataConfiguration configuration) throws DataRecorderException {
+	}
+
+	@Override
+	public Map<String, RecordedDataConfiguration> getPersistenConfigurationMap() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

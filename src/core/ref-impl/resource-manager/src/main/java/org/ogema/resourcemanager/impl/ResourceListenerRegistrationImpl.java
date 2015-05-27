@@ -21,7 +21,6 @@ import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.application.ApplicationManager;
 
 import org.ogema.core.model.Resource;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.resourcetree.TreeElement;
 
 /**
@@ -32,13 +31,14 @@ import org.ogema.resourcetree.TreeElement;
  * 
  * @author jlapp
  */
+@SuppressWarnings("deprecation")
 public class ResourceListenerRegistrationImpl implements ResourceListenerRegistration {
 
 	protected final ResourceBase origin;
-	protected final WeakReference<ResourceListener> listener;
+	protected final WeakReference<org.ogema.core.resourcemanager.ResourceListener> listener;
 	protected final boolean recursive;
 
-	public ResourceListenerRegistrationImpl(ResourceBase origin, ResourceListener listener, boolean recursive) {
+	public ResourceListenerRegistrationImpl(ResourceBase origin, org.ogema.core.resourcemanager.ResourceListener listener, boolean recursive) {
 		this.origin = origin;
 		this.listener = new WeakReference<>(listener);
 		this.recursive = recursive;
@@ -84,7 +84,7 @@ public class ResourceListenerRegistrationImpl implements ResourceListenerRegistr
 
 			@Override
 			public Void call() throws Exception {
-				ResourceListener l = listener.get();
+				org.ogema.core.resourcemanager.ResourceListener l = listener.get();
 				if (l != null) {
 					l.resourceChanged(changedResource);
 				}
@@ -134,7 +134,7 @@ public class ResourceListenerRegistrationImpl implements ResourceListenerRegistr
 	}
 
 	@Override
-	public ResourceListener getListener() {
+	public org.ogema.core.resourcemanager.ResourceListener getListener() {
 		return listener.get();
 	}
 

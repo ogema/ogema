@@ -46,6 +46,7 @@ public class Activator implements Application, BundleActivator {
 	public void start(ApplicationManager appManager) {
 
 		new CommonServlet(appManager.getWebAccessManager(), this.db, appManager.getResourceAccess());
+		ra = appManager.getResourceAccess();
 		ServletAndroid servlet = new ServletAndroid(ra);
 		try {
 			/*
@@ -58,7 +59,6 @@ public class Activator implements Application, BundleActivator {
 		} catch (NamespaceException e) {
 			e.printStackTrace();
 		}
-		ra = appManager.getResourceAccess();
 	}
 
 	@Override

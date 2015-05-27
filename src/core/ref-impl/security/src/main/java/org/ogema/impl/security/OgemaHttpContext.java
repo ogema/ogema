@@ -66,7 +66,7 @@ public class OgemaHttpContext implements HttpContext {
 
 	private WebAccessManagerImpl wam;
 	private PermissionManager pm;
-	boolean securemode = true;
+	static Boolean securemode;
 	AppID owner;
 
 	LoggerFactory factory;
@@ -88,17 +88,6 @@ public class OgemaHttpContext implements HttpContext {
 		this.wam = (WebAccessManagerImpl) pm.getWebAccess();
 		this.pm = pm;
 		this.owner = app;
-		AccessController.doPrivileged(new PrivilegedAction<Void>() {
-			@Override
-			public Void run() {
-				// For development purposes secure mode could be disabled
-				if (System.getProperty("org.ogema.secure.httpcontex", "true").equals("true"))
-					securemode = true;
-				else
-					securemode = false;
-				return null;
-			}
-		});
 	}
 
 	public final ThreadLocal<HttpSession> requestThreadLocale = new ThreadLocal<>();
@@ -129,8 +118,7 @@ public class OgemaHttpContext implements HttpContext {
 		 * Forbidden(403) and return false.
 		 */
 		String scheme = request.getScheme();
-		if (!scheme.equals("https")) {
-			// FIXME: why not redirecting to https?
+		if (securemode && !scheme.equals("https")) {
 			logger.error("\tSecure connection is required.");
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 			response.getOutputStream().write("\tSecure connection is required.".getBytes());
@@ -143,9 +131,17 @@ public class OgemaHttpContext implements HttpContext {
 		if ((ses = (SessionAuth) httpses.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME)) == null) {
 			
 			 // Store the request, so that it could be responded after successful login.
-            if (!request.getRequestURL().toString().endsWith("favicon.ico")
-            		&& !request.getRequestURI().toString().equals("/ogema")) {
-                httpses.setAttribute(OLDREQ_ATTR_NAME, request.getRequestURL().toString());
+            if (!request.getRequestURL().toString().endsWith("favicon.ico")) {
+                if (request.getRequestURI().equals("/ogema")
+                		|| request.getRequestURI().toString().equals("/ogema/")) {
+                    httpses.setAttribute(OLDREQ_ATTR_NAME, "/ogema/index.html");
+                } else {
+                    StringBuffer fullRequest = request.getRequestURL();
+                    if (request.getQueryString() != null){
+                        fullRequest.append("?").append(request.getQueryString());
+                    }
+                    httpses.setAttribute(OLDREQ_ATTR_NAME, fullRequest.toString());
+                }
             }
 
 			try {
@@ -175,10 +171,10 @@ public class OgemaHttpContext implements HttpContext {
 			e.printStackTrace();
 		}
 		if (!permitted) {
-                        
-                        request.getSession().invalidate();
-                        response.sendRedirect("/ogema/login");
-                        
+
+			request.getSession().invalidate();
+			response.sendRedirect("/ogema/login");
+
 			if (Configuration.DEBUG)
 				logger.debug("User authorization failed.");
 			return false;
@@ -277,5 +273,20 @@ public class OgemaHttpContext implements HttpContext {
 	public String getMimeType(String name) {
 		// MimeType of the default HttpContext will be used.
 		return null;
+	}
+
+	static {
+		if (securemode == null)
+			AccessController.doPrivileged(new PrivilegedAction<Void>() {
+				@Override
+				public Void run() {
+					// For development purposes secure mode could be disabled
+					if (System.getProperty("org.ogema.non-secure.http.enable", "false").equals("false"))
+						securemode = true;
+					else
+						securemode = false;
+					return null;
+				}
+			});
 	}
 }

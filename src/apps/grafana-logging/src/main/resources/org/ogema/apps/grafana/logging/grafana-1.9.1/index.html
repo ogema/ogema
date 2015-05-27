@@ -8,10 +8,10 @@
     <meta name="google" value="notranslate">
 
     <title>Grafana</title>
-    <link rel="stylesheet" href="css/grafana.dark.min.21253ffa.css" title="Dark">
-    <link rel="icon" type="image/png" href="img/fav32.png">
+    <link rel="stylesheet" href="/org/ogema/tools/grafana-base/css/grafana.dark.min.21253ffa.css" title="Dark">
+    <link rel="icon" type="image/png" href="/org/ogema/tools/grafana-base/img/fav32.png">
 
-    <script src="app/app.496fdc2e.js"></script>
+    <script src="/org/ogema/tools/grafana-base/app/app.496fdc2e.js"></script>
 
     <script>require(['app'], function (app) { app.boot(); })</script>
 
@@ -19,7 +19,7 @@
 
   <body ng-cloak ng-controller="GrafanaCtrl">
 
-    <link rel="stylesheet" href="css/grafana.light.min.81a2958f.css" ng-if="grafana.style === 'light'">
+    <link rel="stylesheet" href="/org/ogema/tools/grafana-base/css/grafana.light.min.81a2958f.css" ng-if="grafana.style === 'light'">
 
 		<div class="page-alert-list">
 			<div ng-repeat='alert in dashAlerts.list' class="alert-{{alert.severity}} alert">

@@ -21,8 +21,6 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 
-import org.ogema.core.model.simple.OpaqueResource;
-
 import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
 
 /**
@@ -32,9 +30,10 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
 @XmlAccessorType(XmlAccessType.PROPERTY)
 @XmlType(name = "OpaqueResource", namespace = NS_OGEMA_REST)
 @XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
+@SuppressWarnings("deprecation")
 public class JaxbOpaque extends JaxbResource {
 
-	JaxbOpaque(OpaqueResource r, SerializationStatus serMan) {
+	JaxbOpaque(org.ogema.core.model.simple.OpaqueResource r, SerializationStatus serMan) {
 		super(r, serMan);
 	}
 
@@ -44,7 +43,7 @@ public class JaxbOpaque extends JaxbResource {
 
 	@XmlElement
 	public byte[] getValue() {
-		return ((OpaqueResource) res).getValue();
+		return ((org.ogema.core.model.simple.OpaqueResource) res).getValue();
 	}
 
 }

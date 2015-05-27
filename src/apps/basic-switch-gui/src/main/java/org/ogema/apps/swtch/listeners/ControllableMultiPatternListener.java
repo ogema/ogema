@@ -22,7 +22,7 @@ import org.ogema.core.resourcemanager.pattern.PatternListener;
 import org.ogema.apps.swtch.patterns.ControllableMultiPattern;
 
 public class ControllableMultiPatternListener implements PatternListener<ControllableMultiPattern> {
-	
+
 	private final List<ControllableMultiPattern> list;
 
 	public ControllableMultiPatternListener() {
@@ -43,13 +43,12 @@ public class ControllableMultiPatternListener implements PatternListener<Control
 		try {
 			list.remove(pattern);
 		} catch (Exception e) {
-			System.out.println("Could not remove pattern " + pattern.model.getLocation() +": " + e);
+			System.out.println("Could not remove pattern " + pattern.model.getLocation() + ": " + e);
 		}
-	} 
+	}
 
 	public List<ControllableMultiPattern> getPatterns() {
 		return new LinkedList<ControllableMultiPattern>(list);
 	}
-	
 
 }

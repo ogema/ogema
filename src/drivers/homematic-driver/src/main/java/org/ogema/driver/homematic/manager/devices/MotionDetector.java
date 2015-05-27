@@ -1,0 +1,132 @@
+/**
+ * This file is part of OGEMA.
+ *
+ * OGEMA is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
+ *
+ * OGEMA is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.ogema.driver.homematic.manager.devices;
+
+import org.ogema.core.channelmanager.measurements.BooleanValue;
+import org.ogema.core.channelmanager.measurements.FloatValue;
+import org.ogema.core.channelmanager.measurements.Value;
+import org.ogema.driver.homematic.manager.DeviceAttribute;
+import org.ogema.driver.homematic.manager.RemoteDevice;
+import org.ogema.driver.homematic.manager.StatusMessage;
+import org.ogema.driver.homematic.manager.SubDevice;
+import org.ogema.driver.homematic.tools.Converter;
+
+public class MotionDetector extends SubDevice {
+
+	private long old_cnt = 0;
+	private boolean motionInRun = false;
+	private Thread timer = new Thread();
+	private int nextTr = 0;
+
+	public MotionDetector(RemoteDevice rd) {
+		super(rd);
+	}
+
+	@Override
+	protected void addMandatoryChannels() {
+		deviceAttributes.put((short) 0x0001, new DeviceAttribute((short) 0x0001, "motion", true, true));
+		deviceAttributes.put((short) 0x0002, new DeviceAttribute((short) 0x0002, "brightness", true, true));
+		deviceAttributes.put((short) 0x0003, new DeviceAttribute((short) 0x0003, "batteryStatus", true, true));
+	}
+
+	@Override
+	public void parseValue(StatusMessage msg) {
+
+		// long state = Converter.toLong(msg[2]); // Is also brightness
+		if ((msg.msg_type == 0x10 || msg.msg_type == 0x02) && msg.msg_data[0] == 0x06 && msg.msg_data[1] == 0x01) {
+			long err = Converter.toLong(msg.msg_data[3]);
+			String err_str;
+			// long brightness = Converter.toLong(msg[2]);
+
+			if (remoteDevice.getDeviceType().equals("004A"))
+				System.out.println("SabotageError: " + (((err & 0x0E) > 0) ? "on" : "off"));
+			else
+				System.out.println("Cover: " + (((err & 0x0E) > 0) ? "open" : "closed"));
+
+			err_str = ((err & 0x80) > 0) ? "low" : "ok";
+			float batt = ((err & 0x80) > 0) ? 5 : 95;
+			System.out.println("Battery: " + err_str);
+			deviceAttributes.get((short) 0x0003).setValue(new FloatValue(batt));
+		}
+		else if (msg.msg_type == 0x41) {
+			long cnt = Converter.toLong(msg.msg_data[1]);
+			long brightn = Converter.toLong(msg.msg_data[2]);
+			switch (msg.msg_data[3]) {
+			case (byte) 0x40:
+				nextTr = 15;
+				break;
+			case (byte) 0x50:
+				nextTr = 30;
+				break;
+			case (byte) 0x60:
+				nextTr = 60;
+				break;
+			case (byte) 0x70:
+				nextTr = 120;
+				break;
+			case (byte) 0x80:
+				nextTr = 240;
+				break;
+			}
+
+			if (cnt != old_cnt) {
+				old_cnt = cnt;
+				System.out.println("State: motion");
+				deviceAttributes.get((short) 0x0001).setValue(new BooleanValue(true));
+				System.out.println("MotionCount: " + cnt + " next Trigger: " + nextTr + "s");
+				System.out.println("Brightness: " + brightn);
+				deviceAttributes.get((short) 0x0002).setValue(new FloatValue(brightn));
+				if (timer.isAlive()) {
+					motionInRun = true;
+				}
+				else {
+					timer = new Thread() {
+						@Override
+						public void run() {
+							boolean repeat = true;
+							while (repeat) {
+								try {
+									Thread.sleep((nextTr + 1) * 1000);
+								} catch (InterruptedException e) {
+									e.printStackTrace();
+								}
+								if (motionInRun) {
+									motionInRun = false;
+								}
+								else {
+									repeat = false;
+									deviceAttributes.get((short) 0x0001).setValue(new BooleanValue(false));
+									System.out.println("reset State: no motion");
+								}
+							}
+						}
+					};
+					timer.start();
+
+				}
+			}
+		}
+		else if (msg.msg_type == 0x70 && msg.msg_data[0] == 0x7F) {
+			// TODO: NYI
+		}
+	}
+
+	@Override
+	public void channelChanged(byte identifier, Value value) {
+		// TODO Auto-generated method stub
+
+	}
+}

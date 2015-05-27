@@ -39,7 +39,7 @@ public class ShellCommands implements LLDriverInterface {
 		props.put("osgi.command.scope", "hmll");
 		props.put("osgi.command.function", new String[] { "showNetwork", "showAllCreatedChannels",
 				"showClusterDetails", "showDeviceDetails", "addConnection", "showHardware", "addConnectionViaPort",
-				"enablePairing", "sendFrame", "cacheDevices" });
+				"enablePairing", "sendFrame", "cacheDevices", "showDeviceConfig" });
 		this.driver = driver;
 		connection = driver.findConnection("USB");
 		context.registerService(this.getClass().getName(), this, props);
@@ -128,7 +128,8 @@ public class ShellCommands implements LLDriverInterface {
 			obj.put("device", remoteDevice.getAddress());
 			System.out.println("    # Device:" + remoteDevice.getAddress());
 			JSONArray attrarr = new JSONArray();
-			Iterator<Entry<Short, DeviceAttribute>> attributeIt = remoteDevice.deviceAttributes.entrySet().iterator();
+			Iterator<Entry<Short, DeviceAttribute>> attributeIt = remoteDevice.getSubDevice().deviceAttributes
+					.entrySet().iterator();
 			while (attributeIt.hasNext()) {
 				Map.Entry<Short, DeviceAttribute> attributeEntry = attributeIt.next();
 				DeviceAttribute attribute = attributeEntry.getValue();
@@ -144,7 +145,8 @@ public class ShellCommands implements LLDriverInterface {
 			}
 			obj.put("attributechannels", attrarr);
 			JSONArray commarr = new JSONArray();
-			Iterator<Entry<Byte, DeviceCommand>> commandIt = remoteDevice.deviceCommands.entrySet().iterator();
+			Iterator<Entry<Byte, DeviceCommand>> commandIt = remoteDevice.getSubDevice().deviceCommands.entrySet()
+					.iterator();
 			while (commandIt.hasNext()) {
 				Map.Entry<Byte, DeviceCommand> commandEntry = commandIt.next();
 				DeviceCommand command = commandEntry.getValue();
@@ -163,6 +165,14 @@ public class ShellCommands implements LLDriverInterface {
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
+		return obj;
+	}
+
+	@Descriptor("Shows the configuration option of the device with the specified hardware address.")
+	public JSONObject showDeviceConfig(String address) {
+		JSONObject obj = new JSONObject();
+		RemoteDevice remoteDevice = connection.getLocalDevice().getDevices().get(address);
+		remoteDevice.getConfig();
 		return obj;
 	}
 

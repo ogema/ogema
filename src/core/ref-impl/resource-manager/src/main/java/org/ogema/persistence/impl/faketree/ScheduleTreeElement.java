@@ -30,7 +30,6 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.SimpleResource;
 import org.ogema.core.model.array.BooleanArrayResource;
 import org.ogema.core.model.array.FloatArrayResource;
 import org.ogema.core.model.array.IntegerArrayResource;
@@ -40,6 +39,7 @@ import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
+import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
@@ -47,6 +47,7 @@ import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceException;
 import org.ogema.core.resourcemanager.ResourceNotFoundException;
 import org.ogema.core.timeseries.TimeSeries;
+import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 import org.ogema.resourcetree.SimpleResourceData;
 import org.ogema.resourcetree.TreeElement;
 import org.ogema.tools.timeseries.api.MemoryTimeSeries;
@@ -98,7 +99,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 		m_qualities = getOrAddChild(QUALITY_NAME, IntegerArrayResource.class, true);
 
 		Class<?> parentClass = realElement.getParent().getType();
-		if (!SimpleResource.class.isAssignableFrom(parentClass)) {
+		if (!SingleValueResource.class.isAssignableFrom(parentClass)) {
 			// error: parent is not a simple resource
 			throw new ResourceNotFoundException("Cannot create a schedule tree element for parent resource of type "
 					+ parentClass.getCanonicalName() + ".");
@@ -141,6 +142,15 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 
 		// load existing data into memory schedule, if applicable.
 		load();
+	}
+
+	public void create() {
+		((VirtualTreeElement) m_calculationTime).create();
+		((VirtualTreeElement) m_interpolationMode).create();
+		((VirtualTreeElement) m_qualities).create();
+		((VirtualTreeElement) m_times).create();
+		((VirtualTreeElement) m_updateTime).create();
+		((VirtualTreeElement) m_values).create();
 	}
 
 	/**
@@ -414,6 +424,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 	 * Schedule functionality not covered by memory-schedules.
 	 ----------------------------------------------------------*/
 	@Override
+	@Deprecated
 	public Long getTimeOfLatestEntry() {
 		return m_updateTime.getData().getLong();
 	}
@@ -547,6 +558,16 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 		pseudoElement.fireChangeEvent();
 	}
 
+	@Override
+	public void setLastModified(long time) {
+		pseudoElement.setLastModified(time);
+	}
+
+	@Override
+	public long getLastModified() {
+		return pseudoElement.getLastModified();
+	}
+
 	/**
 	 *
 	 * Methods from being a MemoryTimeSeries. Some are not supported here.
@@ -600,6 +621,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 	}
 
 	@Override
+	@Deprecated
 	public final boolean addValueSchedule(long startTime, long stepSize, List<Value> values) {
 		return replaceValuesFixedStep(startTime, values, stepSize);
 	}
@@ -641,6 +663,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 	}
 
 	@Override
+	@Deprecated
 	public final boolean addValueSchedule(long startTime, long stepSize, List<Value> values, long timeOfCalculation) {
 		return replaceValuesFixedStep(startTime, values, stepSize, timeOfCalculation);
 	}
@@ -770,18 +793,6 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 	public void setResourceListType(Class<? extends Resource> cls) {
 		// TODO Auto-generated method stub
 
-	}
-
-	@Override
-	public void setLastModified(long time) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public long getLastModified() {
-		// TODO Auto-generated method stub
-		return 0;
 	}
 
 	@Override

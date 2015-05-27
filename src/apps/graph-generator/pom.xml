@@ -1,0 +1,70 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<artifactId>ogema-apps</artifactId>
+		<groupId>org.ogema.apps</groupId>
+		<version>2.0.3</version>
+	</parent>
+
+	<artifactId>graph-generator</artifactId>                    
+        <name>OGEMA Applications :: Graph Generator</name>
+        <description>
+            Application that writes out the current state of the resource graph.
+            It is possible to download a file with the specific graph notation (gviz)
+            or to display the generated graph in the browser (vis.js). Designed to be extended by other
+            graph languages, later.
+        </description>
+
+	<packaging>bundle</packaging>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-scr-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.compendium</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.felix</groupId>
+			<artifactId>org.apache.felix.scr.annotations</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.ogema.core</groupId>
+			<artifactId>api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.ogema.core</groupId>
+			<artifactId>models</artifactId>
+		</dependency>
+		<dependency>
+		    <groupId>org.ogema.ref-impl</groupId>
+		    <artifactId>util</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.ogema.ref-impl</groupId>
+			<artifactId>ogema-exam-base</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+</project>

@@ -6,7 +6,7 @@
         <parent>
             <groupId>org.ogema.ref-impl</groupId>
             <artifactId>ref-impl</artifactId>
-            <version>2.0.2</version>
+            <version>2.0.3</version>
         </parent>
 
 
@@ -121,6 +121,9 @@
 					<excludes>
 						<exclude>**/*IntegrationTest.java</exclude>
 					</excludes>
+					<includes>
+        					<include>**/RecordedDataTestSuite.java</include>
+      					</includes>
 				</configuration>
 				<executions>
 					<execution>

@@ -32,7 +32,7 @@ import org.ogema.model.smartgriddata.Price;
 public interface GenericMeter extends PhysicalElement {
 
 	/**
-	 * Measurement values are part of the connection.
+	 * Connection for measured commodity
 	 */
 	Connection connection();
 
@@ -53,18 +53,18 @@ public interface GenericMeter extends PhysicalElement {
 	IntegerResource type();
 
 	/**
-	 * Price for power measured on this meter
+	 * Price for commodity measured on this meter
 	 */
 	Price price();
 
 	/**
-	 * True: The meter is a local sub-meter. The energy measured is billed
+	 * True: The meter is a local sub-meter. The actual billing is
 	 * according to the relevant main meter
 	 */
 	BooleanResource isSubMeter();
 
 	/**
-	 * Reference to distribution box in which device is installed
+	 * Reference to distribution box in which device is installed, if applicable
 	 */
 	GenericConnectionBox distributionBox();
 }

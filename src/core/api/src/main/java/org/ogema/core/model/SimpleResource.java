@@ -25,6 +25,7 @@ import org.ogema.core.model.simple.SingleValueResource;
  * @deprecated this marker interface was not defined in a useful manner. Use {@link ValueResource} and its specializations {@link ArrayResource}, {@link Schedule} and {@link SingleValueResource}, instead.
  * 
  */
+@Deprecated
 public interface SimpleResource extends Resource {
 
 }

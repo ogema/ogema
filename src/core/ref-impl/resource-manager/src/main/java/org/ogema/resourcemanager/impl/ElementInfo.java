@@ -431,6 +431,11 @@ public class ElementInfo {
         if (listeners == null){
             listeners = new ArrayList<>();
         }
-        listeners.addAll(other.getListeners(AccessModeListenerRegistration.class));
+        Collection<AccessModeListenerRegistration> otherListeners = other.getListeners(AccessModeListenerRegistration.class);
+        for (AccessModeListenerRegistration amlr: otherListeners){
+            if (!listeners.contains(amlr)){
+                listeners.add(amlr);
+            }
+        }
     }
 }

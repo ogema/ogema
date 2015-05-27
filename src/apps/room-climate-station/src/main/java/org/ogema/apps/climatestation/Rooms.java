@@ -596,7 +596,10 @@ public class Rooms {
 			}
 			break;
 		default:
-			errorCode = 2;
+			if (sensor == null)
+				errorCode = 1;
+			else
+				errorCode = 2;
 			break;
 		}
 

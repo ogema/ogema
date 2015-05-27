@@ -53,6 +53,7 @@ abstract class ManipulatorBase<PATTERN extends ResourcePattern<? extends Resourc
     }
 
     @Override
+    @Deprecated
     public void start(ApplicationManager applicationManager) {
         appMan = applicationManager;
         resMan = applicationManager.getResourceManagement();

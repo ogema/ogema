@@ -95,4 +95,12 @@ public class StatusMessage {
 			return false;
 	}
 
+	public String parseType() {
+		return new String(Converter.toHexString(msg_data, 1, 2));
+	}
+
+	public String parseSerial() {
+		return new String(Arrays.copyOfRange(msg_data, 3, 13));
+	}
+
 }

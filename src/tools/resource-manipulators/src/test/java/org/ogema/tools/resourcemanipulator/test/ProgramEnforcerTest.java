@@ -15,11 +15,20 @@
  */
 package org.ogema.tools.resourcemanipulator.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import static org.junit.Assert.*;
+
 import org.junit.Before;
 import org.junit.Test;
+import org.ogema.core.application.Timer;
+import org.ogema.core.application.TimerListener;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.IntegerValue;
 import org.ogema.core.channelmanager.measurements.Quality;
@@ -29,15 +38,21 @@ import org.ogema.core.model.Resource;
 import org.ogema.core.model.schedule.DefinitionSchedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
+import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
+import org.ogema.core.resourcemanager.pattern.PatternListener;
+import org.ogema.core.resourcemanager.pattern.ResourcePatternAccess;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.exam.OsgiAppTestBase;
 import org.ogema.tools.resourcemanipulator.ResourceManipulator;
-import org.ogema.tools.resourcemanipulator.configurations.ProgramEnforcer;
 import org.ogema.tools.resourcemanipulator.ResourceManipulatorImpl;
+import org.ogema.tools.resourcemanipulator.configurations.ProgramEnforcer;
+import org.ogema.tools.resourcemanipulator.test.rad.MyRoomPattern;
+import org.ogema.tools.resourcemanipulator.test.rad.RoomPattern;
+import org.ogema.tools.resourcemanipulator.test.rad.TemperatureSensorPattern;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 
@@ -104,7 +119,6 @@ public class ProgramEnforcerTest extends OsgiAppTestBase {
 		return result;
 	}
 
-	//@Ignore
 	@Test
 	public void testResourceActivationDeactivation() throws InterruptedException {
 
@@ -200,4 +214,107 @@ public class ProgramEnforcerTest extends OsgiAppTestBase {
 		tool.stop();
 	}
 
+	int resourceCounter = 0;
+
+	@Test
+	public void testEnforcingMultipleProgramsRADs() {
+		final ResourcePatternAccess resourcePatternAccess = getApplicationManager().getResourcePatternAccess();
+		final ResourceManipulator resourceManipulator = new ResourceManipulatorImpl(getApplicationManager());
+		resourceManipulator.start();
+
+		final CountDownLatch latch = new CountDownLatch(1);
+		final List<MyRoomPattern> patterns = new ArrayList<>();
+		resourcePatternAccess.addPatternDemand(MyRoomPattern.class, new PatternListener<MyRoomPattern>() {
+
+			@Override
+			public void patternAvailable(MyRoomPattern pattern) {
+				resourceCounter++;
+				patterns.add(pattern);
+
+				if(resourceCounter == 3) {
+					getApplicationManager().createTimer(1000, new TimerListener() {
+						@Override
+						public void timerElapsed(Timer timer) {
+
+							for(MyRoomPattern p : patterns) {
+								p.lowerLimitProgram.create();
+								p.upperLimitProgram.create();
+
+								p.settings.activate(true);
+
+								p.lowerLimitProgram.setInterpolationMode(InterpolationMode.STEPS);
+								p.lowerLimitProgram.addValue(0, new FloatValue(19.f));
+								p.upperLimitProgram.setInterpolationMode(InterpolationMode.STEPS);
+								p.upperLimitProgram.addValue(0, new FloatValue(23.f));
+
+								ProgramEnforcer config = resourceManipulator.createConfiguration(ProgramEnforcer.class);
+								config.enforceProgram(p.lowerLimit, 1000);
+								config.commit();
+
+								ProgramEnforcer configUpper = resourceManipulator.createConfiguration(ProgramEnforcer.class);
+								configUpper.enforceProgram(p.upperLimit, 1000);
+								configUpper.commit();
+							}
+
+							timer.destroy();
+							latch.countDown();
+						}
+					});
+				}
+			}
+
+			@Override
+			public void patternUnavailable(MyRoomPattern pattern) {
+			}
+		}, AccessPriority.PRIO_DEVICESPECIFIC);
+
+		RoomPattern room = resourcePatternAccess.createResource("LIVINGROOM", RoomPattern.class);
+		room.init(1);
+		
+		TemperatureSensorPattern tempSens = resourcePatternAccess.createResource("DUMMY_ZIGBEE_TEMPERATURE_SENSOR", TemperatureSensorPattern.class);
+		TemperatureSensorPattern tempSens2 = resourcePatternAccess.createResource("DUMMY_ZIGBEE_TEMPERATURE_SENSOR2", TemperatureSensorPattern.class);
+		TemperatureSensorPattern tempSens3 = resourcePatternAccess.createResource("DUMMY_ZIGBEE_TEMPERATURE_SENSOR3", TemperatureSensorPattern.class);
+		
+		tempSens.model.activate(true);
+		tempSens2.model.activate(true);
+		tempSens3.model.activate(true);
+		
+		room.model.temperatureSensor().setAsReference(tempSens.model);
+		room.model.activate(true);
+		
+		RoomPattern room2 = resourcePatternAccess.createResource("LIVINGROOM2", RoomPattern.class);
+		room2.init(1);
+		room2.model.temperatureSensor().setAsReference(tempSens2.model);
+		room2.model.activate(true);
+		
+		RoomPattern room3 = resourcePatternAccess.createResource("LIVINGROOM3", RoomPattern.class);
+		room3.init(1);
+		room3.model.temperatureSensor().setAsReference(tempSens3.model);
+		room3.model.activate(true);
+		
+		try {
+			assertTrue("pattern not available", latch.await(3, TimeUnit.SECONDS));
+		} catch (InterruptedException e) {
+		}
+		
+		sleep(2000);
+
+		assertTrue(patterns.size() == 3);
+
+		for(MyRoomPattern p : patterns) {
+			assertTrue(p.lowerLimitProgram.isActive());
+			assertTrue(p.upperLimitProgram.isActive());
+	
+			assertEquals(19.f, p.lowerLimit.getKelvin(), 0.f);
+			assertEquals(23.f, p.upperLimit.getKelvin(), 0.f);
+		}
+	}
+
+	private void sleep(int millis) {
+		try {
+			Thread.sleep(millis);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
 }

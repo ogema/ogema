@@ -20,8 +20,8 @@
 <script src="libs/jquery/jquery.min.js"></script>
 <script src="libs/jquery-ui/jquery-ui.min.js"></script>
 <script src="libs/jstree/jstree.js"></script>
+<script src="jsMain.js"></script>
 <script src="jsApps.js"></script>
-<script src="getPermissions.js"></script>
 <link rel="stylesheet" href="libs/jstree/themes/default/style.min.css" />
 
 <body id="appsBody" style="font-family: arial, sans-serif; height: 100.3%; margin: 0px; padding: 0px; color: #56555A;">
@@ -37,26 +37,17 @@
 		<!----- END  preface ------>
 		<!----- heading ------>
 		<p class="head">
-			<strong>App Installation</strong> <br /> Choose one app to be installed.
+			<strong>App Installation</strong> <br /> Choose the bundle file to be installed.
 		</p>
 		<!----- app-table in DIV, added later ------>
 		<div id="outerTableWrap">
 			<div id="tableWrap"></div>
 		</div>
-		<div id="resourceDialog" title="Set Actions">
-			<input type='checkbox' id='resDia1' name='read'><label for='resDia1'>read</label> <br> <input
-				type='checkbox' id='resDia2' name='write'><label for='resDia2'>write</label> <br> <input
-				type='checkbox' id='resDia3' name='addSub'><label for='resDia3'>addSub</label> <br> <input
-				type='checkbox' id='resDia4' name='create'><label for='resDia4'>create</label> <br> <input
-				type='checkbox' id='resDia5' name='delete'><label for='resDia5'>delete</label> <br> <input
-				type='checkbox' id='resDia6' name='activity'><label for='resDia6'>activity</label>
-		</div>
 	</div>
 	<div id="footer">
 		<div id="mainpage" class="footerElement">
-			<button type="button" id="toMainPage" onclick="toMainPage()">Admin Page</button>
+			<button type="button" id="toMainPage" onclick="toMainPage()">Back to Mainpage</button>
 		</div>
-		<div id="impressum" class="footerElement">Impressum</div>
 		<div id="ogema" class="footerElement">
 			<a target="_blank" href="http://ogema.org/">OGEMA Website</a>
 		</div>

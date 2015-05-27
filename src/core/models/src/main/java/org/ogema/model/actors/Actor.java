@@ -16,7 +16,7 @@
 package org.ogema.model.actors;
 
 import org.ogema.core.model.ModelModifiers.NonPersistent;
-import org.ogema.core.model.SimpleResource;
+import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.model.prototypes.PhysicalElement;
 import org.ogema.model.ranges.Range;
@@ -31,14 +31,14 @@ public interface Actor extends PhysicalElement {
 	 * Setting of the actor as set by the energy management software. Must be overwritten with
 	 * a suitable type in actual actors.
 	 */
-	SimpleResource stateControl();
+	ValueResource stateControl();
 
 	/**
 	 * Device's feedback for the setting (if applicable). Interpretation of the value is the same
 	 * as in {@link #stateControl() }
 	 */
 	@NonPersistent
-	SimpleResource stateFeedback();
+	ValueResource stateFeedback();
 
 	/**
 	 * Range of the possible values that the actor can assume. Interpretation of the values is

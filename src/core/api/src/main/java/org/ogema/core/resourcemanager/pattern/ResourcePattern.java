@@ -19,7 +19,9 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.resourcemanager.AccessMode;
@@ -102,8 +104,10 @@ public class ResourcePattern<DemandedModel extends Resource> {
 	 * pattern is created or activated.
 	 * <br>
 	 * The annotation is intended to be used only on resources of type {@link IntegerResource}
-	 * or {@link BooleanResource}.
+	 * or {@link BooleanResource}. <br>
+	 * Deprecated: use {@link ResourcePattern#accept()} method instead
 	 */
+	@Deprecated
 	@Target(ElementType.FIELD)
 	@Retention(RetentionPolicy.RUNTIME)
 	public @interface Equals {
@@ -116,6 +120,23 @@ public class ResourcePattern<DemandedModel extends Resource> {
 	}
 
 	/**
+	 * Activate this only if the value of the requested resource is used in
+	 * your {@link ResourcePattern#accept() accept()} method. If set to true,
+	 * the {@link ResourcePattern#accept() accept()} method is called every time the
+	 * resource value changes (as long as the pattern is complete otherwise), 
+	 * and a {@link PatternListener#patternUnavailable(ResourcePattern) 
+	 * patternUnavailable} is triggered if the accept() condition is no longer satisfied.<br>
+	 * The annotation is intended to be used only on resources of type {@link ValueResource}.
+	 * 
+	 */
+	@Target(ElementType.FIELD)
+	@Retention(RetentionPolicy.RUNTIME)
+	public @interface ValueChangedListener {
+
+		boolean activate() default false;
+	}
+
+	/**
 	 * Constructor invoked by the framework. All patterns must implement this as
 	 * a public constructor.
 	 *
@@ -124,5 +145,15 @@ public class ResourcePattern<DemandedModel extends Resource> {
 	@SuppressWarnings("unchecked")
 	protected ResourcePattern(Resource match) {
 		model = (DemandedModel) match;
+	}
+
+	/**
+	 * Override this method to implement a custom acceptance test for the pattern. As long as the method returns
+	 * false, no  {@link PatternListener#patternAvailable(ResourcePattern) patternAvailable} call 
+	 * will be triggered. Use the annotation {@link ResourcePattern.ValueChangedListener ValueChangedListener} 
+	 * to trigger renewed execution of the method upon value changes of a {@link ValueResource}. 
+	 */
+	public boolean accept() {
+		return true;
 	}
 }

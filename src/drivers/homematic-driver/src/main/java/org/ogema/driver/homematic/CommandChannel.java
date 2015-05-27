@@ -30,14 +30,15 @@ public class CommandChannel extends Channel {
 
 	private DeviceCommand deviceCommand;
 	private Device device;
-	private final byte[] emptyMessagePayload = new byte[0];
+
+	// private final byte[] emptyMessagePayload = new byte[0];
 
 	public CommandChannel(ChannelLocator locator, String[] splitAddress, Device dev) {
 		super(locator);
 		this.setDevice(dev);
 		byte[] commandIdArray = DatatypeConverter.parseHexBinary(splitAddress[1]);
 		byte commandId = commandIdArray[0];
-		deviceCommand = dev.getRemoteDevice().deviceCommands.get(commandId);
+		deviceCommand = dev.getRemoteDevice().getSubDevice().deviceCommands.get(commandId);
 		deviceCommand.getIdentifier();
 	}
 
@@ -51,10 +52,10 @@ public class CommandChannel extends Channel {
 	 */
 	@Override
 	public void writeValue(Connection connection, Value value) throws IOException {
-		byte[] messagePayload = value.getByteArrayValue();
-		if (messagePayload == null)
-			messagePayload = emptyMessagePayload;
-		deviceCommand.performCommand(messagePayload);
+		// byte[] messagePayload = value.getByteArrayValue();
+		// if (messagePayload == null)
+		// messagePayload = emptyMessagePayload;
+		deviceCommand.channelChanged(value);
 	}
 
 	public Device getDevice() {

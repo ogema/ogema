@@ -97,14 +97,13 @@ public class InstallManagerImpl implements InstallationManagement {
 
 		tracker = new ServiceTracker<>(osgi, ApplicationSource.class, trackerCustomizer);
 		tracker.open();
-		// this.pMan = admin.pMan;
 	}
 
 	private void initAppStores() {
 		appStores = new HashMap<>();
 		appStores.put("localAppDirectory", new AppStore("localAppDirectory", localAppStore, true));
-		appStores.put("remoteFHGAppStore", new AppStore("IIS_EXT_FTP", "ftp://ftpext:1234@ftp.iis.fraunhofer.de/",
-				false));
+		// appStores.put("remoteFHGAppStore", new AppStore("IIS_EXT_FTP", "ftp://ftpext:1234@ftp.iis.fraunhofer.de/",
+		// false));
 	}
 
 	@Override
@@ -256,6 +255,11 @@ public class InstallManagerImpl implements InstallationManagement {
 
 	@Override
 	public ApplicationSource getDefaultAppStore() {
+		return appStores.get(LOCAL_APPSTORE_NAME);
+	}
+
+	@Override
+	public ApplicationSource getLocalStore() {
 		return appStores.get(LOCAL_APPSTORE_NAME);
 	}
 }

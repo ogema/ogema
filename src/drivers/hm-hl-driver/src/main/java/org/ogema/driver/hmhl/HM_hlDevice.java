@@ -20,8 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.xml.bind.DatatypeConverter;
-
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.ChannelAccessException;
@@ -124,7 +122,6 @@ public abstract class HM_hlDevice {
 		this.driver = driver;
 		deviceDescriptor = driver.getDeviceDescriptor();
 		this.type = deviceLocator.getParameters();
-
 		hm_hlConfig.interfaceId = deviceLocator.getInterfaceName();
 		hm_hlConfig.deviceAddress = deviceLocator.getDeviceAddress();
 		hm_hlConfig.driverId = deviceLocator.getDriverName();
@@ -203,14 +200,14 @@ public abstract class HM_hlDevice {
 		return channelLocator;
 	}
 
-	public void writeToChannel(ChannelLocator channelLocator, String writeValue) {
-		Value value = null;
+	public void writeToChannel(ChannelLocator channelLocator, Value value) {
+		// Value value = null;
 		// while (writeValue.length() % 2 != 0) {
 		// // value is uneven but it needs to be even to be parsed to a byte
 		// // array. Possible cases are uneven length and/or length of zero
 		// writeValue = "0" + writeValue;
 		// }
-		value = new ByteArrayValue(DatatypeConverter.parseHexBinary(writeValue));
+		// value = new ByteArrayValue(DatatypeConverter.parseHexBinary(writeValue));
 
 		try {
 			channelAccess.setChannelValue(channelLocator, value);

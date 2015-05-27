@@ -42,7 +42,7 @@ import org.ogema.model.devices.buildingtechnology.ElectricLight;
 import org.ogema.model.devices.sensoractordevices.SingleSwitchBox;
 import org.ogema.model.locations.Room;
 
-@Component(specVersion = "1.2", immediate=true)
+@Component(specVersion = "1.2", immediate = true)
 @Service(Application.class)
 public class BasicSwitchGui implements Application, ResourceValueListener<SingleValueResource> {
 
@@ -52,12 +52,12 @@ public class BasicSwitchGui implements Application, ResourceValueListener<Single
 	protected ResourceAccess ra;
 	protected ResourcePatternAccess rpa;
 
-    private String webResourceBrowserPath;
-    private String servletPath;
-    private ControllableOnOffPatternListener deviceListener;
-    private ControllableMultiPatternListener multiListener;
-    private ThermostatPatternListener thermoListener;
-    private List<PatternListener> listeners;
+	private String webResourceBrowserPath;
+	private String servletPath;
+	private ControllableOnOffPatternListener deviceListener;
+	private ControllableMultiPatternListener multiListener;
+	private ThermostatPatternListener thermoListener;
+	private List<PatternListener<?>> listeners;
 
 	@Override
 	public void start(ApplicationManager am) {
@@ -96,10 +96,8 @@ public class BasicSwitchGui implements Application, ResourceValueListener<Single
         // FIXME
         createTestThermostat();
 	}
-	
 
-
-    @Override
+	@Override
 	public void stop(AppStopReason reason) {
 		am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
 		am.getWebAccessManager().unregisterWebResource(servletPath);
@@ -107,74 +105,75 @@ public class BasicSwitchGui implements Application, ResourceValueListener<Single
 		rpa.removePatternDemand(ControllableOnOffPattern.class, deviceListener);
 		rpa.removePatternDemand(ControllableMultiPattern.class, multiListener);
 	}
-    
-    /**** generate test resources ********/
-    
+
+	/**** generate test resources ********/
+
 	private TemperatureResource remoteDesiredTemp;
-	
+
 	private void createTestThermostat() {
 		ThermostatPattern pt = rpa.createResource("myTestThermostat", ThermostatPattern.class);
-        pt.currentTemperature.setCelsius(20.5f);
-        pt.remoteDesiredTemperature.setCelsius(21f);
-        remoteDesiredTemp = pt.remoteDesiredTemperature;
-        pt.batteryVoltage.setValue(95);
-        pt.batteryCharge.setValue(95);
-        pt.isSwitchControllable.setValue(false);
-        pt.localDesiredTemperature.setValue(21f);
-        pt.valvePosition.setValue(0.25f);
-        pt.model.activate(true);
-        pt.localDesiredTemperature.addValueListener(this);
+		pt.currentTemperature.setCelsius(20.5f);
+		pt.remoteDesiredTemperature.setCelsius(21f);
+		remoteDesiredTemp = pt.remoteDesiredTemperature;
+		pt.batteryVoltage.setValue(95);
+		pt.batteryCharge.setValue(95);
+		pt.isSwitchControllable.setValue(false);
+		pt.localDesiredTemperature.setValue(21f);
+		pt.valvePosition.setValue(0.25f);
+		pt.model.activate(true);
+		pt.localDesiredTemperature.addValueListener(this);
 	}
-        
-    private BooleanResource feedback;
-    private BooleanResource ctrl;
-    
-    private void generateTestResource() {
-    	SingleSwitchBox box = rm.createResource("test_switch_box", SingleSwitchBox.class);
-    	box.name().create();
-    	box.name().setValue("Simulated test switch box");
-    	feedback = box.onOffSwitch().stateFeedback().create();
-    	ctrl = box.onOffSwitch().stateControl().create();
-    	final BooleanResource flag = box.onOffSwitch().controllable().create();
-    	flag.setValue(true);
-    	feedback.setValue(true);
-    	ctrl.setValue(true);
-    	Room room = rm.createResource("testRoom", Room.class);
-    	room.name().create();
-    	room.name().setValue("Test Room");
-    	room.activate(true);
-    	ElectricLight light = rm.createResource("test_electric_light", ElectricLight.class);
-    	light.location().create();
-    	try {
-    		light.location().room().setAsReference(room);
-    	} catch (Exception e ) {
-    		logger.warn(e.toString());
-    	}
-    	try {
-    		light.onOffSwitch().setAsReference(box.onOffSwitch());
-    	} catch (Exception e) {}
-    	light.name().create();
-    	light.name().setValue("Test light");
-    	light.activate(true);
-    	try {
-    		box.device().setAsReference(light);
-    	} catch (Exception e) {}
-    	box.activate(true);
-    	ctrl.addValueListener(this);
-    }
+
+	private BooleanResource feedback;
+	private BooleanResource ctrl;
+
+	private void generateTestResource() {
+		SingleSwitchBox box = rm.createResource("test_switch_box", SingleSwitchBox.class);
+		box.name().create();
+		box.name().setValue("Simulated test switch box");
+		feedback = box.onOffSwitch().stateFeedback().create();
+		ctrl = box.onOffSwitch().stateControl().create();
+		final BooleanResource flag = box.onOffSwitch().controllable().create();
+		flag.setValue(true);
+		feedback.setValue(true);
+		ctrl.setValue(true);
+		Room room = rm.createResource("testRoom", Room.class);
+		room.name().create();
+		room.name().setValue("Test Room");
+		room.activate(true);
+		ElectricLight light = rm.createResource("test_electric_light", ElectricLight.class);
+		light.location().create();
+		try {
+			light.location().room().setAsReference(room);
+		} catch (Exception e) {
+			logger.warn(e.toString());
+		}
+		try {
+			light.onOffSwitch().setAsReference(box.onOffSwitch());
+		} catch (Exception e) {
+		}
+		light.name().create();
+		light.name().setValue("Test light");
+		light.activate(true);
+		try {
+			box.device().setAsReference(light);
+		} catch (Exception e) {
+		}
+		box.activate(true);
+		ctrl.addValueListener(this);
+	}
 
 	@Override
 	public void resourceChanged(SingleValueResource control) {
 		if (control instanceof BooleanResource) {
 			BooleanResource bool = (BooleanResource) control;
-			if (feedback != null && feedback.isActive()) feedback.setValue(bool.getValue());
+			if (feedback != null && feedback.isActive())
+				feedback.setValue(bool.getValue());
 		}
 		else if (control instanceof TemperatureResource) {
 			TemperatureResource temp = (TemperatureResource) control;
 			remoteDesiredTemp.setValue(temp.getValue());
 		}
 	}
-    
-
 
 }

@@ -15,7 +15,6 @@
  */
 package org.ogema.core.model.simple;
 
-import org.ogema.core.model.SimpleResource;
 import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.array.ArrayResource;
 import org.ogema.core.model.array.ByteArrayResource;
@@ -24,7 +23,8 @@ import org.ogema.core.model.array.ByteArrayResource;
  * Simple resource holding a byte array that can represent any type of data (e.g. files).
  * @deprecated Use {@link ByteArrayResource}, instead.
  */
-public interface OpaqueResource extends SimpleResource, ValueResource, ArrayResource {
+@Deprecated
+public interface OpaqueResource extends org.ogema.core.model.SimpleResource, ValueResource, ArrayResource {
 	/**
 	 * Gets a copy of the data stored in the resource. If no values were set, an empty array
 	 * is returned. This never returns null.

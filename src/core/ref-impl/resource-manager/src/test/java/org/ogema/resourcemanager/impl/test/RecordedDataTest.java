@@ -40,15 +40,15 @@ import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
-import org.ogema.core.model.Resource;
+import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.recordeddata.RecordedData;
 import org.ogema.core.recordeddata.RecordedDataConfiguration;
 import org.ogema.core.recordeddata.ReductionMode;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceManagement;
+import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.exam.OsgiAppTestBase;
 import org.ogema.model.sensors.SolarIrradiationSensor;
 import org.ogema.recordeddata.DataRecorder;
@@ -102,14 +102,14 @@ public class RecordedDataTest extends OsgiAppTestBase {
 		sens.activate(true);
 
 		final CountDownLatch cdl = new CountDownLatch(3);
-		ResourceListener l = new ResourceListener() {
+		ResourceValueListener<ValueResource> l = new ResourceValueListener<ValueResource>() {
 
 			@Override
-			public void resourceChanged(Resource resource) {
+			public void resourceChanged(ValueResource resource) {
 				cdl.countDown();
 			}
 		};
-		sens.reading().addResourceListener(l, false);
+		sens.reading().addValueListener(l, true);
 
 		sens.reading().setValue(3f);
 		Thread.sleep(50); // need distinct framework time values

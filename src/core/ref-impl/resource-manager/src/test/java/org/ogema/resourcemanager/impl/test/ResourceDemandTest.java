@@ -28,7 +28,7 @@ import org.junit.Before;
 
 import org.junit.Test;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.SimpleResource;
+import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
@@ -257,7 +257,7 @@ public class ResourceDemandTest extends OsgiTestBase {
 
 			@Override
             public void resourceAvailable(Sensor sensor) {
-                SimpleResource reading = sensor.reading();
+                ValueResource reading = sensor.reading();
                 /*
                 * explicit cast to super types to check correct class generation (synthetic methods)
                 */

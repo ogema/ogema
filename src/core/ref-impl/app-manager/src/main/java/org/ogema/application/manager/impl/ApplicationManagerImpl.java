@@ -15,6 +15,8 @@
  */
 package org.ogema.application.manager.impl;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -311,7 +313,17 @@ public class ApplicationManagerImpl implements ApplicationManager {
 
 	@Override
 	public SerializationManager getSerializationManager() {
-		return new SerializationManagerImpl(getResourceAccess(), getResourceManagement());
+        if (System.getSecurityManager() == null){
+            return new SerializationManagerImpl(getResourceAccess(), getResourceManagement());
+        } else {
+            return AccessController.doPrivileged(new PrivilegedAction<SerializationManager>() {
+
+                @Override
+                public SerializationManager run() {
+                    return new SerializationManagerImpl(getResourceAccess(), getResourceManagement());
+                }
+            });
+        }
 	}
 
 	/**

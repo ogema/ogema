@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.SimpleResource;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.persistence.ResourceDB;
@@ -95,6 +94,7 @@ public class DefaultVirtualResourceDB implements VirtualResourceDB {
         makeVirtual(elem);
     }
 
+    @SuppressWarnings("deprecation")
     private void makeVirtual(TreeElement elem) {
         assert elements.containsKey(elem.getPath()) : "element not referenced as resource " + elem.getPath();
 
@@ -109,7 +109,7 @@ public class DefaultVirtualResourceDB implements VirtualResourceDB {
             TreeElement realParent = realElement.getParent();
             Object oldResRef = realElement.getResRef();
             TreeElement newElementParent = realParent != null ? getElement(realParent) : null;
-            MemoryTreeElement replacement = SimpleResource.class.isAssignableFrom(elem.getType())
+            MemoryTreeElement replacement = org.ogema.core.model.SimpleResource.class.isAssignableFrom(elem.getType())
                     ? new MemoryTreeElement(elem.getName(), elem.getType(), newElementParent, elem.isDecorator(), elem.getData())
                     : new MemoryTreeElement(elem.getName(), elem.getType(), newElementParent, elem.isDecorator());
             if (oldResRef != null) {

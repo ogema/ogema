@@ -28,6 +28,9 @@ import org.ogema.model.smartgriddata.ElectricityPrice;
  */
 public interface ElectricityMeter extends GenericMeter {
 
+	/**
+	 * Electricity connection
+	 */
 	@Override
 	ElectricityConnection connection();
 

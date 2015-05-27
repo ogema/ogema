@@ -15,6 +15,8 @@
  */
 package org.ogema.driver.homematic.manager;
 
+import org.ogema.core.channelmanager.measurements.Value;
+
 /**
  * This class represents a command of a HM Device.
  * 
@@ -26,13 +28,13 @@ public class DeviceCommand {
 	private final String channelAddress;
 	private final String description;
 	private final boolean mandatory;
-	protected RemoteDevice remoteDevice;
+	protected SubDevice subDevice;
 
-	public DeviceCommand(RemoteDevice remoteDevice, byte commandIdentifier, String description, boolean mandatory) {
+	public DeviceCommand(SubDevice subDevice, byte commandIdentifier, String description, boolean mandatory) {
 		this.identifier = commandIdentifier;
 		this.description = description;
 		this.mandatory = mandatory;
-		this.remoteDevice = remoteDevice;
+		this.subDevice = subDevice;
 		channelAddress = generateChannelAddress();
 	}
 
@@ -72,8 +74,8 @@ public class DeviceCommand {
 		return channelAddress;
 	}
 
-	public void performCommand(byte[] data) {
-		this.remoteDevice.performCommand(identifier, data);
+	public void channelChanged(Value value) {
+		this.subDevice.channelChanged(identifier, value);
 	}
 
 }

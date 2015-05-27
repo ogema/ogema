@@ -16,9 +16,8 @@
 package org.ogema.tools.resourcemanipulator.implementation;
 
 import org.ogema.tools.resourcemanipulator.ResourceManipulatorImpl;
-import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.SimpleResource;
+import org.ogema.core.model.ValueResource;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.tools.resourcemanipulator.configurations.ProgramEnforcer;
 import org.ogema.tools.resourcemanipulator.model.ProgramEnforcerModel;
@@ -90,7 +89,7 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 	}
 
 	@Override
-	public void enforceProgram(SimpleResource resource, long updateInterval, AccessPriority priority) {
+	public void enforceProgram(ValueResource resource, long updateInterval, AccessPriority priority) {
 		m_targetResource = resource;
 		m_updateInterval = updateInterval;
 		if (priority == null) {
@@ -104,7 +103,7 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 	}
 
 	@Override
-	public void enforceProgram(SimpleResource resource, long updateInterval) {
+	public void enforceProgram(ValueResource resource, long updateInterval) {
 		m_targetResource = resource;
 		m_updateInterval = updateInterval;
 		m_priority = AccessPriority.PRIO_LOWEST;

@@ -18,7 +18,6 @@ package org.ogema.impl.security;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
@@ -28,7 +27,6 @@ import org.ogema.accesscontrol.SessionAuth;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.AppID;
 import org.ogema.core.security.WebAccessManager;
-import org.osgi.framework.Bundle;
 import org.osgi.service.http.HttpService;
 import org.osgi.service.http.NamespaceException;
 import org.slf4j.Logger;
@@ -61,7 +59,6 @@ public class WebAccessManagerImpl implements WebAccessManager {
 	// ConcurrentHashMap<AppID, ArrayList<String>> resourcesNames;
 
 	public WebAccessManagerImpl(PermissionManagerImpl pm, AdministrationManager admin) {
-		// this.rnd = new Random(System.currentTimeMillis());
 		this.http = pm.http;
 		this.permMan = pm;
 		this.contextRegs = new ConcurrentHashMap<>();
@@ -76,8 +73,6 @@ public class WebAccessManagerImpl implements WebAccessManager {
 			this.http.registerResources("/login", "/web", null);
 			LoginServlet loginServlet = new LoginServlet(permMan, permMan.accessMan.usrAdmin);
 			this.http.registerServlet(LoginServlet.LOGIN_SERVLET_PATH, loginServlet, null, null);
-			// registerWebResource(LoginServlet.LOGIN_SERVLET_PATH, loginServlet);
-			// this.http.registerServlet("/rest", this.restAccess, null, restContext);
 			this.http.registerServlet("/m2mLogin", this.m2mLogin, null, restContext);
 		} catch (NamespaceException | ServletException e) {
 			e.printStackTrace();
@@ -85,9 +80,38 @@ public class WebAccessManagerImpl implements WebAccessManager {
 	}
 
 	@Override
-	public void unregisterWebResource(String alias) {
-
+	public boolean unregisterWebResourcePath(String alias) {
 		// alias = aliasToConvention(alias);
+
+		// Remove the resource from the list of registered resources
+		AppID app = admin.getContextApp(getClass());
+		if (app == null) {
+			logger.error("Tried to unregister web resource {}, but could not determine app", alias);
+			return false;
+		}
+
+		String newAlias = generateAlias(alias, app);
+
+		OgemaHttpContext httpContext = contextRegs.get(app.getIDString());
+		httpContext.resources.remove(newAlias);
+		httpContext.servlets.remove(newAlias);
+
+		try {
+			http.unregister(newAlias);
+		} catch (IllegalArgumentException iae) {
+			logger.error("No registration found " + newAlias);
+			return false;
+		}
+
+		// If the list is empty the http context could be unregistered too
+		if (httpContext.resources.isEmpty() && httpContext.servlets.isEmpty())
+			contextRegs.remove(newAlias);
+
+		return true;
+	}
+
+	@Override
+	public void unregisterWebResource(String alias) {
 
 		// Remove the resource from the list of registered resources
 		AppID app = admin.getContextApp(getClass());
@@ -162,8 +186,6 @@ public class WebAccessManagerImpl implements WebAccessManager {
 	@Override
 	public String registerWebResource(String alias, Servlet servlet) {
 
-		// alias = aliasToConvention(alias);
-
 		// Check if the app already registered any resources
 		// In this case we use the HttpContext already created for this app
 		// Otherwise we need a new one.
@@ -216,6 +238,36 @@ public class WebAccessManagerImpl implements WebAccessManager {
 		return alias + id.getIDString().hashCode();
 	}
 
+	/*
+	 @Override
+	 public String registerWebResourcePath(String alias, Servlet servlet) {
+
+	 AppID app = admin.getContextApp(getClass());
+
+	 // return if ogema can not find the app
+	 if (app == null) {
+	 return null;
+	 }
+
+	 char seperator = '/';
+
+	 // always add "/" as prefix
+	 if (alias.length() > 0 && alias.charAt(0) != seperator) {
+	 alias = seperator + alias;
+	 }
+
+	 String newAlias = app.getBundle().getSymbolicName() + alias;
+	 newAlias = seperator + newAlias.replace('.', seperator);
+	 newAlias = newAlias.toLowerCase();
+
+	 // if the last character is "/" then remove it due to possible path exception
+	 if (newAlias.charAt(newAlias.length() - 1) == '/') {
+	 newAlias = newAlias.substring(0, newAlias.length() - 1);
+	 }
+	
+	 return newAlias;
+	 }
+	 */
 	@Override
 	public String registerWebResourcePath(String alias, Servlet servlet) {
 
@@ -226,23 +278,9 @@ public class WebAccessManagerImpl implements WebAccessManager {
 			return null;
 		}
 
-		char seperator = '/';
+		String newAlias = generateAlias(alias, app);
 
-		//always add "/" as prefix
-		if (alias.length() > 0 && alias.charAt(0) != seperator) {
-			alias = seperator + alias;
-		}
-
-		String newAlias = app.getBundle().getSymbolicName() + alias;
-		newAlias = seperator + newAlias.replace('.', seperator);
-		newAlias = newAlias.toLowerCase();
-
-		//if the last character is "/" then remove it due to possible path exception
-		if (newAlias.charAt(newAlias.length() - 1) == '/') {
-			newAlias = newAlias.substring(0, newAlias.length() - 1);
-		}
-
-		//register servlet
+		// register servlet
 		String appid = app.getIDString();
 		OgemaHttpContext httpContext = this.contextRegs.get(appid);
 		if (httpContext == null) {
@@ -271,14 +309,14 @@ public class WebAccessManagerImpl implements WebAccessManager {
 
 		AppID app = admin.getContextApp(getClass());
 
-		//return if ogema can not find the app
+		// return if ogema can not find the app
 		if (app == null) {
 			return null;
 		}
 
 		char seperator = '/';
 
-		//always add "/" as prefix
+		// always add "/" as prefix
 		if (alias.length() > 0 && alias.charAt(0) != seperator) {
 			alias = seperator + alias;
 		}
@@ -287,12 +325,12 @@ public class WebAccessManagerImpl implements WebAccessManager {
 		newAlias = seperator + newAlias.replace('.', seperator);
 		newAlias = newAlias.toLowerCase();
 
-		//if the last character is "/" then remove it due to possible path exception
+		// if the last character is "/" then remove it due to possible path exception
 		if (newAlias.charAt(newAlias.length() - 1) == '/') {
 			newAlias = newAlias.substring(0, newAlias.length() - 1);
 		}
 
-		//register webresource path
+		// register webresource path
 		String appid = app.getIDString();
 		OgemaHttpContext httpContext = this.contextRegs.get(appid);
 		if (httpContext == null) {
@@ -310,58 +348,6 @@ public class WebAccessManagerImpl implements WebAccessManager {
 		httpContext.resources.put(newAlias, name);
 		return newAlias;
 	}
-
-	// synchronized SessionAuth handleNewSession(HttpServletRequest request, HttpServletResponse response) {
-	// SessionAuth result = null;
-	// HttpSession ses = request.getSession(true);
-	// if (Configuration.DEBUG) {
-	// logger.info("Creation time: " + ses.getCreationTime());
-	// logger.info("SessionID: " + ses.getId());
-	// }
-	//
-	// /*
-	// * If the session is new send the login page
-	// */
-	// if (Configuration.DEBUG) {
-	// logger.debug("Unknown session: send login request.");
-	// }
-	// InputStream is;
-	// OutputStream bout;
-	// int len = 0;
-	// try {
-	// is = getClass().getResource(LOGIN_PATH).openStream();
-	// bout = response.getOutputStream();
-	// do {
-	// len = is.read(scratch);
-	// if (len == -1) // This check is needed due to jetty's own OutputStream implementation.
-	// break;
-	// bout.write(scratch, 0, len);
-	// // NOTE: Jetty server has its own OutputStream class its write method doesn't throw this
-	// // IndexOutOfBoundsException
-	//
-	// } while (true);
-	// response.flushBuffer();
-	// try {
-	// wait(LOGIN_TIMEOUT);
-	// } catch (InterruptedException e) {
-	// e.printStackTrace();
-	// }
-	// // result = sessions.get(ses.getId());
-	// result = (SessionAuth) ses.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME);
-	// } catch (IOException e1) {
-	// e1.printStackTrace();
-	// }
-	// // If the Session is not new or the authentication was successful
-	// if (result != null) {
-	// if (Configuration.DEBUG) {
-	// logger.debug("Authentication succeded.");
-	// }
-	// }
-	// else if (Configuration.DEBUG) {
-	// logger.debug("Authentication failed or timed out.");
-	// }
-	// return result;
-	// }
 
 	public String registerOTP(AppID app, HttpSession ses) {
 		SessionAuth auth = (SessionAuth) ses.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME);

@@ -49,6 +49,7 @@ import org.ogema.core.channelmanager.driverspi.NoSuchDeviceException;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.driverspi.ValueContainer;
+import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
@@ -481,11 +482,13 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 
 		try {
 			driver.readChannels(channelList);
-
 			return container;
-		} catch (UnsupportedOperationException | IOException e) {
-			// TODO Zwischen einzelnen Exceptions differenzieren
+		} catch (UnsupportedOperationException e) {
 			e.printStackTrace();
+		} catch (IOException e) {
+			// Value is set to null here. If an other default value is needed than the driver should handle the
+			// IOException itself.
+			container.setSampledValue(new SampledValue(null, System.currentTimeMillis(), Quality.BAD));
 		}
 
 		return null;

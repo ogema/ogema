@@ -21,7 +21,6 @@ import org.ogema.core.administration.RegisteredValueListener;
 import org.ogema.core.application.ApplicationManager;
 
 import org.ogema.core.model.Resource;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 
 /**
@@ -33,10 +32,11 @@ import org.ogema.core.resourcemanager.ResourceValueListener;
 public class ValueListenerRegistration implements ResourceListenerRegistration, RegisteredValueListener {
 
 	protected final ResourceBase origin;
+	@SuppressWarnings("rawtypes")
 	protected final ResourceValueListener listener;
 	protected final boolean callOnEveryUpdate;
 
-	public ValueListenerRegistration(ResourceBase origin, ResourceValueListener listener, boolean callOnEveryUpdate) {
+	public ValueListenerRegistration(ResourceBase origin, ResourceValueListener<?> listener, boolean callOnEveryUpdate) {
 		this.origin = origin;
 		this.listener = listener;
 		this.callOnEveryUpdate = callOnEveryUpdate;
@@ -64,6 +64,7 @@ public class ValueListenerRegistration implements ResourceListenerRegistration, 
 		Callable<Void> listenerCall = new Callable<Void>() {
 
 			@Override
+			@SuppressWarnings("unchecked")
 			public Void call() throws Exception {
 				listener.resourceChanged(r);
 				return null;
@@ -103,6 +104,7 @@ public class ValueListenerRegistration implements ResourceListenerRegistration, 
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public <T extends Resource> ResourceValueListener<T> getValueListener() {
 		return listener;
 	}
@@ -118,7 +120,8 @@ public class ValueListenerRegistration implements ResourceListenerRegistration, 
 	}
 
 	@Override
-	public ResourceListener getListener() {
+	@SuppressWarnings("deprecation")
+	public org.ogema.core.resourcemanager.ResourceListener getListener() {
 		return null;
 	}
 

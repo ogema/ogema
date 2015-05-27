@@ -53,5 +53,4 @@ public interface DataRecorder {
 	boolean deleteRecordedDataStorage(String id);
 
 	List<String> getAllRecordedDataStorageIDs();
-
 }

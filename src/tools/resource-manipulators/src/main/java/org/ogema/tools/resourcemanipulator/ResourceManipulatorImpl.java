@@ -94,6 +94,7 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
     }
 
     @Override
+    @Deprecated
     public void start(ApplicationManager applicationManager) {
         start();
     }
@@ -105,6 +106,7 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T extends ManipulatorConfiguration> T createConfiguration(Class<T> type) {
         if (type == Threshold.class) {
             return (T) new ThresholdConfigurationImpl(this);
@@ -122,6 +124,7 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T extends ManipulatorConfiguration> List<T> getConfigurations(Class<T> type) {
         
         // special case: Someone asked for ALL configurations
@@ -149,7 +152,7 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
                 final String appTag = configuration.application().getValue();
                 if (!appId.equals(appTag)) continue; // only care about your own configurations.
                 if (!configuration.isActive()) {
-                    logger.warn("Encountered inactive configuration at "+configuration.getLocation()+" while parsing the list of configurations. This should not happen (too ofteb), since the ResourceManipulators tool assumes only active configurations. Ignoring the configuration and continuing.");                    
+                    logger.warn("Encountered inactive configuration at "+configuration.getLocation()+" while parsing the list of configurations. This should not happen (too often), since the ResourceManipulators tool assumes only active configurations. Ignoring the configuration and continuing.");                    
                     continue;
                 }
                 result.add((T) new ThresholdConfigurationImpl(this, configuration));
@@ -215,6 +218,7 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
      * created.
      *
      */
+    @SuppressWarnings("unchecked")
     public <T extends ResourceManipulatorModel> T createResource(Class<T> type) {
         final ResourceManipulatorModel result;
         if (type == ThresholdModel.class) {

@@ -47,7 +47,7 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 	// channelLocator
 	// (resourceId)
 
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+	private final Logger logger = org.slf4j.LoggerFactory.getLogger("hm_hl");
 
 	public HM_hlDriver() {
 		this.devices = new HashMap<String, HM_hlDevice>();

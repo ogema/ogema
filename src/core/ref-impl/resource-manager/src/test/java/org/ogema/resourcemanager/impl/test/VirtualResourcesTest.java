@@ -33,7 +33,7 @@ import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
-import org.ogema.core.resourcemanager.ResourceListener;
+import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.locations.Location;
@@ -75,7 +75,7 @@ public class VirtualResourcesTest extends OsgiTestBase {
 	@Test
 	public void listenerRegisteredOnVirtualResourceWorksAfterCreate() throws InterruptedException {
 		final CountDownLatch cdl = new CountDownLatch(1);
-		ResourceListener l = new ResourceListener() {
+		ResourceValueListener<Resource> l = new ResourceValueListener<Resource>() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
@@ -84,7 +84,7 @@ public class VirtualResourcesTest extends OsgiTestBase {
 		};
 
 		OnOffSwitch sw = resMan.createResource(newResourceName(), OnOffSwitch.class);
-		sw.stateControl().addResourceListener(l, false);
+		sw.stateControl().addValueListener(l, true);
 		assertFalse(sw.stateControl().exists());
 		assertTrue(sw.stateControl().create().exists());
 		sw.stateControl().activate(false);
@@ -277,6 +277,7 @@ public class VirtualResourcesTest extends OsgiTestBase {
 	}
 
 	@Test
+	@SuppressWarnings("deprecation")
 	public void virtualSchedulesAreReadable() { //...but return only null
 		final FloatResource resource = resMan.createResource(newResourceName(), FloatResource.class);
 		final DefinitionSchedule schedule = resource.program();

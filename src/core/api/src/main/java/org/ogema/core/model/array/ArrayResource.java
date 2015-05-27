@@ -15,13 +15,13 @@
  */
 package org.ogema.core.model.array;
 
-import org.ogema.core.model.SimpleResource;
 import org.ogema.core.model.ValueResource;
 
 /**
  * Marker interface that marks a resource as one that contains an array of
  * values.
  */
-public interface ArrayResource extends ValueResource, SimpleResource {
+@SuppressWarnings("deprecation")
+public interface ArrayResource extends ValueResource, org.ogema.core.model.SimpleResource {
 
 }

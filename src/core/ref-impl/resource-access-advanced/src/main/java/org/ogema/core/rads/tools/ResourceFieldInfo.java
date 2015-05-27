@@ -16,6 +16,7 @@
 package org.ogema.core.rads.tools;
 
 import java.lang.reflect.Field;
+
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
@@ -27,6 +28,7 @@ import org.ogema.core.resourcemanager.pattern.ResourcePattern.Access;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.CreateMode;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.Equals;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.Existence;
+import org.ogema.core.resourcemanager.pattern.ResourcePattern.ValueChangedListener;
 
 /**
  * Informations on the requirements for a connected resource, read from the
@@ -43,6 +45,7 @@ public class ResourceFieldInfo {
 	private final CreateMode m_createMode;
 	private final boolean m_valueRequired;
 	private final int m_requiredValue;
+	private final boolean m_valueListener;
 
 	public ResourceFieldInfo(Field field, AccessPriority writePriority) {
 		m_field = field;
@@ -82,6 +85,14 @@ public class ResourceFieldInfo {
 			m_valueRequired = false;
 			m_requiredValue = 0;
 		}
+
+		final ValueChangedListener vcl = field.getAnnotation(ValueChangedListener.class);
+		if (vcl != null) {
+			m_valueListener = vcl.activate();
+		}
+		else {
+			m_valueListener = false;
+		}
 	}
 
 	public Field getField() {
@@ -106,6 +117,10 @@ public class ResourceFieldInfo {
 
 	public int getEqualsValue() {
 		return m_requiredValue;
+	}
+
+	public boolean requiresValueListener() {
+		return m_valueListener;
 	}
 
 	public boolean valueSatisfied(Resource resource) {

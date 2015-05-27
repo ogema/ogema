@@ -42,7 +42,7 @@ import org.ogema.serialization.schedules.StringSchedule;
 import org.ogema.serialization.schedules.TimeSchedule;
 
 /**
- * 
+ *
  * @author jlapp
  */
 @XmlAccessorType(XmlAccessType.PROPERTY)
@@ -50,14 +50,22 @@ import org.ogema.serialization.schedules.TimeSchedule;
 		"referencing", "subresources" })
 @XmlSeeAlso( { JaxbResourceList.class, JaxbBoolean.class, JaxbFloat.class, JaxbInteger.class, JaxbOpaque.class,
 		JaxbString.class, JaxbTime.class, JaxbLink.class, BooleanSchedule.class, FloatSchedule.class,
-		IntegerSchedule.class, StringSchedule.class, TimeSchedule.class })
+		IntegerSchedule.class, StringSchedule.class, TimeSchedule.class, JaxbBooleanArray.class, JaxbByteArray.class,
+		JaxbFloatArray.class, JaxbIntegerArray.class, JaxbStringArray.class, JaxbTimeArray.class })
 @JsonSubTypes( { @JsonSubTypes.Type(org.ogema.serialization.jaxb.ResourceList.class),
 		@JsonSubTypes.Type(org.ogema.serialization.jaxb.BooleanResource.class),
 		@JsonSubTypes.Type(org.ogema.serialization.jaxb.FloatResource.class),
 		@JsonSubTypes.Type(org.ogema.serialization.jaxb.IntegerResource.class),
 		@JsonSubTypes.Type(org.ogema.serialization.jaxb.OpaqueResource.class),
 		@JsonSubTypes.Type(org.ogema.serialization.jaxb.StringResource.class),
-		@JsonSubTypes.Type(org.ogema.serialization.jaxb.TimeResource.class), @JsonSubTypes.Type(ScheduleResource.class) })
+		@JsonSubTypes.Type(org.ogema.serialization.jaxb.TimeResource.class),
+		@JsonSubTypes.Type(ScheduleResource.class),
+		@JsonSubTypes.Type(org.ogema.serialization.jaxb.BooleanArrayResource.class),
+		@JsonSubTypes.Type(org.ogema.serialization.jaxb.ByteArrayResource.class),
+		@JsonSubTypes.Type(org.ogema.serialization.jaxb.FloatArrayResource.class),
+		@JsonSubTypes.Type(org.ogema.serialization.jaxb.IntegerArrayResource.class),
+		@JsonSubTypes.Type(org.ogema.serialization.jaxb.StringArrayResource.class),
+		@JsonSubTypes.Type(org.ogema.serialization.jaxb.TimeArrayResource.class), })
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY)
 @JsonRootName("resource")
 @XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
@@ -111,37 +119,37 @@ public class JaxbResource {
 		return res.isReference(false);
 	}
 
-	@XmlElements(value = { @XmlElement(name = "resource", type = JaxbResource.class),
-			@XmlElement(name = "resourcelink", type = JaxbLink.class) })
-	@SuppressWarnings("unchecked")
-	// generics on ResourceList
-	public List<Object> getSubresources() {
-		final List<Object> result = new ArrayList<>();
+	@XmlElements(value = {
+        @XmlElement(name = "resource", type = JaxbResource.class),
+        @XmlElement(name = "resourcelink", type = JaxbLink.class)})
+    @SuppressWarnings("unchecked")
+    // generics on ResourceList
+    public List<Object> getSubresources() {
+        final List<Object> result = new ArrayList<>();
 
-		List<Resource> subresources = res.getSubResources(false);
-		if (res instanceof ResourceList) {
-			ResourceList<Resource> car = (ResourceList) res;
-			List<Resource> iterationOrder = new ArrayList<>(subresources.size());
-			List<Resource> listElements = car.getAllElements();
-			iterationOrder.addAll(listElements);
-			if (subresources.size() > listElements.size()) {
-				for (Resource subres : subresources) {
-					if (!listElements.contains(subres)) {
-						iterationOrder.add(subres);
-					}
-				}
-			}
-			subresources = iterationOrder;
-		}
-		for (Resource subres : subresources) {
+        List<Resource> subresources = res.getSubResources(false);
+        if (res instanceof ResourceList) {
+            ResourceList<Resource> car = (ResourceList) res;
+            List<Resource> iterationOrder = new ArrayList<>(subresources.size());
+            List<Resource> listElements = car.getAllElements();
+            iterationOrder.addAll(listElements);
+            if (subresources.size() > listElements.size()) {
+                for (Resource subres : subresources) {
+                    if (!listElements.contains(subres)) {
+                        iterationOrder.add(subres);
+                    }
+                }
+            }
+            subresources = iterationOrder;
+        }
+        for (Resource subres : subresources) {
             if (status.linkResource(subres)) {
                 result.add(new JaxbLink(subres));
-            }
-            else {
+            } else {
                 result.add(JaxbFactory.createJaxbResource(subres, status.increaseDepth()));
-    		}
+            }
         }
         //status.increaseDepth();
-		return result;
-	}
+        return result;
+    }
 }

@@ -27,13 +27,12 @@ import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
-import org.ogema.core.model.simple.OpaqueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 
 /**
- * Defines a resource transaction. All resources added to this are read and write
+ * Defines a resource transaction. All resources added to this are read and written
  * in a single step with no other resource writes taking place at the same time.
  * Also supports to activate and deactivate resources.
  */
@@ -149,13 +148,18 @@ public interface Transaction {
 	 * @see #setFloat(org.ogema.core.model.simple.FloatResource, float) 
 	 * @deprecated Type {@link OpaqueResource} is deprecated. Use {@link ByteArrayResource} instead.
 	 */
-	void setByteArray(OpaqueResource resource, byte[] values) throws NoSuchResourceException;
+	@Deprecated
+	@SuppressWarnings("deprecation")
+	void setByteArray(org.ogema.core.model.simple.OpaqueResource resource, byte[] values)
+			throws NoSuchResourceException;
 
 	/**
 	 * @see #getFloat(org.ogema.core.model.simple.FloatResource) 
 	 * @deprecated Type {@link OpaqueResource} is deprecated. Use {@link ByteArrayResource} instead.       
 	 */
-	byte[] getByteArray(OpaqueResource resource) throws NoSuchResourceException;
+	@Deprecated
+	@SuppressWarnings("deprecation")
+	byte[] getByteArray(org.ogema.core.model.simple.OpaqueResource resource) throws NoSuchResourceException;
 
 	/**
 	 * @see #setFloat(org.ogema.core.model.simple.FloatResource, float) 

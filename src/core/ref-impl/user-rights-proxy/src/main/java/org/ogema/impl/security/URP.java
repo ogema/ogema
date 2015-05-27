@@ -24,6 +24,7 @@ import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.slf4j.LoggerFactory;
 
 @Component(specVersion = "1.1", immediate = true)
 @Service( { UserRightsProxy.class, Application.class })
@@ -38,8 +39,9 @@ public class URP implements UserRightsProxy, Application {
 	protected void activate(BundleContext context) throws Exception {
 		this.b = context.getBundle();
 		String loc = context.getBundle().getLocation();
-		int i = loc.lastIndexOf('/');
-		name = loc.substring(i + 1 + 3);
+		int i = loc.lastIndexOf(':');
+		name = loc.substring(i + 1);
+		LoggerFactory.getLogger(getClass()).info("activated URP for user '{}'", name);
 	}
 
 	@Deactivate

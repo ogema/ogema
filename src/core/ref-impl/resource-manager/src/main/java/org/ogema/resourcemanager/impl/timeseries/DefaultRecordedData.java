@@ -297,6 +297,7 @@ public class DefaultRecordedData implements RecordedData {
 	}
 
 	@Override
+	@Deprecated
 	public Long getTimeOfLatestEntry() {
 		return data.getTimeOfLatestEntry();
 	}

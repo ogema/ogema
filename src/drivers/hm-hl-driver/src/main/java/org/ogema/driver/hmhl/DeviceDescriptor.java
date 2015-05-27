@@ -32,7 +32,7 @@ public class DeviceDescriptor {
 	private String json;
 	private Iterator<String> Itr;
 	private Map<String, JSONObject> types = new HashMap<String, JSONObject>();
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+	private final Logger logger = org.slf4j.LoggerFactory.getLogger("hm_hl");
 
 	public DeviceDescriptor() {
 		InputStream is = getClass().getClassLoader().getResourceAsStream("deviceTypes.json");

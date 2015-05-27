@@ -72,14 +72,6 @@ public class SecurityGuiServlet extends HttpServlet {
 	 */
 	private static final long serialVersionUID = 7370224231398359148L;
 
-	static final String LOCAL_APPSTORE_NAME = "localAppDirectory";
-	static final String LOCAL_APPSTORE_LOCATION = "../../../../appstore/";
-	static final String PROP_NAME_LOCAL_APPSTORE_LOCATION = "org.ogema.local.appstore";
-
-	static final String allPerm = "java.security.AllPermission";
-
-	private static final String INSTALLATION_STATE_ATTR_NAME = "installstate";
-
 	private static final String GRANTED_PERMS_NAME = "permission";
 
 	private static final boolean DEBUG = false;
@@ -92,8 +84,6 @@ public class SecurityGuiServlet extends HttpServlet {
 
 	ResourceDB db;
 
-	ApplicationSource tmpFileUpload;
-
 	private ResourceAccess resMngr;
 
 	SecurityGuiServlet(WebAccessManager wam, PermissionManager pm, SecurityGui adminapp) {
@@ -102,8 +92,6 @@ public class SecurityGuiServlet extends HttpServlet {
 		wam.registerWebResource("/security-gui", "/admin");
 		wam.registerWebResource("/security/config", this);
 		db = adminapp.db;
-		// localAppStore = System.getProperty(PROP_NAME_LOCAL_APPSTORE_LOCATION, LOCAL_APPSTORE_LOCATION);
-		tmpFileUpload = new AppUploadDir("localTempDirectory", "./temp/", true);
 	}
 
 	synchronized public String getAppstoresData() throws Exception {
@@ -170,7 +158,7 @@ public class SecurityGuiServlet extends HttpServlet {
 			ApplicationSource appSource = admin.instMan.connectAppSource(appStore);
 			if (DEBUG)
 				logger.info("Get Apps in " + appSource.getAddress());
-			if (appStore.equals(LOCAL_APPSTORE_NAME)) {
+			if (appStore.equals(admin.instMan.getLocalStore().getName())) {
 				try {
 					data = getAppFiles(appSource);
 					printResponse(resp, data);
@@ -236,24 +224,6 @@ public class SecurityGuiServlet extends HttpServlet {
 				}
 			}
 			break;
-		// case "/resourceperm":
-		// resp.setContentType("application/json");
-		// idStr = req.getParameter("id");
-		// if (idStr != null && !idStr.equals("#"))
-		// id = Integer.valueOf(idStr);
-		// sb = resourceTree4Permissions2JSON(id);
-		// data = sb.toString();
-		// printResponse(resp, data);
-		// break;
-		// case "/resourceview":
-		// resp.setContentType("application/json");
-		// idStr = req.getParameter("id");
-		// if (idStr != null && !idStr.equals("#"))
-		// id = Integer.valueOf(idStr);
-		// sb = resourceTreeView2JSON(id);
-		// data = sb.toString();
-		// printResponse(resp, data);
-		// break;
 		case "/resourcevalue":
 			resp.setContentType("application/json");
 			idStr = req.getParameter("id");
@@ -273,7 +243,7 @@ public class SecurityGuiServlet extends HttpServlet {
 			switch (action) {
 			case "getInfo":
 				if (id != -1) {
-					sb = appInfos2JSON(id);
+					sb = bundleInfos2JSON(id);
 					data = sb.toString();
 					printResponse(resp, data);
 				}
@@ -299,6 +269,36 @@ public class SecurityGuiServlet extends HttpServlet {
 				// admin.osgi.getBundle(id).update();
 				printResponse(resp, "{\"statusInfo\":\"Update Succeded\"}");
 				break;
+			case "start":
+				id = Integer.valueOf(idStr);
+
+				b = admin.osgi.getBundle(id);
+				app = admin.instMan.createInstallableApp(b);
+				try {
+					admin.osgi.getBundle(id).start();
+				} catch (BundleException e1) {
+					printResponse(resp, "{\"statusInfo\":\"");
+					e1.printStackTrace(resp.getWriter());
+					printResponse(resp, "\"}");
+					break;
+				}
+				printResponse(resp, "{\"statusInfo\":\"Start Succeded\"}");
+				break;
+			case "stop":
+				id = Integer.valueOf(idStr);
+
+				b = admin.osgi.getBundle(id);
+				app = admin.instMan.createInstallableApp(b);
+				try {
+					admin.osgi.getBundle(id).stop();
+				} catch (BundleException e1) {
+					printResponse(resp, "{\"statusInfo\":\"");
+					e1.printStackTrace(resp.getWriter());
+					printResponse(resp, "\"}");
+					break;
+				}
+				printResponse(resp, "{\"statusInfo\":\"Stop Succeded\"}");
+				break;
 			case "delete":
 				id = Integer.valueOf(idStr);
 				/*
@@ -318,8 +318,13 @@ public class SecurityGuiServlet extends HttpServlet {
 					printResponse(resp, "\"}");
 				}
 				break;
-			case "listAll":
+			case "listApps":
 				sb = appsList2JSON();
+				data = sb.toString();
+				printResponse(resp, data);
+				break;
+			case "listAll":
+				sb = bundlesList2JSON();
 				data = sb.toString();
 				printResponse(resp, data);
 				break;
@@ -347,12 +352,28 @@ public class SecurityGuiServlet extends HttpServlet {
 		if (!pman.handleSecurity(new AdminPermission(AdminPermission.APP)))
 			throw new SecurityException("Permission to install Application denied!" + address + name);
 		InstallableApplication app = admin.instMan.createInstallableApp(address, name);
-		req.getSession().setAttribute(INSTALLATION_STATE_ATTR_NAME, app);
+		// req.getSession().setAttribute(INSTALLATION_STATE_ATTR_NAME, app);
+
+		Bundle b = null;
+		try {
+			b = admin.osgi.installBundle(app.getLocation());
+		} catch (BundleException e1) {
+			e1.printStackTrace();
+		}
+		if (b != null) {
+			app.setState(InstallableApplication.InstallState.BUNDLE_INSTALLED);
+			app.setBundle(b);
+			logger.info("Bundle installed from " + b.getLocation());
+		}
+		else {
+			logger.info("Bundle installation failed!");
+		}
 		// In this case an app is chosen for the installation
 		// Start the state machine for the installation process
 
 		try {
-			String data = getDesiredPerms(app);
+			// String data = getDesiredPerms(app);
+			String data = "{\"name\":\"" + b.getSymbolicName() + "\",\"id\":" + b.getBundleId() + "}";
 			printResponse(resp, data);
 		} catch (Exception e) {
 			e.printStackTrace(resp.getWriter());
@@ -392,8 +413,8 @@ public class SecurityGuiServlet extends HttpServlet {
 			if (!isGrantedAsDefault(perm)) {
 				if (perm.indexOf('<') != -1)
 					perm = perm.replaceAll("(.*<<[a-zA-Z_0-9]*) *(.*)", "$1_$2"); // replace permissions names like
-																					// <<ALL
-																					// FILES>>
+				// <<ALL
+				// FILES>>
 				permsArray.put(perm);
 			}
 		}
@@ -517,6 +538,97 @@ public class SecurityGuiServlet extends HttpServlet {
 		return sb;
 	}
 
+	private StringBuffer bundleInfos2JSON(int id) {
+		StringBuffer sb = new StringBuffer();
+		/*
+		 * Put bundle id
+		 */
+		sb.append("{\"bundleID\":\"");
+		sb.append(id);
+		sb.append("\",\"policies\":[");
+		Bundle b = admin.osgi.getBundle(id);
+		// AppID aid = pman.getAdminManager().getAppByBundle(b);
+		// AppPermission ap = pman.createAppPermission(b.getLocation());
+		/*
+		 * Put policies info
+		 */
+		Map<String, ConditionalPermissionInfo> granted = pman.getGrantedPerms(b);
+		// Map<String, ConditionalPermissionInfo> granted = ap.getGrantedPerms();
+		Set<Entry<String, ConditionalPermissionInfo>> tlrs = granted.entrySet();
+		int index = 0, j = 0;
+		for (Map.Entry<String, ConditionalPermissionInfo> entry : tlrs) {
+			ConditionalPermissionInfo info = entry.getValue();
+			if (j++ != 0)
+				sb.append(',');
+			sb.append("{\"mode\":\"");
+			sb.append(info.getAccessDecision());
+			sb.append("\",\"permissions\":[");
+			/*
+			 * Put Permissions
+			 */
+			index = 0;
+			PermissionInfo pinfos[] = info.getPermissionInfos();
+			for (PermissionInfo pi : pinfos) {
+				String tmpStr = null;
+				if (index++ != 0)
+					sb.append(',');
+				sb.append("{\"type\":\"");
+				tmpStr = pi.getType();
+				if (tmpStr != null)
+					sb.append(tmpStr);
+				sb.append("\",\"filter\":\"");
+				String tmp = pi.getName();
+				if (tmp != null) {
+					tmpStr = tmp.replace("\\", "\\\\");
+					sb.append(tmpStr == null ? "" : tmpStr);
+				}
+				sb.append("\",\"actions\":\"");
+				tmpStr = pi.getActions();
+				if (tmpStr != null)
+					sb.append(tmpStr);
+				sb.append("\"}");
+			}
+
+			sb.append("],\"conditions\":[");
+			/*
+			 * Put Conditions
+			 */
+			index = 0;
+			ConditionInfo cinfos[] = info.getConditionInfos();
+			for (ConditionInfo ci : cinfos) {
+				String tmpStr = null;
+				if (index++ != 0)
+					sb.append(',');
+				sb.append("{\"type\":\"");
+				tmpStr = ci.getType();
+				sb.append(tmpStr == null ? "" : tmpStr);
+				String args[] = ci.getArgs();
+				sb.append("\",\"arg1\":\"");
+				try {
+					if (tmpStr != null) {
+						tmpStr = args[0].replace("\\", "\\\\");
+						sb.append(tmpStr);
+					}
+				} catch (ArrayIndexOutOfBoundsException e) {
+					// sb.append("\"\"");
+				}
+				sb.append("\",\"arg2\":\"");
+				try {
+					if (tmpStr != null) {
+						tmpStr = args[1].replace("\\", "\\\\");
+						sb.append(tmpStr);
+					}
+				} catch (ArrayIndexOutOfBoundsException e) {
+					// sb.append("\"\"");
+				}
+				sb.append("\"}");
+			}
+			sb.append("]}");
+		}
+		sb.append("]}");
+		return sb;
+	}
+
 	private String grantedPerms2JSON(int id) {
 		StringBuffer sb = new StringBuffer();
 		/*
@@ -525,7 +637,7 @@ public class SecurityGuiServlet extends HttpServlet {
 		sb.append("{\"policies\":[");
 		Bundle b = admin.osgi.getBundle(id);
 		// AppID aid = pman.getAdminManager().getAppByBundle(b);
-		AppPermission ap = pman.createAppPermission(b.getLocation());// pman.getPolicies(aid);
+		// AppPermission ap = pman.createAppPermission(b.getLocation());// pman.getPolicies(aid);
 		/*
 		 * Put policies info
 		 */
@@ -622,6 +734,27 @@ public class SecurityGuiServlet extends HttpServlet {
 			sb.append(',');
 			sb.append("\"id\":\"");
 			sb.append(entry.getBundleRef().getBundleId());
+			sb.append('"');
+			sb.append('}');
+		}
+		sb.append(']');
+		return sb;
+	}
+
+	private StringBuffer bundlesList2JSON() {
+		StringBuffer sb = new StringBuffer();
+		Bundle[] bundles = admin.osgi.getBundles();
+		sb.append('[');
+		int index = 0;
+		for (Bundle entry : bundles) {
+			if (index++ != 0)
+				sb.append(',');
+			sb.append("{\"name\":\"");
+			sb.append(entry.getSymbolicName());
+			sb.append('"');
+			sb.append(',');
+			sb.append("\"id\":\"");
+			sb.append(entry.getBundleId());
 			sb.append('"');
 			sb.append('}');
 		}
@@ -814,13 +947,13 @@ public class SecurityGuiServlet extends HttpServlet {
 	}
 
 	StringBuffer webResourceTree2JSON(int id, String path, String alias) {
-		// JSONObject permObj = new JSONObject();
-		// JSONArray permsArray = new JSONArray();
 		int index = 0;
 		StringBuffer sb;
 		sb = new StringBuffer();
 		if (path.equals("#")) {
 			AppID appid = pman.getAdminManager().getAppByBundle(admin.osgi.getBundle(id));
+			if (appid == null)// probably not yet running
+				return sb;
 			Map<String, String> entries = pman.getWebAccess().getRegisteredResources(appid);
 			if (entries == null) {
 				sb.append("[]");
@@ -999,9 +1132,10 @@ public class SecurityGuiServlet extends HttpServlet {
 			}
 			break;
 		case "/uploadApp":
-			File file = receiveFile(req, resp);
+			String path = admin.instMan.getLocalStore().getAddress();
+			File file = receiveFile(req, resp, path);
 			String name = file.getName();
-			startAppInstall(req, resp, tmpFileUpload.getAddress(), name);
+			startAppInstall(req, resp, path, name);
 			break;
 		case "/removepermission":
 			id = -1;
@@ -1019,6 +1153,8 @@ public class SecurityGuiServlet extends HttpServlet {
 						String permType = toBeremoved.getString("type");
 						String filter = toBeremoved.getString("filter");
 						String actions = toBeremoved.getString("actions");
+						if (actions.length() == 0)
+							actions = null;
 						pman.removePermission(b, permType, filter, actions);
 					} catch (JSONException e1) {
 						e1.printStackTrace();
@@ -1034,7 +1170,7 @@ public class SecurityGuiServlet extends HttpServlet {
 		}
 	}
 
-	private File receiveFile(HttpServletRequest req, HttpServletResponse resp) {
+	private File receiveFile(HttpServletRequest req, HttpServletResponse resp, String path) {
 		// String filePath = req.getParameter("filename");
 		boolean isMultipart;
 		int maxFileSize = 1024 * 1024;
@@ -1065,7 +1201,7 @@ public class SecurityGuiServlet extends HttpServlet {
 		// maximum size that will be stored in memory
 		factory.setSizeThreshold(maxMemSize);
 		// Location to save data that is larger than maxMemSize.
-		factory.setRepository(new File("./temp"));
+		factory.setRepository(new File(path));
 
 		// Create a new file upload handler
 		ServletFileUpload upload = new ServletFileUpload(factory);
@@ -1086,10 +1222,12 @@ public class SecurityGuiServlet extends HttpServlet {
 					String fileName = fi.getName();
 					// Write the file
 					if (fileName.lastIndexOf("\\") >= 0) {
-						file = new File("./temp", fileName.substring(fileName.lastIndexOf("\\")));
+						file = new File(path, fileName.substring(fileName.lastIndexOf("\\")));
 					}
 					else {
-						file = new File("./temp", fileName);
+						File tempPath = new File(path);
+						tempPath.mkdirs();
+						file = new File(tempPath, fileName);
 					}
 					fi.write(file);
 				}
@@ -1099,5 +1237,4 @@ public class SecurityGuiServlet extends HttpServlet {
 		}
 		return file;
 	}
-
 }

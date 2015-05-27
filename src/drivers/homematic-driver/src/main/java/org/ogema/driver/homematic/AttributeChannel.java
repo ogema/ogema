@@ -55,7 +55,7 @@ public final class AttributeChannel extends Channel {
 			byte[] attributeIdArray = DatatypeConverter.parseHexBinary(splitAddress[1]);
 			short attributeId = (short) ((short) (attributeIdArray[0] << 8) & 0xff00);
 			attributeId |= attributeIdArray[1] & 0x00ff;
-			deviceAttribute = dev.getRemoteDevice().deviceAttributes.get(attributeId);
+			deviceAttribute = dev.getRemoteDevice().getSubDevice().deviceAttributes.get(attributeId);
 		}
 		else { // Multiple attributes
 			multipleAttributes = true;
@@ -72,7 +72,7 @@ public final class AttributeChannel extends Channel {
 					// when sending via that attribute
 					messagePayloadBuffer.putShort(Short.reverseBytes(attributeId));
 				logger.info(" " + Integer.toHexString(attributeId));
-				deviceAttributes.add(dev.getRemoteDevice().deviceAttributes.get(attributeId));
+				deviceAttributes.add(dev.getRemoteDevice().getSubDevice().deviceAttributes.get(attributeId));
 			}
 		}
 	}

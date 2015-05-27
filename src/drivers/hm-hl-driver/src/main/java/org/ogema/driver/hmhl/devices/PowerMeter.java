@@ -17,11 +17,10 @@ package org.ogema.driver.hmhl.devices;
 
 import static org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType.FIXED_INTERVAL;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
-import org.ogema.core.channelmanager.measurements.ByteArrayValue;
+import org.ogema.core.channelmanager.measurements.BooleanValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.units.ElectricCurrentResource;
@@ -34,7 +33,6 @@ import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.driver.hmhl.Constants;
-import org.ogema.driver.hmhl.Converter;
 import org.ogema.driver.hmhl.HM_hlConfig;
 import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
@@ -47,8 +45,6 @@ import org.ogema.model.sensors.ElectricVoltageSensor;
 import org.ogema.model.sensors.EnergyAccumulatedSensor;
 
 public class PowerMeter extends HM_hlDevice implements ResourceValueListener<BooleanResource> {
-
-	private byte random = (byte) 0x01;
 
 	private BooleanResource onOff;
 	private BooleanResource isOn;
@@ -69,61 +65,29 @@ public class PowerMeter extends HM_hlDevice implements ResourceValueListener<Boo
 
 	@Override
 	protected void parseValue(Value value, String channelAddress) {
-		byte[] array = null;
-
-		if (value instanceof ByteArrayValue) {
-			array = value.getByteArrayValue();
+		switch (channelAddress) {
+		case "ATTRIBUTE:0001":
+			isOn.setValue(value.getBooleanValue());
+			break;
+		case "ATTRIBUTE:0002":
+			iRes.setValue(value.getFloatValue());
+			break;
+		case "ATTRIBUTE:0003":
+			vRes.setValue(value.getFloatValue());
+			break;
+		case "ATTRIBUTE:0004":
+			pRes.setValue(value.getFloatValue());
+			break;
+		case "ATTRIBUTE:0005":
+			fRes.setValue(value.getFloatValue());
+			break;
+		case "ATTRIBUTE:0006":
+			eRes.setValue(value.getFloatValue());
+			break;
+		case "COMMAND:01":
+			onOff.setValue(value.getBooleanValue());
+			break;
 		}
-		else {
-			throw new IllegalArgumentException("unsupported value type: " + value);
-		}
-		byte msgtype = array[array.length - 1];
-		// byte msgflag = array[array.length - 2];
-		byte[] msg = ArrayUtils.removeAll(array, array.length - 2, array.length - 1);
-
-		String state_str = "";
-		String timedon;
-
-		if ((msgtype == 0x10 && msg[0] == 0x06) || (msgtype == 0x02 && msg[0] == 0x01)) {
-			// The whole button story
-			long state = Converter.toLong(msg[2]);
-			if (state == 0x00) {
-				state_str = "off";
-				isOn.setValue(false);
-			}
-			else if (state == 0xC8) {
-				state_str = "on";
-				isOn.setValue(true);
-			}
-
-			long err = Converter.toLong(msg[3]);
-			timedon = ((err & 0x40) > 0) ? "running" : "off";
-
-			//			System.out.println("State: " + state_str);
-			//			System.out.println("Timed-on: " + timedon);
-		}
-		else if (msgtype == 0x5E || msgtype == 0x5F) {
-			// The Metering Story
-			float eCnt = ((float) Converter.toLong(msg, 0, 3)) / 10;
-			float power = ((float) Converter.toLong(msg, 3, 3)) / 100;
-			float current = ((float) Converter.toLong(msg, 6, 2)) / 1;
-			float voltage = ((float) Converter.toLong(msg, 8, 2)) / 10;
-			float frequence = ((float) Converter.toLong(msg[10])) / 100 + 50;
-			boolean boot = (Converter.toLong(msg, 0, 3) & 0x800000) > 0;
-
-			//			System.out.println("Energy Counter: " + eCnt + " Wh");
-			eRes.setValue(eCnt);
-			//			System.out.println("Power: " + power + " W");
-			pRes.setValue(power);
-			//			System.out.println("Current: " + current + " mA");
-			iRes.setValue(current);
-			//			System.out.println("Voltage: " + voltage + " V");
-			vRes.setValue(voltage);
-			//			System.out.println("Frequence: " + frequence + " Hz");
-			fRes.setValue(frequence);
-			//			System.out.println("Boot: " + boot);
-		}
-
 	}
 
 	private void addMandatoryChannels() {
@@ -133,14 +97,59 @@ public class PowerMeter extends HM_hlDevice implements ResourceValueListener<Boo
 		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
 		attributeConfig.channelAddress = "ATTRIBUTE:0001";
 		attributeConfig.timeout = -1;
-		attributeConfig.resourceName = hm_hlConfig.resourceName + "_Attribute";
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_Attribute_" + "State";
+		attributeConfig.chLocator = addChannel(attributeConfig);
+
+		attributeConfig = new HM_hlConfig();
+		attributeConfig.driverId = hm_hlConfig.driverId;
+		attributeConfig.interfaceId = hm_hlConfig.interfaceId;
+		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
+		attributeConfig.channelAddress = "ATTRIBUTE:0002";
+		attributeConfig.timeout = -1;
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_Attribute_" + "Current";
+		attributeConfig.chLocator = addChannel(attributeConfig);
+
+		attributeConfig = new HM_hlConfig();
+		attributeConfig.driverId = hm_hlConfig.driverId;
+		attributeConfig.interfaceId = hm_hlConfig.interfaceId;
+		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
+		attributeConfig.channelAddress = "ATTRIBUTE:0003";
+		attributeConfig.timeout = -1;
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_Attribute_" + "Voltage";
+		attributeConfig.chLocator = addChannel(attributeConfig);
+
+		attributeConfig = new HM_hlConfig();
+		attributeConfig.driverId = hm_hlConfig.driverId;
+		attributeConfig.interfaceId = hm_hlConfig.interfaceId;
+		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
+		attributeConfig.channelAddress = "ATTRIBUTE:0004";
+		attributeConfig.timeout = -1;
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_Attribute_" + "Power";
+		attributeConfig.chLocator = addChannel(attributeConfig);
+
+		attributeConfig = new HM_hlConfig();
+		attributeConfig.driverId = hm_hlConfig.driverId;
+		attributeConfig.interfaceId = hm_hlConfig.interfaceId;
+		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
+		attributeConfig.channelAddress = "ATTRIBUTE:0005";
+		attributeConfig.timeout = -1;
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_Attribute_" + "Frequence";
+		attributeConfig.chLocator = addChannel(attributeConfig);
+
+		attributeConfig = new HM_hlConfig();
+		attributeConfig.driverId = hm_hlConfig.driverId;
+		attributeConfig.interfaceId = hm_hlConfig.interfaceId;
+		attributeConfig.deviceAddress = hm_hlConfig.deviceAddress;
+		attributeConfig.channelAddress = "ATTRIBUTE:0006";
+		attributeConfig.timeout = -1;
+		attributeConfig.resourceName = hm_hlConfig.resourceName + "_Attribute_" + "Energy";
 		attributeConfig.chLocator = addChannel(attributeConfig);
 
 		HM_hlConfig commandConfig = new HM_hlConfig();
 		commandConfig.driverId = hm_hlConfig.driverId;
 		commandConfig.interfaceId = hm_hlConfig.interfaceId;
 		commandConfig.channelAddress = "COMMAND:01";
-		commandConfig.resourceName = hm_hlConfig.resourceName + "_Command";
+		commandConfig.resourceName = hm_hlConfig.resourceName + "_Command_" + "OnOffToggle";
 		commandConfig.chLocator = addChannel(commandConfig);
 
 		/*
@@ -152,11 +161,11 @@ public class PowerMeter extends HM_hlDevice implements ResourceValueListener<Boo
 
 		// The on/off switch
 		onOff = (BooleanResource) powerMeter.onOffSwitch().stateControl().create();
-//		onOff.activate(true);
+		//		onOff.activate(true);
 		onOff.requestAccessMode(AccessMode.SHARED, AccessPriority.PRIO_HIGHEST);
 
 		isOn = (BooleanResource) powerMeter.onOffSwitch().stateFeedback().create();
-//		isOn.activate(true);
+		//		isOn.activate(true);
 		isOn.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		// The connection attribute and its children, current, voltage, power,
@@ -166,43 +175,39 @@ public class PowerMeter extends HM_hlDevice implements ResourceValueListener<Boo
 
 		ElectricCurrentSensor iSens = conn.currentSensor().create();
 		iRes = iSens.reading().create();
-//		iRes.activate(true);
-		//		iRes.setValue(0);
+		iRes.activate(true);
+		// iRes.setValue(0);
 		iRes.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		ElectricVoltageSensor vSens = (ElectricVoltageSensor) conn.voltageSensor().create();
 		vRes = (VoltageResource) vSens.reading().create();
-//		vRes.activate(true);
-		//		vRes.setValue(0);
+		vRes.activate(true);
+		// vRes.setValue(0);
 		vRes.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		ElectricPowerSensor pSens = (ElectricPowerSensor) conn.powerSensor().create();
 		pRes = (PowerResource) pSens.reading().create();
-//		pRes.activate(true);
-		//		pRes.setValue(0);
+		pRes.activate(true);
+		// pRes.setValue(0);
 		pRes.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		ElectricFrequencySensor fSens = (ElectricFrequencySensor) conn.frequencySensor().create();
 		fRes = (FrequencyResource) fSens.reading().create();
-//		fRes.activate(true);
-		//		fRes.setValue(0);
+		fRes.activate(true);
+		// fRes.setValue(0);
 		fRes.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		// Add accumulated energy attribute
 		EnergyAccumulatedSensor energy = powerMeter.electricityConnection().energySensor().create();
 		eRes = (EnergyResource) energy.reading().create();
-//		eRes.activate(true);
-		//		eRes.setValue(0);
+		eRes.activate(true);
+		// eRes.setValue(0);
 		eRes.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 		powerMeter.activate(true);
 
 		// Add listener to register on/off commands
 		onOff.addValueListener(this, true);
 
-		// Get state
-		ChannelLocator locator = this.commandChannel.get("COMMAND:01");
-		writeToChannel(locator, "010E" + "A0" + "01"); // Syntax: Commando +
-		// Flag + Type
 		configureLogging();
 	}
 
@@ -227,22 +232,11 @@ public class PowerMeter extends HM_hlDevice implements ResourceValueListener<Boo
 
 	@Override
 	public void resourceChanged(BooleanResource resource) {
-
 		// Here the on/off command channel should be written
 		// Currently only 1 channel for everything
 		ChannelLocator locator = this.commandChannel.get("COMMAND:01");
+		BooleanValue onOff = new BooleanValue(resource.getValue());
 		// Toggle
-		writeToChannel(locator, this.hm_hlConfig.deviceAddress + "4001" + Converter.toHexString(random++) + "A0" + "3E"); // Syntax:
-		// Commando
-		// +
-		// randombyte
-		// +
-		// Flag
-		// +
-		// Type
-		// Get state
-		writeToChannel(locator, "010E" + "A0" + "01"); // Syntax: Commando +
-		// Flag + Type
-
+		writeToChannel(locator, onOff);
 	}
 }

@@ -20,9 +20,9 @@ import java.util.List;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
+import org.ogema.core.model.Resource;
 import org.ogema.core.model.schedule.DefinitionSchedule;
 import org.ogema.core.model.schedule.ForecastSchedule;
-import org.ogema.core.recordeddata.RecordedData;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.persistence.impl.faketree.ScheduleTreeElement;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
@@ -52,6 +52,14 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
+	public <T extends Resource> T create() {
+		DefaultSchedule s = super.create();
+		m_scheduleElement.create();
+		return (T) s;
+	}
+
+	@Override
 	public boolean addValue(long timestamp, Value value) {
 		if (!exists() || !hasWriteAccess()) {
 			return false;
@@ -76,6 +84,7 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 	}
 
 	@Override
+	@Deprecated
 	public final boolean addValueSchedule(long startTime, long stepSize, List<Value> values) {
 		return replaceValuesFixedStep(startTime, values, stepSize);
 	}
@@ -117,6 +126,7 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 	}
 
 	@Override
+	@Deprecated
 	public final boolean addValueSchedule(long startTime, long stepSize, List<Value> values, long timeOfCalculation) {
 		return replaceValuesFixedStep(startTime, values, stepSize, timeOfCalculation);
 	}
@@ -223,14 +233,14 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 	}
 
 	@Override
+	@Deprecated
 	public Long getTimeOfLatestEntry() {
 		return getSchedule().getLastCalculationTime();
 	}
 
-	// TODO: Do not use the deprecated method here but implement it the other way round.
 	@Override
 	public long getLastUpdateTime() {
-		return getTimeOfLatestEntry();
+		return getSchedule().getLastModified();
 	}
 
 }

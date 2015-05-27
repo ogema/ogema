@@ -18,6 +18,8 @@ package org.ogema.core.channelmanager.driverspi;
 import java.io.IOException;
 import java.util.List;
 
+import org.ogema.core.channelmanager.NoSuchDriverException;
+
 /**
  * The ChannelDriver interface has to be implemented by each low-level protocol driver. The low-level driver has to
  * export an instance of this interface as an OSGi service.
@@ -52,10 +54,13 @@ public interface ChannelDriver {
 	 *            device type ...)
 	 * @param listener
 	 *            listener to notify when a device is found
-	 * 
 	 * @throws UnsupportedOperationException
 	 *             if this operation is not supported by the driver
-	 **/
+	 * @throws NoSuchInterfaceException
+	 *             if the interface does not exist
+	 * @throws IOException
+	 *             if an error occurs during the device scan
+	 */
 	public void startDeviceScan(String interfaceId, String filter, DeviceScanListener listener)
 			throws UnsupportedOperationException, NoSuchInterfaceException, IOException;
 
@@ -70,8 +75,6 @@ public interface ChannelDriver {
 	 *            the same interface ID as set when invoking the device scan
 	 * @param filter
 	 *            the same filter as set when invoking the device scan
-	 * 
-	 * 
 	 **/
 	public void abortDeviceScan(String interfaceId, String filter);
 
@@ -91,11 +94,13 @@ public interface ChannelDriver {
 
 	/**
 	 * Returns list of known channels in the device with the given device locator. This call does not initiate a channel
-	 * scan but will immediately return a list of known channels.
+	 * scan.
 	 * 
 	 * @param device
-	 * @return
+	 *            device to get the known channels form
+	 * @return Returns a list of known channels of the device
 	 * @throws UnsupportedOperationException
+	 *             if this operation is not supported by the driver
 	 */
 	public List<ChannelLocator> getChannelList(DeviceLocator device) throws UnsupportedOperationException;
 
@@ -108,6 +113,12 @@ public interface ChannelDriver {
 	 * 
 	 * @param channels
 	 *            list of channels to read.
+	 * @throws UnsupportedOperationException
+	 *             if this operation is not supported by the driver
+	 * @throws IOException
+	 *             if the read of a channel failed. When a IOException is thrown the ChannelManager automatically sets
+	 *             the quality flag of the SampledValueContainers to bad. Optionally the driver might set the quality
+	 *             flag to bad by itself to avoid a IOException and perform a driver specific error handling.
 	 */
 	public void readChannels(List<SampledValueContainer> channels) throws UnsupportedOperationException, IOException;
 
@@ -115,7 +126,15 @@ public interface ChannelDriver {
 	 * Asynchronous read, for more details see synchronous read. During the execution of the callback the values of
 	 * channels may not change. Afterwards the channels object should not be read anymore (copies of values should be
 	 * made during callback).
-	 * */
+	 * 
+	 * @param channels
+	 *            list of channels to read.
+	 * @param listener
+	 *            will be invoked when at least one channel value is updated. The list given to the listener will only
+	 *            contain the elements channels that received a new value.
+	 * @throws UnsupportedOperationException
+	 *             if this operation is not supported by the driver
+	 */
 	public void readChannels(List<SampledValueContainer> channels, ChannelUpdateListener listener)
 			throws UnsupportedOperationException;
 
@@ -131,6 +150,14 @@ public interface ChannelDriver {
 	 *            will be invoked when at least one channel value is updated. The list given to the listener will only
 	 *            contain the elements channels that received a new value. See asynchronous read regarding channels
 	 *            during and after callback.
+	 * @throws UnsupportedOperationException
+	 *             if this operation is not supported by the driver
+	 * @throws NoSuchDeviceException
+	 *             thrown when device doesn't exist
+	 * @throws NoSuchChannelException
+	 *             thrown when channel doesn't exist
+	 * @throws IOException
+	 *             thrown when an IO error occurred
 	 */
 	public void listenChannels(List<SampledValueContainer> channels, ChannelUpdateListener listener)
 			throws UnsupportedOperationException, NoSuchDeviceException, NoSuchChannelException, IOException;
@@ -142,12 +169,28 @@ public interface ChannelDriver {
 	 *            A list of ValueContainer objects containing the Values and ChannelLocators for each channel that
 	 *            should be written.
 	 * @throws NoSuchDeviceException
+	 *             thrown when device doesn't exist
 	 * @throws NoSuchChannelException
+	 *             thrown when channel doesn't exist
+	 * @throws UnsupportedOperationException
+	 *             if this operation is not supported by the driver
+	 * @throws IOException
+	 *             if the write of a channel failed
 	 */
 	public void writeChannels(List<ValueContainer> channels) throws UnsupportedOperationException, IOException,
 			NoSuchDeviceException, NoSuchChannelException;
 
-	/** Asynchronous write. See synchronous write for details. */
+	/**
+	 * Asynchronous write. See synchronous write for details.
+	 * 
+	 * @param channels
+	 *            A list of ValueContainer objects containing the Values and ChannelLocators for each channel that
+	 *            should be written.
+	 * @param listener
+	 *            is called when an exception occurred
+	 * @throws UnsupportedOperationException
+	 *             if this operation is not supported by the driver
+	 */
 	public void writeChannels(List<ValueContainer> channels, ExceptionListener listener)
 			throws UnsupportedOperationException;
 

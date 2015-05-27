@@ -1,0 +1,2 @@
+In order to allow changing the update interval using Javascript, a global variable helper has been introduced in app/app.496fdc2e.js;
+calling helper.set_interval("10s") resets the update interval to 10s. helper.set_interval() disables updates

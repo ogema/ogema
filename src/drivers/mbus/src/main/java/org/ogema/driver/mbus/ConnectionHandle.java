@@ -26,7 +26,7 @@ public class ConnectionHandle {
 
 	private int deviceCounter = 1;
 	private final MBusSap mBusSap;
-	private boolean open = true;
+	private boolean connected = false;
 	private final String deviceAddress;
 
 	public ConnectionHandle(MBusSap mBusSap, String deviceAddress) {
@@ -54,12 +54,12 @@ public class ConnectionHandle {
 		return deviceCounter;
 	}
 
-	public boolean isOpen() {
-		return open;
+	public boolean isConnected() {
+		return connected;
 	}
 
-	public void close() {
-		open = false;
+	public void setConnected(boolean connected) {
+		this.connected = connected;
 	}
 
 }

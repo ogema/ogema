@@ -84,7 +84,16 @@ public interface InstallationManagement {
 
 	/**
 	 * Gets the default application source as it installed in system.
+	 * 
 	 * @return The default {@link ApplicationSource}
 	 */
 	public ApplicationSource getDefaultAppStore();
+
+	/**
+	 * Gets the name of the bundle store, that is provided by the framework.
+	 * 
+	 * @return The locale store or null if the framework doesn't support such a store.
+	 */
+	public ApplicationSource getLocalStore();
+
 }

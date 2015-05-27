@@ -36,9 +36,8 @@ import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 import org.ogema.resourcetree.TreeElement;
 
 /**
- * 
- * @param <T>
- *            type of array elements.
+ *
+ * @param <T> type of array elements.
  * @author jlapp
  */
 public class DefaultResourceList<T extends Resource> extends ResourceBase implements ResourceList<T> {
@@ -46,9 +45,7 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	/**
 	 * store array element names in an additional String array resource.
 	 */
-	protected final List<String> elements;
 	static final String ELEMENTS = "@elements";
-	protected TreeElement elementsNode;
 
 	@SuppressWarnings("unchecked")
 	protected Class<T> elementType;
@@ -56,17 +53,12 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	@SuppressWarnings("unchecked")
 	public DefaultResourceList(VirtualTreeElement el, String path, ApplicationResourceManager appman) {
 		super(el, path, appman);
-		elementsNode = el.getChild(ELEMENTS);
-		elements = new ArrayList<>();
+		while (el.isReference()) {
+			el = (VirtualTreeElement) el.getReference();
+		}
 		elementType = (Class<T>) el.getResourceListType();
-        if (elementType == null && !el.isDecorator()){
-            elementType = (Class<T>) findElementTypeOnParent();
-        }
-		if (elementsNode != null) {
-			String[] a = elementsNode.getData().getStringArr();
-			if (a != null) {
-				elements.addAll(Arrays.asList(a));
-			}
+		if (elementType == null && !el.isDecorator()) {
+			elementType = (Class<T>) findElementTypeOnParent();
 		}
 	}
 
@@ -112,15 +104,39 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 		}
 	}
 
-	protected void updateElementsNode() {
-		if (elementsNode == null) {
-			elementsNode = getEl().addChild(ELEMENTS, StringArrayResource.class, true);
+	protected TreeElement getListEl() {
+		TreeElement el = getEl();
+		while (el.isReference()) {
+			el = el.getReference();
 		}
-		elementsNode.getData().setStringArr(elements.toArray(new String[elements.size()]));
+		return el;
 	}
 
+	protected TreeElement getElementsNode(boolean create) {
+		TreeElement el = getListEl().getChild(ELEMENTS);
+		if (el == null && create) {
+			return getListEl().addChild(ELEMENTS, StringArrayResource.class, true);
+		}
+		else {
+			return el;
+		}
+	}
+
+	protected void updateElementsNode(List<String> elementNames) {
+		getElementsNode(true).getData().setStringArr(elementNames.toArray(new String[elementNames.size()]));
+	}
+
+	protected List<String> getElementNames() {
+        TreeElement el = getElementsNode(false);
+        if (el == null) {
+            return new ArrayList<>();
+        } else {
+            return new ArrayList<>(Arrays.asList(el.getData().getStringArr()));
+        }
+    }
+
 	protected String findNewName() {
-		int number = elements.size();
+		int number = getElementNames().size();
 		String name = getName() + "_" + number;
 		while (getSubResource(name) != null) {
 			name = getName() + "_" + ++number;
@@ -129,41 +145,43 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	}
 
 	@Override
-	public List<T> getAllElements() {
-		synchronized (elements) {
-			List<T> rval = new ArrayList<>(elements.size());
+    public List<T> getAllElements() {
+        synchronized (getListEl()) {
+            List<String> elementNames = getElementNames();
+            List<T> rval = new ArrayList<>(elementNames.size());
             boolean update = false;
-            for (Iterator<String> it = elements.iterator(); it.hasNext();){
+            for (Iterator<String> it = elementNames.iterator(); it.hasNext();) {
                 T sub = getSubResource(it.next());
-                if (sub != null && sub.exists()){
+                if (sub != null && sub.exists()) {
                     rval.add(sub);
                 } else {
                     it.remove();
                     update = true;
                 }
             }
-            if (update){
-                updateElementsNode();
+            if (update) {
+                updateElementsNode(elementNames);
             }
-			return rval;
-		}
-	}
+            return rval;
+        }
+    }
 
 	@Override
 	public int size() {
 		getEl();
-		return elements.size();
+		return getElementNames().size();
 	}
 
 	@Override
 	public <T extends Resource> T addDecorator(String name, Class<T> resourceType)
 			throws ResourceAlreadyExistsException, NoSuchResourceException {
 		if (getElementType() != null && getElementType().isAssignableFrom(resourceType)) {
-			synchronized (elements) {
+			synchronized (getListEl()) {
 				T dec = super.addDecorator(name, resourceType);
-				if (!elements.contains(name)) {
-					elements.add(name);
-					updateElementsNode();
+				List<String> elementNames = getElementNames();
+				if (!elementNames.contains(name)) {
+					elementNames.add(name);
+					updateElementsNode(elementNames);
 				}
 				return dec;
 			}
@@ -177,11 +195,12 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	public <T extends Resource> T addDecorator(String name, T decorator) throws ResourceAlreadyExistsException,
 			NoSuchResourceException, ResourceGraphException {
 		if (getElementType() != null && getElementType().isAssignableFrom(decorator.getResourceType())) {
-			synchronized (elements) {
+			synchronized (getListEl()) {
 				T dec = super.addDecorator(name, decorator);
-				if (!elements.contains(name)) {
-					elements.add(name);
-					updateElementsNode();
+				List<String> elementNames = getElementNames();
+				if (!elementNames.contains(name)) {
+					elementNames.add(name);
+					updateElementsNode(elementNames);
 				}
 				return dec;
 			}
@@ -193,7 +212,7 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	public void add(T arg0) {
 		Objects.requireNonNull(arg0, "reference must not be null");
 		checkType(arg0);
-		synchronized (elements) {
+		synchronized (getListEl()) {
 			String name = findNewName();
 			addDecorator(name, arg0);
 		}
@@ -205,7 +224,7 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 		if (elementType == null) {
 			throw new IllegalStateException("array element type has not been set.");
 		}
-		synchronized (elements) {
+		synchronized (getListEl()) {
 			String name = findNewName();
 			return addDecorator(name, elementType);
 		}
@@ -217,7 +236,7 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 		if (elementType == null) {
 			throw new IllegalStateException("array element type has not been set.");
 		}
-		synchronized (elements) {
+		synchronized (getListEl()) {
 			String name = findNewName();
 			return addDecorator(name, type);
 		}
@@ -225,13 +244,16 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 
 	@Override
 	public void remove(T element) {
-		for (T e : getAllElements()) {
-			if (e.equalsLocation(element)) {
-				elements.remove(e.getName());
-				e.delete();
+		synchronized (getListEl()) {
+			List<String> elementNames = getElementNames();
+			for (T e : getAllElements()) {
+				if (e.equalsLocation(element)) {
+					elementNames.remove(e.getName());
+					e.delete();
+				}
 			}
+			updateElementsNode(elementNames);
 		}
-		updateElementsNode();
 	}
 
 	@Override
@@ -263,9 +285,12 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 
 	@Override
 	public void deleteElement(String name) {
-		super.deleteElement(name);
-		if (elements.remove(name)) {
-			updateElementsNode();
+		synchronized (getListEl()) {
+			List<String> elementNames = getElementNames();
+			super.deleteElement(name);
+			if (elementNames.remove(name)) {
+				updateElementsNode(elementNames);
+			}
 		}
 	}
 

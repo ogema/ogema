@@ -56,6 +56,7 @@ return function(callback) {
 	  from: "now-5m",
 	  to: "now"
 	};
+	var refreshBak;
 	
 	$.ajax({
 		method: 'GET',
@@ -66,9 +67,11 @@ return function(callback) {
 	   console.log("Parameter callback received ", paramsResult);
 	   var params = JSON.parse(paramsResult)[0].parameters;
 	   var refr = params.updateInterval;
+   	   dashboard.refresh = "1s";	   
 	   if (refr > 0) {
-		   dashboard.refresh = String(refr/1000) + "s";
-	   }
+		  // dashboard.refresh = String(refr/1000) + "s";
+		  refreshBak = String(refr/1000) + "s";
+	   } 
 	   var rows = params.panels;
 	   var panels = {};
 	   var isReady = {};
@@ -177,6 +180,16 @@ return function(callback) {
   	  }; 
 	  tick(); 
     });  // end rows loop
+    
+	// make sure values are received once, then set update interval to desired value
+    setTimeout(function() {
+    	if (typeof(refreshBak) == "undefined") {
+    		helper.set_interval();
+    	}
+    	else {
+    		helper.set_interval(refreshBak);
+  	 	}  
+    }   ,2000);
 
     // when dashboard is composed call the callback function and pass the dashboard
     callback(dashboard);

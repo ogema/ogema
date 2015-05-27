@@ -17,8 +17,6 @@ package org.ogema.impl.security;
 
 import java.io.IOException;
 import java.net.URL;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -32,18 +30,9 @@ public class RestHttpContext implements HttpContext {
 
 	private Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 
-	// WebAccessManagerImpl wam;
-
 	public RestHttpContext() {
-		AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
-			public Boolean run() {
-				// For development purposes secure mode could be disabled
-				if (System.getProperty("org.ogema.secure.httpcontex", "true").equals("false"))
-					securemode = false;
-				return null;
-			}
-		});
-		// this.wam = wam;
+		// For development purposes secure mode could be disabled
+		securemode = OgemaHttpContext.securemode;
 	}
 
 	/*
@@ -61,7 +50,7 @@ public class RestHttpContext implements HttpContext {
 		 */
 
 		String scheme = request.getScheme();
-		if (!scheme.equals("https")) {
+		if (securemode && !scheme.equals("https")) {
 			logger.info("\tSecure connection is required.");
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 			response.getOutputStream().write("\tSecure connection is required.".getBytes());

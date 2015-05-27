@@ -307,9 +307,132 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
+    
+    <xs:complexType name="BooleanArrayResource">
+        <xs:annotation>
+            <xs:documentation>Representation for an OGEMA BooleanArrayResource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element name="values" maxOccurs="1" minOccurs="1">
+                        <xs:annotation>
+                            <xs:documentation>Actual value of the resource.
+                            </xs:documentation>
+                        </xs:annotation>
+                        <xs:simpleType>
+                            <xs:list itemType="xs:boolean" />
+                        </xs:simpleType>
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    
+    <xs:complexType name="ByteArrayResource">
+        <xs:annotation>
+            <xs:documentation>Representaion for an OGEMA ByteArrayResource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element name="values" type="xs:base64Binary" maxOccurs="1" minOccurs="1">
+                        <xs:annotation>
+                            <xs:documentation>The byte array of the resource, encoded as a
+                                base64Binary string.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    
+    <xs:complexType name="FloatArrayResource">
+        <xs:annotation>
+            <xs:documentation>Representation for an OGEMA FloatArrayResource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element name="values" maxOccurs="1" minOccurs="1">
+                        <xs:annotation>
+                            <xs:documentation>Actual value of the resource.
+                            </xs:documentation>
+                        </xs:annotation>
+                        <xs:simpleType>
+                            <xs:list itemType="xs:float" />
+                        </xs:simpleType>                        
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
 
-
-
+    <xs:complexType name="IntegerArrayResource">
+        <xs:annotation>
+            <xs:documentation>Representation for an OGEMA IntegerArrayResource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element name="values" maxOccurs="1" minOccurs="1">
+                        <xs:annotation>
+                            <xs:documentation>Actual value of the resource.
+                            </xs:documentation>
+                        </xs:annotation>
+                        <xs:simpleType>
+                            <xs:list itemType="xs:integer" />
+                        </xs:simpleType>                        
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    
+    <xs:complexType name="StringArrayResource">
+        <xs:annotation>
+            <xs:documentation>Representation for an OGEMA BooleanArrayResource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element type="xs:string" name="values" maxOccurs="unbounded" minOccurs="0">
+                        <xs:annotation>
+                            <xs:documentation>Array values.</xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+    
+    <xs:complexType name="TimeArrayResource">
+        <xs:annotation>
+            <xs:documentation>Representation for an OGEMA TimeArrayResource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="og:Resource">
+                <xs:sequence>
+                    <xs:element name="values" maxOccurs="1" minOccurs="1">
+                        <xs:annotation>
+                            <xs:documentation>Actual value of the resource.
+                            </xs:documentation>
+                        </xs:annotation>
+                        <xs:simpleType>
+                            <xs:list itemType="xs:long" />
+                        </xs:simpleType>                        
+                    </xs:element>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
 
     <!-- Sampled Values and their specializations -->
     
@@ -470,15 +593,15 @@
             <xs:element name="start" type="xs:long" minOccurs="0" maxOccurs="1" default="0" >
                 <xs:annotation>
                     <xs:documentation>Optional for documents that are sent to an
-                    OGEMA instance: Values in this schedule will replace schedule values
-                    in the range [start, end)</xs:documentation>
+                        OGEMA instance: Values in this schedule will replace schedule values
+                        in the range [start, end)</xs:documentation>
                 </xs:annotation>
             </xs:element>
             <xs:element name="end" type="xs:long" minOccurs="0" maxOccurs="1" default="9223372036854775807" >
-            <xs:annotation>
-                <xs:documentation>Optional for documents that are sent to an
-                    OGEMA instance: Values in this schedule will replace schedule values
-                    in the range [start, end)</xs:documentation>
+                <xs:annotation>
+                    <xs:documentation>Optional for documents that are sent to an
+                        OGEMA instance: Values in this schedule will replace schedule values
+                        in the range [start, end)</xs:documentation>
                 </xs:annotation>
             </xs:element>
         </xs:sequence>

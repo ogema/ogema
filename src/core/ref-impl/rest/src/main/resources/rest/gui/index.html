@@ -1,0 +1,287 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>REST tool</title>
+        <link href="libs/bootstrap.min.css" rel="stylesheet" type="text/css"/> 
+    <!--   <link href="libs/google-code-prettify/styles/prettify.css" type="text/css" rel="stylesheet" />
+         <link href="libs/google-code-prettify/styles/desert.css" type="text/css" rel="stylesheet" />   
+         <link href="libs/google-code-prettify/styles/tomorrow-night-blue.css" type="text/css" rel="stylesheet" /> -->
+         <link href="libs/google-code-prettify/styles/ogema.css" type="text/css" rel="stylesheet" />
+         <style>
+            .btn-file {
+			    position: relative;
+			    overflow: hidden;
+			}
+			.btn-file input[type=file] {
+			    position: absolute;
+			    top: 0;
+			    right: 0;
+			    min-width: 100%;
+			    min-height: 100%;
+			    font-size: 100px;
+			    text-align: right;
+			    filter: alpha(opacity=0);
+			    opacity: 0;
+			    outline: none;
+			    background: white;
+			    cursor: inherit;
+			    display: block;
+			}
+         </style>   
+		<script type="text/javascript" src="libs/google-code-prettify/prettify.js"></script>
+    </head>
+
+    <body>
+	    <script language="JavaScript">
+	    	function setOptionFields() {
+	    		var strIn = document.topform.resourceField.value;
+//	    		if (!strIn || strIn.indexOf("?") < 0) return;
+	    		var values = [0,false,false];
+	    		var idx = strIn.indexOf("?");
+	    		var optionStr = "";
+	    		if (idx >= 0) {
+	    			var optionStr = strIn.substring(idx+1);
+	    		}
+	    		var options = optionStr.split("&");
+	    		options.forEach(function(opt) { 
+	    			var keyVal = opt.split("=");  
+	    			if (keyVal.length != 2) return;
+	    			var key = keyVal[0];
+	    			var val = keyVal[1];
+	    			switch (key) {
+	    				case "depth":
+	    					var depth = 0;
+	    					if (val.valueOf() != "" && !isNaN(val.valueOf()) && val > 0) {  // it's a number
+				        	   depth = parseInt(val); 	  
+				        	} 
+				        	values[0] = depth;
+	    					break;
+	    				case "references":
+	    					if (val === "true") {
+	    						values[1] = true;
+	    					}
+	    					break;
+	    				case "schedules":
+	    					if (val === "true") {
+	    						values[2] = true;
+	    					}
+	    					break;
+	    				default:
+	    					return;
+	    			}
+	    		});
+	    		document.getElementById('depthField').value = values[0];
+	    		document.getElementById('optionReferences').checked = values[1];
+	    		document.getElementById('optionSchedules').checked = values[2];   		
+	    	}
+	    	function getOption(idx,depth) {
+	    		switch (idx) {
+	    			case 0:
+	    				return "depth=" + depth;
+	    				break;
+					case 1:
+						return "references=true";
+						break;
+					case 2:
+						return "schedules=true";
+						break;
+					default:
+						console.error("Invalid function call"); 
+						return "";
+	    		}
+	    	}
+	    
+	        function getOptionsString() {
+	        	var strIn = document.topform.resourceField.value;
+	        	if (!strIn) strIn = "";
+	        	if (strIn.indexOf("?") >= 0) {
+	        		strIn = strIn.substring(0,strIn.indexOf("?"));
+	        	}
+	        	var depth = 0; 
+	        	var depthStr = document.getElementById('depthField').value;
+	        	if (depthStr.value != "" && !isNaN(depthStr.valueOf()) && depthStr > 0) {  // it's a number
+	        	   depth = parseInt(depthStr); 	  
+	        	} 
+	        	document.getElementById('depthField').value = depth;  // relevant if user enters invalid string
+	        	var bool = [false,false,false];
+	        	bool[0] = (depth > 0);
+	        	bool[1] = document.getElementById('optionReferences').checked;
+	        	bool[2] = document.getElementById('optionSchedules').checked;
+	        	var options = bool.reduce(function(a, b) { return a + b; }, 0);  // sum of array elements
+//	        	console.log("depth is",depth,"options is",options,"bool is",bool,"depthStr is",depthStr);
+	        	if (options === 0) return strIn;
+	        	strIn = strIn + "?";
+	        	var counter = 0;
+	        	while(counter < options -1) {
+	        		var idx = bool.indexOf(true);
+	        		bool[idx] = false;
+	        		counter++;
+	        		strIn = strIn + getOption(idx,depth) + "&"; 
+	        	}
+	        	var idx = bool.indexOf(true);
+	        	strIn = strIn + getOption(idx,depth); 
+	        	return strIn;
+	        }
+	        function setOptionsString() {
+	        	try {
+	        		document.topform.resourceField.value = getOptionsString();
+	        	} catch (e) {
+	        		console.error(e);
+	        	}
+	        }
+			function send(requestType, resource, body) {
+		        var request = new XMLHttpRequest();
+		        var restTarget = "/rest/resources/" + resource;
+		        request.open(requestType, restTarget, true);
+				request.setRequestHeader("Content-type","application/xml");
+		        request.onreadystatechange = function()
+		        {
+		            if(request.readyState == 4)
+		            {
+		                if(request.status==200)
+		                {
+		                   document.getElementById("response").textContent = request.responseText.substring(0,Math.min(100000,request.responseText.length));
+		                   //document.getElementById("pretag").removeAttribute("class");
+		                   document.getElementById("pretag").setAttribute("class","prettyprint");
+		                   	prettyPrint();
+		                   document.getElementById('downloadButton').href = generateFile(request.responseText);
+		                }
+		                else
+		                {
+		                    document.getElementById("response").textContent ="Error " + request.status
+		                }
+		            }
+		        }
+		        request.send(body);
+			}
+	    	function sendRESTrequest(requestType) {
+	    		var body = document.topform.body.value;
+	    		var resource = document.topform.resourceField.value;
+	    		send(requestType, resource, body);
+	    	}
+	    	var file = null;
+	    	function generateFile(text) {
+			    if (file !== null) {
+	 			    window.URL.revokeObjectURL(file);
+				}
+				var data = new Blob([text], {type: 'text/plain'});
+				file = window.URL.createObjectURL(data);
+				return file;
+	    	}
+	    	function readFile(evt) {
+		    	var f = evt.target.files[0];   
+		    	var resource = document.topform.resourceField.value;
+			    if (f) {
+			      var r = new FileReader();
+			      r.onload = function(e) {         
+			          var ct = r.result;        
+			          var request = new XMLHttpRequest();
+				      var restTarget = "/rest/resources/" + resource;
+				      request.open('POST', restTarget, true);
+					  request.setRequestHeader("Content-type","application/xml");
+				      request.onreadystatechange = function() {
+				            if(request.readyState == 4) {
+				                if(request.status==200)  {
+				                   document.getElementById("response").textContent = request.responseText.substring(0,Math.min(100000,request.responseText.length));
+				                   document.getElementById("pretag").setAttribute("class","prettyprint");
+				                   prettyPrint();
+				                }
+				                else {
+				                    document.getElementById("response").textContent ="Error " + request.status
+				                }
+				            }
+				      }
+				      request.send(ct);
+			      }
+			      r.readAsText(f);
+			    } else { 
+			        document.getElementById("response").textContent ="Error: Failed to load file";
+			    }
+	    	}
+		</script>
+	    <!--<form name="topform" action="#" onsubmit="sendRESTrequest('GET');">-->
+	    <form name="topform" action="javascript:sendRESTrequest('GET');">
+	        <h1 style="text-align:center;">OGEMA REST tool</h1>
+	        <div class="row">
+	        	<div class="col col-md-5">
+		           
+		            <h2>Request path</h2>
+		            /rest/resources/<input name="resourceField" type="text" size="84" onchange="setOptionFields()">
+		            <p>
+		            	<h4>Options:</h4>
+		            	<ul>
+		            		<li>Depth: <input id="depthField" type="text" size="6" value="0" onchange="setOptionsString()"></input></li>
+		            		<li>Show references <input type="checkbox" id="optionReferences" onchange="setOptionsString()"></input></li>
+		            		<li>Show schedules <input type="checkbox" id="optionSchedules" onchange="setOptionsString()"></input></li>
+		            	</ul>
+		            </p>
+		            <h2>Message body</h2>
+		            <textarea name="body" rows="5" cols="100"></textarea>
+		            <h2>Send</h2>
+		            <button type="button" class="btn btn-success" onclick="sendRESTrequest('GET')">GET</button>
+		            <button type="button" class="btn btn-success" onclick="sendRESTrequest('PUT')">PUT</button>
+		            <button type="button" class="btn btn-success" onclick="sendRESTrequest('POST')">POST</button>
+		            <button type="button" class="btn btn-success" onclick="sendRESTrequest('DELETE')">DELETE</button>
+		            <h2>Import / Export</h2>
+		            <a type="button" class="btn btn-warning" id="downloadButton" download="resources.xml">Export result to file</a>
+		            <span class="btn btn-warning btn-file">
+					    Import resources from file<input type="file" id="uploadButton" onchange="readFile(event)"/>
+					</span>
+		            <br>
+		            <h2>Explanation</h2>
+		            <p>Send 
+		           	  <ul>
+		           	  	<li>an empty GET request to get a list of all top level resources,</li>
+		           	  	<li>a GET to a specific resource path to obtain information on that resource,</li>
+		           	  	<li>a POST to a resource path to create a new subresource (see GET results for required body format),</li>
+		           	  	<li>a DELETE to a resource path to delete the resource</li>
+		           	  	<li>a PUT to a value resource to change the value</li>
+		           	  </ul>  
+		           	Valid options (attach to path in format "?option1=value1&option2=value2")
+		           	<ul>
+		           	  	<li>depth=X: show subresources up to specified depth (default: 0)</li>
+		           	  	<li>references=true/false: traverse references in the resource graph? (default: false)</li>
+		           	  	<li>schedules=true/false: show schedule values? (default: false)</li>
+		           	</ul>
+		           	Specifically for creation via POST:
+		           	<ul>
+		           	  <li>Non-referencing sub-resources must be specified in their own &#60;resource&#62;-subtag, it is not sufficient to use the &#60;resourcelink&#62;-tag that
+		           	  	is provided by GET-requests with depth=0</li>
+		           	  <li>Create a reference by including a &#60;resourcelink&#62;-subtag, with the target location specified in the &#60;link>-tag. The target location must 
+		           	  	exist prior to creation.</li>	           	  
+		           	</ul>      
+		           	If you intend to export the result of the request into a file for later re-import, 
+		           	it is recommended to specify a high depth (e.g. depth=100), and NOT to follow references 
+		           	(otherwise it may lead to problematic representations in case of cyclic references).    
+	           </div>
+	          <div class="col col-md-7">
+		            <h2>XML response</h2>
+		            <pre class="prettyprint" id="pretag"><code class="language-xml" id="response"></code></pre>
+		      </div>
+	
+		  </div>
+	    </form>
+	    <script language="JavaScript">
+	    	send('GET','','');
+	    </script>
+    </body>
+</html>
+
+

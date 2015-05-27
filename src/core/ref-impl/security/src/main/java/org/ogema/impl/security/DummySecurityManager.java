@@ -402,4 +402,9 @@ public class DummySecurityManager implements AccessManager, PermissionManager, W
 		}
 		return alias;
 	}
+
+	@Override
+	public boolean unregisterWebResourcePath(String alias) {
+		return false;
+	}
 }

@@ -15,9 +15,7 @@
  */
 package org.ogema.core.rads.listening;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.ogema.core.application.ApplicationManager;
@@ -96,7 +94,7 @@ public class RadAssembler<T extends Resource, P extends ResourcePattern<T>> {
     private final PatternListener<P> m_completionListener = new PatternListener<P>() {
 
         @Override
-        public void patternAvailable(P fulfilledDemand) {            
+        public void patternAvailable(P fulfilledDemand) {   
              m_listener.patternAvailable(fulfilledDemand);
         }
 

@@ -16,7 +16,7 @@
 package org.ogema.model.sensors;
 
 import org.ogema.core.model.ModelModifiers.NonPersistent;
-import org.ogema.core.model.SimpleResource;
+import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.TimeResource;
@@ -39,7 +39,7 @@ public interface Sensor extends PhysicalElement {
 	 * of measurement.
 	 */
 	@NonPersistent
-	SimpleResource reading();
+	ValueResource reading();
 
 	/**
 	 * Rated value for the physical property defined by the sensor. <br>
