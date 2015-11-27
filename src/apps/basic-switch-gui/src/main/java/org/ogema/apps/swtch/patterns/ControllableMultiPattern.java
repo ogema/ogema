@@ -36,6 +36,7 @@ public class ControllableMultiPattern extends ResourcePattern<MultiSwitch> {
 	@Existence(required = CreateMode.OPTIONAL)
 	private FloatResource stateControl = model.stateControl();
 
+	@Existence(required = CreateMode.OPTIONAL)
 	private FloatResource stateFeedback = model.stateFeedback();
 
 	@Equals(value = 1)

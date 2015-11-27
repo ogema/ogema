@@ -25,7 +25,7 @@ import org.ogema.model.sensors.Sensor;
 
 /**
  * A single device containing one or multiple sensors. All sensors provided by sensor device shall be contained in the
- * sensor list as an instance of their actual sensor type. Models from {@link org.ogema.core.model.commonsensors} shall be used.
+ * sensor list as an instance of their actual sensor type. Models from package org.ogema.core.model.commonsensors shall be used.
  */
 public interface SensorDevice extends PhysicalElement {
 

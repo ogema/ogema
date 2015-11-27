@@ -89,19 +89,12 @@ public class ShellCommands implements HLDriverInterface {
 				"xbee-driver:" + interfaceId + ":" + deviceAddress.toUpperCase() + ":" + channelAddress.toUpperCase()));
 	}
 
-	public void deviceScan(@Descriptor("The interface ID/Port name.") String interfaceId) {
+	public void deviceScan(@Descriptor("The interface ID/Port name.") String interfaceId) throws Throwable {
 		try {
 			if (driver.appManager != null) // do it only if the HLD app is running
 				driver.appManager.getChannelAccess().discoverDevices("xbee-driver", interfaceId, null, driver);
-		} catch (UnsupportedOperationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSuchInterfaceException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSuchDriverException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		} catch (Throwable e) {
+			throw e;
 		}
 	}
 

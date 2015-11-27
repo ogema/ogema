@@ -22,7 +22,6 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -30,8 +29,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.xml.bind.DatatypeConverter;
-
-import jssc.SerialPortException;
 
 import org.ogema.driver.xbee.Configuration;
 import org.ogema.driver.xbee.Connection;
@@ -42,10 +39,11 @@ import org.ogema.driver.xbee.frames.ExplicitAddressingCommandFrame;
 import org.ogema.driver.xbee.frames.WrongFormatException;
 import org.ogema.driver.xbee.manager.RemoteDevice.DeviceStates;
 import org.ogema.driver.xbee.manager.RemoteDevice.InitStates;
-import org.ogema.driver.xbee.serialconnection.ISerialConnection;
 import org.ogema.driver.xbee.serialconnection.SerialConnection; // TODO: Enable/Disable joining
 // TODO: Touchlink commissioning for ZLL devices
 import org.slf4j.Logger;
+
+import jssc.SerialPortException;
 
 public class LocalDevice {
 	/**
@@ -56,10 +54,9 @@ public class LocalDevice {
 	 * Maps the 16 bit network addresses (key) to the 64 bit IEEE addresses (value)
 	 */
 	private final AddressMappings addressMappings;
-	private final ISerialConnection connection;
+	private final SerialConnection connection;
 	private final Connection ogemaConnection;
 	private final InputHandler inputHandler;
-	private final Thread inputHandlerThread;
 	private final DeviceHandler deviceHandler;
 	private final Thread deviceHandlerThread;
 	private final Map<Byte, Long> frameIdToDestination; // frameID -> destination64BitAddress
@@ -76,11 +73,6 @@ public class LocalDevice {
 		devices = new ConcurrentHashMap<Long, RemoteDevice>();
 		frameIdToDestination = new ConcurrentHashMap<Byte, Long>();
 		addressMappings = new AddressMappings();
-		try {
-			connection = new SerialConnection(serialPort);
-		} catch (SerialPortException e) {
-			throw e;
-		}
 
 		this.ogemaConnection = ogemaConnection;
 
@@ -95,9 +87,12 @@ public class LocalDevice {
 		messageHandlerThread.start();
 
 		inputHandler = new InputHandler(this);
-		inputHandlerThread = new Thread(inputHandler);
-		inputHandlerThread.setName("xbee-driver-inputHandler");
-		inputHandlerThread.start();
+
+		try {
+			connection = new SerialConnection(serialPort, inputHandler);
+		} catch (SerialPortException e) {
+			throw e;
+		}
 
 		connection.sendFrame(atCommandReadSp);
 		remoteDevicesFile = new File("./config", "zigbee.devices");
@@ -204,10 +199,8 @@ public class LocalDevice {
 				}
 				br.close();
 			} catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -298,14 +291,12 @@ public class LocalDevice {
 					}
 					bw.newLine();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
 			try {
 				bw.close();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -313,10 +304,6 @@ public class LocalDevice {
 
 	public void closeSerialConnection() throws SerialPortException {
 		connection.closeConnection();
-	}
-
-	public Object getInputEventLock() {
-		return connection.getInputEventLock();
 	}
 
 	public Object getDeviceHandlerLock() {
@@ -347,7 +334,6 @@ public class LocalDevice {
 		try {
 			connection.sendFrame(XBeeFrameFactory.composeMessageToFrame(message.getMessage()));
 		} catch (WrongFormatException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -363,7 +349,7 @@ public class LocalDevice {
 		this.cyclicSleepPeriod = cyclicSleepPeriod * 10;
 		deviceHandler.setCyclicSleepPeriod(this.cyclicSleepPeriod);
 		messageHandler.setCyclicSleepPeriod(this.cyclicSleepPeriod);
-		logger.info("\n\n****CyclicSlepp: " + Integer.toHexString(cyclicSleepPeriod & 0xffff) + "\n\n\n");
+		logger.debug("\n\n****CyclicSlepp: " + Integer.toHexString(cyclicSleepPeriod & 0xffff) + "\n\n\n");
 	}
 
 	/**
@@ -390,7 +376,6 @@ public class LocalDevice {
 		try {
 			connection.sendFrame(XBeeFrameFactory.composeMessageToFrame(message));
 		} catch (WrongFormatException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		try {
@@ -398,7 +383,6 @@ public class LocalDevice {
 				logger.debug(" ### Sent frame: "
 						+ Constants.bytesToHex(XBeeFrameFactory.composeMessageToFrame(message)));
 		} catch (WrongFormatException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -417,14 +401,6 @@ public class LocalDevice {
 		return sequenceNumberCounter++;
 	}
 
-	public boolean connectionHasFrames() {
-		return connection.hasFrames();
-	}
-
-	public byte[] getReceivedFrame() {
-		return connection.getReceivedFrame();
-	}
-
 	/**
 	 * Send a complete frame that already contains start delimiter, length and checksum
 	 * 
@@ -432,11 +408,11 @@ public class LocalDevice {
 	 */
 	public void sendFrame(byte[] frame) {
 		if (Configuration.DEBUG)
-			logger.info("Sending frame: " + Constants.bytesToHex(frame));
+			logger.debug("Sending frame: " + Constants.bytesToHex(frame));
 		connection.sendFrame(frame);
 	}
 
-	public ISerialConnection getConnection() {
+	public SerialConnection getConnection() {
 		return connection;
 	}
 
@@ -444,10 +420,8 @@ public class LocalDevice {
 		try {
 			closeSerialConnection();
 		} catch (SerialPortException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		inputHandler.stop();
 		deviceHandler.stop();
 		messageHandler.stop();
 	}
@@ -533,8 +507,8 @@ public class LocalDevice {
 				// and
 				// 1.1.2000
 				if (Configuration.DEBUG) {
-					logger.info("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n*****UTC Time: " + secondsSinceEpoch);
-					logger.info("*****UTC Time Reversed: " + Integer.reverseBytes(secondsSinceEpoch));
+					logger.debug("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n*****UTC Time: " + secondsSinceEpoch);
+					logger.debug("*****UTC Time Reversed: " + Integer.reverseBytes(secondsSinceEpoch));
 				}
 				ByteBuffer responseBuffer = ByteBuffer.allocate(10);
 				responseBuffer.put((byte) 0x00); // ZCL HEADER

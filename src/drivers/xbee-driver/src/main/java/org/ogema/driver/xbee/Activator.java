@@ -24,7 +24,6 @@ import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.hardwaremanager.HardwareManager;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
-import org.slf4j.Logger;
 
 @Component(specVersion = "1.1")
 public class Activator {
@@ -47,6 +46,8 @@ public class Activator {
 
 	public void deactivate(Map<String, Object> config) throws Exception {
 		registration.unregister();
+		driver.shutdown();
+		// TODO shutdown all running threads
 	}
 
 	public HardwareManager getHardwareManager() {

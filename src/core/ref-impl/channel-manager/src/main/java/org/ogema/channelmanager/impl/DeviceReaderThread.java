@@ -36,20 +36,122 @@ import org.slf4j.Logger;
 
 public class DeviceReaderThread extends Thread {
 
+	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+
+	private static final int DEFAULT_SLEEP_TIME = 1000;
+
 	private final CommDevice device;
 	private final ChannelDriver driver;
+	volatile boolean running = true;
 
-	private boolean running = true;
-
+	// FIXME: change to volatile?
 	private boolean configurationUpdated = false;
-
-	private boolean driverSupportsAsyncRead = false;
 
 	private final Map<ChannelLocator, List<WeakReference<ChannelEventListener>>> updateListeners = new HashMap<ChannelLocator, List<WeakReference<ChannelEventListener>>>();
 
 	private final Map<ChannelLocator, List<WeakReference<ChannelEventListener>>> changedListeners = new HashMap<ChannelLocator, List<WeakReference<ChannelEventListener>>>();
 
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+	public DeviceReaderThread(CommDevice device, ChannelDriver driver) {
+		this.device = device;
+		this.driver = driver;
+		this.setName("DeviceReader_" + device.getDeviceLocator().toString());
+	}
+
+	@Override
+	public void run() {
+
+		SamplingSchedule samplingSchedule = null;
+
+		while (running) {
+
+			if (doChannelsWithPeriodicSamplingExist()) {
+
+				// check if schedule is null. it can be null on the first run or when the configuration has changed
+				if (samplingSchedule == null) {
+					// create a new schedule
+					samplingSchedule = new SamplingSchedule(device.getChannels());
+				}
+
+				SamplingScheduleElement scheduleElement = samplingSchedule.getFirstElement();
+
+				try {
+					waitTillNextSamplingTime(scheduleElement.getSamplingTimestamp());
+				} catch (UpdateConfigurationException e) {
+					// config has changed
+					configurationUpdated = false;
+					samplingSchedule = null;
+					continue;
+				}
+
+				/* Create list of channels to sample and backup old data for event detection */
+				List<SampledValueContainer> nextChannels = new LinkedList<SampledValueContainer>();
+				List<SampledValue> oldValues = new LinkedList<SampledValue>();
+
+				for (Channel channel : scheduleElement.getChannels()) {
+					nextChannels.add(channel.getSampledValueContainer());
+					oldValues.add(channel.getSampledValueContainer().getSampledValue());
+				}
+
+				samplingSchedule.update();
+
+				triggerSampling(nextChannels, oldValues);
+			}
+			else {
+				// non periodic channels available. no need to create a sampling schedule.
+				threadSleep(DEFAULT_SLEEP_TIME);
+				continue;
+			}
+
+		}
+
+		logger.debug("DeviceReaderThread stopped");
+	}
+
+	/**
+	 * Wait until the current time has reached the next sampling time
+	 * 
+	 * @throws UpdateConfigurationException
+	 *             Is thrown when configuration has been updated.
+	 */
+	private void waitTillNextSamplingTime(long nextSamplingTimestamp) throws UpdateConfigurationException {
+
+		while (System.currentTimeMillis() < nextSamplingTimestamp) {
+
+			// abort if configuration has changed
+			if (configurationUpdated) {
+				throw new UpdateConfigurationException();
+			}
+
+			// check every second if the configuration has changed or nextSamplingTime is reached
+			long timeToNextSamplingMs = nextSamplingTimestamp - System.currentTimeMillis();
+			if (timeToNextSamplingMs < DEFAULT_SLEEP_TIME) {
+				threadSleep(timeToNextSamplingMs);
+			}
+			else {
+				threadSleep(DEFAULT_SLEEP_TIME);
+			}
+
+		}
+	}
+
+	private void triggerSampling(List<SampledValueContainer> nextChannels, List<SampledValue> oldValues) {
+
+		try {
+			driver.readChannels(nextChannels);
+		} catch (UnsupportedOperationException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			// Value is set to null here. If an other default value is needed than the driver should handle the
+			// IOException itself.
+			for (SampledValueContainer container : nextChannels) {
+				long now = System.currentTimeMillis();
+				container.setSampledValue(new SampledValue(null, now, Quality.BAD));
+			}
+		}
+
+		checkForEvents(oldValues, nextChannels);
+
+	}
 
 	/**
 	 * Register new listener if not already available in list "channelListeners". Removes listener from list that are
@@ -120,199 +222,13 @@ public class DeviceReaderThread extends Thread {
 		addChannelToListenerList(newChangedListener, channelListeners);
 	}
 
-	public DeviceReaderThread(CommDevice device, ChannelDriver driver) {
-		this.device = device;
-		this.driver = driver;
-		driverSupportsAsyncRead = false;
-
-	}
-
 	public void updateConfiguration() {
-		logger.debug("DRC: update configuration called!");
+		logger.debug("update configuration called!");
 		configurationUpdated = true;
 	}
 
-	private class SamplingScheduleElement {
-
-		private final long waitingTime;
-		private final List<Channel> channels;
-
-		public SamplingScheduleElement(long waitingTime, List<Channel> channels) {
-			this.waitingTime = waitingTime;
-			this.channels = channels;
-		}
-
-		public long getWaitingTime() {
-			return this.waitingTime;
-		}
-
-		public List<Channel> getChannels() {
-			return this.channels;
-		}
-	}
-
-	@Override
-	public void run() {
-
-		if (configurationUpdated) {
-			configurationUpdated = false;
-		}
-
-		long nextSamplingTime = System.currentTimeMillis();
-
-		while (running) {
-			List<SamplingScheduleElement> samplingSchedule = constructSamplingSchedule();
-			while (configurationUpdated) {
-				configurationUpdated = false;
-				samplingSchedule = constructSamplingSchedule();
-			}
-
-			if (samplingSchedule.size() == 0) {
-				try {
-					Thread.sleep(1);
-				} catch (InterruptedException e) {
-				}
-
-			}
-			else {
-				while (!configurationUpdated || samplingSchedule.size() > 0) {
-					if (configurationUpdated) {
-						break;
-					}
-
-					SamplingScheduleElement scheduleElement = samplingSchedule.get(0);
-					nextSamplingTime = scheduleElement.getWaitingTime();
-
-					while (System.currentTimeMillis() < nextSamplingTime) {
-
-						if (configurationUpdated) {
-							break;
-						}
-
-						try {
-							int sleepTime = 1000;
-							if (((nextSamplingTime - System.currentTimeMillis()) < sleepTime)) {
-								Thread.sleep(nextSamplingTime - System.currentTimeMillis());
-							}
-							else {
-								Thread.sleep(sleepTime);
-							}
-							Thread.sleep(1);
-
-						} catch (InterruptedException e) {
-						}
-					}
-
-					if (configurationUpdated) {
-						break;
-					}
-
-					/* Create list of channels to sample and backup old data for event detection */
-					List<SampledValueContainer> nextChannels = new LinkedList<SampledValueContainer>();
-					List<SampledValue> oldValues = new LinkedList<SampledValue>();
-
-					for (Channel channel : scheduleElement.getChannels()) {
-
-						nextChannels.add(channel.getSampledValueContainer());
-						oldValues.add(channel.getSampledValueContainer().getSampledValue());
-
-					}
-
-					if (configurationUpdated) {
-						break;
-					}
-					for (Channel channel : scheduleElement.getChannels()) {
-						if (configurationUpdated) {
-							break;
-						}
-						long nextSample = channel.getConfiguration().getSamplingPeriod() + scheduleElement.waitingTime;
-						for (int i = 0; i < samplingSchedule.size(); i++) {
-							if (configurationUpdated) {
-								break;
-							}
-
-							if (nextSample < samplingSchedule.get(i).waitingTime) {
-								if (configurationUpdated) {
-									break;
-								}
-								List<Channel> channels = new LinkedList<Channel>();
-								channels.add(channel);
-								SamplingScheduleElement element1 = new SamplingScheduleElement(nextSample, channels);
-								samplingSchedule.add(i, element1);
-								break;
-							}
-							else if (samplingSchedule.get(i).waitingTime == nextSample) {
-								if (configurationUpdated) {
-									break;
-								}
-								List<Channel> channels = samplingSchedule.get(i).channels;
-								channels.add(channel);
-								SamplingScheduleElement element1 = new SamplingScheduleElement(nextSample, channels);
-								samplingSchedule.set(i, element1);
-							}
-							else if (i + 1 >= samplingSchedule.size()) {
-								if (configurationUpdated) {
-									break;
-								}
-								List<Channel> channels = new LinkedList<Channel>();
-								channels.add(channel);
-								SamplingScheduleElement element1 = new SamplingScheduleElement(nextSample, channels);
-								samplingSchedule.add(i + 1, element1);
-								break;
-							}
-							if (configurationUpdated) {
-								break;
-							}
-
-						}
-						if (configurationUpdated) {
-							break;
-						}
-
-					}
-					if (configurationUpdated) {
-						break;
-					}
-					if (samplingSchedule.size() > 1) {
-						samplingSchedule.remove(0);
-					}
-					if (configurationUpdated) {
-						break;
-					}
-					if (nextChannels.size() > 0) {
-						triggerSampling(nextChannels, oldValues);
-					}
-
-					if (configurationUpdated) {
-						break;
-					}
-				}
-
-			}
-		}
-	}
-
-	private void triggerSampling(List<SampledValueContainer> nextChannels, List<SampledValue> oldValues) {
-		if (driverSupportsAsyncRead) {
-			driver.readChannels(nextChannels, new DeviceReaderChannelUpdateListener(nextChannels, oldValues));
-		}
-		else {
-
-			try {
-				driver.readChannels(nextChannels);
-			} catch (UnsupportedOperationException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				// Value is set to null here. If an other default value is needed than the driver should handle the
-				// IOException itself.
-				for (SampledValueContainer container : nextChannels) {
-					long now = System.currentTimeMillis();
-					container.setSampledValue(new SampledValue(null, now, Quality.BAD));
-				}
-			}
-
-			checkForEvents(oldValues, nextChannels);
-		}
+	public void close() {
+		running = false;
 	}
 
 	private class DeviceReaderChannelUpdateListener implements ChannelUpdateListener {
@@ -405,89 +321,194 @@ public class DeviceReaderThread extends Thread {
 		}
 	}
 
-	private List<SamplingScheduleElement> constructSamplingSchedule() {
-
-		List<Channel> deviceChannels = device.getChannels();
-
-		List<SamplingScheduleElement> waitingList = new LinkedList<SamplingScheduleElement>();
-
-		List<Long> samplingPeriodList = validSamplingPeriods(deviceChannels);
-
-		if (samplingPeriodList.size() == 0) {
-			return waitingList;
-		}
-
-		for (Channel channel : deviceChannels) {
-			long samplingPeriod = System.currentTimeMillis() + channel.getConfiguration().getSamplingPeriod();
-			if (waitingList.size() == 0) {
-
-				List<Channel> channels = new LinkedList<Channel>();
-				if (channel.getConfiguration().getSamplingPeriod() > 0) {
-					channels.add(channel);
-				}
-				SamplingScheduleElement element1 = new SamplingScheduleElement(samplingPeriod, channels);
-				waitingList.add(0, element1);
-
+	private List<Channel> getAllPeriodicSampledChannels() {
+		List<Channel> sampledChannels = new ArrayList<Channel>();
+		for (Channel channel : device.getChannels()) {
+			if (isPeriodicallySampledChannel(channel)) {
+				sampledChannels.add(channel);
 			}
-			else {
+		}
+		return sampledChannels;
+	}
 
-				for (int i = 0; i < waitingList.size(); i++) {
-					long samplingPeriod2 = System.currentTimeMillis() + channel.getConfiguration().getSamplingPeriod();
-					if (samplingPeriod2 < waitingList.get(i).waitingTime) {
+	/**
+	 * Checks if at least on channel with an sampling period > 0 exists
+	 */
+	private boolean doChannelsWithPeriodicSamplingExist() {
 
-						List<Channel> channels = new LinkedList<Channel>();
-						if (channel.getConfiguration().getSamplingPeriod() > 0) {
-							channels.add(channel);
-						}
-						SamplingScheduleElement element1 = new SamplingScheduleElement(samplingPeriod2, channels);
-						waitingList.add(i, element1);
+		boolean result = false;
 
-						break;
-					}
-					else if (waitingList.get(i).waitingTime == samplingPeriod2) {
-
-						List<Channel> channels = waitingList.get(i).channels;
-						if (channel.getConfiguration().getSamplingPeriod() > 0) {
-							channels.add(channel);
-						}
-						SamplingScheduleElement element1 = new SamplingScheduleElement(samplingPeriod2, channels);
-						waitingList.set(i, element1);
-
-					}
-					else if (i + 1 == waitingList.size()) {
-
-						List<Channel> channels = new LinkedList<Channel>();
-						if (channel.getConfiguration().getSamplingPeriod() > 0) {
-							channels.add(channel);
-						}
-						SamplingScheduleElement element1 = new SamplingScheduleElement(samplingPeriod2, channels);
-						waitingList.add(i + 1, element1);
-
-						break;
-					}
-
-				}
-
+		for (Channel channel : device.getChannels()) {
+			if (isPeriodicallySampledChannel(channel)) {
+				result = true;
+				break;
 			}
 		}
 
-		return waitingList;
+		return result;
 	}
 
-	private boolean isPeriodicPollingChannel(Channel channel) {
-		return (channel.getConfiguration().getSamplingPeriod() > 0);
-	}
-
-	private List<Long> validSamplingPeriods(List<Channel> channels) {
-
-		List<Long> samplingPeriods = new ArrayList<Long>(channels.size());
-
-		for (Channel channel : channels) {
-			if (isPeriodicPollingChannel(channel)) {
-				samplingPeriods.add(channel.getConfiguration().getSamplingPeriod());
-			}
+	/**
+	 * A channel is periodically sampled if sampling period is > 0
+	 */
+	private boolean isPeriodicallySampledChannel(Channel channel) {
+		if (channel.getConfiguration().getSamplingPeriod() > 0) {
+			return true;
 		}
-
-		return samplingPeriods;
+		else {
+			return false;
+		}
 	}
+
+	/**
+	 * Helper method to avoid error handling (try catch blocks) business logic
+	 */
+	private void threadSleep(long sleepTimeMs) {
+		try {
+			Thread.sleep(sleepTimeMs);
+		} catch (InterruptedException e) {
+		}
+	}
+
+	// /**
+	// * Sampling Schedule contains informations about when which channel is sampled the next time.
+	// */
+	// private class SamplingSchedule {
+	//
+	// Map<Long, List<Channel>> schedule;
+	// Long currentTimestamp;
+	//
+	// /**
+	// * Creates a sampling schedule. For each channel the (theoretical) last sampling timestamp is calculated. This
+	// * is the timestamp the channel should have been sampled the last time based on the current time and todays
+	// * midnight.
+	// * <p>
+	// * Example: Constructor is called at 12:25:23,234 for a channel with a sampling period of 2000 ms. The
+	// * constructor calculates the ms passed from todays midnight 00:00:00,000. Afterwards it calculates the number
+	// * of samplings which should have occurred since midnight. The before mentioned (theoretical) last sampling
+	// * timestamp is: samplingsToday * samplingPeriod + todaysMidnightTimestamp = 12:25:22,000. (nice and tidy
+	// * timestamp for further sampling)
+	// * <p>
+	// * This approach ensures that all channels, which may have different sampling periods, have the same time base.
+	// * Through this it is possible to sample channels with exact overlapping sampling periods together. Example:
+	// * Channel A is sampled every 2 and Channel B every 3 seconds. After 6 seconds both channels are sampled
+	// * together.
+	// */
+	// // TODO: Creating a new schedule at midnight or just before midnight might be a problem since midnight is the
+	// // reference time for the schedule. Not tested yet.
+	// public SamplingSchedule() {
+	//
+	// schedule = new TreeMap<Long, List<Channel>>();
+	//
+	// long todaysMidnightTimestamp = getTodaysMidnight().getTimeInMillis();
+	// long millisecondsPassedToday = System.currentTimeMillis() - todaysMidnightTimestamp;
+	//
+	// for (Channel channel : device.getChannels()) {
+	// long samplingPeriod = channel.getConfiguration().getSamplingPeriod();
+	// long samplingsToday = millisecondsPassedToday / samplingPeriod;
+	// long lastSamplingTimestamp = samplingsToday * samplingPeriod + todaysMidnightTimestamp;
+	//
+	// addEntry(lastSamplingTimestamp, channel);
+	// }
+	//
+	// if (logger.isDebugEnabled()) {
+	// debug_printSchedule();
+	// }
+	// }
+	//
+	// /**
+	// * Returns a calender from today at 00:00:00,000 o'clock
+	// */
+	// private GregorianCalendar getTodaysMidnight() {
+	// GregorianCalendar cal = new GregorianCalendar();
+	// cal.setTimeInMillis(System.currentTimeMillis());
+	// cal.set(Calendar.HOUR_OF_DAY, 0);
+	// cal.set(Calendar.MINUTE, 0);
+	// cal.set(Calendar.SECOND, 0);
+	// cal.set(Calendar.MILLISECOND, 0);
+	// return cal;
+	// }
+	//
+	// /**
+	// * Adds channel to the schedule
+	// *
+	// * @param lastSamplingTime
+	// * Last time the channel was sampled
+	// * @param channel
+	// * Channel to add to the schedule
+	// */
+	// private void addEntry(long lastSamplingTime, Channel channel) {
+	//
+	// // calculate the new sampling timestamp for this channel
+	// long samplingTimestamp = lastSamplingTime + channel.getConfiguration().getSamplingPeriod();
+	//
+	// if (schedule.containsKey(samplingTimestamp)) {
+	// // add channel to existing schedule entry
+	// schedule.get(samplingTimestamp).add(channel);
+	// }
+	// else {
+	// // create a new schedule entry for this channel
+	// List<Channel> newList = new ArrayList<Channel>();
+	// newList.add(channel);
+	// schedule.put(samplingTimestamp, newList);
+	// }
+	// }
+	//
+	// /**
+	// * @return the first element of the schedule (which
+	// */
+	// public SamplingScheduleElement getNextElement() {
+	// Entry<Long, List<Channel>> entry = schedule.entrySet().iterator().next();
+	// currentTimestamp = entry.getKey();
+	// return new SamplingScheduleElement(entry.getKey(), entry.getValue());
+	// }
+	//
+	// /**
+	// * Updates the schedule. Adds new schedule entries for all channels of the last schedule event. afterwards the
+	// * last schedule event is deleted.
+	// */
+	// public void update() {
+	// for (Channel channel : schedule.get(currentTimestamp)) {
+	// addEntry(currentTimestamp.longValue(), channel);
+	// }
+	//
+	// schedule.remove(currentTimestamp);
+	// debug_printSchedule();
+	// }
+	//
+	// /**
+	// * Prints the current schedul for debugging purpose
+	// */
+	// public void debug_printSchedule() {
+	//
+	// SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd HH:mm:    ss    .SSS");
+	//
+	// StringBuilder sb = new StringBuilder();
+	// sb.append("\nSchedule \n **************************");
+	//
+	// for (Map.Entry<Long, List<Channel>> entry : schedule.entrySet()) {
+	// sb.append(sdf.format(new Date(entry.getKey())));
+	// for (Channel channel : entry.getValue()) {
+	// sb.append("      " + channel.getConfiguration().getChannelLocator().getChannelAddress() + " "
+	// + channel.getConfiguration().getSamplingPeriod());
+	// }
+	// }
+	// sb.append("-------------------------------");
+	// logger.debug(sb.toString());
+	// }
+	//
+	// }
+	//
+	// private class SamplingScheduleElement {
+	//
+	//
+	// }
+
+	private class UpdateConfigurationException extends Exception {
+
+		public UpdateConfigurationException() {
+			super();
+		}
+	}
+
 }

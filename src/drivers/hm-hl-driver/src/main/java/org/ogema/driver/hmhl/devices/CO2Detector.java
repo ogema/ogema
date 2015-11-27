@@ -45,6 +45,7 @@ public class CO2Detector extends HM_hlDevice {
 		switch (channelAddress) {
 		case "ATTRIBUTE:0001":
 			concentration.setValue(value.getFloatValue());
+			concentration.activate(true);
 			break;
 		}
 	}
@@ -66,13 +67,13 @@ public class CO2Detector extends HM_hlDevice {
 		// The connection attribute and its children, current, voltage, power,
 		// frequency
 		CO2Sensor co2 = resourceManager.createResource(attributeConfig.resourceName, CO2Sensor.class);
-		//		co2.activate(true);
-
+		// co2.activate(true);
+		co2.activate(false);
 		concentration = (ConcentrationResource) co2.reading().create();
-		//		concentration.activate(true);
-		//		concentration.setValue(0);
+		// concentration.activate(true);
+		// concentration.setValue(0);
 		concentration.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
-		co2.activate(true);
+		// co2.activate(true);
 	}
 
 	@Override
@@ -80,4 +81,8 @@ public class CO2Detector extends HM_hlDevice {
 		config.resourceName += Constants.HM_CO2_RES_NAME + config.deviceAddress.replace(':', '_');
 	}
 
+	@Override
+	protected void terminate() {
+		removeChannels();
+	}
 }

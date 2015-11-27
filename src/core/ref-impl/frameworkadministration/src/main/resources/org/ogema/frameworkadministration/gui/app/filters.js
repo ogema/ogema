@@ -52,3 +52,9 @@ ngOGFrAdminApp.filter('filesize', function() {
         return size.toFixed(2) + ' TB';
     };
 });
+
+ngOGFrAdminApp.filter('iif', function () {
+	   return function(input, trueValue, falseValue) {
+	        return input ? trueValue : falseValue;
+	   };
+	});

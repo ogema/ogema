@@ -14,6 +14,19 @@
     <script src="/org/ogema/tools/grafana-base/app/app.496fdc2e.js"></script>
 
     <script>require(['app'], function (app) { app.boot(); })</script>
+    
+    <style>
+        .grafanaDropdownClass {
+            width: auto;
+        }
+        .grafanaButtonClass {
+            position: relative;
+            bottom: 5px;
+            width: 100px;
+            height: 30px;
+        }
+        
+    </style>
 
   </head>
 
@@ -33,5 +46,14 @@
 
 		<div ng-view></div>
 
+                <h3> Download data as csv </h3>
+                
+                <div>
+                    <select id="grafanaDropdown" class="grafanaDropdownClass"></select> 
+                    <button id="grafanaButton" class="grafanaButtonClass">
+                        <i class="icon-download"></i>
+                    </button>
+                </div>
+                
 	</body>
 </html>

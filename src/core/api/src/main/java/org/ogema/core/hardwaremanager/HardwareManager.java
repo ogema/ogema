@@ -15,7 +15,6 @@
  */
 package org.ogema.core.hardwaremanager;
 
-import java.util.ArrayList;
 import java.util.Collection;
 
 /**
@@ -81,5 +80,14 @@ public interface HardwareManager {
 	 */
 	void removeListener(HardwareListener listener);
 
+	/**
+	 * Get a collection of all descriptors that match the given regex pattern. This can be used to look for descriptors
+	 * ending with a specific combination of product and vendor ids. For example the pattern ".+:0403:6001:" gets all
+	 * descriptors that end with ":0403:6001:".
+	 * 
+	 * @param pattern
+	 *            The regex pattern.
+	 * @return Collection of the descriptors.
+	 */
 	public Collection<HardwareDescriptor> getHardwareDescriptors(String pattern);
 }

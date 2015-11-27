@@ -15,6 +15,9 @@
  */
 package org.ogema.driver.generic_zb.devices;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.ChannelConfiguration;
@@ -25,21 +28,18 @@ import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.measurements.ByteArrayValue;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
-import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
-import org.ogema.core.resourcemanager.ResourceListener;
-import org.ogema.core.resourcemanager.ResourceStructureEvent;
-import org.ogema.core.resourcemanager.ResourceStructureListener;
+import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.driver.generic_zb.Constants;
 import org.ogema.driver.generic_zb.Generic_ZbConfig;
 import org.ogema.driver.generic_zb.Generic_ZbDevice;
 import org.ogema.driver.generic_zb.Generic_ZbDriver;
 import org.ogema.model.devices.buildingtechnology.ElectricDimmer;
 
-public class ColorDimmableLight extends Generic_ZbDevice implements ResourceListener, ResourceStructureListener {
+public class ColorDimmableLight extends Generic_ZbDevice {
 
 	private static final byte[] on = {}; // The command does not have a payload
 	private static final ByteArrayValue ON = new ByteArrayValue(on);
@@ -62,6 +62,7 @@ public class ColorDimmableLight extends Generic_ZbDevice implements ResourceList
 	private Generic_ZbConfig onLevelCmdConfig;
 
 	private String deviceName;
+	private List<SampledValueContainer> onOffChannelList;
 
 	public ColorDimmableLight(Generic_ZbDriver driver, ApplicationManager appManager, Generic_ZbConfig config) {
 		super(driver, appManager, config);
@@ -121,6 +122,12 @@ public class ColorDimmableLight extends Generic_ZbDevice implements ResourceList
 		onOffConfig.resourceName += "_OnOffAttribute"; // In case of several devices with the same
 		// resourceName
 		onOffConfig.chLocator = addChannel(onOffConfig);
+
+		// create container list for cyclic read
+		ChannelLocator chloc = onOffConfig.chLocator;
+		SampledValueContainer container = new SampledValueContainer(chloc);
+		onOffChannelList = new ArrayList<SampledValueContainer>(1);
+		onOffChannelList.add(container);
 
 		moveToLevelCmdConfig = new Generic_ZbConfig();
 		moveToLevelCmdConfig.interfaceId = generic_ZbConfig.interfaceId;
@@ -186,9 +193,8 @@ public class ColorDimmableLight extends Generic_ZbDevice implements ResourceList
 		// TODO add color resource
 
 		// Add listener to register on/off commands
-		light.addResourceListener(this, true);
-		intensity.addResourceListener(this, false);
-		light.addStructureListener(this);
+		onOff.addValueListener(new OnOffListener());
+		intensity.addValueListener(new IntensityListener());
 
 		updateOnOffFeedback();
 	}
@@ -230,56 +236,45 @@ public class ColorDimmableLight extends Generic_ZbDevice implements ResourceList
 		return channelLocator;
 	}
 
-	@Override
-	public void resourceChanged(Resource resource) {
+	class OnOffListener implements ResourceValueListener<BooleanResource> {
+		@Override
+		public void resourceChanged(BooleanResource resource) {
 
-		if (resource.equals(onOff)) {
-			if (onOff.getValue()) {
+			if (resource.getValue()) {
 				try {
 					channelAccess.setChannelValue(onCmdConfig.chLocator, ON);
 				} catch (ChannelAccessException e) {
-					try {
-						// deleteChannel(moveToLevelCmdConfig);
-						onCmdConfig.chLocator = addChannel(onCmdConfig);
-					} catch (Throwable e1) {
-						e1.printStackTrace();
-					}
+					e.printStackTrace();
 				}
 			}
 			else {
 				try {
 					channelAccess.setChannelValue(offCmdConfig.chLocator, OFF);
 				} catch (ChannelAccessException e) {
-					try {
-						// deleteChannel(moveToLevelCmdConfig);
-						onCmdConfig.chLocator = addChannel(onCmdConfig);
-					} catch (Throwable e1) {
-						e1.printStackTrace();
-					}
+					e.printStackTrace();
 				}
 			}
 			updateOnOffFeedback();
 		}
-		if (resource.equals(intensity)) {
+	}
+
+	class IntensityListener implements ResourceValueListener<FloatResource> {
+		@Override
+		public void resourceChanged(FloatResource resource) {
 			Integer intensityInt = (int) (intensity.getValue() * 255);
 			byte intensityByte = intensityInt.byteValue();
 			byte[] payload = { intensityByte, 0x0000 }; // 8bit intensity + 16bit transition time
 			try {
 				channelAccess.setChannelValue(moveToLevelCmdConfig.chLocator, new ByteArrayValue(payload));
 			} catch (ChannelAccessException e) {
-				try {
-					// deleteChannel(moveToLevelCmdConfig);
-					moveToLevelCmdConfig.chLocator = addChannel(moveToLevelCmdConfig);
-				} catch (Throwable e1) {
-					e1.printStackTrace();
-				}
+				e.printStackTrace();
 			}
 		}
-		// TODO add color resource
 	}
 
 	private void updateOnOffFeedback() {
-		SampledValueContainer onoffState = channelAccess.readUnconfiguredChannel(onOffConfig.chLocator);
+		channelAccess.readUnconfiguredChannels(onOffChannelList);
+		SampledValueContainer onoffState = onOffChannelList.get(0);
 		Value v = onoffState.getSampledValue().getValue();
 		if (v != null) {
 			isOn.setValue(v.getBooleanValue());
@@ -313,13 +308,5 @@ public class ColorDimmableLight extends Generic_ZbDevice implements ResourceList
 			e.printStackTrace();
 		}
 
-	}
-
-	@Override
-	public void resourceStructureChanged(ResourceStructureEvent event) {
-		System.out.println("ColorDimmableLight: ResourceStructureEvent Type: " + event.getType());
-		System.out.println("ColorDimmableLight: ResourceStructureEvent Changed: "
-				+ event.getChangedResource().getLocation());
-		System.out.println("ColorDimmableLight: ResourceStructureEvent Source: " + event.getSource().getLocation());
 	}
 }

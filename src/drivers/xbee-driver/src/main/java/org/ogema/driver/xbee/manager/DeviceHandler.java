@@ -147,7 +147,6 @@ public class DeviceHandler implements Runnable {
 				try {
 					deviceHandlerLock.wait(MIN_WAITING_TIME);
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
@@ -204,7 +203,6 @@ public class DeviceHandler implements Runnable {
 							tempFrame = XBeeFrameFactory.composeMessageToFrame(networkAddressRequest
 									.getUnicastMessageSingleResponse(remoteDevice.getAddress64Bit()));
 						} catch (WrongFormatException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 						logger.debug("\n\n\n\n\nSending network address request to: ");
@@ -231,7 +229,6 @@ public class DeviceHandler implements Runnable {
 							tempFrame = XBeeFrameFactory.composeMessageToFrame(activeEndpointsRequest
 									.getUnicastMessage(remoteDevice.getAddress64Bit(), remoteDevice.getAddress16Bit()));
 						} catch (WrongFormatException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 						logger.debug("\n\n\n\n\nSending active endpoints request to: ");
@@ -259,7 +256,6 @@ public class DeviceHandler implements Runnable {
 							tempFrame = XBeeFrameFactory.composeMessageToFrame(nodeDescriptorRequest.getUnicastMessage(
 									remoteDevice.getAddress64Bit(), remoteDevice.getAddress16Bit()));
 						} catch (WrongFormatException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 						// TODO localDevice.frameIdMap.put(frameId, tempFrame);
@@ -281,7 +277,6 @@ public class DeviceHandler implements Runnable {
 							tempFrame = XBeeFrameFactory.composeMessageToFrame(userDescriptorRequest.getUnicastMessage(
 									remoteDevice.getAddress64Bit(), remoteDevice.getAddress16Bit()));
 						} catch (WrongFormatException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 						localDevice.sendFrame(tempFrame);
@@ -314,7 +309,6 @@ public class DeviceHandler implements Runnable {
 						try {
 							tempFrame = XBeeFrameFactory.composeMessageToFrame(niRequest.getMessage());
 						} catch (WrongFormatException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 						localDevice.sendFrame(tempFrame);
@@ -340,7 +334,6 @@ public class DeviceHandler implements Runnable {
 											.getUnicastMessage(remoteDevice.getAddress64Bit(), remoteDevice
 													.getAddress16Bit()));
 								} catch (WrongFormatException e) {
-									// TODO Auto-generated catch block
 									e.printStackTrace();
 								}
 								localDevice.sendFrame(tempFrame);
@@ -353,10 +346,6 @@ public class DeviceHandler implements Runnable {
 						}
 						if (DeviceStates.AWAITING_RESPONSE != remoteDevice.getDeviceState()) {
 							remoteDevice.setInitState(InitStates.INITIALIZED);
-							logger.debug("-------Device initlialized-------");
-							logger.debug("64Bit Address:" + Long.toHexString(remoteDevice.getAddress64Bit()));
-							logger.debug("16Bit Address:"
-									+ Integer.toHexString(remoteDevice.getAddress16Bit() & 0xffff));
 							logger.info("-------Device initlialized-------");
 							logger.info("64Bit Address:" + Long.toHexString(remoteDevice.getAddress64Bit()));
 							logger
@@ -406,7 +395,6 @@ public class DeviceHandler implements Runnable {
 		try {
 			localDevice.sendFrame(XBeeFrameFactory.composeMessageToFrame(mgmtLqiRequest.getCoordinatorMessage()));
 		} catch (WrongFormatException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -416,7 +404,6 @@ public class DeviceHandler implements Runnable {
 		try {
 			localDevice.sendFrame(XBeeFrameFactory.composeMessageToFrame(nodeDescriptorRequest.getBroadcastMessage()));
 		} catch (WrongFormatException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}

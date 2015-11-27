@@ -15,7 +15,7 @@
  */
 package org.ogema.model.smartgriddata;
 
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
@@ -29,7 +29,7 @@ public interface Price extends Data {
 	/**
 	 * current price value<br>
 	 * Note: In case of a variable commodity price that is provided as a schedule ahead of time the price schedule
-	 * should be added as a {@link DefinitionSchedule} resource as a decorator.<br>
+	 * should be added as a {@link AbsoluteSchedule} resource as a decorator.<br>
 	 * unit: depending on commodity per currency
 	 */
 	FloatResource price();
@@ -44,7 +44,7 @@ public interface Price extends Data {
 	 * 3: general retail price<br>
 	 * 4: specific customer price for billing<br>
 	 * 10: grid fees<br>
-	 * 9999: other >10.000: custom values
+	 * 9999: other; greater 10.000: custom values
 	 */
 	IntegerResource scope();
 

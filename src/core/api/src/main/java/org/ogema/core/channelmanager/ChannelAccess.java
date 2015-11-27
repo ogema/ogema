@@ -18,12 +18,15 @@ package org.ogema.core.channelmanager;
 import java.io.IOException;
 import java.util.List;
 
+import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
+import org.ogema.core.channelmanager.driverspi.DeviceListener;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
+import org.ogema.core.channelmanager.driverspi.ValueContainer;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
 
@@ -154,23 +157,34 @@ public interface ChannelAccess {
 	 * One time readout of device data that has not yet been configured as a channel. This is intended to be used by
 	 * driver/device specific configuration to determine the exact configuration of a device.
 	 * 
-	 * @param channelLocator
-	 *            channelLocator of the channel to read.
-	 * @return SampledValueContainer which holds the read value of the channel
+	 * @param channelList
+	 *            List of SampledValueContainer addressing channels to read. All channels must target the same driver.
 	 */
-	public SampledValueContainer readUnconfiguredChannel(ChannelLocator channelLocator);
+	public void readUnconfiguredChannels(List<SampledValueContainer> channelList);
+
+	/**
+	 * One time write of device data that has not yet been configured as a channel. This is intended to be used by
+	 * driver/device specific configuration to change the exact configuration of a device.
+	 * 
+	 * @param channelList
+	 *            List of SampledValueContainer addressing channels to write. All channels must target the same driver.
+
+	 * @throws ChannelAccessException
+	 *             if set value failed (e.g. the channel does not exist)
+	 */
+	public void writeUnconfiguredChannels(List<ValueContainer> channelList) throws ChannelAccessException;
 
 	/**
 	 * Get an instance of DeviceLocator with the specified properties. The framework ensures that there exists only one
 	 * DeviceLocator instance with the same properties (
 	 * 
-	 * @param driverName
+	 * @param driverId
 	 *            the unique name (id) of the driver
-	 * @param interfaceName
+	 * @param interfaceId
 	 *            the unique name (id) of the driver (from Hardware Manager?)
 	 * @param deviceAddress
 	 *            the address of the device. The syntax of the address is driver specific.
-	 * @param parameter
+	 * @param parameters
 	 *            communication parameter for the device. The syntax is driver specific.
 	 * 
 	 * @return Instance of DeviceLocator
@@ -204,9 +218,10 @@ public interface ChannelAccess {
 	 *            The unique ID that identifies the driver to handle this interface (see getDriverIds)
 	 * @param interfaceId
 	 *            ID of the interface (e.g. /dev/ttyS0, eth1, IP network address ...)
-	 * @param filer
+	 * @param filter
 	 *            set a filter to specify the scope of the search (driver specific - eg. address range, search method,
 	 *            device type ...)
+	 * @return list of connected devices.
 	 * 
 	 * @throws UnsupportedOperationException
 	 *             if this operation is not supported by the driver
@@ -271,4 +286,48 @@ public interface ChannelAccess {
 	 *            is called when a channel was found or the scan has finished
 	 */
 	public void discoverChannels(DeviceLocator device, ChannelScanListener listener);
+
+	/**
+	 * Returns the description of the specified driver
+	 * 
+	 * @param driverId
+	 *            Id of the driver
+	 * 
+	 * @return Description of driver on success, empty string else
+	 */
+	public String getDriverDescription(String driverId);
+
+	/**
+	 * Returns list of known channels in the device with the given device locator.
+	 * 
+	 * @param deviceLocator
+	 *            device to get the known channels form
+	 * @return Returns a list of known channels of the device
+	 * 
+	 * @throws UnsupportedOperationException
+	 *             if this operation is not supported by the driver
+	 */
+	public List<ChannelLocator> getChannelList(DeviceLocator deviceLocator) throws UnsupportedOperationException;
+
+	/**
+	 * Wrapper method that calls the driver method with same name (see
+	 * {@link ChannelDriver#addDeviceListener(DeviceListener) }).
+	 *
+	 * @param driverId
+	 *            The driver id string
+	 * @param listener
+	 *            The DeviceListener object.
+	 */
+	public void addDeviceListener(String driverId, DeviceListener listener);
+
+	/**
+	 * Wrapper method that calls the driver method with same name (see
+	 * {@link ChannelDriver#removeDeviceListener(DeviceListener)}).
+	 * 
+	 * @param driverId
+	 *            The driver id string
+	 * @param listener
+	 *            The DeviceListener object.
+	 */
+	public void removeDeviceListener(String driverId, DeviceListener listener);
 }

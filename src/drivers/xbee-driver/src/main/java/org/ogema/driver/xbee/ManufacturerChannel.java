@@ -142,7 +142,6 @@ public class ManufacturerChannel extends Channel {
 				try {
 					channelLock.wait();
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}

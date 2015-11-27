@@ -134,9 +134,9 @@ public interface AppPermissionType {
 
 		/** WRITE: Write a resource. */
 		WRITE,
-		/** CREATE: Create a resource in a path with a type (“*” Operator possible). */
+		/** CREATE: Create a resource in a path with a type ("*" Operator possible). */
 		CREATE,
-		/** ADD_SUB: add a sub resource to a resource (Checked in Resource, path is “”, counters updated). */
+		/** ADD_SUB: add a sub resource to a resource (Checked in Resource, path is "", counters updated). */
 		ADD_SUB,
 		/** DELETE: Delete a resource. */
 		DELETE

@@ -802,10 +802,12 @@ public class Util implements Serializable {
 					start = convertToReadableTime(startTime);
 					end = convertToReadableTime(endTime);
 				}
-				Value val = schedule.getValue(t).getValue();
-				currentValue = getValue(val, parentType);
-				if (currentValue == null)
-					currentValue = "";
+				SampledValue sv = schedule.getValue(t);
+				if (sv != null) {
+					Value val = sv.getValue();
+					if (val != null)
+						currentValue = getValue(val, parentType);
+				}
 			}
 			String mode = schedule.getInterpolationMode().toString();
 			String[] entry = { loc, type, parentType, active, nrValues, start, end, currentValue, mode };

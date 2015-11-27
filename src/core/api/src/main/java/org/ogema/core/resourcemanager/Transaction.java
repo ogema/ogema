@@ -39,7 +39,7 @@ import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 public interface Transaction {
 
 	/**
-	 * Adds a resource and all of its sub-resources to the transaction.
+	 * Adds a resource and all of its currently-existing sub-resources to the transaction.
 	 * @param rootResource root of the tree to add.
 	 * @param addReferencedSubresources if true, referenced sub-resources are added. If false, only direct sub-resources are added.
 	 */
@@ -94,7 +94,9 @@ public interface Transaction {
 	void setFloat(FloatResource resource, float value) throws NoSuchResourceException;
 
 	/**
-	 * Gets the last value read from r during last read() transactions.
+	 * Gets the last value read the during last read() transaction or the value
+	 * contained in the resource after the last successful write() transaction
+	 * (whichever is more recent).
 	 * @return If the resource has been a non-virtual resource during the last
 	 * read action this returns the value that was read. If the resource had
 	 * been virtual this returns null. If not read action had been performed
@@ -105,32 +107,32 @@ public interface Transaction {
 	Float getFloat(FloatResource resource) throws NoSuchResourceException;
 
 	/**
-	 * @see #setFloat(org.ogema.core.model.simple.FloatResource, float) 
+	 * See {@link #setFloat(org.ogema.core.model.simple.FloatResource, float)}
 	 */
 	void setInteger(IntegerResource resource, int value) throws NoSuchResourceException;
 
 	/**
-	 * @see #getFloat(org.ogema.core.model.simple.FloatResource) 
+	 * See {@link #getFloat(org.ogema.core.model.simple.FloatResource)}
 	 */
 	Integer getInteger(IntegerResource resource) throws NoSuchResourceException;
 
 	/**
-	 * @see #setFloat(org.ogema.core.model.simple.FloatResource, float) 
+	 * See {@link #setFloat(org.ogema.core.model.simple.FloatResource, float)}
 	 */
 	void setBoolean(BooleanResource resource, boolean value) throws NoSuchResourceException;
 
 	/**
-	 * @see #getFloat(org.ogema.core.model.simple.FloatResource) 
+	 * See {@link #getFloat(org.ogema.core.model.simple.FloatResource)}
 	 */
 	Boolean getBoolean(BooleanResource resource) throws NoSuchResourceException;
 
 	/**
-	 * @see #setFloat(org.ogema.core.model.simple.FloatResource, float) 
+	 * See {@link #setFloat(org.ogema.core.model.simple.FloatResource, float)}
 	 */
 	void setString(StringResource resource, String value) throws NoSuchResourceException;
 
 	/**
-	 * @see #getFloat(org.ogema.core.model.simple.FloatResource) 
+	 * See {@link #getFloat(org.ogema.core.model.simple.FloatResource)}
 	 */
 	String getString(StringResource resource) throws NoSuchResourceException;
 
@@ -140,13 +142,13 @@ public interface Transaction {
 	void setTime(TimeResource resource, long value) throws NoSuchResourceException;
 
 	/**
-	 * @see #getFloat(org.ogema.core.model.simple.FloatResource) 
+	 * See {@link #getFloat(org.ogema.core.model.simple.FloatResource)}
 	 */
 	Long getTime(TimeResource resource) throws NoSuchResourceException;
 
 	/**
 	 * @see #setFloat(org.ogema.core.model.simple.FloatResource, float) 
-	 * @deprecated Type {@link OpaqueResource} is deprecated. Use {@link ByteArrayResource} instead.
+	 * @deprecated Type {@link org.ogema.core.model.simple.OpaqueResource} is deprecated. Use {@link ByteArrayResource} instead.
 	 */
 	@Deprecated
 	@SuppressWarnings("deprecation")
@@ -155,69 +157,69 @@ public interface Transaction {
 
 	/**
 	 * @see #getFloat(org.ogema.core.model.simple.FloatResource) 
-	 * @deprecated Type {@link OpaqueResource} is deprecated. Use {@link ByteArrayResource} instead.       
+	 * @deprecated Type {@link org.ogema.core.model.simple.OpaqueResource} is deprecated. Use {@link ByteArrayResource} instead.       
 	 */
 	@Deprecated
 	@SuppressWarnings("deprecation")
 	byte[] getByteArray(org.ogema.core.model.simple.OpaqueResource resource) throws NoSuchResourceException;
 
 	/**
-	 * @see #setFloat(org.ogema.core.model.simple.FloatResource, float) 
+	 * See {@link #setFloat(org.ogema.core.model.simple.FloatResource, float)}
 	 */
 	void setByteArray(ByteArrayResource resource, byte[] values) throws NoSuchResourceException;
 
 	/**
-	 * @see #getFloat(org.ogema.core.model.simple.FloatResource) 
+	 * See {@link #getFloat(org.ogema.core.model.simple.FloatResource)}
 	 */
 	byte[] getByteArray(ByteArrayResource resource) throws NoSuchResourceException;
 
 	/**
-	 * @see #setFloat(org.ogema.core.model.simple.FloatResource, float) 
+	 * See {@link #setFloat(org.ogema.core.model.simple.FloatResource, float)}
 	 */
 	void setFloatArray(FloatArrayResource resource, float[] values) throws NoSuchResourceException;
 
 	/**
-	 * @see #getFloat(org.ogema.core.model.simple.FloatResource) 
+	 * See {@link #getFloat(org.ogema.core.model.simple.FloatResource)}
 	 */
 	float[] getFloatArray(FloatArrayResource resource) throws NoSuchResourceException;
 
 	/**
-	 * @see #setFloat(org.ogema.core.model.simple.FloatResource, float) 
+	 * See {@link #setFloat(org.ogema.core.model.simple.FloatResource, float)}
 	 */
 	void setIntegerArray(IntegerArrayResource resource, int[] values) throws NoSuchResourceException;
 
 	/**
-	 * @see #getFloat(org.ogema.core.model.simple.FloatResource) 
+	 * See {@link #getFloat(org.ogema.core.model.simple.FloatResource)}
 	 */
 	int[] getIntegerArray(IntegerArrayResource resource) throws NoSuchResourceException;
 
 	/**
-	 * @see #setFloat(org.ogema.core.model.simple.FloatResource, float) 
+	 * See {@link #setFloat(org.ogema.core.model.simple.FloatResource, float)}
 	 */
 	void setBooleanArray(BooleanArrayResource resource, boolean[] values) throws NoSuchResourceException;
 
 	/**
-	 * @see #getFloat(org.ogema.core.model.simple.FloatResource) 
+	 * See {@link #getFloat(org.ogema.core.model.simple.FloatResource)}
 	 */
 	boolean[] getBooleanArray(BooleanArrayResource resource) throws NoSuchResourceException;
 
 	/**
-	 * @see #setFloat(org.ogema.core.model.simple.FloatResource, float) 
+	 * See {@link #setFloat(org.ogema.core.model.simple.FloatResource, float)}
 	 */
 	void setStringArray(StringArrayResource resource, String[] values) throws NoSuchResourceException;
 
 	/**
-	 * @see #getFloat(org.ogema.core.model.simple.FloatResource) 
+	 * See {@link #getFloat(org.ogema.core.model.simple.FloatResource)}
 	 */
 	String[] getStringArray(StringArrayResource resource) throws NoSuchResourceException;
 
 	/**
-	 * @see #setFloat(org.ogema.core.model.simple.FloatResource, float) 
+	 * See {@link #setFloat(org.ogema.core.model.simple.FloatResource, float)}
 	 */
 	void setTimeArray(TimeArrayResource resource, long[] values) throws NoSuchResourceException;
 
 	/**
-	 * @see #getFloat(org.ogema.core.model.simple.FloatResource) 
+	 * See {@link #getFloat(org.ogema.core.model.simple.FloatResource)}
 	 */
 	long[] getTimeArray(TimeArrayResource resource) throws NoSuchResourceException;
 
@@ -264,4 +266,21 @@ public interface Transaction {
 	 * Deactivate all the resources in a single transaction.
 	 */
 	void deactivate();
+
+	/**
+	 * Sets the active state of a resource.
+	 * @param target the resource to modify.
+	 * @param recursive activate resursively.
+	 * @see Resource#activate(boolean) 
+	 */
+	//void activate(Resource target, boolean recursive);
+
+	/**
+	 * Sets the active state of a resource.
+	 * @param target the resource to modify.
+	 * @param recursive deactivate resursively.
+	 * @see Resource#deactivate(boolean) 
+	 */
+	//void deactivate(Resource target, boolean recursive);
+
 }

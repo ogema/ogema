@@ -22,6 +22,7 @@ import org.ogema.core.resourcemanager.InvalidResourceTypeException;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
+import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceGraphException;
 import org.ogema.core.resourcemanager.ResourceValueListener;
@@ -35,8 +36,9 @@ import org.ogema.core.resourcemanager.VirtualResourceException;
  * universal between applications (e.g. {@link #getLocation()}, {@link #getResourceType()}), 
  * whereas some methods are specific to the application's view on the resource 
  * (e.g. {@link #getPath() getPath}, {@link #getAccessMode() getAccessMode} ).<br>
- * Resource objects are associated to a path. For objects initially returned by
- * the framework to {@link ResourceListener}s have a path that equals the location
+ * Resource objects are associated to a path. Objects initially returned 
+ * to {@link ResourceDemandListener}s by
+ * the framework have a path that equals the location
  * of the resource. Further navigation can lead to paths that are not equal to the
  * location, then (both path and location can be read via {@link #getPath()} and
  * {@link #getLocation()}, respectively).
@@ -288,13 +290,16 @@ public interface Resource {
 	boolean isReference(boolean recursive);
 
 	/**
-	 * Get a sub-resource or reference by its relative path.
+	 * Get a sub-resource by name. If the requested resource is an optional element
+	 * which has not been created, this will return a virtual resource.
 	 * 
 	 * @param <T>
 	 * @param name
-	 *            name is a path expression
-	 * @return Returns the sub resource if it exists. Returns null if the demanded sub resource does not exist.
+	 *            name of the sub resource
+	 * @return The requested sub resource (possibly virtual) if available, or null if no such resource exists.
 	 * @throws NoSuchResourceException if the name is not a valid OGEMA resource name.
+	 * 
+	 * @see #getSubResource(java.lang.String, java.lang.Class) 
 	 */
 	<T extends Resource> T getSubResource(String name) throws NoSuchResourceException;
 

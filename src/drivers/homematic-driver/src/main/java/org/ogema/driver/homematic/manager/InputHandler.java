@@ -37,6 +37,7 @@ public class InputHandler implements Runnable {
 	private StatusMessage lastMsg = new StatusMessage();
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("homematic-driver");
+	private boolean localDeviceInited;
 
 	public InputHandler(LocalDevice localDevice) {
 		inputEventLock = localDevice.getInputEventLock();
@@ -65,6 +66,10 @@ public class InputHandler implements Runnable {
 						e1.printStackTrace();
 					}
 				}
+				// long timeStamp = System.currentTimeMillis();
+				// System.out.print("receive: ");
+				// System.out.println(timeStamp);
+
 				try {
 					handleMessage(localDevice.getReceivedFrame());
 				} catch (Throwable t) {
@@ -77,7 +82,8 @@ public class InputHandler implements Runnable {
 	private void handleMessage(byte[] tempArray) {
 		switch (tempArray[0]) {
 		case 'H':
-			parseAdapterMsg(tempArray);
+			if (!localDeviceInited)
+				parseAdapterMsg(tempArray);
 			break;
 		case 'R':
 		case 'E':
@@ -132,6 +138,7 @@ public class InputHandler implements Runnable {
 			ownerid = new String(Converter.toHexString(data, 24, 3));
 		localDevice.setOwnerid(ownerid);
 		localDevice.setUptime((int) Converter.toLong(data, 30, 4));
+		localDeviceInited = true;
 	}
 
 }

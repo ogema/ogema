@@ -32,38 +32,38 @@ import org.ogema.driver.homematic.manager.RemoteDevice;
 public class Device {
 	private final DeviceLocator locator;
 	private String deviceAddress;
-	private Map<String, Channel> Channels; // channelAddress, Channel
+	private Map<String, Channel> channels; // channelAddress, Channel
 	private Connection con;
 
 	public Device(DeviceLocator deviceLocator, Connection connection) {
 		con = connection;
 		locator = deviceLocator;
-		Channels = new HashMap<String, Channel>();
+		channels = new HashMap<String, Channel>();
 		deviceAddress = deviceLocator.getDeviceAddress();
 	}
 
 	public List<ChannelLocator> getChannelLocators() {
 		List<ChannelLocator> tempList = new ArrayList<ChannelLocator>();
-		for (Map.Entry<String, Channel> channel : Channels.entrySet()) {
+		for (Map.Entry<String, Channel> channel : channels.entrySet()) {
 			tempList.add(channel.getValue().getChannelLocator());
 		}
 		return tempList;
 	}
 
 	public Channel findChannel(ChannelLocator channelLocator) {
-		return Channels.get(channelLocator.getChannelAddress());
+		return channels.get(channelLocator.getChannelAddress());
 	}
 
 	public void addChannel(Channel chan) {
-		Channels.put(chan.getChannelLocator().getChannelAddress(), chan);
+		channels.put(chan.getChannelLocator().getChannelAddress(), chan);
 	}
 
 	public void removeChannel(Channel chan) {
-		Channels.remove(chan.getChannelLocator().getChannelAddress());
+		channels.remove(chan.getChannelLocator().getChannelAddress());
 	}
 
 	public Map<String, Channel> getChannels() {
-		return Channels;
+		return channels;
 	}
 
 	public RemoteDevice getRemoteDevice() {

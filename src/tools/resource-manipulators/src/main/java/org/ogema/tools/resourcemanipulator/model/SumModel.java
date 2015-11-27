@@ -35,7 +35,7 @@ public interface SumModel extends ResourceManipulatorModel {
 	ResourceList<SingleValueResource> inputs();
 
 	/**
-	 * Seed resource for the output value. Real output is referenced at .program().
+	 * Seed resource for the output value. Real output is referenced at .program(). // FIXME what does this mean?
 	 */
 	Resource resultBase();
 

@@ -47,6 +47,7 @@ import org.slf4j.Logger;
 public class AppPermissionImpl implements AppPermission {
 
 	static final String BUNDLE_LOCATION_CONDITION_NAME = "org.osgi.service.condpermadmin.BundleLocationCondition";
+	static final String DEFAULT_POLICY = "defaultpolicy";
 
 	private AppID appID;
 	ConditionalPermissionAdmin cpa;
@@ -112,8 +113,9 @@ public class AppPermissionImpl implements AppPermission {
 		this.nTypes = new ArrayList<>();
 		this.allTypes = new HashMap<>();
 		this.granted = new ConcurrentHashMap<>();
-		this.blcArgs = new String[1];
-		this.blcInfo = new ConditionInfo(BUNDLE_LOCATION_CONDITION_NAME, blcArgs);
+		// this.blcArgs = new String[1];
+		// this.blcInfo = new ConditionInfo(BUNDLE_LOCATION_CONDITION_NAME,
+		// blcArgs);
 		initLogger();
 	}
 
@@ -157,7 +159,12 @@ public class AppPermissionImpl implements AppPermission {
 	AppPermissionTypeImpl createType() {
 		AppPermissionTypeImpl at = new AppPermissionTypeImpl(this);
 		String name = newTypeName(at.hashCode());
-		at.name = name;
+		if (name.indexOf(DEFAULT_POLICY) == -1) {
+			at.name = name;
+		}
+		else {
+			at.name = DEFAULT_POLICY;
+		}
 		return at;
 	}
 
@@ -300,8 +307,9 @@ public class AppPermissionImpl implements AppPermission {
 					aptimpl.perms.toArray(perms), ConditionalPermissionInfo.ALLOW);
 			// Check if a permission info with the same name exists
 			for (ConditionalPermissionInfo tmpcpi : piList) {
-				// If a permission info exists in the table remove it before adding the new info
-				if (PermissionManagerImpl.implies(tmpcpi, cpi)) {
+				// If a permission info exists in the table remove it before
+				// adding the new info
+				if (DefaultPermissionManager.implies(tmpcpi, cpi)) {
 					exists = true;
 					break;
 				}
@@ -329,8 +337,9 @@ public class AppPermissionImpl implements AppPermission {
 					aptimpl.perms.toArray(perms), ConditionalPermissionInfo.DENY);
 			// Check if a permission info with the same name exists
 			for (ConditionalPermissionInfo tmpcpi : piList) {
-				// If a permission info exists in the table remove it before adding the new info with the same name
-				if (PermissionManagerImpl.implies(tmpcpi, cpi)) {
+				// If a permission info exists in the table remove it before
+				// adding the new info with the same name
+				if (DefaultPermissionManager.implies(tmpcpi, cpi)) {
 					exists = true;
 					break;
 				}
@@ -400,10 +409,12 @@ public class AppPermissionImpl implements AppPermission {
 					wildcard = false;
 				}
 			}
-			// If the location condition is not wildcarded check if a permission info with the same name exists
+			// If the location condition is not wildcarded check if a permission
+			// info with the same name exists
 			if (!wildcard)
 				for (ConditionalPermissionInfo tmpcpi : piList) {
-					// If a permission info exists in the table remove it before adding the new info with the same name
+					// If a permission info exists in the table remove it before
+					// adding the new info with the same name
 					if (tmpcpi.getName().equals(name)) {
 						if (Configuration.DEBUG)
 							log.info("Removed Policy: " + tmpcpi.getEncoded());
@@ -441,4 +452,74 @@ public class AppPermissionImpl implements AppPermission {
 		}
 		cpu.commit();
 	}
+
+	@Override
+	public void removePermissions() {
+		removePolicySet("allow");
+		// remove the positive policies not yet applied
+		pTypes.clear();
+	}
+
+	@Override
+	public void removeExceptions() {
+		removePolicySet("deny");
+		// remove the positive policies not yet applied
+		nTypes.clear();
+	}
+
+	/**
+	 * Remove all policies of specified access type
+	 * 
+	 * @param accessType
+	 *            "allow" or "deny"
+	 */
+	void removePolicySet(String accessType) {
+		// remove DENY or ALLOW policies
+		// First get the permissions table
+		boolean defPol = false;
+		ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
+		List<ConditionalPermissionInfo> piList = cpu.getConditionalPermissionInfos();
+
+		Set<Entry<String, ConditionalPermissionInfo>> grantedsSet = granted.entrySet();
+		for (Map.Entry<String, ConditionalPermissionInfo> entry : grantedsSet) {
+
+			// Create new permission info object each new entry
+			// Multiple entries with same name are not permitted.
+			String name = entry.getKey();
+			/*
+			 * If the bundle location condition is wildcarded the entry sholdn't be removed, because it can affect other
+			 * apps too.
+			 */
+			ConditionalPermissionInfo cpi = entry.getValue();
+			ConditionInfo cinfos[] = cpi.getConditionInfos();
+			boolean wildcard = true;
+			if (blcInfo == null) {
+				defPol = true;
+			}
+			if (!defPol) {
+				for (ConditionInfo ci : cinfos) {
+					if (ci.getType().equals(BUNDLE_LOCATION_CONDITION_NAME) && !ci.getArgs()[0].endsWith("*")) {
+						wildcard = false;
+					}
+				}
+			}
+			// If the location condition is not wildcarded check if a permission
+			// info with the same name exists
+			if (!wildcard || defPol)
+				for (ConditionalPermissionInfo tmpcpi : piList) {
+					// If a permission info exists in the table remove it before
+					// adding the new info with the same name
+					if (tmpcpi.getAccessDecision().equals(accessType) && tmpcpi.getName().equals(name)) {
+						if (Configuration.DEBUG)
+							log.info("Removed Policy: " + tmpcpi.getEncoded());
+						piList.remove(tmpcpi);
+						granted.remove(name);
+						allTypes.remove(name);
+						break;
+					}
+				}
+		}
+		cpu.commit();
+	}
+
 }

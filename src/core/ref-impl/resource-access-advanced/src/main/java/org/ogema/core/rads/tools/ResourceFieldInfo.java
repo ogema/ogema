@@ -26,7 +26,6 @@ import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.Access;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.CreateMode;
-import org.ogema.core.resourcemanager.pattern.ResourcePattern.Equals;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.Existence;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.ValueChangedListener;
 
@@ -76,7 +75,9 @@ public class ResourceFieldInfo {
 		}
 
 		// No values required at the current state of the API.
-		final Equals equals = field.getAnnotation(Equals.class);
+		@SuppressWarnings("deprecation")
+		final org.ogema.core.resourcemanager.pattern.ResourcePattern.Equals equals = field
+				.getAnnotation(org.ogema.core.resourcemanager.pattern.ResourcePattern.Equals.class);
 		if (equals != null) {
 			m_valueRequired = true;
 			m_requiredValue = equals.value();

@@ -16,7 +16,7 @@
 package org.ogema.experimental;
 
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.ForecastSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.StringResource;
@@ -37,7 +37,7 @@ public class BuildingRad extends ResourcePattern<Building> {
 	@Access(mode = AccessMode.EXCLUSIVE)
 	FloatResource powerReading = powerSensor.reading();
 
-	protected ForecastSchedule powerForecast = powerReading.forecast();
+	protected AbsoluteSchedule powerForecast = powerReading.forecast();
 
 	@Existence(required = CreateMode.OPTIONAL)
 	public final IntegerResource connType = elConn.connectionType();

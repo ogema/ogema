@@ -15,6 +15,7 @@
  */
 package org.ogema.model.metering;
 
+import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.model.units.EnergyResource;
@@ -33,20 +34,21 @@ public interface HeatMeter extends GenericMeter {
 
 	/**
 	 * Power readings of the meter. The history of past values should be added
-	 * in the definition {@link DefinitionForecast} of the reading.
+	 * in the definition {@link FloatResource#historicalData() historicalData} field of the reading.
 	 */
 	PowerResource powerReading();
 
 	/**
 	 * Energy readings of the meter. The history of past values should be added
-	 * in the definition {@link DefinitionForecast} of the reading.
+	 * in the definition {@link FloatResource#historicalData() historicalData} field of the reading.
 	 */
 	EnergyResource energyReading();
 
 	/**
 	 * Time at which the energy reading was last reset (i.e. time of reference
 	 * at which {@link #energyReading()} started at zero. Past values (past
-	 * resets) should be added in the {@link DefinitionForecast} of this field.
+	 * resets) should be added in the {@link FloatResource#historicalData() historicalData} 
+	 * subresource.
 	 */
 	TimeResource resetTime();
 
@@ -55,7 +57,7 @@ public interface HeatMeter extends GenericMeter {
 	 * 1: two-way meter without nonreturn<br>
 	 * 2: consumption meter<br>
 	 * 3: generation meter<br>
-	 * >=10.000: custom values
+	 * greater 10.000: custom values
 	 */
 	@Override
 	IntegerResource type();

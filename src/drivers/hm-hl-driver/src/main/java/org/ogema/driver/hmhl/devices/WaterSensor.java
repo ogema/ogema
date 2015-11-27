@@ -28,6 +28,7 @@ import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
 import org.ogema.driver.hmhl.models.WaterDetector;
 import org.ogema.model.sensors.StateOfChargeSensor;
+import org.ogema.tools.resource.util.ResourceUtils;
 
 public class WaterSensor extends HM_hlDevice {
 
@@ -48,9 +49,11 @@ public class WaterSensor extends HM_hlDevice {
 		switch (channelAddress) {
 		case "ATTRIBUTE:0001":
 			highWater.setValue(value.getStringValue());
+			highWater.activate(true);
 			break;
 		case "ATTRIBUTE:0002":
 			batteryStatus.setValue(value.getFloatValue());
+			batteryStatus.activate(true);
 			break;
 		}
 	}
@@ -75,20 +78,26 @@ public class WaterSensor extends HM_hlDevice {
 		attributeConfig.chLocator = addChannel(attributeConfig);
 
 		WaterDetector threeStateDevice = resourceManager.createResource(hm_hlConfig.resourceName, WaterDetector.class);
-
 		highWater = (StringResource) threeStateDevice.highWater().create();
-		highWater.activate(true);
-		//		highWater.setValue("dry");
+		// highWater.activate(true);
+		// highWater.setValue("dry");
 		highWater.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		StateOfChargeSensor eSens = (StateOfChargeSensor) threeStateDevice.battery().create();
 		batteryStatus = (FloatResource) eSens.reading().create();
-		batteryStatus.activate(true);
-		//		batteryStatus.setValue(95);
+		// batteryStatus.activate(true);
+		// batteryStatus.setValue(95);
 		batteryStatus.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
+		// do not activate value resources, since they do not contain sensible values yet
+		ResourceUtils.activateComplexResources(threeStateDevice, true, appManager.getResourceAccess());
 	}
 
 	protected void unifyResourceName(HM_hlConfig config) {
 		config.resourceName += Constants.HM_THREE_STATE_NAME + config.deviceAddress.replace(':', '_');
+	}
+
+	@Override
+	protected void terminate() {
+		removeChannels();
 	}
 }

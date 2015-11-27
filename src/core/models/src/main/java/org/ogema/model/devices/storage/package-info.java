@@ -19,7 +19,7 @@
  * which is the case for simple storages with only one in- and out-connection or
  * for storages with internal controlling that is not exposed to the framework.
  * More complex storages may not have a direct control. Their behavior is then
- * set by the actors on the {@link CircuitConnection}s leading to the storage.
+ * set by the actors on the {@link org.ogema.model.connections.CircuitConnection}s leading to the storage.
  */
 package org.ogema.model.devices.storage;
 

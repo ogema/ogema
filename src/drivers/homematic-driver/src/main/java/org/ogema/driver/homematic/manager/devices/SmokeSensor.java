@@ -22,6 +22,7 @@ import org.ogema.driver.homematic.manager.DeviceAttribute;
 import org.ogema.driver.homematic.manager.RemoteDevice;
 import org.ogema.driver.homematic.manager.StatusMessage;
 import org.ogema.driver.homematic.manager.SubDevice;
+import org.ogema.driver.homematic.manager.messages.CmdMessage;
 import org.ogema.driver.homematic.tools.Converter;
 
 public class SmokeSensor extends SubDevice {
@@ -62,5 +63,19 @@ public class SmokeSensor extends SubDevice {
 	public void channelChanged(byte identifier, Value value) {
 		// TODO Auto-generated method stub
 
+	}
+
+	@Override
+	public void parseMessage(StatusMessage msg, CmdMessage cmd) {
+		byte msgType = msg.msg_type;
+		byte contentType = msg.msg_data[0];
+
+		if ((msgType == 0x10 && (contentType == 0x02) || (contentType == 0x03))) {
+			// Configuration response Message
+			parseConfig(msg, cmd);
+		}
+		else {
+			parseValue(msg);
+		}
 	}
 }

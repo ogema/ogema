@@ -159,6 +159,26 @@ public class ResourceListTest extends OsgiTestBase {
 
 		assertTrue(wps.contains(wp1));
 		assertTrue(wps.contains(wps2.getAllElements().get(0)));
+
+		WorkPlace notInList = resMan.createResource(newResourceName(), WorkPlace.class);
+		assertFalse(wps.contains(notInList));
+	}
+
+	@Test
+	public void resourceListOfResourceListsWork() {
+		@SuppressWarnings("unchecked")
+		ResourceList<Resource> rl1 = resMan.createResource(newResourceName(), ResourceList.class);
+		rl1.setElementType(Resource.class);
+		@SuppressWarnings("unchecked")
+		ResourceList<Resource> rl2 = resMan.createResource(newResourceName(), ResourceList.class);
+		rl2.setElementType(Resource.class);
+
+		Resource res = resMan.createResource(newResourceName(), WorkPlace.class);
+		rl2.add(res);
+
+		rl1.add(rl2);
+
+		assertTrue(rl1.getAllElements().get(0).getSubResources(false).get(0).equalsLocation(res));
 	}
 
 	@Test
@@ -278,6 +298,22 @@ public class ResourceListTest extends OsgiTestBase {
 	}
 
 	@Test
+	public void deletingAReferenceElementShowsUpInList() {
+		room = resMan.createResource(newResourceName(), Room.class);
+		final ResourceList<WorkPlace> wps = room.workPlaces();
+		wps.create();
+
+		WorkPlace wp = resMan.createResource(newResourceName(), WorkPlace.class);
+		wps.add(wp);
+
+		assertEquals("list should contain 1 element", 1, wps.size());
+		wp.delete();
+		//assertEquals("list should be empty", 0, wps.size());
+		assertEquals("list should be empty", 0, room.workPlaces().size());
+
+	}
+
+	@Test
     public void addedElementsRetainOrder() {
         @SuppressWarnings("unchecked")
         ResourceList<StringResource> strings = resMan.createResource(newResourceName(), ResourceList.class);
@@ -340,16 +376,16 @@ public class ResourceListTest extends OsgiTestBase {
 
 	@Test
 	public void changesToResourceListsAreVisibleThroughReferences() {
-		Room room = resMan.createResource(newResourceName(), Room.class);
-		room.workPlaces().create();
+		Room room1 = resMan.createResource(newResourceName(), Room.class);
+		room1.workPlaces().create();
 
 		Room room2 = resMan.createResource(newResourceName(), Room.class);
-		room2.workPlaces().setAsReference(room.workPlaces());
+		room2.workPlaces().setAsReference(room1.workPlaces());
 
 		ResourceList<WorkPlace> l = room2.workPlaces();
 
-		room.workPlaces().add();
-		assertEquals("", 1, room.workPlaces().size());
+		room1.workPlaces().add();
+		assertEquals("", 1, room1.workPlaces().size());
 		assertEquals("reference has changed", 1, room2.workPlaces().size());
 
 		//ResourceList<WorkPlace> l = room2.workPlaces();

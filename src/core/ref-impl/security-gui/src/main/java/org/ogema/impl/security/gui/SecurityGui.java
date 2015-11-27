@@ -17,13 +17,18 @@ package org.ogema.impl.security.gui;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 
+import org.apache.felix.scr.annotations.Activate;
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.Service;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.Application;
@@ -31,117 +36,79 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.installationmanager.InstallationManagement;
 import org.ogema.core.security.WebAccessManager;
 import org.ogema.persistence.ResourceDB;
-import org.osgi.framework.BundleActivator;
+import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.BundleException;
-import org.osgi.framework.ServiceReference;
-import org.osgi.service.http.HttpService;
-import org.osgi.util.tracker.ServiceTracker;
-import org.osgi.util.tracker.ServiceTrackerCustomizer;
-import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class SecurityGui implements Application, BundleActivator {
+/**
+ * Main class of the security GUI application. Since the application is started, SecurityGUIServlet object is created.
+ * 
+ * @author Zekeriya Mansuroglu
+ *
+ */
 
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+@Component(specVersion = "1.2", immediate = true)
+@Service(Application.class)
+public class SecurityGui implements Application {
+
 	static final String PERMS_ENTRY_NAME = "OSGI-INF/permissions.perm";
 	static final String allPerm = "java.security.AllPermission";
+	static final String FORBIDDENS_FILE = "./security/forbiddens.perm";
+	private static final String GUI_ALIAS = "/security-gui";
+	private static final String GUI_SERVLET_ALIAS = "/security/config";
 
+	@Reference
 	private PermissionManager pMan;
+	@Reference
 	AdministrationManager admin;
-	ServiceTracker<HttpService, HttpService> tracker;
 
+	@Reference
 	ResourceDB db;
 
 	long bundleID;
 
+	@Reference
 	InstallationManagement instMan;
 
 	ApplicationManager appMngr;
+
 	BundleContext osgi;
+	private SecurityGuiServlet sgs;
+	private WebAccessManager wam;
 
-	public void start(BundleContext bc) throws BundleException {
-		final BundleContext ctx = bc;
+	@Activate
+	public void activate(BundleContext bc) {
 		this.osgi = bc;
-		final SecurityGui adminapp = this;
 		this.bundleID = bc.getBundle().getBundleId();
-		/*
-		 * Get PermissionManager to delegate the permission checks
-		 */
-		pMan = (PermissionManager) bc.getService(bc.getServiceReference(PermissionManager.class.getName()));
-		admin = (AdministrationManager) bc.getService(bc.getServiceReference(AdministrationManager.class.getName()));
-		instMan = (InstallationManagement) bc
-				.getService(bc.getServiceReference(InstallationManagement.class.getName()));
-		db = (ResourceDB) bc.getService(bc.getServiceReference(ResourceDB.class.getName()));
-
-		bc.registerService(SecurityGui.class, this, null);
-		bc.registerService(Application.class, this, null);
-
-		ServiceTrackerCustomizer<HttpService, HttpService> cust = new ServiceTrackerCustomizer<HttpService, HttpService>() {
-
-			@Override
-			public HttpService addingService(ServiceReference<HttpService> sr) {
-				WebAccessManager wam = pMan.getWebAccess();
-				HttpService http = (HttpService) ctx.getService(ctx.getServiceReference(HttpService.class.getName()));
-				new SecurityGuiServlet(wam, pMan, adminapp);
-				return http;
-			}
-
-			@Override
-			public void modifiedService(ServiceReference<HttpService> sr, HttpService t) {
-			}
-
-			@Override
-			public void removedService(ServiceReference<HttpService> sr, HttpService t) {
-			}
-		};
-
-		tracker = new ServiceTracker<>(ctx, HttpService.class, cust);
-		tracker.open();
-	}
-
-	public void stop(BundleContext context) {
 	}
 
 	@Override
-	public void start(ApplicationManager appManager) {
-		logger.info("AppPermission Test bundle started!");
-		logger.info("{} started", getClass().getName());
-
+	public void start(final ApplicationManager appManager) {
 		this.appMngr = appManager;
-
+		this.wam = appManager.getWebAccessManager();
+		sgs = new SecurityGuiServlet(pMan, SecurityGui.this);
+		wam.registerWebResource(GUI_ALIAS, "/admin");
+		wam.registerWebResource(GUI_SERVLET_ALIAS, sgs);
 	}
 
 	@Override
 	public void stop(AppStopReason reason) {
+		wam.unregisterWebResource(GUI_ALIAS);
+		wam.unregisterWebResource(GUI_SERVLET_ALIAS);
 	}
 
-	public static List<String> getLocalPerms(String location) {
-		// skip protocol part of the path
-		int index = location.indexOf(':');
-		String jarpath;
-		if (index != -1) {
-			jarpath = location.substring(index + 1);
-		}
-		else
-			jarpath = location;
-
+	public static List<String> getLocalPerms(Bundle b) {
 		List<String> permsArray = new ArrayList<>();
-		File f = new File(jarpath);
-		JarFile jar = null;
-		try {
-			jar = new JarFile(f);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		JarEntry perms = null;
-		perms = jar.getJarEntry(PERMS_ENTRY_NAME);
-
 		BufferedReader br = null;
-		try {
-			if (perms != null) {
-				br = new BufferedReader(new InputStreamReader(jar.getInputStream(perms)));
+		URL url = b.getEntry(PERMS_ENTRY_NAME);
+		if (url != null) {
+			InputStream is;
+			try {
+				is = url.openStream();
+				br = new BufferedReader(new InputStreamReader(is));
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
-		} catch (IOException e) {
 		}
 		String line;
 		if (br == null) {// If the jar entry doesn't exist, AllPermission is desired.
@@ -149,17 +116,56 @@ public class SecurityGui implements Application, BundleActivator {
 		}
 		else {
 			try {
-				line = br.readLine();
-				while (line != null) {
+				while ((line = br.readLine()) != null) {
 					line = line.trim();
 					if (line.startsWith("#") || line.startsWith("//") || line.equals("")) {
 						continue;
 					}
 					permsArray.add(line);
-					line = br.readLine();
 				}
-				jar.close();
 			} catch (IOException e) {
+			}
+		}
+		return permsArray;
+	}
+
+	static List<String> getForbiddens() {
+		List<String> permsArray = new ArrayList<>();
+		BufferedReader br = null;
+		InputStream is;
+		try {
+			is = new FileInputStream(new File(FORBIDDENS_FILE));
+			br = new BufferedReader(new InputStreamReader(is));
+		} catch (IOException e) {
+			LoggerFactory.getLogger(SecurityGui.class)
+					.warn("Forbidden permissions not set; falling back to default setting. " + e);
+		}
+		String line;
+		if (br == null) {
+			// will lead to an IllegalArgumentException in DefaultFilter#init,
+			// that will cause the default filter to be used
+			permsArray.add(allPerm);
+		}
+		else {
+			try {
+				br.mark(6);
+				int c = br.read();
+				if (c != 0xefbbbf)
+					br.reset();
+				while ((line = br.readLine()) != null) {
+					line = line.trim();
+					if (line.startsWith("#") || line.startsWith("//") || line.equals("")) {
+						continue;
+					}
+					permsArray.add(line);
+				}
+			} catch (IOException e) {
+			} finally {
+				try {
+					br.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 		}
 		return permsArray;

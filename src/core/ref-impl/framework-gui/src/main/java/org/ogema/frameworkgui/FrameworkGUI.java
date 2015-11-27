@@ -27,9 +27,7 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.ResourceAccess;
-import org.ogema.core.security.WebAccessManager;
 import org.osgi.framework.BundleContext;
-import org.osgi.service.useradmin.UserAdmin;
 
 // The annotations encapsule the OSGi required. They expose the service Application
 // to OSGi, which the OGEMA framework uses to detect this piece of code as an
@@ -74,9 +72,8 @@ public class FrameworkGUI implements Application {
 		logger.debug("{} started", getClass().getName());
 
 		AccessManager accessManager = permissionManager.getAccessManager();
-		WebAccessManager webAccessManager = appManager.getWebAccessManager();
 		FrameworkGUIController controller = new FrameworkGUIController(administrationManager, bundleContext,
-				webAccessManager, accessManager);
+				accessManager, permissionManager);
 
 		appManager.getWebAccessManager().registerWebResource("/ogema", "org/ogema/frameworkgui/gui");
 		appManager.getWebAccessManager().registerWebResource("/apps/ogema/framework/gui",

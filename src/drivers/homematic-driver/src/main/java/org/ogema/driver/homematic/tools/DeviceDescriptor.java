@@ -54,7 +54,6 @@ public class DeviceDescriptor {
 			Iterator<String> keys = jdata.keys();
 			Itr = keys;
 		} catch (JSONException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		while (Itr.hasNext()) {
@@ -62,7 +61,6 @@ public class DeviceDescriptor {
 			try {
 				types.put(s, jdata.getJSONObject(s));
 			} catch (JSONException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}

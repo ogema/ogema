@@ -18,9 +18,7 @@ package org.ogema.impl.security.gui;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Enumeration;
+import java.security.AllPermission;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -40,11 +38,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.ogema.accesscontrol.AdminPermission;
 import org.ogema.accesscontrol.PermissionManager;
-import org.ogema.core.administration.AdminApplication;
-import org.ogema.core.application.AppID;
 import org.ogema.core.installationmanager.ApplicationSource;
 import org.ogema.core.installationmanager.InstallableApplication;
-import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
@@ -54,15 +49,12 @@ import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.security.AppPermission;
-import org.ogema.core.security.WebAccessManager;
 import org.ogema.persistence.ResourceDB;
 import org.ogema.resourcetree.SimpleResourceData;
 import org.ogema.resourcetree.TreeElement;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleException;
-import org.osgi.service.condpermadmin.ConditionInfo;
-import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
-import org.osgi.service.permissionadmin.PermissionInfo;
+import org.osgi.framework.startlevel.FrameworkStartLevel;
 import org.slf4j.Logger;
 
 public class SecurityGuiServlet extends HttpServlet {
@@ -70,13 +62,17 @@ public class SecurityGuiServlet extends HttpServlet {
 	/**
 	 * 
 	 */
+
+	private final BundleIcon defaultIcon = new BundleIcon(getClass().getResource("/admin/images/appdefaultlogo.svg"),
+			BundleIcon.IconType.SVG);
+
 	private static final long serialVersionUID = 7370224231398359148L;
 
 	private static final String GRANTED_PERMS_NAME = "permission";
 
 	private static final boolean DEBUG = false;
 
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+	final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 
 	private PermissionManager pman;
 
@@ -86,12 +82,16 @@ public class SecurityGuiServlet extends HttpServlet {
 
 	private ResourceAccess resMngr;
 
-	SecurityGuiServlet(WebAccessManager wam, PermissionManager pm, SecurityGui adminapp) {
+	private JSONCreator json;
+
+	private DefaultFilter filter;
+
+	SecurityGuiServlet(PermissionManager pm, SecurityGui adminapp) {
 		this.admin = adminapp;
 		this.pman = pm;
-		wam.registerWebResource("/security-gui", "/admin");
-		wam.registerWebResource("/security/config", this);
 		db = adminapp.db;
+		this.json = new JSONCreator(pm, adminapp);
+		this.filter = new DefaultFilter(logger);
 	}
 
 	synchronized public String getAppstoresData() throws Exception {
@@ -115,6 +115,7 @@ public class SecurityGuiServlet extends HttpServlet {
 		List<InstallableApplication> apps = src.getAppsAvailable();
 		for (InstallableApplication app : apps) {
 			appStoresData.put(index++, app.getName());
+			appStoresData.put(index++, app.getLocation());
 		}
 		json.put("apps", appStoresData);
 		return json.toString();
@@ -140,6 +141,24 @@ public class SecurityGuiServlet extends HttpServlet {
 		 * List of locations where App-files archived (Appstores)
 		 */
 		switch (pi) {
+		case "/geticon":
+			id = Integer.valueOf(req.getParameter("id"));
+			BundleIcon.forBundle(admin.osgi.getBundle(id), defaultIcon).writeIcon(resp);
+			break;
+		case "/getappstoreicon":
+			String loc = req.getParameter("loc");
+			BundleIcon.forNewBundle(loc, defaultIcon, resp);
+			break;
+		case "/frameworkstartlevel":
+			resp.setContentType("application/json");
+			data = json.frameworkStartLevel2JSON();
+			if (data != null) {
+				printResponse(resp, data);
+			}
+			else {
+				printResponse(resp, "error");
+			}
+			break;
 		case "/appstores":
 			if (DEBUG)
 				logger.info("Get Appstores");
@@ -179,19 +198,43 @@ public class SecurityGuiServlet extends HttpServlet {
 				;
 				break;
 			}
-			startAppInstall(req, resp, appSource.getAddress(), name);
+			try {
+				startAppInstall(req, resp, appSource.getAddress(), name);
+			} catch (Throwable t) {
+				printResponse(resp, "Installation failed.");
+				t.printStackTrace();
+
+			}
 			break;
-		case "/localepermissions":
+		case "/startlevel":
 			resp.setContentType("application/json");
 			String idStr = req.getParameter("id");
 			if (idStr != null)
 				id = Integer.valueOf(idStr);
 			if (id != -1) {
+				try {
+					data = json.startLevel2JSON(id);
+					printResponse(resp, data);
+				} catch (Exception e) {
+					e.printStackTrace(resp.getWriter());
+				}
+
+			}
+			else {
+				printResponse(resp, "Invalid bundle id " + idStr);
+			}
+			break;
+		case "/localepermissions":
+			resp.setContentType("application/json");
+			idStr = req.getParameter("id");
+			if (idStr != null)
+				id = Integer.valueOf(idStr);
+			if (id != -1) {
 				Bundle b = admin.osgi.getBundle(id);
 				if (b != null) {
-					List<String> perms = SecurityGui.getLocalPerms(b.getLocation());
+					List<String> perms = SecurityGui.getLocalPerms(b);
 					try {
-						data = localPerms2JSON(perms, b.getSymbolicName());
+						data = json.localPerms2JSON(perms, b.getSymbolicName());
 						printResponse(resp, data);
 					} catch (Exception e) {
 						e.printStackTrace(resp.getWriter());
@@ -200,6 +243,36 @@ public class SecurityGuiServlet extends HttpServlet {
 				else {
 					printResponse(resp, "Invalid bundle id " + idStr);
 				}
+			}
+			break;
+		case "/listpermissions":
+			resp.setContentType("application/json");
+			idStr = req.getParameter("id");
+			if (idStr != null)
+				id = Integer.valueOf(idStr);
+			if (id != -1) {
+				Bundle b = admin.osgi.getBundle(id);
+				if (b != null) {
+					List<String> perms = SecurityGui.getLocalPerms(b);
+					try {
+						data = json.listAll2JSON(id, perms, b.getSymbolicName());
+						printResponse(resp, data);
+					} catch (Exception e) {
+						e.printStackTrace(resp.getWriter());
+					}
+				}
+				else {
+					printResponse(resp, "Invalid bundle id " + idStr);
+				}
+			}
+			break;
+		case "/defaultpolicy":
+			resp.setContentType("application/json");
+			try {
+				data = json.grantedPerms2JSON(-1);
+				printResponse(resp, data);
+			} catch (Exception e) {
+				e.printStackTrace(resp.getWriter());
 			}
 			break;
 		case "/grantedpermissions":
@@ -211,7 +284,7 @@ public class SecurityGuiServlet extends HttpServlet {
 				Bundle b = admin.osgi.getBundle(id);
 				if (b != null) {
 					try {
-						data = grantedPerms2JSON(id);
+						data = json.grantedPerms2JSON(id);
 						if (data == null)
 							data = "Please check if the application with the ID " + id + "";
 						printResponse(resp, data);
@@ -229,7 +302,7 @@ public class SecurityGuiServlet extends HttpServlet {
 			idStr = req.getParameter("id");
 			if (idStr != null && !idStr.equals("#"))
 				id = Integer.valueOf(idStr);
-			sb = simpleResourceValue2JSON(id);
+			sb = json.simpleResourceValue2JSON(id);
 			data = sb.toString();
 			printResponse(resp, data);
 			break;
@@ -243,7 +316,7 @@ public class SecurityGuiServlet extends HttpServlet {
 			switch (action) {
 			case "getInfo":
 				if (id != -1) {
-					sb = bundleInfos2JSON(id);
+					sb = json.bundleInfos2JSON(id);
 					data = sb.toString();
 					printResponse(resp, data);
 				}
@@ -309,6 +382,11 @@ public class SecurityGuiServlet extends HttpServlet {
 							"{\"statusInfo\":\"Uninstall of the admin app is not supported over this interface.\"}");
 					return;
 				}
+				if (admin.osgi.getBundle(id).getLocation().startsWith("urp")) {
+					printResponse(resp,
+							"{\"statusInfo\":\"Uninstall of User Rights is not supported over this interface.\"}");
+					return;
+				}
 				try {
 					admin.osgi.getBundle(id).uninstall();
 					printResponse(resp, "{\"statusInfo\":\"Uninstall Succeded\"}");
@@ -319,12 +397,12 @@ public class SecurityGuiServlet extends HttpServlet {
 				}
 				break;
 			case "listApps":
-				sb = appsList2JSON();
+				sb = json.appsList2JSON();
 				data = sb.toString();
 				printResponse(resp, data);
 				break;
 			case "listAll":
-				sb = bundlesList2JSON();
+				sb = json.bundlesList2JSON();
 				data = sb.toString();
 				printResponse(resp, data);
 				break;
@@ -336,7 +414,7 @@ public class SecurityGuiServlet extends HttpServlet {
 				if (!path.equals("#"))
 					alias = req.getParameter("text");
 				id = Integer.valueOf(appid);
-				sb = webResourceTree2JSON(id, path, alias);
+				sb = json.webResourceTree2JSON(id, path, alias);
 				if (sb != null) {
 					data = sb.toString();
 					printResponse(resp, data);
@@ -355,11 +433,8 @@ public class SecurityGuiServlet extends HttpServlet {
 		// req.getSession().setAttribute(INSTALLATION_STATE_ATTR_NAME, app);
 
 		Bundle b = null;
-		try {
-			b = admin.osgi.installBundle(app.getLocation());
-		} catch (BundleException e1) {
-			e1.printStackTrace();
-		}
+		admin.instMan.install(app);
+		b = app.getBundle();
 		if (b != null) {
 			app.setState(InstallableApplication.InstallState.BUNDLE_INSTALLED);
 			app.setBundle(b);
@@ -380,513 +455,342 @@ public class SecurityGuiServlet extends HttpServlet {
 		}
 	}
 
-	private String getDesiredPerms(InstallableApplication app) {
-		JSONObject permObj = new JSONObject();
-		JSONArray permsArray = new JSONArray();
-
-		List<String> locals = app.getPermissionDemand();
-		for (String perm : locals) {
-			perm = perm.trim();
-			if (perm.startsWith("#") || perm.startsWith("//") || perm.equals(""))
-				continue;
-			permsArray.put(perm);
-
-		}
-		try {
-			permObj.put("permissions", permsArray);
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-		return permObj.toString();
-	}
-
-	private String localPerms2JSON(List<String> perms, String name) {
-		JSONObject permObj = new JSONObject();
-		JSONArray permsArray = new JSONArray();
-
-		List<String> locals = perms;
-		for (String perm : locals) {
-			perm = perm.trim();
-			if (perm.startsWith("#") || perm.startsWith("//") || perm.equals(""))
-				continue;
-			// filter permissions that are granted as default
-			if (!isGrantedAsDefault(perm)) {
-				if (perm.indexOf('<') != -1)
-					perm = perm.replaceAll("(.*<<[a-zA-Z_0-9]*) *(.*)", "$1_$2"); // replace permissions names like
-				// <<ALL
-				// FILES>>
-				permsArray.put(perm);
-			}
-		}
-		try {
-			permObj.put("permissions", permsArray);
-			permObj.put("name", name);
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-		return permObj.toString();
-	}
-
-	private boolean isGrantedAsDefault(String perm) {
-		perm = perm.replaceAll("[()\"]", "");
-		String[] permElems = perm.split(" ");
-		int index = 0;
-		for (String str : permElems) {
-			permElems[index++] = str.trim();
-		}
-		if (index == 1)
-			return pman.isDefaultPolicy(permElems[0], null, null);
-		else if (index == 2)
-			return pman.isDefaultPolicy(permElems[0], permElems[1], null);
-		else
-			return pman.isDefaultPolicy(permElems[0], permElems[1], permElems[2]);
-
-	}
-
 	private void printResponse(HttpServletResponse resp, String data) throws IOException {
 		PrintWriter pw = resp.getWriter();
 		pw.print(data);
 	}
 
-	private StringBuffer appInfos2JSON(int id) {
-		StringBuffer sb = new StringBuffer();
-		/*
-		 * Put bundle id
-		 */
-		sb.append("{\"bundleID\":\"");
-		sb.append(id);
-		sb.append("\",\"policies\":[");
-		Bundle b = admin.osgi.getBundle(id);
-		AppID aid = pman.getAdminManager().getAppByBundle(b);
-		AppPermission ap = pman.getPolicies(aid);
-		/*
-		 * Put policies info
-		 */
-		Map<String, ConditionalPermissionInfo> granted = ap.getGrantedPerms();
-		Set<Entry<String, ConditionalPermissionInfo>> tlrs = granted.entrySet();
-		int index = 0, j = 0;
-		for (Map.Entry<String, ConditionalPermissionInfo> entry : tlrs) {
-			ConditionalPermissionInfo info = entry.getValue();
-			if (j++ != 0)
-				sb.append(',');
-			sb.append("{\"mode\":\"");
-			sb.append(info.getAccessDecision());
-			sb.append("\",\"permissions\":[");
-			/*
-			 * Put Permissions
-			 */
-			index = 0;
-			PermissionInfo pinfos[] = info.getPermissionInfos();
-			for (PermissionInfo pi : pinfos) {
-				String tmpStr = null;
-				if (index++ != 0)
-					sb.append(',');
-				sb.append("{\"type\":\"");
-				tmpStr = pi.getType();
-				if (tmpStr != null)
-					sb.append(tmpStr);
-				sb.append("\",\"filter\":\"");
-				String tmp = pi.getName();
-				if (tmp != null) {
-					tmpStr = tmp.replace("\\", "\\\\");
-					sb.append(tmpStr == null ? "" : tmpStr);
-				}
-				sb.append("\",\"actions\":\"");
-				tmpStr = pi.getActions();
-				if (tmpStr != null)
-					sb.append(tmpStr);
-				sb.append("\"}");
+	@SuppressWarnings( { "unchecked", "rawtypes" })
+	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		PrintWriter pw = resp.getWriter();
+
+		Map params = req.getParameterMap();
+		String info = req.getPathInfo(); // pathinfo /permissions, permission
+		// data is
+		// application/x-www-form-urlencoded,
+		// so they are reached over the parameters list.
+		System.out.println("POST: Pathinfo: " + info);
+
+		String currenturi = req.getRequestURI();
+		StringBuffer url = req.getRequestURL();
+		if (DEBUG) {
+			logger.info("Current URI: " + currenturi); // URI:
+			// /service/permissions
+			logger.info("Current URL: " + url);
+		}
+		Set<Entry<String, String[]>> paramsEntries = params.entrySet();
+
+		for (Map.Entry<String, String[]> e : paramsEntries) {
+			String key = e.getKey();
+			String[] val = e.getValue();
+			if (DEBUG)
+				logger.info(key + "\t: ");
+			for (String s : val)
+				if (DEBUG)
+					logger.info(s);
+		}
+		switch (info) {
+		case "/newstartlevel":
+			resp.setContentType("text/html");
+			String levelstr = "";
+			int newlevel = -1;
+			levelstr = req.getParameter("level");
+			if (levelstr.length() != 0)
+				newlevel = Integer.valueOf(levelstr);
+
+			Bundle systemBundle = admin.osgi.getBundle(0);
+			FrameworkStartLevel level = systemBundle.adapt(FrameworkStartLevel.class);
+
+			level.setInitialBundleStartLevel(newlevel);
+
+			if (level.getInitialBundleStartLevel() == newlevel) {
+				printResponse(resp, "The startlevel has successfully been edited");
+			}
+			else {
+				printResponse(resp, "There was an error");
 			}
 
-			sb.append("],\"conditions\":[");
-			/*
-			 * Put Conditions
-			 */
-			index = 0;
-			ConditionInfo cinfos[] = info.getConditionInfos();
-			for (ConditionInfo ci : cinfos) {
-				String tmpStr = null;
-				if (index++ != 0)
-					sb.append(',');
-				sb.append("{\"type\":\"");
-				tmpStr = ci.getType();
-				sb.append(tmpStr == null ? "" : tmpStr);
-				String args[] = ci.getArgs();
-				sb.append("\",\"arg1\":\"");
-				try {
-					if (tmpStr != null) {
-						tmpStr = args[0].replace("\\", "\\\\");
-						sb.append(tmpStr);
+			break;
+		case "/newpolicy":
+			resp.setContentType("text/html");
+			String success = json.newOgemaConfig();
+			success = success + " and " + json.newOgemaPolicy();
+			printResponse(resp, success);
+			break;
+		case "/writeresource":
+			System.out.println("/writeresource");
+			String resource_id = req.getParameter("resourceId");
+			int resource_id_int = Integer.parseInt(resource_id);
+			String write_val = req.getParameter("writeValue");
+			writeResourceValue(db.getByID(resource_id_int), write_val);
+			System.out.println(resource_id);
+			System.out.println(write_val);
+			resp.setContentType("application/json");
+			printResponse(resp, "test");
+			break;
+		case "/permissions":
+			resp.setContentType("text/html");
+			int id = -2;
+			boolean defPol = false;
+			String idStr = req.getParameter("id");
+			if (idStr != null)
+				id = Integer.valueOf(idStr);
+			if (id != -2) {
+
+				Bundle b = null;
+				AppPermission ap = null;
+				if (id != -1) {
+					b = admin.osgi.getBundle(id);
+					ap = pman.createAppPermission(b.getLocation());
+				}
+				else {
+					ap = pman.getDefaultPolicies();
+					defPol = true;
+				}
+				String perms = req.getParameter(GRANTED_PERMS_NAME);
+				String permType = "";
+				String filterstr = "";
+				String actions = "";
+
+				JSONArray filtereds = new JSONArray();
+				JSONObject filterReturn = new JSONObject();
+				// The granted permissions are coded as a json object
+				// received as part of a HTTP form.
+
+				if (perms != null) {
+					try {
+						JSONObject jsonObj = new JSONObject(perms);
+						JSONArray granteds = (JSONArray) jsonObj.get("permissions");
+						JSONArray removeds;
+
+						try {
+							removeds = (JSONArray) jsonObj.get("oldpermissions");
+						} catch (JSONException e1) {
+							removeds = null;
+						}
+						int len = granteds.length();
+						int index = 0;
+						while (len > 0) {
+							JSONObject permEntry = granteds.getJSONObject(index);
+							if (removeds != null && removeds.length() > 0) {
+								JSONObject toBeremoved = removeds.getJSONObject(index++);
+								permType = toBeremoved.getString("name");
+								try {
+									filterstr = toBeremoved.getString("filter");
+								} catch (JSONException e1) {
+									filterstr = null;
+								}
+								try {
+									actions = toBeremoved.getString("action");
+								} catch (JSONException e1) {
+									actions = null;
+								}
+							}
+							else {
+								index++;
+							}
+							String mode = permEntry.getString("mode");
+							String permname = permEntry.getString("name");
+							String[] args = new String[2];
+
+							try {
+								args[0] = permEntry.getString("filter");
+							} catch (JSONException e1) {
+								// The filter entry not present, set it to
+								// empty string
+								args[0] = null;
+							}
+							try {
+								args[1] = permEntry.getString("action");
+								// HACK TODO this is a workaround for a bug in the javascript sources. "Check,All" added
+								// as action.
+								if (args[1].indexOf("Check,All,") != -1)
+									args[1] = args[1].substring(10, args[1].length());
+							} catch (JSONException e1) {
+								// The action entry not present, set it to
+								// null.
+								// if no argument is given to the
+								// permission, the args array should be
+								// null.
+								args[1] = null;
+								if (args[0] == null && args[1] == null)
+									args = null;
+							}
+							// If AllPermission is granted remove all
+							// granteds before
+							if (permname.equals(AllPermission.class.getName())) {
+								if (mode.toLowerCase().equals("allow")) {
+									// If AllPermission is granted all other
+									// permissions granted before stay
+									// granted
+									// In this case no AllPermission will be
+									// granted but only the default
+									// permission,
+									// that are granted via the ogema.policy
+									// file.
+									// Don't break the loop because further
+									// denies should't be ignored
+									ap.removePermissions();
+									// In this case all forbiddens should
+									// added as exception
+									filter.addDefaultExceptions(ap);
+									addPolicy(ap, mode, permname, args);
+
+									// Don't break the loop because further
+									// denies should't be ignored
+								}
+								else {
+									// If AllPermission is denied no other
+									// policy has any effect
+									ap.removePermissions();
+									ap.removeExceptions();
+									addPolicy(ap, mode, permname, args);
+
+									break; // Break the loop further
+									// allows/denies have no effect
+								}
+							}
+							// Check if the permission match with the global
+							// default policy
+							else if (!filter.filterPermission(mode, permname, args, ap)) {
+								addPolicy(ap, mode, permname, args);
+								if (!(permname.equals(permType)
+										&& args[0].equals(filterstr)
+										&& ((args[1] == null && actions == null) || (args[1] != null && args[1]
+												.equals(actions))) && removeds == null)) {
+									pman.removePermission(b, permType, filterstr, actions);
+								}
+							}
+							else {
+								filtereds.put(json.filtered2JSON(mode, permname, args));
+							}
+							len--;
+						}
+					} catch (JSONException e1) {
+						pw.print("App installation failed! Invalid permission definitions received");
+						e1.printStackTrace(pw);
+						break;
 					}
-				} catch (ArrayIndexOutOfBoundsException e) {
-					// sb.append("\"\"");
-				}
-				sb.append("\",\"arg2\":\"");
-				try {
-					if (tmpStr != null) {
-						tmpStr = args[1].replace("\\", "\\\\");
-						sb.append(tmpStr);
+					try {
+						if (pman.installPerms(ap)) {
+							if (defPol)
+								pman.setDefaultPolicies();
+							if (filtereds.length() == 0) {
+								printResponse(resp, "Policies commited successfully!");
+							}
+							else {
+								resp.setContentType("application/json");
+								filterReturn.put("filtered", filtereds);
+								printResponse(resp, filterReturn.toString());
+							}
+						}
+						else
+							printResponse(resp,
+									"Commit of the policies did not occur, because the policy table has been modified externally!");
+					} catch (SecurityException e1) {
+						printResponse(resp, "Commit of the policies did not occur, because AllPermission is required!");
+					} catch (IllegalStateException e2) {
+						printResponse(resp, "Commit of the policies did not occur, because of inconsistent table!");
+					} catch (JSONException e3) {
+						e3.printStackTrace();
 					}
-				} catch (ArrayIndexOutOfBoundsException e) {
-					// sb.append("\"\"");
 				}
-				sb.append("\"}");
-			}
-			sb.append("]}");
-		}
-		sb.append("]}");
-		return sb;
-	}
 
-	private StringBuffer bundleInfos2JSON(int id) {
-		StringBuffer sb = new StringBuffer();
-		/*
-		 * Put bundle id
-		 */
-		sb.append("{\"bundleID\":\"");
-		sb.append(id);
-		sb.append("\",\"policies\":[");
-		Bundle b = admin.osgi.getBundle(id);
-		// AppID aid = pman.getAdminManager().getAppByBundle(b);
-		// AppPermission ap = pman.createAppPermission(b.getLocation());
-		/*
-		 * Put policies info
-		 */
-		Map<String, ConditionalPermissionInfo> granted = pman.getGrantedPerms(b);
-		// Map<String, ConditionalPermissionInfo> granted = ap.getGrantedPerms();
-		Set<Entry<String, ConditionalPermissionInfo>> tlrs = granted.entrySet();
-		int index = 0, j = 0;
-		for (Map.Entry<String, ConditionalPermissionInfo> entry : tlrs) {
-			ConditionalPermissionInfo info = entry.getValue();
-			if (j++ != 0)
-				sb.append(',');
-			sb.append("{\"mode\":\"");
-			sb.append(info.getAccessDecision());
-			sb.append("\",\"permissions\":[");
-			/*
-			 * Put Permissions
-			 */
-			index = 0;
-			PermissionInfo pinfos[] = info.getPermissionInfos();
-			for (PermissionInfo pi : pinfos) {
-				String tmpStr = null;
-				if (index++ != 0)
-					sb.append(',');
-				sb.append("{\"type\":\"");
-				tmpStr = pi.getType();
-				if (tmpStr != null)
-					sb.append(tmpStr);
-				sb.append("\",\"filter\":\"");
-				String tmp = pi.getName();
-				if (tmp != null) {
-					tmpStr = tmp.replace("\\", "\\\\");
-					sb.append(tmpStr == null ? "" : tmpStr);
-				}
-				sb.append("\",\"actions\":\"");
-				tmpStr = pi.getActions();
-				if (tmpStr != null)
-					sb.append(tmpStr);
-				sb.append("\"}");
 			}
+			break;
+		case "/uploadApp":
+			String path = admin.instMan.getLocalStore().getAddress();
+			File file = receiveFile(req, resp, path);
+			String name = file.getName();
+			startAppInstall(req, resp, path, name);
+			break;
+		case "/removepermission":
+			id = -2;
+			int count = -1;
+			idStr = req.getParameter("id");
+			String countStr = req.getParameter("count");
+			if (idStr != null)
+				id = Integer.valueOf(idStr);
+			if (countStr != null)
+				count = Integer.valueOf(countStr);
+			if (id != -2) {
+				Bundle b = admin.osgi.getBundle(id);
+				String perms = req.getParameter("remove");
+				if (perms != null) {
+					JSONObject json;
+					JSONObject toBeremoved = null;
+					try {
+						json = new JSONObject(perms);
+						for (int i = 0; i < count; i++) {
+							// get each of the Permissions that should be
+							// removed
+							toBeremoved = (JSONObject) json.get("permission" + i);
+							String permType = toBeremoved.getString("type");
+							String filter, actions;
+							try {
+								filter = toBeremoved.getString("filter");
+							} catch (JSONException e1) {
+								filter = null;
+							}
+							try {
+								actions = toBeremoved.getString("actions");
+							} catch (JSONException e1) {
+								actions = null;
+							}
 
-			sb.append("],\"conditions\":[");
-			/*
-			 * Put Conditions
-			 */
-			index = 0;
-			ConditionInfo cinfos[] = info.getConditionInfos();
-			for (ConditionInfo ci : cinfos) {
-				String tmpStr = null;
-				if (index++ != 0)
-					sb.append(',');
-				sb.append("{\"type\":\"");
-				tmpStr = ci.getType();
-				sb.append(tmpStr == null ? "" : tmpStr);
-				String args[] = ci.getArgs();
-				sb.append("\",\"arg1\":\"");
-				try {
-					if (tmpStr != null) {
-						tmpStr = args[0].replace("\\", "\\\\");
-						sb.append(tmpStr);
+							if (id != -1) {
+
+								pman.removePermission(b, permType, filter, actions);
+							}
+							else {
+								// remove one Default Permission
+								pman.removePermission(null, permType, filter, actions);
+
+								pman.setDefaultPolicies();
+							}
+
+						}
+					} catch (JSONException e1) {
+						logger.debug("To be removed permission: %s", toBeremoved);
 					}
-				} catch (ArrayIndexOutOfBoundsException e) {
-					// sb.append("\"\"");
 				}
-				sb.append("\",\"arg2\":\"");
-				try {
-					if (tmpStr != null) {
-						tmpStr = args[1].replace("\\", "\\\\");
-						sb.append(tmpStr);
-					}
-				} catch (ArrayIndexOutOfBoundsException e) {
-					// sb.append("\"\"");
-				}
-				sb.append("\"}");
-			}
-			sb.append("]}");
-		}
-		sb.append("]}");
-		return sb;
-	}
-
-	private String grantedPerms2JSON(int id) {
-		StringBuffer sb = new StringBuffer();
-		/*
-		 * Put bundle id
-		 */
-		sb.append("{\"policies\":[");
-		Bundle b = admin.osgi.getBundle(id);
-		// AppID aid = pman.getAdminManager().getAppByBundle(b);
-		// AppPermission ap = pman.createAppPermission(b.getLocation());// pman.getPolicies(aid);
-		/*
-		 * Put policies info
-		 */
-		Map<String, ConditionalPermissionInfo> granted = pman.getGrantedPerms(b);
-		Set<Entry<String, ConditionalPermissionInfo>> tlrs = granted.entrySet();
-		int index = 0, j = 0;
-		for (Map.Entry<String, ConditionalPermissionInfo> entry : tlrs) {
-			ConditionalPermissionInfo info = entry.getValue();
-			if (j++ != 0)
-				sb.append(',');
-			sb.append("{\"mode\":\"");
-			sb.append(info.getAccessDecision());
-			sb.append("\",\"permissions\":[");
-			/*
-			 * Put Permissions
-			 */
-			index = 0;
-			PermissionInfo pinfos[] = info.getPermissionInfos();
-			for (PermissionInfo pi : pinfos) {
-				String tmpStr = null;
-				if (index++ != 0)
-					sb.append(',');
-				sb.append("{\"type\":\"");
-				tmpStr = pi.getType();
-				if (tmpStr != null)
-					sb.append(tmpStr);
-				sb.append("\",\"filter\":\"");
-				String tmp = pi.getName();
-				if (tmp != null) {
-					tmpStr = tmp.replace("\\", "\\\\");
-					sb.append(tmpStr == null ? "" : tmpStr);
-				}
-				sb.append("\",\"actions\":\"");
-				tmpStr = pi.getActions();
-				if (tmpStr != null)
-					sb.append(tmpStr);
-				sb.append("\"}");
 			}
 
-			sb.append("],\"conditions\":[");
-			/*
-			 * Put Conditions
-			 */
-			index = 0;
-			ConditionInfo cinfos[] = info.getConditionInfos();
-			for (ConditionInfo ci : cinfos) {
-				String tmpStr = null;
-				if (index++ != 0)
-					sb.append(',');
-				sb.append("{\"type\":\"");
-				tmpStr = ci.getType();
-				sb.append(tmpStr == null ? "" : tmpStr);
-				String args[] = ci.getArgs();
-				sb.append("\",\"arg1\":\"");
-				try {
-					if (tmpStr != null) {
-						tmpStr = args[0].replace("\\", "\\\\");
-						sb.append(tmpStr);
-					}
-				} catch (ArrayIndexOutOfBoundsException e) {
+			break;
+		case "/removeall":
+			id = -2;
+			Bundle b = null;
+			defPol = false;
+			idStr = req.getParameter("id");
+			if (idStr != null)
+				id = Integer.valueOf(idStr);
+			if (id != -2) {
+				AppPermission ap = null;
+				if (id != -1) {
+					b = admin.osgi.getBundle(id);
+					ap = pman.createAppPermission(b.getLocation());
 				}
-				sb.append("\",\"arg2\":\"");
-				try {
-					if (tmpStr != null) {
-						tmpStr = args[1].replace("\\", "\\\\");
-						sb.append(tmpStr);
-					}
-				} catch (ArrayIndexOutOfBoundsException e) {
+				else {
+					ap = pman.getDefaultPolicies();
+					defPol = true;
 				}
-				sb.append("\"}");
+				ap.removePermissions();
+				ap.removeExceptions();
 			}
-			sb.append("]");
-			sb.append(",\"name\":\"");
-			sb.append(info.getName());
-			sb.append("\"}");
+			if (defPol)
+				pman.setDefaultPolicies();
+			break;
+		default:
+			break;
 		}
-		sb.append("],\"bundlename\":\"");
-		sb.append(b.getSymbolicName());
-		sb.append("\"}");
-		return sb.toString();
 	}
 
-	private StringBuffer appsList2JSON() {
-		StringBuffer sb = new StringBuffer();
-		ArrayList<AdminApplication> apps = (ArrayList<AdminApplication>) pman.getAdminManager().getAllApps();
-		sb.append('[');
-		int index = 0;
-		for (AdminApplication entry : apps) {
-			if (index++ != 0)
-				sb.append(',');
-			sb.append("{\"name\":\"");
-			sb.append(entry.getID().getBundle().getSymbolicName());
-			sb.append('"');
-			sb.append(',');
-			sb.append("\"id\":\"");
-			sb.append(entry.getBundleRef().getBundleId());
-			sb.append('"');
-			sb.append('}');
-		}
-		sb.append(']');
-		return sb;
-	}
-
-	private StringBuffer bundlesList2JSON() {
-		StringBuffer sb = new StringBuffer();
-		Bundle[] bundles = admin.osgi.getBundles();
-		sb.append('[');
-		int index = 0;
-		for (Bundle entry : bundles) {
-			if (index++ != 0)
-				sb.append(',');
-			sb.append("{\"name\":\"");
-			sb.append(entry.getSymbolicName());
-			sb.append('"');
-			sb.append(',');
-			sb.append("\"id\":\"");
-			sb.append(entry.getBundleId());
-			sb.append('"');
-			sb.append('}');
-		}
-		sb.append(']');
-		return sb;
-	}
-
-	StringBuffer simpleResourceValue2JSON(int id) {
-
-		StringBuffer sb = new StringBuffer();
-		TreeElement te = db.getByID(id);
-
-		sb.append('[');
-		sb.append("{\"text\":\"");
-		sb.append(te.getName());
-		sb.append('"');
-		sb.append(',');
-		sb.append("\"id\":\"");
-		sb.append(te.getResID());
-		sb.append('"');
-		sb.append(',');
-		sb.append("\"method\":\"\",");
-		sb.append("\"value\":\"");
-		boolean readOnly = readResourceValue(te, sb);
-		sb.append('"');
-		sb.append(',');
-		sb.append("\"readOnly\":\"");
-		sb.append(readOnly);
-		sb.append('"');
-		sb.append(',');
-		sb.append("\"owner\":\"");
-		sb.append(te.getAppID());
-		sb.append('"');
-		sb.append(',');
-		sb.append("\"type\":\"");
-		{
-			Class<?> cls = te.getType();
-			if (te.isComplexArray())
-				sb.append("List of ");
-			if (cls == null)
-				sb.append("not yet specified Resource");
-			else
-				sb.append(cls.getName());
-		}
-		sb.append('"');
-		sb.append(',');
-		sb.append("\"path\":\"");
-		sb.append(te.getPath().replace('.', '/'));
-		sb.append('"');
-		if (te.isReference()) {
-			sb.append(',');
-			sb.append("\"reference\":\"");
-			sb.append(te.getReference().getPath());
-			sb.append('"');
-		}
-		sb.append('}');
-		sb.append(']');
-		return sb;
-	}
-
-	private boolean isReadOnly(TreeElement node, StringBuffer sb) {
-		if (this.resMngr == null)
-			this.resMngr = admin.appMngr.getResourceAccess();
-		String name = node.getPath().replace('.', '/');
-		Resource res = resMngr.getResource(name);
-		boolean readOnly = true;
-		if (res.requestAccessMode(AccessMode.SHARED, AccessPriority.PRIO_LOWEST))
-			readOnly = false;
-		return readOnly;
-	}
-
-	boolean readResourceValue(TreeElement node, StringBuffer sb) {
-		boolean result = true;
-		int typeKey = node.getTypeKey();
-		if (node.isComplexArray()) {
-			sb.append("Instance of ");
-			sb.append(node.getType());
-		}
-		else {
-			switch (typeKey) {
-			// read simple resource
-			case SimpleResourceData.TYPE_KEY_BOOLEAN:
-				sb.append(node.getData().getBoolean());
-				result = isReadOnly(node, sb);
-				break;
-			case SimpleResourceData.TYPE_KEY_FLOAT:
-				sb.append(node.getData().getFloat());
-				result = isReadOnly(node, sb);
-				break;
-			case SimpleResourceData.TYPE_KEY_INT:
-				sb.append(node.getData().getInt());
-				result = isReadOnly(node, sb);
-				break;
-			case SimpleResourceData.TYPE_KEY_STRING:
-				sb.append(node.getData().getString());
-				result = isReadOnly(node, sb);
-				break;
-			case SimpleResourceData.TYPE_KEY_LONG:
-				sb.append(node.getData().getLong());
-				result = isReadOnly(node, sb);
-				break;
-			// read array resource
-			case SimpleResourceData.TYPE_KEY_OPAQUE:
-				sb.append(node.getData().getByteArr());
-				break;
-			case SimpleResourceData.TYPE_KEY_INT_ARR:
-				sb.append(node.getData().getIntArr());
-				break;
-			case SimpleResourceData.TYPE_KEY_LONG_ARR:
-				sb.append(node.getData().getLongArr());
-				break;
-			case SimpleResourceData.TYPE_KEY_FLOAT_ARR:
-				sb.append(node.getData().getFloatArr());
-				break;
-			case SimpleResourceData.TYPE_KEY_COMPLEX_ARR:
-				sb.append("Instance of ");
-				sb.append(node.getType());
-				break;
-			case SimpleResourceData.TYPE_KEY_BOOLEAN_ARR:
-				sb.append(node.getData().getBooleanArr());
-				break;
-			case SimpleResourceData.TYPE_KEY_STRING_ARR:
-				sb.append(node.getData().getStringArr());
-				break;
-			case SimpleResourceData.TYPE_KEY_COMPLEX:
-				sb.append("Instance of ");
-				sb.append(node.getType());
-				break;
-			default:
-			}
-		}
-		return result;
+	void addPolicy(AppPermission ap, String mode, String permname, String[] args) {
+		// Check if a permission or an exception is specified.
+		if (mode.toLowerCase().equals("allow"))
+			ap.addPermission(permname, args, null);
+		else if (mode.toLowerCase().equals("deny"))
+			ap.addException(permname, args, null);
 	}
 
 	void writeResourceValue(TreeElement node, String value) {
@@ -946,234 +850,10 @@ public class SecurityGuiServlet extends HttpServlet {
 		}
 	}
 
-	StringBuffer webResourceTree2JSON(int id, String path, String alias) {
-		int index = 0;
-		StringBuffer sb;
-		sb = new StringBuffer();
-		if (path.equals("#")) {
-			AppID appid = pman.getAdminManager().getAppByBundle(admin.osgi.getBundle(id));
-			if (appid == null)// probably not yet running
-				return sb;
-			Map<String, String> entries = pman.getWebAccess().getRegisteredResources(appid);
-			if (entries == null) {
-				sb.append("[]");
-				return sb;
-			}
-			Set<Entry<String, String>> entrySet = entries.entrySet();
-			sb.append('[');
-			for (Entry<String, String> e : entrySet) {
-				String key = e.getKey();
-				String name = e.getValue();
-				if (index++ != 0)
-					sb.append(',');
-				sb.append("{\"text\":\"");
-				sb.append(key);
-				sb.append('"');
-				sb.append(',');
-				sb.append("\"id\":\"");
-				sb.append(name);
-				sb.append('"');
-				sb.append(',');
-				sb.append("\"alias\":\"");
-				sb.append(key);
-				sb.append('"');
-				sb.append(',');
-				sb.append("\"children\":true");
-				sb.append('}');
-			}
-			sb.append(']');
-			return sb;
-		}
-
-		// path = "/";
-		Bundle b = admin.osgi.getBundle(id);
-		Enumeration<URL> entries = b.findEntries(path, null, false);
-		if (entries != null) {
-			// permObj.put("webResources", permsArray);
-			sb.append('[');
-			while (entries.hasMoreElements()) {
-				URL url = entries.nextElement();
-				// String query ;//= url.getQuery();
-				String file = url.getFile();
-				boolean isDir = true;
-				if (b.findEntries(file, null, false) == null)
-					// if (query != null)
-					isDir = false;
-
-				if (index++ != 0)
-					sb.append(',');
-				sb.append("{\"text\":\"");
-				// sb.append(file.replaceFirst(replace, ""));
-				sb.append(file.replaceFirst(path, alias));
-				sb.append('"');
-				sb.append(',');
-				sb.append("\"id\":\"");
-				sb.append(file);
-				sb.append('"');
-				sb.append(',');
-				sb.append("\"alias\":\"");
-				sb.append(file.replaceFirst(path, alias));
-				sb.append('"');
-				sb.append(',');
-				if (isDir)
-					sb.append("\"children\":true");
-				else
-					sb.append("\"children\":false");
-				sb.append('}');
-			}
-			sb.append(']');
-			return sb;
-		}
-		else
-			return null;
-	}
-
-	@SuppressWarnings( { "unchecked", "rawtypes" })
-	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		PrintWriter pw = resp.getWriter();
-
-		Map params = req.getParameterMap();
-		String info = req.getPathInfo(); // pathinfo /permissions, permission data is application/x-www-form-urlencoded,
-		// so they are reached over the parameters list.
-		System.out.println("POST: Pathinfo: " + info);
-
-		String currenturi = req.getRequestURI();
-		StringBuffer url = req.getRequestURL();
-		if (DEBUG) {
-			logger.info("Current URI: " + currenturi); // URI: /service/permissions
-			logger.info("Current URL: " + url);
-		}
-		Set<Entry<String, String[]>> paramsEntries = params.entrySet();
-
-		for (Map.Entry<String, String[]> e : paramsEntries) {
-			String key = e.getKey();
-			String[] val = e.getValue();
-			if (DEBUG)
-				logger.info(key + "\t: ");
-			for (String s : val)
-				if (DEBUG)
-					logger.info(s);
-		}
-		switch (info) {
-		case "/writeresource":
-			System.out.println("/writeresource");
-			String resource_id = req.getParameter("resourceId");
-			int resource_id_int = Integer.parseInt(resource_id);
-			String write_val = req.getParameter("writeValue");
-			writeResourceValue(db.getByID(resource_id_int), write_val);
-			System.out.println(resource_id);
-			System.out.println(write_val);
-			resp.setContentType("application/json");
-			printResponse(resp, "test");
-			break;
-		case "/permissions":
-			resp.setContentType("text/html");
-			int id = -1;
-			String idStr = req.getParameter("id");
-			if (idStr != null)
-				id = Integer.valueOf(idStr);
-			if (id != -1) {
-				Bundle b = admin.osgi.getBundle(id);
-
-				AppPermission ap = null;
-				ap = pman.createAppPermission(b.getLocation());
-				// The granted permissions are coded as a json object received as part of a HTTP form.
-				String perms = req.getParameter(GRANTED_PERMS_NAME);
-				if (perms != null) {
-					try {
-						JSONObject json = new JSONObject(perms);
-						JSONArray granteds = (JSONArray) json.get("permissions");
-						int len = granteds.length();
-						int index = 0;
-						while (len > 0) {
-							JSONObject permEntry = granteds.getJSONObject(index++);
-							String mode = permEntry.getString("mode");
-							String permname = permEntry.getString("name");
-							String[] args = new String[2];
-							try {
-								args[0] = permEntry.getString("filter");
-							} catch (JSONException e1) {
-								// The filter entry not present, set it to empty string
-								args[0] = null;
-							}
-							try {
-								args[1] = permEntry.getString("action");
-							} catch (JSONException e1) {
-								// The action entry not present, set it to null.
-								// if no argument is given to the permission, the args array should be null.
-								args[1] = null;
-								if (args[0] == null && args[1] == null)
-									args = null;
-							}
-							// Check if a permission or an exception is specified.
-							if (mode.toLowerCase().equals("allow"))
-								ap.addPermission(permname, args, null);
-							else if (mode.toLowerCase().equals("deny"))
-								ap.addException(permname, args, null);
-							len--;
-						}
-					} catch (JSONException e1) {
-						pw.print("App installation failed! Invalid permission definitions received");
-						e1.printStackTrace(pw);
-						break;
-					}
-					try {
-						if (pman.installPerms(ap))
-							printResponse(resp, "Policies commited successfully!");
-						else
-							printResponse(resp,
-									"Commit of the policies did not occur, because the policy table has been modified externally!");
-					} catch (SecurityException e1) {
-						printResponse(resp, "Commit of the policies did not occur, because AllPermission is required!");
-					} catch (IllegalStateException e2) {
-						printResponse(resp, "Commit of the policies did not occur, because of inconsistent table!");
-					}
-				}
-			}
-			break;
-		case "/uploadApp":
-			String path = admin.instMan.getLocalStore().getAddress();
-			File file = receiveFile(req, resp, path);
-			String name = file.getName();
-			startAppInstall(req, resp, path, name);
-			break;
-		case "/removepermission":
-			id = -1;
-			idStr = req.getParameter("id");
-			if (idStr != null)
-				id = Integer.valueOf(idStr);
-			if (id != -1) {
-				Bundle b = admin.osgi.getBundle(id);
-				String perms = req.getParameter("remove");
-				if (perms != null) {
-					JSONObject json;
-					try {
-						json = new JSONObject(perms);
-						JSONObject toBeremoved = (JSONObject) json.get("permission");
-						String permType = toBeremoved.getString("type");
-						String filter = toBeremoved.getString("filter");
-						String actions = toBeremoved.getString("actions");
-						if (actions.length() == 0)
-							actions = null;
-						pman.removePermission(b, permType, filter, actions);
-					} catch (JSONException e1) {
-						e1.printStackTrace();
-					} catch (Throwable t) {
-						t.printStackTrace();
-					}
-				}
-			}
-
-			break;
-		default:
-			break;
-		}
-	}
-
 	private File receiveFile(HttpServletRequest req, HttpServletResponse resp, String path) {
 		// String filePath = req.getParameter("filename");
 		boolean isMultipart;
-		int maxFileSize = 1024 * 1024;
+		int maxFileSize = 1024 * 1024 * 10;
 		int maxMemSize = 16 * 1024;
 		File file = null;
 		// Check that we have a file upload request

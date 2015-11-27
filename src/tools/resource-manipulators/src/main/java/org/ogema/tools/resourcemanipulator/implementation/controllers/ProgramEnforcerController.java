@@ -22,7 +22,8 @@ import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
+import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
@@ -35,7 +36,9 @@ import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.timeseries.InterpolationMode;
+import org.ogema.tools.resourcemanipulator.model.Filter;
 import org.ogema.tools.resourcemanipulator.model.ProgramEnforcerModel;
+import org.ogema.tools.resourcemanipulator.model.RangeFilter;
 
 /**
  * Enforces that a FloatResource always has the value configured in its program
@@ -46,18 +49,20 @@ import org.ogema.tools.resourcemanipulator.model.ProgramEnforcerModel;
  *
  * @author Timo Fischer, Fraunhofer IWES
  */
-public class ProgramEnforcerController implements Controller, ResourceValueListener<DefinitionSchedule>,
+public class ProgramEnforcerController implements Controller, ResourceValueListener<Schedule>,
 		ResourceStructureListener, AccessModeListener, TimerListener {
 
 	private final ApplicationManager appMan;
 	private final OgemaLogger logger;
 	private final Resource target;
 	private final Class<? extends Resource> resourceType;
-	private final DefinitionSchedule program;
+	private final AbsoluteSchedule program;
 	private final long updateInterval;
 	private final boolean exclusiveAccess;
 	private final AccessPriority priority;
 	private boolean requiredWriteAccessGranted;
+	private final RangeFilter rangeFilter;
+	private final BooleanResource deactivateIfValueMissing;
 
 	private Timer timer;
 
@@ -89,10 +94,15 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 		else {
 			resourceType = null; // not a valid resource type.
 			program = null;
+			appMan.getLogger().error(
+					"ProgramEnforcer found unexpected resource type " + clazz.getSimpleName()
+							+ ". Must be a value resource type with optional schedule program().");
 		}
 		this.updateInterval = configuration.updateInterval().getValue();
 		this.exclusiveAccess = configuration.exclusiveAccessRequired().getValue();
 		this.priority = AccessPriority.valueOf(configuration.priority().getValue());
+		this.rangeFilter = configuration.range(); // may be virtual or inactive
+		this.deactivateIfValueMissing = configuration.deactivateIfValueMissing();
 	}
 
 	@Override
@@ -118,9 +128,12 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 		program.addStructureListener(this);
 		program.addValueListener(this);
 
-		// Create a timer an initialize the target value for the first time.
+		// Create a timer and initialize the target value for the first time.
+		if (timer != null)
+			timer.destroy();
 		timer = appMan.createTimer(10 * 60 * 1000l, this); // this is just a random timer value, timer is re-scheduled after every invocation.
 		timerElapsed(timer); // check if there is something to do now.
+		logger.debug("New ProgramEnforcerController started for resource at " + target.getPath());
 	}
 
 	@Override
@@ -153,13 +166,14 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 		final boolean hasGoodProgramValue = (currentProgramValue != null)
 				&& (currentProgramValue.getQuality() == Quality.GOOD);
 		if (hasGoodProgramValue) {
-			setProgramValue(currentProgramValue);
-			target.activate(false);
+			setProgramValue(currentProgramValue, rangeFilter);
+			//			target.activate(false);  // moved to setProgramValue method, since it may happen that target needs
+			// to be deactived, if filter condition not satisfied
 		}
 		else { // no good program: de-activate.
-			target.deactivate(false);
+			if (deactivateIfValueMissing.getValue())
+				target.deactivate(false);
 		}
-
 		// if there is a valid program, estimate the next required call to this.
 		if (program.isActive()) {
 			restartTimer(t0);
@@ -205,6 +219,7 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 			final long tMid = ((t1 + t2) / 2) + ((t1 + t2) % 2);
 			timer.setTimingInterval(tMid - t0);
 			timer.resume();
+			return;
 		}
 		case NONE: {
 			final String resLocation = target.getLocation();
@@ -219,7 +234,7 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 	}
 
 	@Override
-	public void resourceChanged(DefinitionSchedule resource) {
+	public void resourceChanged(Schedule resource) {
 		timerElapsed(timer);
 	}
 
@@ -294,7 +309,7 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 	 * activity of the schedule are assumed to have passed successfully at this
 	 * point.
 	 */
-	private void setProgramValue(SampledValue newValue) {
+	private void setProgramValue(SampledValue newValue, Filter filter) {
 		if (resourceType == BooleanResource.class) {
 			final BooleanResource resource = (BooleanResource) target;
 			final boolean currentValue = resource.getValue();
@@ -302,31 +317,40 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 			if (currentValue != targetValue) {
 				resource.setValue(targetValue);
 			}
-
+			target.activate(false);
 		}
 		else if (resourceType == IntegerResource.class) {
 			final IntegerResource resource = (IntegerResource) target;
 			final int currentValue = resource.getValue();
 			final int targetValue = newValue.getValue().getIntegerValue();
+			if (!handleFilter(targetValue, filter))
+				return;
 			if (currentValue != targetValue) {
 				resource.setValue(targetValue);
 			}
+			target.activate(false);
 		}
 		else if (resourceType == TimeResource.class) {
 			final TimeResource resource = (TimeResource) target;
 			final long currentValue = resource.getValue();
 			final long targetValue = newValue.getValue().getLongValue();
+			if (!handleFilter(targetValue, filter))
+				return;
 			if (currentValue != targetValue) {
 				resource.setValue(targetValue);
 			}
+			target.activate(false);
 		}
 		else if (resourceType == FloatResource.class) {
 			final FloatResource resource = (FloatResource) target;
 			final float currentValue = resource.getValue();
 			final float targetValue = newValue.getValue().getFloatValue();
+			if (!handleFilter(targetValue, filter))
+				return;
 			if (currentValue != targetValue) {
 				resource.setValue(targetValue);
 			}
+			target.activate(false);
 		}
 		else if (resourceType == StringResource.class) {
 			final StringResource resource = (StringResource) target;
@@ -335,11 +359,47 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 			if (currentValue != targetValue) {
 				resource.setValue(targetValue);
 			}
+			target.activate(false);
 		}
 		else {
 			throw new UnsupportedOperationException("Cannot set the value for unsupported resource type "
 					+ resourceType.getCanonicalName()
 					+ ". You should never see this message. Please report this to the OGEMA developers.");
 		}
+	}
+
+	/**
+	 * returns true iff value of target resource remains to be set
+	 */
+	@SuppressWarnings("fallthrough")
+	private boolean handleFilter(float targetValue, Filter filter) {
+		if (filterSatisfied(targetValue, filter)) {
+			return true;
+		}
+		int mode = 0;
+		if (filter.mode().isActive())
+			mode = filter.mode().getValue();
+		switch (mode) {
+		case 0:
+			target.deactivate(false);
+		default: // includes case 1
+			return false;
+		}
+	}
+
+	private boolean filterSatisfied(float value, Filter filter) {
+		if (filter == null || !filter.isActive())
+			return true;
+		if (filter instanceof RangeFilter) {
+			RangeFilter rfilter = (RangeFilter) filter;
+			FloatResource ll = rfilter.range().lowerLimit();
+			FloatResource ul = rfilter.range().upperLimit();
+			if ((ll.isActive() && ll.getValue() > value) || (ul.isActive() && ul.getValue() < value)) {
+				logger.debug("Filter not satisfied for resource {}. Boundaries: {} - {}, actual value: {}", target, ll
+						.getValue(), ul.getValue(), value);
+				return false;
+			}
+		}
+		return true;
 	}
 }

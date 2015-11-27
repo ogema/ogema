@@ -52,8 +52,8 @@
                 $(location).attr('href', data);
             }
 
-            function loginFail() {
-                $('#login_failed_div').show();
+            function loginFail(msg) {
+                $('#login_failed_div').html(msg.responseText).show();
             }
 
         </script>

@@ -78,11 +78,14 @@ public class AppPermissionFilter {
 	public String getFilterString() {
 		boolean comma = false;
 		StringBuffer sb = new StringBuffer();
+		sb.append("name=");
 		if (appname != null) {
-			sb.append("name=");
 			sb.append(appname);
-			comma = true;
 		}
+		else {
+			sb.append("*");
+		}
+		comma = true;
 		if (ownergroup != null) {
 			if (comma)
 				sb.append(',');

@@ -23,7 +23,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import org.slf4j.Logger;
+
 class PersistentFileSet {
+	private final Logger logger = org.slf4j.LoggerFactory.getLogger("persistence");
+
 	File fileOld, fileNew;
 
 	DataOutputStream out;
@@ -58,7 +62,7 @@ class PersistentFileSet {
 					 */
 					if (name1 != null) {
 						if (Configuration.LOGGING)
-							System.out.println("Deleting file: " + name1);
+							logger.debug("Deleting file: " + name1);
 						new File(dir, name1).delete();
 					}
 					counter1 = counter2;
@@ -74,14 +78,14 @@ class PersistentFileSet {
 					 */
 					if (name1 != null) {
 						if (Configuration.LOGGING)
-							System.out.println("Deleting file: " + name);
+							logger.debug("Deleting file: " + name);
 						new File(dir, name1).delete();
 					}
 					name1 = name;
 				}
 				else {
 					if (Configuration.LOGGING)
-						System.out.println("Deleting file: " + name);
+						logger.debug("Deleting file: " + name);
 					/*
 					 * Name is older then name1 and name2. name can be deleted.
 					 */
@@ -120,7 +124,7 @@ class PersistentFileSet {
 		}
 		if (fileOld != null) {
 			if (Configuration.LOGGING)
-				System.out.println("Deleting file: " + fileOld.getName());
+				logger.debug("Deleting file: " + fileOld.getName());
 			fileOld.delete();
 		}
 		fileOld = fileNew;
@@ -154,7 +158,7 @@ class PersistentFileSet {
 					out.close();
 				if (delete != null) {
 					if (Configuration.LOGGING)
-						System.out.println("Deleting file: " + delete.getName());
+						logger.debug("Deleting file: " + delete.getName());
 					delete.delete();
 				}
 			} catch (IOException e) {
@@ -191,13 +195,13 @@ class PersistentFileSet {
 		if (fileNew != null) {
 			fileNew.setWritable(true);
 			if (Configuration.LOGGING)
-				System.out.println("Deleting file: " + fileNew.getName());
+				logger.debug("Deleting file: " + fileNew.getName());
 			fileNew.delete();
 		}
 		if (fileOld != null) {
 			fileOld.setWritable(true);
 			if (Configuration.LOGGING)
-				System.out.println("Deleting file: " + fileOld.getName());
+				logger.debug("Deleting file: " + fileOld.getName());
 			fileOld.delete();
 		}
 	}
@@ -234,7 +238,7 @@ class PersistentFileSet {
 
 	public void deleteNew() {
 		if (Configuration.LOGGING)
-			System.out.println("Deleting file: " + fileNew.getName());
+			logger.debug("Deleting file: " + fileNew.getName());
 		fileNew.delete();
 		fileNew = fileOld;
 		fileOld = null;

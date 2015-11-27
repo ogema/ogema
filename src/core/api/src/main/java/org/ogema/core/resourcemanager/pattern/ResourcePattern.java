@@ -40,7 +40,7 @@ public class ResourcePattern<DemandedModel extends Resource> {
 	 * framework. Other resource references in the derived classes may refer to
 	 * this as their anchor point..
 	 */
-	public DemandedModel model;
+	public final DemandedModel model;
 
 	/**
 	 * Annotation can be used to determine if the field must exist.
@@ -155,5 +155,20 @@ public class ResourcePattern<DemandedModel extends Resource> {
 	 */
 	public boolean accept() {
 		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		return model.getLocation().hashCode();
+	}
+
+	@SuppressWarnings("rawtypes")
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null || obj.getClass() != this.getClass())
+			return false;
+		return this.model.getLocation().equals(((ResourcePattern) obj).model.getLocation());
 	}
 }

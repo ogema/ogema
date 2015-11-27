@@ -49,7 +49,8 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
  */
 @XmlAccessorType(XmlAccessType.PROPERTY)
 // @XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
-@XmlType(name = "ScheduleResource", namespace = NS_OGEMA_REST, propOrder = { "start", "end", "entry" })
+@XmlType(name = "ScheduleResource", namespace = NS_OGEMA_REST, propOrder = { "interpolationMode", "lastUpdateTime",
+		"lastCalculationTime", "start", "end", "entry" })
 @XmlSeeAlso( { ScheduleEntry.class, BooleanSchedule.class, FloatSchedule.class, IntegerSchedule.class,
 		OpaqueSchedule.class, StringSchedule.class, TimeSchedule.class, SampledValue.class, SampledFloat.class })
 public abstract class JaxbSchedule<T> extends JaxbResource {
@@ -73,6 +74,21 @@ public abstract class JaxbSchedule<T> extends JaxbResource {
 
 	public JaxbSchedule(Resource res, SerializationStatus status) {
 		this(res, status, 0, Long.MAX_VALUE);
+	}
+
+	@XmlElement(required = false)
+	public String getInterpolationMode() {
+		return ((Schedule) res).getInterpolationMode().name();
+	}
+
+	@XmlElement(required = false)
+	public long getLastUpdateTime() {
+		return ((Schedule) res).getLastUpdateTime();
+	}
+
+	@XmlElement(required = false)
+	public Long getLastCalculationTime() {
+		return ((Schedule) res).getLastCalculationTime();
 	}
 
 	@XmlElement(required = false)

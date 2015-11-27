@@ -18,6 +18,7 @@ package org.ogema.tools.resourcemanipulator.configurations;
 import org.ogema.core.model.ValueResource;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.timeseries.InterpolationMode;
+import org.ogema.tools.resourcemanipulator.implementation.ProgramEnforcerImpl;
 
 /**
  * Application tool that configures a float resource for "automatically set it
@@ -56,6 +57,12 @@ public interface ProgramEnforcer extends ManipulatorConfiguration {
 	void enforceProgram(ValueResource resource, long updateInterval);
 
 	/**
+	 * Gets the target resource that this program enforcer operates on.
+	 * @return Reference to the resource that is written into by this. Returns null if the controller has not been configured, yet.
+	 */
+	ValueResource getResource();
+
+	/**
 	 * Gets the currently configured access priority.
 	 * @return the priority that exclusive access was required with. Returns null if no exclusive access has been demanded.
 	 */
@@ -68,4 +75,26 @@ public interface ProgramEnforcer extends ManipulatorConfiguration {
 	 * @return time-steps between two subsequent updates of the value in ms.
 	 */
 	long getUpdateInterval();
+
+	/**
+	 * See {@link ProgramEnforcerImpl#setRangeFilter(float, float, int)}. Default mode: target resource
+	 * is deactivated if schedule value lies outside the specified range.
+	 */
+	void setRangeFilter(float lowerBoundary, float upperBoundary) throws RuntimeException;
+
+	/** 
+	 * In order to activate only one of the boundaries, pass {@link Float#NaN} for the other one. Boundaries are inclusive. <br>
+	 * The mode determines the behaviour in case a schedule value lies outside the specified range: <br>
+	 * 0: deactivate target resource <br>
+	 * 1: keep last value, do not change active status (i.e. do nothing)<br> 
+	 * Deactivate the filter by passing Float.NaN for both boundary arguments. <br>
+	 * This method must only be called after the {@link #commit()} has been called, otherwise a {@link RuntimeException} is thrown.
+	 */
+	void setRangeFilter(float lowerBoundary, float upperBoundary, int mode) throws RuntimeException;
+
+	/**
+	 * If set to true, the target resource is deactivated when no valid schedule value is available, otherwise
+	 * the last activation status is retained. Default: true.
+	 */
+	void deactivateTargetIfProgramMissing(boolean deactivate);
 }

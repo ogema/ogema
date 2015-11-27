@@ -3,18 +3,20 @@
 (org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
 
 (org.osgi.framework.PackagePermission "javax.servlet" "import")
-(org.osgi.framework.PackagePermission "javax.servlet.*" "import")
+(org.osgi.framework.PackagePermission "javax.servlet.http" "import")
 
 (org.osgi.framework.PackagePermission "org.codehaus.jackson" "import")
 (org.osgi.framework.PackagePermission "org.codehaus.jackson.*" "import")
 
-(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.prototypes.PhysicalElement" "read,write,addsub,create,activity")
-(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.actors.OnOffSwitch" "read,write,addsub,create,activity")
-(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.actors.MultiSwitch" "read,write,addsub,create,activity")
-(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.locations.Room" "read,write,addsub,create,activity")
-(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.devices.buildingtechnology.ElectricLight" "read,write,addsub,create,activity")
-(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.devices.sensoractordevices.SingleSwitchBox" "read,write,addsub,create,activity")
-(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.location.Room" "read,write,addsub,create,activity")
-(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.devices.buildingtechnology.Thermostat" "read,write,addsub,create,activity")
+#(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.prototypes.PhysicalElement" "read,write,addsub,create,activity")
+#(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.actors.OnOffSwitch" "read,write,addsub,create,activity")
+#(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.actors.MultiSwitch" "read,write,addsub,create,activity")
+#(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.locations.Room" "read,write,addsub,create,activity")
+#(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.devices.buildingtechnology.ElectricLight" "read,write,addsub,create,activity")
+#(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.devices.sensoractordevices.SingleSwitchBox" "read,write,addsub,create,activity")
+#(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.location.Room" "read,write,addsub,create,activity")
+#(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.devices.buildingtechnology.Thermostat" "read,write,addsub,create,activity")
+(org.ogema.accesscontrol.ResourcePermission "path=*" "read,write,addsub,create,activity")
 
-("java.lang.RuntimePermission" "accessDeclaredMembers")
+
+(java.lang.RuntimePermission "accessDeclaredMembers")

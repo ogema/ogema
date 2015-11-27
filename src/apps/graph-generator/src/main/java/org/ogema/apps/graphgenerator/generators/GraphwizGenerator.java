@@ -27,7 +27,7 @@ import org.ogema.apps.graphgenerator.styles.EdgeStyle;
 import org.ogema.apps.graphgenerator.styles.NodeStyle;
 import org.ogema.apps.graphgenerator.styles.gviz.EdgeStyleBase;
 import org.ogema.apps.graphgenerator.styles.gviz.NodeStyleBlue;
-import org.ogema.core.logging.OgemaLogger;
+import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.simple.BooleanResource;
@@ -35,7 +35,6 @@ import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
-import org.ogema.core.model.units.PhysicalUnitResource;
 
 /**
  * The GraphwizGenerator as an object that is subsequently filled.
@@ -47,12 +46,14 @@ public class GraphwizGenerator extends GraphGenerator {
 	//    public static final String FLAG_SCHEDULE = " shape=octagon ";
 
 	private final StringBuilder m_graph = new StringBuilder();
+	private final ApplicationManager am;
 
 	private final NodeStyle defaultNodeStyle = new NodeStyleBlue();
 	private final NodeStyle thermalNodeStyle = new NodeStyleBlue();
 
-	public GraphwizGenerator(OgemaLogger logger) {
-		super(logger);
+	public GraphwizGenerator(ApplicationManager am) {
+		super(am.getLogger());
+		this.am = am;
 		thermalNodeStyle.setActiveColor("red");
 	}
 
@@ -145,7 +146,7 @@ public class GraphwizGenerator extends GraphGenerator {
 		
 		PrintWriter writer;
 		try {
-			File file = new File("resources.graph");
+			File file = am.getDataFile("resources.graph");
 			writer = new PrintWriter(file, "UTF-8");
 			writer.println(getGraph());
 			writer.close();

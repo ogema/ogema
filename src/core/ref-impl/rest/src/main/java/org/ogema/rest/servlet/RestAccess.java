@@ -29,6 +29,7 @@ import org.ogema.accesscontrol.UserRightsProxy;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.administration.AdministrationManager;
 import org.slf4j.Logger;
+import static org.ogema.accesscontrol.Constants.*;
 
 /**
  * @author Zekeriya Mansuroglu
@@ -39,9 +40,6 @@ public class RestAccess extends HttpServlet {
 	private static final boolean DEBUG = true;
 
 	private static final long serialVersionUID = 3258753513240214977L;
-
-	static final String OTPNAME = "pw";
-	static final String OTUNAME = "user";
 
 	/*
 	 * Handle Get requests to the rest server. Each request has to contain the parameter otpwd (one time password) and

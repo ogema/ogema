@@ -46,7 +46,7 @@ angular-js, Copyright (c) 2010-2014 Google, Inc. http://angularjs.org
 licensed under the MIT License
 
 This product includes
-anular-ui Copyright (c) 2012 the AngularUI Team, http://angular-ui.github.com
+angular-ui Copyright (c) 2012 the AngularUI Team, http://angular-ui.github.com
 licensed under the MIT License
 
 This product includes
@@ -57,13 +57,17 @@ This product includes
 angular-highlightjs, Copyright (c) 2013 Robin Fan
 licensed under the MIT License
 
-This product includes
-Flot, JavaScript plotting library for jQuery, Copyright (c) 2007-2014 IOLA and Ole Laursen
-licensed under the MIT License
-
 This product includes software developed by Canonical Ltd.
 Copyright 2010,2011 Canonical Ltd.
 Licensed under the Ubuntu Font Licence, Version 1.0
+
+This product includes Grafana developed by Torkel Ödegaard
+Copyright 2012-2013 Elasticsearch BV, Torkel Ödegaard
+Licensed under the Apache License 2.0.
+
+This product includes code-prettify developed by
+Copyright 2011 Mike Samuel et al, mikesamuel@gmail.com
+Licensed under the Apache License 2.0
 
 II. Used Third-Party Software
 

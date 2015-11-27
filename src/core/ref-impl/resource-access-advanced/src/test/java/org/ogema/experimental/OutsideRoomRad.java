@@ -25,6 +25,7 @@ import org.ogema.model.locations.Room;
  */
 public class OutsideRoomRad extends ResourcePattern<Room> {
 
+	@SuppressWarnings("deprecation")
 	@Equals(value = 0)
 	final IntegerResource type = model.type();
 

@@ -42,6 +42,7 @@ import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
 import org.ogema.core.channelmanager.driverspi.ChannelUpdateListener;
+import org.ogema.core.channelmanager.driverspi.DeviceListener;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
 import org.ogema.core.channelmanager.driverspi.NoSuchChannelException;
@@ -49,7 +50,6 @@ import org.ogema.core.channelmanager.driverspi.NoSuchDeviceException;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.driverspi.ValueContainer;
-import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
@@ -64,7 +64,7 @@ import org.slf4j.LoggerFactory;
 @Component(immediate = true)
 @Service(ChannelAccess.class)
 @Reference(policy = ReferencePolicy.DYNAMIC, name = "drivers", referenceInterface = ChannelDriver.class, cardinality = ReferenceCardinality.OPTIONAL_MULTIPLE, bind = "addDriver", unbind = "removeDriver")
-public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener {
+public class ChannelManagerImpl implements ChannelAccess {
 
 	private final Map<String, WeakReference<ChannelDriver>> driverList;
 
@@ -83,6 +83,12 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 	private PermissionManager permMan;
 
 	/**
+	 * Due to security issues the ChannelMangerImpl can't implement the ChannelUpdateListener interface. Otherwise Apps
+	 * could call ChannelUpdateListener methods via reflections.
+	 */
+	private ChannelUpdateListener channelUpdateListener;
+
+	/**
 	 * The constructor create a "driver hashmap" , there is saved which driver has the Channel. Than will be create a
 	 * channel, device, kownDeviceLocator and knownChannelLocator List.
 	 * 
@@ -94,9 +100,73 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 		channelList = new LinkedList<Channel>();
 		asynchronChannels = new LinkedList<Channel>();
 		devices = new LinkedList<CommDevice>();
-
+		createChannelUpdateListener();
 		knownDeviceLocators = new LinkedList<DeviceLocator>();
 		knownChannelLocators = new LinkedList<ChannelLocator>();
+	}
+
+	private void createChannelUpdateListener() {
+		channelUpdateListener = new ChannelUpdateListener() {
+
+			@Override
+			public void exceptionOccured(Exception e) {
+			}
+
+			@Override
+			public void channelsUpdated(List<SampledValueContainer> channels) {
+				if (asycUpdateListeners.get(channels.get(0).getChannelLocator()) != null) {
+					// For Async
+
+					for (SampledValueContainer channelData : channels) {
+
+						for (Channel c : channelList) {
+							if (channelData.getChannelLocator()
+									.equals(c.getSampledValueContainer().getChannelLocator())) {
+
+								c.setValue(channelData.getSampledValue());
+
+							}
+						}
+
+						List<SampledValueContainer> singleValueList = new LinkedList<SampledValueContainer>();
+
+						singleValueList.add(channelData);
+
+						ChannelLocator channelLocator = channelData.getChannelLocator();
+
+						/* call update listeners */
+						List<ChannelEventListener> updateEventListeners = asycUpdateListeners.get(channelLocator);
+
+						if (updateEventListeners != null) {
+							callEventListeners(singleValueList, updateEventListeners);
+						}
+
+					}
+
+				}
+				else {
+					// For Sync
+					for (SampledValueContainer svc : channels) {
+						if (asycUpdateListeners.get(svc.getChannelLocator()) != null) {
+							for (Channel c : asynchronChannels) {
+								if (svc.getChannelLocator().equals(c.getSampledValueContainer().getChannelLocator())) {
+
+									c.setValue(svc.getSampledValue());
+									callEventListeners(channels, asycUpdateListeners.get(c));
+								}
+							}
+						}
+						for (Channel c : channelList) {
+							if (svc.getChannelLocator().equals(c.getSampledValueContainer().getChannelLocator())) {
+
+								c.setValue(svc.getSampledValue());
+
+							}
+						}
+					}
+				}
+			}
+		};
 	}
 
 	public ChannelManagerImpl(PermissionManager pMan) {
@@ -122,61 +192,6 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 		}
 
 		return null;
-	}
-
-	@Override
-	public void channelsUpdated(List<SampledValueContainer> channels) {
-
-		if (asycUpdateListeners.get(channels.get(0).getChannelLocator()) != null) {
-			// For Async
-
-			for (SampledValueContainer channelData : channels) {
-
-				for (Channel c : channelList) {
-					if (channelData.getChannelLocator().equals(c.getSampledValueContainer().getChannelLocator())) {
-
-						c.setValue(channelData.getSampledValue());
-
-					}
-				}
-
-				List<SampledValueContainer> singleValueList = new LinkedList<SampledValueContainer>();
-
-				singleValueList.add(channelData);
-
-				ChannelLocator channelLocator = channelData.getChannelLocator();
-
-				/* call update listeners */
-				List<ChannelEventListener> updateEventListeners = asycUpdateListeners.get(channelLocator);
-
-				if (updateEventListeners != null) {
-					callEventListeners(singleValueList, updateEventListeners);
-				}
-
-			}
-
-		}
-		else {
-			// For Sync
-			for (SampledValueContainer svc : channels) {
-				if (asycUpdateListeners.get(svc.getChannelLocator()) != null) {
-					for (Channel c : asynchronChannels) {
-						if (svc.getChannelLocator().equals(c.getSampledValueContainer().getChannelLocator())) {
-
-							c.setValue(svc.getSampledValue());
-							callEventListeners(channels, asycUpdateListeners.get(c));
-						}
-					}
-				}
-				for (Channel c : channelList) {
-					if (svc.getChannelLocator().equals(c.getSampledValueContainer().getChannelLocator())) {
-
-						c.setValue(svc.getSampledValue());
-
-					}
-				}
-			}
-		}
 	}
 
 	private void callEventListeners(List<SampledValueContainer> singleValueList, List<ChannelEventListener> listeners) {
@@ -222,7 +237,7 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 	}
 
 	@Override
-	public void addChannel(ChannelConfiguration configuration) throws ChannelConfigurationException {
+	public synchronized void addChannel(ChannelConfiguration configuration) throws ChannelConfigurationException {
 
 		DeviceLocator deviceLocator = configuration.getDeviceLocator();
 		/*
@@ -236,19 +251,20 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 			throw new ChannelConfigurationException("Channel already exists");
 		}
 
-		Channel channel = new Channel(configuration);
-
-		CommDevice matchingDevice = lookupDevice(channel);
-
 		ChannelDriver driver = lookupDriverByName(deviceLocator.getDriverName());
 
 		if (driver == null) {
 			throw new ChannelConfigurationException("driver \"" + deviceLocator.getDriverName() + "\" does not exist.");
 		}
+
+		Channel channel = new Channel(configuration);
+
 		// ** Only synchrony channels added to ComDevice ** //
-		if (channel.getConfiguration().getSamplingPeriod() >= 0) {
+		int period = (int) channel.getConfiguration().getSamplingPeriod();
+		if (period > 0) {
+			CommDevice matchingDevice = lookupDevice(channel);
 			if (matchingDevice == null) {
-				matchingDevice = new CommDevice(deviceLocator, driver);
+				matchingDevice = new CommDevice(deviceLocator, driver, this);
 				devices.add(matchingDevice);
 			}
 
@@ -256,8 +272,9 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 			driver.channelAdded(channel.getConfiguration().getChannelLocator());
 			channelList.add(channel);
 
-		}// For asynchrony Communication
-		else {
+		}
+		// For asynchrony Communication
+		else if (period <= ChannelConfiguration.LISTEN_FOR_UPDATE) {
 			if (lookupAsynchonChannel(configuration.getChannelLocator()) != null) {
 				throw new ChannelConfigurationException("Asynchon Channel already exists");
 			}
@@ -275,7 +292,7 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 
 			containers.add(channel.getSampledValueContainer());
 			try {
-				driver.listenChannels(containers, this);
+				driver.listenChannels(containers, channelUpdateListener);
 			} catch (Exception e) {
 				throw new ChannelConfigurationException(e.getMessage());
 			}
@@ -351,6 +368,13 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 	public ChannelLocator getChannelLocator(String channelAddress, DeviceLocator deviceLocator) {
 		ChannelLocator channelLocator = new DefaultChannelLocator(deviceLocator, channelAddress);
 
+		/*
+		 * Check Permission to delete a channel
+		 */
+		if (!permMan.checkAddChannel(new ChannelConfigurationImpl(channelLocator), deviceLocator)) {
+			throw new SecurityException("Action not permitted.");
+		}
+
 		synchronized (knownChannelLocators) {
 
 			for (ChannelLocator knownChannelLocator : knownChannelLocators) {
@@ -367,7 +391,7 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 	}
 
 	@Override
-	public void deleteChannel(ChannelLocator channelLocator) throws ChannelConfigurationException {
+	public synchronized void deleteChannel(ChannelLocator channelLocator) throws ChannelConfigurationException {
 		Channel channel = lookupChannel(channelLocator);
 		if (channel == null)
 			throw new ChannelConfigurationException("Channel \"" + channelLocator + "\" is not configured.");
@@ -412,10 +436,10 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 			 * Check permission: In order to perform the action to get a configured channel the caller has to be
 			 * permitted to add the channel itself.
 			 */
-			ChannelConfiguration conf = channel.getConfiguration();
-			if (permMan.checkAddChannel(conf, conf.getDeviceLocator())) {
-				channels.add(channel.getConfiguration().getChannelLocator());
-			}
+			// ChannelConfiguration conf = channel.getConfiguration();
+			// if (permMan.checkAddChannel(conf, conf.getDeviceLocator())) {
+			channels.add(channel.getConfiguration().getChannelLocator());
+			// }
 		}
 
 		return channels;
@@ -437,14 +461,17 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 				throw new ChannelAccessException("low-level driver not available.");
 			}
 
-			ValueContainer valueContainer = new ValueContainer(channel.getConfiguration().getChannelLocator(), value);
-
-			List<ValueContainer> containerList = new LinkedList<ValueContainer>();
-
-			containerList.add(valueContainer);
+			// FIXME Why doesn't get this method a list of ValueContainer as parameter.
+			// This would make following news unnecessary.
+			// ValueContainer valueContainer = new ValueContainer(channel.getConfiguration().getChannelLocator(),
+			// value);
+			//
+			// List<ValueContainer> containerList = new LinkedList<ValueContainer>();
+			//
+			// containerList.add(valueContainer);
 
 			try {
-				driver.writeChannels(containerList);
+				driver.writeChannel(channelLocator, value);
 			} catch (UnsupportedOperationException | NoSuchDeviceException | IOException | NoSuchChannelException e) {
 
 				// TODO Zwischen einzelnen Exceptions differenzieren
@@ -462,36 +489,72 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 	}
 
 	@Override
-	public SampledValueContainer readUnconfiguredChannel(ChannelLocator channelLocator) {
+	public void readUnconfiguredChannels(List<SampledValueContainer> channelList) {
+		ChannelDriver driver = null;
 
-		/*
-		 * Check permission to add a channel.
-		 */
-		ChannelConfiguration config = lookupChannel(channelLocator).getConfiguration();
-		if (!permMan.checkAddChannel(config, config.getDeviceLocator())) {
-			return null;
+		for (SampledValueContainer vCont : channelList) {
+			ChannelLocator channelLocator = vCont.getChannelLocator();
+
+			/*
+			 * Check permission to add a channel. AddChannel action implies read action to the same channel.
+			 */
+			ChannelConfiguration config = lookupChannel(channelLocator).getConfiguration();
+			if (!permMan.checkAddChannel(config, config.getDeviceLocator())) {
+				throw new SecurityException();
+			}
+
+			ChannelDriver driverTmp = lookupDriverByName(channelLocator.getDeviceLocator().getDriverName());
+			/*
+			 * We have to ensure that all Values are directed to the same driver
+			 */
+			if (driverTmp == null || (driver != null && driverTmp != driver))
+				throw new UnsupportedOperationException("The list must contain a unique driver information.");
+			else
+				driver = driverTmp;
 		}
-
-		ChannelDriver driver = lookupDriverByName(channelLocator.getDeviceLocator().getDriverName());
-
-		SampledValueContainer container = new SampledValueContainer(channelLocator);
-
-		List<SampledValueContainer> channelList = new ArrayList<SampledValueContainer>(1);
-
-		channelList.add(container);
 
 		try {
 			driver.readChannels(channelList);
-			return container;
+			// return container;
 		} catch (UnsupportedOperationException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
-			// Value is set to null here. If an other default value is needed than the driver should handle the
-			// IOException itself.
-			container.setSampledValue(new SampledValue(null, System.currentTimeMillis(), Quality.BAD));
+			// In order to check which entries of the list are filled with valid data, the caller should prefill its
+			// entries with Quality.BAD
+			// container.setSampledValue(new SampledValue(null, System.currentTimeMillis(), Quality.BAD));
+			e.printStackTrace();
+		}
+		// return null;
+	}
+
+	@Override
+	public void writeUnconfiguredChannels(List<ValueContainer> channelList) throws ChannelAccessException {
+		ChannelDriver driver = null;
+
+		for (ValueContainer vCont : channelList) {
+			ChannelLocator channelLocator = vCont.getChannelLocator();
+			ChannelDriver driverTmp = lookupDriverByName(channelLocator.getDeviceLocator().getDriverName());
+			/*
+			 * We have to ensure that all Values are directed to the same driver
+			 */
+			if (driverTmp == null || (driver != null && driverTmp != driver))
+				throw new UnsupportedOperationException("The list must contain a unique driver information.");
+			else
+				driver = driverTmp;
+			/*
+			 * Check permission to add a channel. AddChannel action implies write action to the same channel.
+			 */
+			ChannelConfiguration config = lookupChannel(channelLocator).getConfiguration();
+			if (!permMan.checkAddChannel(config, config.getDeviceLocator())) {
+				throw new SecurityException();
+			}
 		}
 
-		return null;
+		try {
+			driver.writeChannels(channelList);
+		} catch (NoSuchChannelException | UnsupportedOperationException | IOException | NoSuchDeviceException e) {
+			throw new ChannelAccessException(e);
+		}
 	}
 
 	@Override
@@ -589,6 +652,10 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 		}
 	}
 
+	void removeDevice(CommDevice commDevice) {
+		devices.remove(commDevice);
+	}
+
 	@Override
 	public List<ChannelLocator> discoverChannels(DeviceLocator device) throws NoSuchDriverException,
 			UnsupportedOperationException {
@@ -680,13 +747,7 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 
 						@Override
 						public void channelFound(ChannelLocator channel) {
-							/*
-							 * Check permission to add a channel
-							 */
-							ChannelConfiguration config = lookupChannel(channel).getConfiguration();
-							if (permMan.checkAddChannel(config, config.getDeviceLocator())) {
-								clientListener.channelFound(channel);
-							}
+							clientListener.channelFound(channel);
 						}
 
 						@Override
@@ -806,9 +867,47 @@ public class ChannelManagerImpl implements ChannelAccess, ChannelUpdateListener 
 	}
 
 	@Override
-	public void exceptionOccured(Exception e) {
-		// TODO Auto-generated method stub
+	public String getDriverDescription(String driverId) {
+		String description = "";
 
+		WeakReference<ChannelDriver> driverRef = driverList.get(driverId);
+		if (driverRef != null) {
+			ChannelDriver driver = driverRef.get();
+			if (driver != null) {
+				description = driver.getDescription();
+			}
+		}
+
+		return description;
+
+	}
+
+	@Override
+	public List<ChannelLocator> getChannelList(DeviceLocator deviceLocator) throws UnsupportedOperationException {
+
+		List<ChannelLocator> channels = new ArrayList<ChannelLocator>();
+
+		WeakReference<ChannelDriver> driverRef = driverList.get(deviceLocator.getDriverName());
+		if (driverRef != null) {
+			ChannelDriver driver = driverRef.get();
+			if (driver != null) {
+				channels = driver.getChannelList(deviceLocator);
+			}
+		}
+
+		return channels;
+	}
+
+	@Override
+	public void addDeviceListener(String driverId, DeviceListener listener) {
+		ChannelDriver driver = lookupDriverByName(driverId);
+		driver.addDeviceListener(listener);
+	}
+
+	@Override
+	public void removeDeviceListener(String driverId, DeviceListener listener) {
+		ChannelDriver driver = lookupDriverByName(driverId);
+		driver.removeDeviceListener(listener);
 	}
 
 }

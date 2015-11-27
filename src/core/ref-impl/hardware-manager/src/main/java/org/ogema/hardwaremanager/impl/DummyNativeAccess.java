@@ -33,11 +33,14 @@ public class DummyNativeAccess implements NativeAccess {
 	}
 
 	@Override
-	public synchronized Container getEvent(Container container) {
+	public Container getEvent(Container container) {
 
 		try {
-			while (!exit)
-				wait();
+			while (!exit) {
+				synchronized (this) {
+					wait();
+				}
+			}
 			exit = false;
 		} catch (InterruptedException e) {
 			e.printStackTrace();
@@ -61,10 +64,11 @@ public class DummyNativeAccess implements NativeAccess {
 	}
 
 	@Override
-	public synchronized void unblock() {
-		exit = true;
-		notify();
-
+	public void unblock() {
+		synchronized (this) {
+			exit = true;
+			notifyAll();
+		}
 	}
 
 }

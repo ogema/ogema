@@ -15,7 +15,7 @@
  */
 /**
  * Definition of energy generator devices and sub-devices. Devices in this package
- * all extend the base generator {@link EnergyGenerator}.
+ * all extend the base generator {@link GenericEnergyGenerator}.
  */
 package org.ogema.model.devices.generators;
 

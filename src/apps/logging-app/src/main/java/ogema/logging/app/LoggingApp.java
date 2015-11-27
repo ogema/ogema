@@ -15,30 +15,15 @@
  */
 package ogema.logging.app;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
-import org.ogema.core.application.Timer;
-import org.ogema.core.application.TimerListener;
 import org.ogema.core.logging.OgemaLogger;
-import org.ogema.core.model.SimpleResource;
-import org.ogema.core.model.simple.FloatResource;
-import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.ResourceAccess;
-import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceManagement;
-import org.ogema.model.actors.Actor;
-import org.ogema.model.sensors.ElectricEnergySensor;
-import org.ogema.model.sensors.HumiditySensor;
-import org.ogema.model.sensors.Sensor;
-import org.ogema.model.sensors.StateOfChargeSensor;
-import org.ogema.model.sensors.TemperatureSensor;
 
-@Component(specVersion = "1.1", immediate = true)
+@Component(specVersion = "1.2", immediate = true)
 @Service(Application.class)
 public class LoggingApp implements Application {
 

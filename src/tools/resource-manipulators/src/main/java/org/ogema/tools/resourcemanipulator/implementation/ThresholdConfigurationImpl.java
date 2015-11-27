@@ -133,4 +133,16 @@ public class ThresholdConfigurationImpl implements Threshold {
 		return m_threshold;
 	}
 
+	@Override
+	public void deactivate() {
+		if (m_config != null)
+			m_config.deactivate(true);
+	}
+
+	@Override
+	public void activate() {
+		if (m_config != null)
+			m_config.activate(true);
+	}
+
 }

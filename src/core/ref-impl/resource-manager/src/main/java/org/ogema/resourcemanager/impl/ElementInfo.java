@@ -109,7 +109,7 @@ public class ElementInfo {
     }
 
 	@SuppressWarnings("unchecked")
-	private <T> T removeListener(T listener) {
+	private synchronized <T> T removeListener(T listener) {
 		if (listeners == null) {
 			return null;
 		}
@@ -127,6 +127,10 @@ public class ElementInfo {
 	public synchronized Collection<ResourceListenerRegistration> getResourceListeners() {
 		return listeners == null ? Collections.<ResourceListenerRegistration> emptyList()
 				: getListeners(ResourceListenerRegistration.class);
+	}
+
+	public void updateStructureListenerRegistrations() {
+		man.updateStructureListenerRegistrations();
 	}
 
 	public synchronized StructureListenerRegistration addStructureListener(Resource resource,
@@ -172,9 +176,14 @@ public class ElementInfo {
 		}
 	}
 
-	public void fireResourceDeleted() {
+	public void fireResourceDeleted(Resource r) {
 		for (StructureListenerRegistration reg : getListeners(StructureListenerRegistration.class)) {
-			reg.queueResourceDeletedEvent();
+			if (!r.equalsPath(reg.getResource()) && r.isReference(false)) {
+				reg.queueReferenceChangedEvent(((ConnectedResource) r.getParent()).getTreeElement(), false);
+			}
+			else {
+				reg.queueResourceDeletedEvent();
+			}
 		}
 	}
 
@@ -205,7 +214,7 @@ public class ElementInfo {
 		if (!r.isActive()) {
 			return;
 		}
-		DefaultRecordedData d = man.getRecordedData(r.getTreeElement());
+		DefaultRecordedData d = man.getExistingRecordedData(r.getTreeElement());
 		if (d != null) {
 			d.update(time);
 		}
@@ -305,12 +314,10 @@ public class ElementInfo {
         }
         AccessModeRequest newReq = new AccessModeRequest(res, this, app, mode, priority);
 
-        //previous request by the same app
-        AccessModeRequest existingRequest;
+        //remove previous request by the same app
         for (Iterator<AccessModeRequest> it = accessRequests.iterator(); it.hasNext();) {
             AccessModeRequest r = it.next();
             if (r.getApplicationManager() == app) {
-                existingRequest = r;
                 it.remove();
             }
         }

@@ -67,7 +67,6 @@ public class KeepAlive implements Runnable {
 				Thread.sleep(Constants.KEEPALIVETIME);
 				connection.sendFrame(Constants.M_K);
 			} catch (InterruptedException e) {
-				e.printStackTrace();
 			}
 		}
 	}

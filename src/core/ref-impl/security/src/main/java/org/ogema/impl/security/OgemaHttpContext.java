@@ -15,33 +15,6 @@
  */
 package org.ogema.impl.security;
 
-import static org.ogema.impl.security.WebAccessManagerImpl.OLDREQ_ATTR_NAME;
-
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-
-import org.ogema.accesscontrol.PermissionManager;
-import org.ogema.accesscontrol.SessionAuth;
-import org.ogema.core.application.AppID;
-import org.ogema.core.application.Application;
-import org.ogema.core.logging.LoggerFactory;
-import org.osgi.service.http.HttpContext;
-import org.osgi.service.useradmin.User;
-import org.slf4j.Logger;
-
 /**
  * Each application an instance of this class is registered. The permissions
  * for the access to the web resources of an application is checked in handleSecurity().
@@ -51,6 +24,34 @@ import org.slf4j.Logger;
  * particular app will be checked.
  * 
  */
+import static org.ogema.accesscontrol.Constants.OTPNAME;
+import static org.ogema.accesscontrol.Constants.OTUNAME;
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.HashMap;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import org.ogema.accesscontrol.AccessManager;
+import org.ogema.accesscontrol.PermissionManager;
+import org.ogema.accesscontrol.SessionAuth;
+import org.ogema.accesscontrol.Util;
+import org.ogema.core.application.AppID;
+import org.ogema.core.application.Application;
+import org.ogema.core.logging.LoggerFactory;
+import org.osgi.service.http.HttpContext;
+import org.osgi.service.useradmin.User;
+import org.slf4j.Logger;
 
 /**
  * Parts of the URI can be reached via HttpServletRequest by calling the following methods:
@@ -64,35 +65,43 @@ import org.slf4j.Logger;
  */
 public class OgemaHttpContext implements HttpContext {
 
-	private WebAccessManagerImpl wam;
-	private PermissionManager pm;
+	private final PermissionManager pm;
 	static Boolean securemode;
+	private static boolean xservlet;
+
 	AppID owner;
 
 	LoggerFactory factory;
 
+	// alias vs. resource path
+	HashMap<String, String> resources;
 	// alias vs. app id
-	LinkedHashMap<String, String> resources;
-	// alias vs. app id
-	HashMap<String, AppID> servlets;
+	HashMap<String, String> servlets;
 
 	ConcurrentHashMap<String, String> sessionsOtpqueue;
 
-	private Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass().getName());
+	private AccessManager accessMngr;
 
 	public OgemaHttpContext(PermissionManager pm, AppID app) {
-		this.resources = new LinkedHashMap<>();
+		Objects.requireNonNull(pm);
+		Objects.requireNonNull(app);
+		this.resources = new HashMap<>();
 		this.servlets = new HashMap<>();
 		this.sessionsOtpqueue = new ConcurrentHashMap<>();
-
-		this.wam = (WebAccessManagerImpl) pm.getWebAccess();
 		this.pm = pm;
+		this.accessMngr = pm.getAccessManager();
 		this.owner = app;
 	}
 
 	public final ThreadLocal<HttpSession> requestThreadLocale = new ThreadLocal<>();
 
-	/**
+	static boolean isLoopbackAddress(String address) {
+		return address.equals(InetAddress.getLoopbackAddress().getHostAddress())
+				|| address.equals(InetAddress.getLoopbackAddress().getHostName());
+	}
+
+	/*
 	 * handleSecurity is called by httpService in both cases if the request is targeting a web resource or a servlet.
 	 */
 	@Override
@@ -118,7 +127,7 @@ public class OgemaHttpContext implements HttpContext {
 		 * Forbidden(403) and return false.
 		 */
 		String scheme = request.getScheme();
-		if (securemode && !scheme.equals("https")) {
+		if (securemode && (!isLoopbackAddress(request.getRemoteAddr()) && !scheme.equals("https"))) {
 			logger.error("\tSecure connection is required.");
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 			response.getOutputStream().write("\tSecure connection is required.".getBytes());
@@ -127,56 +136,92 @@ public class OgemaHttpContext implements HttpContext {
 		}
 
 		HttpSession httpses = request.getSession();
-		SessionAuth ses;
-		if ((ses = (SessionAuth) httpses.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME)) == null) {
-			
-			 // Store the request, so that it could be responded after successful login.
-            if (!request.getRequestURL().toString().endsWith("favicon.ico")) {
-                if (request.getRequestURI().equals("/ogema")
-                		|| request.getRequestURI().toString().equals("/ogema/")) {
-                    httpses.setAttribute(OLDREQ_ATTR_NAME, "/ogema/index.html");
-                } else {
-                    StringBuffer fullRequest = request.getRequestURL();
-                    if (request.getQueryString() != null){
-                        fullRequest.append("?").append(request.getQueryString());
-                    }
-                    httpses.setAttribute(OLDREQ_ATTR_NAME, fullRequest.toString());
-                }
-            }
+		SessionAuth sesAuth;
+
+		logger.debug("SessionID: " + httpses.getId());
+		logger.debug("HTTP-Referer: " + request.getHeader("Referer"));
+		if ((sesAuth = (SessionAuth) httpses.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME)) == null) {
+			// Store the request, so that it could be responded after successful login.
+			if (!request.getRequestURL().toString().endsWith("favicon.ico")) {
+				if (request.getRequestURI().equals("/ogema") || request.getRequestURI().equals("/ogema/")) {
+					httpses.setAttribute(LoginServlet.OLDREQ_ATTR_NAME, "/ogema/index.html");
+					logger.debug("Saved old request URI -> default page");
+				}
+				else {
+					/*
+					 * for (Enumeration<String> e = request.getHeaderNames(); e.hasMoreElements(); ){ String header =
+					 * e.nextElement(); System.out.printf("%s: %s%n", header, request.getHeader(header)); }
+					 */
+					StringBuilder requestPathAndQuery = new StringBuilder(request.getContextPath());
+					requestPathAndQuery.append(request.getServletPath());
+					if (request.getPathInfo() != null) {
+						requestPathAndQuery.append(request.getPathInfo());
+					}
+					if (request.getQueryString() != null) {
+						requestPathAndQuery.append("?").append(request.getQueryString());
+					}
+					String oldReq = requestPathAndQuery.toString();
+					httpses.setAttribute(LoginServlet.OLDREQ_ATTR_NAME, oldReq);
+					logger.debug("Saved old request URI -> " + oldReq);
+				}
+			}
 
 			try {
+				if (Configuration.DEBUG)
+					logger.debug("New Session is forwarded to Login page.");
 				request.getRequestDispatcher(LoginServlet.LOGIN_SERVLET_PATH).forward(request, response);
 			} catch (ServletException e) {
 				logger.error(this.getClass().getSimpleName(), e);
-				return false;
+			} catch (IOException e) {
+				logger.error(this.getClass().getSimpleName(), e);
+			} catch (IllegalStateException e) {
+				logger.debug(
+						"HttpRequestForwarding caused an IllegalStateException. It could be caused by the bad handling of the OutputStream status");
 			}
-		}
-		// If we get a session object the user was successfully authenticated.
-		if (ses == null) {
-			if (Configuration.DEBUG)
-				logger.debug("User authentication failed.");
 			return false;
 		}
 		else {
 			if (Configuration.DEBUG)
-				logger.debug("User authentication successful.");
+				logger.debug("Known Session detected.");
 		}
 
+		/*
+		 * Satisfaction of APP-SEC 16
+		 */
+		if (!xservlet) {
+			// check if its a servlet request. In this case only the one time password is to be checked.
+			/*
+			 * Get The authentication information
+			 */
+			String usr = request.getParameter(OTUNAME);
+			String pwd = request.getParameter(OTPNAME);
+
+			String key = Util.startsWithAnyKey(servlets, currenturi);
+			if (key != null)
+				return pm.getWebAccess().authenticate(httpses, usr, pwd);
+		}
+
+		/*
+		 * Set HttpOnly and secure flags which helps mitigate the client side XSS attacks accessing the session cookie.
+		 */
+		String sessionid = httpses.getId();
+		response.addHeader("SET-COOKIE", "JSESSIONID=" + sessionid + ";HttpOnly");
+
 		// Look for access right of the user to the app sites according this http context.
-		User usr = ses.getUsr();
+		User usr = sesAuth.getUsr();
 		boolean permitted = false;
 		try {
-			permitted = pm.getAccessManager().isAppPermitted(usr, owner);
+			permitted = accessMngr.isAppPermitted(usr, owner);
 		} catch (Throwable e) {
 			e.printStackTrace();
 		}
 		if (!permitted) {
-
+			String message = "User " + usr.getName() + " is not permitted to access to " + request.getPathInfo();
 			request.getSession().invalidate();
-			response.sendRedirect("/ogema/login");
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, message);
 
 			if (Configuration.DEBUG)
-				logger.debug("User authorization failed.");
+				logger.debug(message);
 			return false;
 		}
 		else {
@@ -207,7 +252,7 @@ public class OgemaHttpContext implements HttpContext {
 		}
 	}
 
-	/**
+	/*
 	 * Called by the Http Service to map a resource name to a URL. For servlet contextRegs, Http Service will call this
 	 * method to support the ServletContext methods getResource and getResourceAsStream. For resource contextRegs, Http
 	 * Service will call this method to locate the named resource. The context can control from where resources come.
@@ -230,16 +275,8 @@ public class OgemaHttpContext implements HttpContext {
 			logger.debug("getResource: " + name);
 		Application app = owner.getApplication();
 		URL url = null;
-		String key = null, value = null;
 
-		Set<Entry<String, String>> entries = resources.entrySet();
-		for (Entry<String, String> e : entries) {
-			value = e.getValue();
-			if (name.startsWith(value)) { // FIXME name has to start with value+"/"
-				key = e.getKey();
-				break;
-			}
-		}
+		String key = Util.startsWithAnyValue(resources, name);
 
 		HttpSession sesid = null;
 		if (key != null) {
@@ -257,16 +294,24 @@ public class OgemaHttpContext implements HttpContext {
 			return app.getClass().getResource(name);
 
 		// Get the corresponding session authorization
-		String otp = wam.registerOTP(owner, sesid);
+		String otp = registerOTP(owner, sesid);
 		if (otp == null)
 			return null;
 
 		try {
 			url = new URL("ogema", owner.getIDString(), 0, name, new RedirectionURLHandler(owner, name, otp));
 		} catch (MalformedURLException e) {
-			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 		return url;
+	}
+
+	private String registerOTP(AppID app, HttpSession ses) {
+		SessionAuth auth = (SessionAuth) ses.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME);
+		if (auth == null)
+			return null;
+		String otp = auth.registerAppOtp(app);
+		return otp;
 	}
 
 	@Override
@@ -278,6 +323,7 @@ public class OgemaHttpContext implements HttpContext {
 	static {
 		if (securemode == null)
 			AccessController.doPrivileged(new PrivilegedAction<Void>() {
+
 				@Override
 				public Void run() {
 					// For development purposes secure mode could be disabled
@@ -285,6 +331,16 @@ public class OgemaHttpContext implements HttpContext {
 						securemode = true;
 					else
 						securemode = false;
+					/*
+					 * Switch to enable/disable servlet access restrictions after APP-SEC 16: Access to a web resource
+					 * out of a previously downloaded web page shall only be granted, if the requested web resource is a
+					 * static content or the dynamic content (servlet) is registered by the same app as the source of
+					 * the web page.
+					 */
+					if (System.getProperty("org.ogema.xservletacces.enable", "false").equals("false"))
+						xservlet = true;
+					else
+						xservlet = false;
 					return null;
 				}
 			});

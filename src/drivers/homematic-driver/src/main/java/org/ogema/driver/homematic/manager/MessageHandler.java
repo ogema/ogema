@@ -16,6 +16,7 @@
 package org.ogema.driver.homematic.manager;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.ogema.driver.homematic.Activator;
 import org.ogema.driver.homematic.manager.RemoteDevice.InitStates;
+import org.ogema.driver.homematic.manager.messages.CmdMessage;
 import org.ogema.driver.homematic.manager.messages.Message;
 import org.slf4j.Logger;
 
@@ -38,6 +40,7 @@ public class MessageHandler {
 	private volatile List<Long> sentMessageAwaitingResponse = new ArrayList<Long>(); // <Token>
 	private volatile Map<String, SendThread> runningThreads = new ConcurrentHashMap<String, SendThread>(); // <Deviceaddress,
 	// Thread>
+	HashMap<String, CmdMessage> sentCommands = new HashMap<String, CmdMessage>();
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("homematic-driver");
 
 	public MessageHandler(LocalDevice device) {
@@ -48,8 +51,15 @@ public class MessageHandler {
 		RemoteDevice device = localDevice.getDevices().get(msg.source);
 		logger.debug("Received ?-token: " + msg.rtoken);
 		if (msg.type == 'E') { // Must be parsed
-			device.parseMsg(msg);
-
+			// check if a the request message registered.
+			CmdMessage cmd;
+			String key;
+			synchronized (sentCommands) {
+				key = msg.source + "" + device.sentMsgNum;
+				cmd = sentCommands.get(key);
+			}
+			logger.debug("Received message assigned to " + key);
+			device.parseMsg(msg, cmd);
 		}
 		else { // is "R"
 			logger.debug("Received R-token: " + msg.rtoken);
@@ -58,9 +68,7 @@ public class MessageHandler {
 					SendThread sendThread = runningThreads.get(msg.source);
 					sentMessageAwaitingResponse.remove(msg.rtoken);
 					logger.debug("sentMessageAwaitingResponse removed " + msg.rtoken);
-					synchronized (sendThread) {
-						sendThread.notify();
-					}
+					sendThread.interrupt();
 					logger.debug("Thread has been notified");
 				}
 			}
@@ -69,22 +77,19 @@ public class MessageHandler {
 
 	public void sendMessage(Message message) {
 		SendThread sendThread = runningThreads.get(message.getDest());
-		if (sendThread != null) {
-			sendThread.addMessage(message);
-		}
-		else {
+		if (sendThread == null) {
 			sendThread = new SendThread(message.getDest());
-			sendThread.addMessage(message);
 			runningThreads.put(sendThread.getDest(), sendThread);
 			sendThread.start();
 		}
+		sendThread.addMessage(message);
 	}
 
 	public class SendThread extends Thread {
 
+		private static final int HM_SENT_RETRIES = 4;
 		private String dest;
-		private int tries = 1;
-		private boolean success = true;
+		private int tries;
 
 		private volatile Map<Long, Message> unsentMessageQueue; // Messages waiting to be sent
 
@@ -95,57 +100,71 @@ public class MessageHandler {
 
 		@Override
 		public void run() {
-			try {
-				while (!this.unsentMessageQueue.isEmpty() && Activator.bundleIsRunning) {
-					if (tries > 1 && tries < 4)
-						SendThread.sleep(2000);
-					else if (tries >= 4) {
-						success = false;
-						break;
-					}
-					logger.debug("Try: " + tries);
-					Message entry = this.unsentMessageQueue.get(getSmallestKey());
-					sentMessageAwaitingResponse.add(entry.getToken());
-					logger.debug("sentMessageAwaitingResponse added " + entry.getToken());
-					entry.refreshMsg_num();
-					localDevice.sendFrame(entry.getFrame());
-					TimerThread timerThread = new TimerThread();
-					timerThread.start();
-					synchronized (this) {
-						try {
-							this.wait();
-						} catch (InterruptedException e) {
-							e.printStackTrace();
+			while (Activator.bundleIsRunning) {
+				Message entry = null;
+				logger.debug("Try: " + tries);
+				synchronized (unsentMessageQueue) {
+					try {
+						entry = this.unsentMessageQueue.get(getSmallestKey());
+						if (entry == null) {
+							unsentMessageQueue.wait();
+							entry = this.unsentMessageQueue.get(getSmallestKey());
 						}
+					} catch (InterruptedException e) {
 					}
-					if (sentMessageAwaitingResponse.contains(entry.getToken())) {
-						logger.warn("Response from " + dest + " took to long ...");
+				}
+				long token = entry.getToken();
+				sentMessageAwaitingResponse.add(token);
+				logger.debug("sentMessageAwaitingResponse added " + token);
+				// register command message to assign additional info about the request message to the receiver of
+				// the response
+				if (entry instanceof CmdMessage) {
+					int num = entry.refreshMsg_num();
+					String key = entry.getDest() + "" + num;
+					synchronized (sentCommands) {
+						entry.getDevice().sentMsgNum = num;
+						((CmdMessage) entry).sentNum = num;
+						sentCommands.put(key, (CmdMessage) entry);
+					}
+					System.out.println("Sent command registered with  key: " + key);
+				}
+
+				while (tries < HM_SENT_RETRIES) {
+					if (sentMessageAwaitingResponse.contains(token)) {
+						localDevice.sendFrame(entry.getFrame());
+						try {
+							Thread.sleep(3000);
+						} catch (InterruptedException e) {
+							break;
+						}
+						logger
+								.debug(String.format("Response from %s for the message %d took to long ...", dest,
+										token));
 						tries++;
-						sentMessageAwaitingResponse.remove(entry.getToken());
 					}
 					else {
-						this.unsentMessageQueue.remove(entry.getToken());
-						logger.debug("unsentMessageQueue removed " + entry.getToken());
-						tries = 1;
-						timerThread.success = true;
+						logger.debug("unsentMessageQueue removed " + token);
+						break;
 					}
 				}
 				RemoteDevice device = localDevice.getDevices().get(dest);
-				if (success) {
+				if (!sentMessageAwaitingResponse.contains(token) && tries <= HM_SENT_RETRIES) {
 					if (device.getInitState() == InitStates.PAIRING) {
 						device.setInitState(InitStates.PAIRED);
 						logger.info("Device " + dest + " paired");
 					}
 				}
-				else {
+				else if (device.getInitState() == InitStates.PAIRING) { // here we aren't sure that the device is no
+					// longer present. In case of configuration
+					// request,
+					// the device wouldn't react, if the activation button is not pressed. Removing of devices
+					// should be done actively by the user/administrator.
 					device.setInitState(InitStates.UNKNOWN);
 					localDevice.getDevices().remove(device.getAddress());
 					logger.warn("Device " + dest + " removed!");
 				}
-				logger.debug("Running Thread removed");
-				runningThreads.remove(this.getDest());
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+				this.unsentMessageQueue.remove(token);
+				tries = 0;
 			}
 		}
 
@@ -154,7 +173,10 @@ public class MessageHandler {
 		}
 
 		public void addMessage(Message message) {
-			this.unsentMessageQueue.put(message.getToken(), message);
+			synchronized (unsentMessageQueue) {
+				this.unsentMessageQueue.put(message.getToken(), message);
+				unsentMessageQueue.notify();
+			}
 			logger.debug("unsentMessageQueue added " + message.getToken());
 		}
 
@@ -166,24 +188,6 @@ public class MessageHandler {
 					min = key;
 			}
 			return min;
-		}
-
-		public class TimerThread extends Thread {
-
-			public volatile boolean success = false;
-
-			public void run() {
-				try {
-					Thread.sleep(3000);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-				synchronized (SendThread.this) {
-					if (!success)
-						SendThread.this.notify();
-				}
-			}
-
 		}
 	}
 }

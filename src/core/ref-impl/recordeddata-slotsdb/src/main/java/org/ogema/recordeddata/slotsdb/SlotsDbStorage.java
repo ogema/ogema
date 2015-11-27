@@ -15,14 +15,11 @@
  */
 package org.ogema.recordeddata.slotsdb;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.text.SimpleDateFormat;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
@@ -30,7 +27,6 @@ import org.ogema.core.channelmanager.measurements.IllegalConversionException;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.recordeddata.RecordedDataConfiguration;
-import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
 import org.ogema.core.recordeddata.ReductionMode;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.recordeddata.DataRecorderException;
@@ -43,8 +39,8 @@ import org.slf4j.LoggerFactory;
 class SlotsDbStorage implements RecordedDataStorage {
 
 	private RecordedDataConfiguration configuration;
-	private final String id;
-	private final SlotsDb recorder;
+	private String id;
+	private SlotsDb recorder;
 
 	private final static Logger logger = LoggerFactory.getLogger(SlotsDbStorage.class);
 
@@ -55,119 +51,220 @@ class SlotsDbStorage implements RecordedDataStorage {
 	}
 
 	@Override
-	public void insertValue(SampledValue value) throws DataRecorderException {
+	public void insertValue(final SampledValue value) throws DataRecorderException {
+
 		try {
-			if (configuration.getStorageType() == StorageType.FIXED_INTERVAL) {
-				recorder.proxy.appendValue(id, value.getValue().getDoubleValue(), value.getTimestamp(), (byte) value
-						.getQuality().getQuality(), configuration.getFixedInterval());
-			}
-			else {
+			AccessController.doPrivileged(new PrivilegedExceptionAction<Void>() {
 
-				recorder.proxy.appendValue(id, value.getValue().getDoubleValue(), value.getTimestamp(), (byte) value
-						.getQuality().getQuality(), -1);
-			}
+				@Override
+				public Void run() throws Exception {
 
-		} catch (IOException e) {
+					try {
+						if (configuration != null) {
+							recorder.proxy.appendValue(id, value.getValue().getDoubleValue(), value.getTimestamp(),
+									(byte) value.getQuality().getQuality(), configuration);
+						}
+
+					} catch (IOException e) {
+						logger.error("", e);
+					} catch (IllegalConversionException e) {
+						logger.error("", e);
+					}
+
+					return null;
+				}
+
+			});
+		} catch (PrivilegedActionException e) {
 			logger.error("", e);
-		} catch (IllegalConversionException e) {
+		}
+
+	}
+
+	@Override
+	public void insertValues(final List<SampledValue> values) throws DataRecorderException {
+
+		try {
+			AccessController.doPrivileged(new PrivilegedExceptionAction<Void>() {
+
+				@Override
+				public Void run() throws Exception {
+
+					try {
+						if (configuration != null) {
+
+							for (SampledValue value : values) {
+								recorder.proxy.appendValue(id, value.getValue().getDoubleValue(), value.getTimestamp(),
+										(byte) value.getQuality().getQuality(), configuration);
+							}
+						}
+					} catch (IOException e) {
+						logger.error("", e);
+					} catch (IllegalConversionException e) {
+						logger.error("", e);
+					}
+
+					return null;
+				}
+
+			});
+		} catch (PrivilegedActionException e) {
 			logger.error("", e);
 		}
 	}
 
 	@Override
-	public void insertValues(List<SampledValue> values) throws DataRecorderException {
+	public List<SampledValue> getValues(final long startTime) {
+
 		try {
-			for (SampledValue value : values) {
-				recorder.proxy.appendValue(id, value.getValue().getDoubleValue(), value.getTimestamp(), (byte) value
-						.getQuality().getQuality(), configuration.getFixedInterval());
-			}
-		} catch (IOException e) {
+			return (List<SampledValue>) AccessController
+					.doPrivileged(new PrivilegedExceptionAction<List<SampledValue>>() {
+
+						@Override
+						public List<SampledValue> run() throws Exception {
+
+							List<SampledValue> records = null;
+							try {
+								// long storageInterval = configuration.getFixedInterval();
+								records = recorder.proxy.read(id, startTime, System.currentTimeMillis(), configuration);
+							} catch (IOException e) {
+								logger.error("", e);
+							}
+
+							return records;
+						}
+
+					});
+
+		} catch (PrivilegedActionException e) {
 			logger.error("", e);
-		} catch (IllegalConversionException e) {
-			logger.error("", e);
+			return null;
 		}
+
 	}
 
 	@Override
-	public List<SampledValue> getValues(long startTime) {
-		List<SampledValue> records = null;
+	public List<SampledValue> getValues(final long startTime, final long endTime) {
+
 		try {
-			records = recorder.proxy.read(id, startTime, System.currentTimeMillis());
-		} catch (IOException e) {
+			return (List<SampledValue>) AccessController
+					.doPrivileged(new PrivilegedExceptionAction<List<SampledValue>>() {
+
+						@Override
+						public List<SampledValue> run() throws Exception {
+
+							// --------------------------
+
+							List<SampledValue> records = null;
+							try {
+								records = recorder.proxy.read(id, startTime, endTime - 1, configuration);
+							} catch (IOException e) {
+								logger.error("", e);
+							}
+							return records;
+
+							// --------------------------
+
+						}
+
+					});
+
+		} catch (PrivilegedActionException e) {
 			logger.error("", e);
+			return null;
 		}
-		return records;
+
 	}
 
 	@Override
-	public List<SampledValue> getValues(long startTime, long endTime) {
+	public SampledValue getValue(final long timestamp) {
 
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd HH:mm:ss.SSS");
-
-		List<SampledValue> records = null;
 		try {
-			records = recorder.proxy.read(id, startTime, endTime - 1);
-		} catch (IOException e) {
+			return (SampledValue) AccessController.doPrivileged(new PrivilegedExceptionAction<SampledValue>() {
+
+				@Override
+				public SampledValue run() throws Exception {
+
+					// ------
+
+					try {
+						return recorder.proxy.read(id, timestamp, configuration);
+					} catch (IOException e) {
+						logger.error("", e);
+						return null;
+					}
+
+					// ------
+				}
+
+			});
+
+		} catch (PrivilegedActionException e) {
 			logger.error("", e);
+			return null;
 		}
-		return records;
+
 	}
 
 	@Override
-	public SampledValue getValue(long timestamp) {
-		try {
-			return recorder.proxy.read(id, timestamp);
-		} catch (IOException e) {
-			logger.error("", e);
-		}
-		return null;
-	}
-
-	@Override
-	public void setConfiguration(RecordedDataConfiguration configuration) {
-		this.configuration = configuration;
-	}
-
-	@Override
-	public RecordedDataConfiguration getConfiguration() {
-		return configuration;
-	}
-
-	@Override
-	public List<SampledValue> getValues(long startTime, long endTime, long intervalSize, ReductionMode mode) {
-
-		// TODO could cause crash? extremely long requested time period of very small sampled values
-		List<SampledValue> returnValues = new ArrayList<SampledValue>();
+	public List<SampledValue> getValues(final long startTime, final long endTime, final long intervalSize,
+			final ReductionMode mode) {
 
 		// last timestamp is exclusive and therefore not part of the request
-		endTime = endTime - 1;
+		final long endTimeMinusOne = endTime - 1;
 
-		if (validateArguments(startTime, endTime, intervalSize)) {
+		try {
+			return (List<SampledValue>) AccessController
+					.doPrivileged(new PrivilegedExceptionAction<List<SampledValue>>() {
 
-			// Issues to consider:
-			// a) calling the for each subinterval will slow down the reduction (many file accesses)
-			// b) calling the read for the whole requested time period might be problematic - especially when requested time
-			// period is large and the log interval was very small (large number of values)
-			// Compromise: When the requested time period covers multiple days and therefore multiple log files, then a
-			// separate read data processing is performed for each file.
-			List<SampledValue> loggedValuesRaw = getLoggedValues(startTime, endTime);
-			List<SampledValue> loggedValues = removeQualityBad(loggedValuesRaw);
+						@Override
+						public List<SampledValue> run() throws Exception {
 
-			if (loggedValues.isEmpty()) {
-				// return an empty list since there are no logged values, so it doesn't make sense to aggregate anything
-				return returnValues;
-			}
+							// ----------------
 
-			if (mode.equals(ReductionMode.NONE)) {
-				return loggedValues;
-			}
+							// TODO could cause crash? extremely long requested time period of very small sampled values
+							List<SampledValue> returnValues = new ArrayList<SampledValue>();
 
-			List<Interval> intervals = generateIntervals(startTime, endTime, intervalSize);
-			returnValues = generateReducedData(intervals, loggedValues, mode);
+							if (validateArguments(startTime, endTimeMinusOne, intervalSize)) {
 
+								// Issues to consider:
+								// a) calling the for each subinterval will slow down the reduction (many file accesses)
+								// b) calling the read for the whole requested time period might be problematic -
+								// especially when requested
+								// time
+								// period is large and the log interval was very small (large number of values)
+								// Compromise: When the requested time period covers multiple days and therefore
+								// multiple log files, then a
+								// separate read data processing is performed for each file.
+								List<SampledValue> loggedValuesRaw = getLoggedValues(startTime, endTimeMinusOne);
+								List<SampledValue> loggedValues = removeQualityBad(loggedValuesRaw);
+
+								if (loggedValues.isEmpty()) {
+									// return an empty list since there are no logged values, so it doesn't make sense
+									// to aggregate anything
+									return returnValues;
+								}
+
+								if (mode.equals(ReductionMode.NONE)) {
+									return loggedValues;
+								}
+
+								List<Interval> intervals = generateIntervals(startTime, endTimeMinusOne, intervalSize);
+								returnValues = generateReducedData(intervals, loggedValues, mode);
+
+							}
+
+							return returnValues;
+
+							// ----------------
+						}
+
+					});
+
+		} catch (PrivilegedActionException e) {
+			logger.error("", e);
+			return null;
 		}
-
-		return returnValues;
 	}
 
 	/**
@@ -175,7 +272,7 @@ class SlotsDbStorage implements RecordedDataStorage {
 	 * different length than intervalSize.
 	 * 
 	 * ASSUMPTION: Arguments are valid (see validateArguments method)
-	 *
+	 * 
 	 * @return List of intervals which cover the entire period
 	 */
 	private List<Interval> generateIntervals(long periodStart, long periodEnd, long intervalSize) {
@@ -237,7 +334,7 @@ class SlotsDbStorage implements RecordedDataStorage {
 
 		}
 
-		//debug_printIntervals(intervals);
+		// debug_printIntervals(intervals);
 
 		return returnValues;
 	}
@@ -281,7 +378,7 @@ class SlotsDbStorage implements RecordedDataStorage {
 	 */
 	private List<SampledValue> getLoggedValues(long startTime, long endTime) {
 		try {
-			List<SampledValue> loggedValues = recorder.proxy.read(id, startTime, endTime);
+			List<SampledValue> loggedValues = recorder.proxy.read(id, startTime, endTime, configuration);
 			return loggedValues;
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -301,18 +398,65 @@ class SlotsDbStorage implements RecordedDataStorage {
 
 	@Override
 	public void update(RecordedDataConfiguration configuration) throws DataRecorderException {
-		this.configuration = configuration;
-
-		HashMap<String, RecordedDataConfiguration> persistentConfigurationMap = getPersistenConfigurationMap();
-		persistentConfigurationMap.put(this.id, configuration);
-		setPersistenConfigurationMap(persistentConfigurationMap);
+		setConfiguration(configuration);
 	}
 
 	@Override
-	public SampledValue getNextValue(long time) {
+	public void setConfiguration(RecordedDataConfiguration configuration) {
+
+		this.configuration = configuration;
+
 		try {
-			return recorder.proxy.readNextValue(id, time);
-		} catch (IOException e) {
+			AccessController.doPrivileged(new PrivilegedExceptionAction<Void>() {
+
+				@Override
+				public Void run() throws Exception {
+
+					// -----------
+
+					recorder.persistSlotsDbStorages();
+
+					// -----------
+
+					return null;
+				}
+
+			});
+		} catch (PrivilegedActionException e) {
+			logger.error("", e);
+		}
+
+	}
+
+	@Override
+	public RecordedDataConfiguration getConfiguration() {
+		return configuration;
+	}
+
+	@Override
+	public SampledValue getNextValue(final long time) {
+
+		try {
+			return (SampledValue) AccessController.doPrivileged(new PrivilegedExceptionAction<SampledValue>() {
+
+				@Override
+				public SampledValue run() throws Exception {
+
+					// ------
+
+					try {
+						return recorder.proxy.readNextValue(id, time, configuration);
+					} catch (IOException e) {
+						logger.error("", e);
+						return null;
+					}
+
+					// ------
+				}
+
+			});
+
+		} catch (PrivilegedActionException e) {
 			logger.error("", e);
 			return null;
 		}
@@ -320,6 +464,7 @@ class SlotsDbStorage implements RecordedDataStorage {
 	}
 
 	@Override
+	@SuppressWarnings("deprecation")
 	public Long getTimeOfLatestEntry() {
 		// TODO
 		return null;
@@ -330,44 +475,6 @@ class SlotsDbStorage implements RecordedDataStorage {
 		return InterpolationMode.NONE;
 	}
 
-	private void setPersistenConfigurationMap(HashMap<String, RecordedDataConfiguration> persistentConfigurationMap) {
-		ObjectOutputStream oosConfig = null;
-		try {
-			oosConfig = new ObjectOutputStream(new FileOutputStream(SlotsDb.CONFIGURATION_PATH));
-			oosConfig.writeObject(persistentConfigurationMap);
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			if (oosConfig != null) {
-				try {
-					oosConfig.close();
-				} catch (IOException e) {
-				}
-			}
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	@Override
-	public HashMap<String, RecordedDataConfiguration> getPersistenConfigurationMap() {
-		HashMap<String, RecordedDataConfiguration> persistentConfigurationMap = null;
-		ObjectInputStream ois = null;
-
-		try {
-			ois = new ObjectInputStream(new FileInputStream(SlotsDb.CONFIGURATION_PATH));
-			persistentConfigurationMap = (HashMap<String, RecordedDataConfiguration>) ois.readObject();
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			if (ois != null) {
-				try {
-					ois.close();
-				} catch (IOException e) {
-				}
-			}
-		}
-		return persistentConfigurationMap;
-	}
 }
 
 class Interval {

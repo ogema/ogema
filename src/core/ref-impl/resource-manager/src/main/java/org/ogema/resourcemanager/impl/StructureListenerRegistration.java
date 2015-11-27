@@ -51,15 +51,12 @@ public class StructureListenerRegistration implements RegisteredStructureListene
 
 			@Override
 			public Boolean call() throws Exception {
-				ReadWriteLock structureLock = ((ApplicationResourceManager) appman.getResourceManagement())
-						.getDatabaseManager().getStructureLock();
-				//XXX holding lock during callback...
-				structureLock.writeLock().lock();
-				try {
-					listener.resourceStructureChanged(e);
-				} finally {
-					structureLock.writeLock().unlock();
-				}
+				ResourceDBManager dbMan = ((ApplicationResourceManager) appman.getResourceManagement())
+						.getDatabaseManager();
+				// get the structure lock and release it to insure that the action which triggered this event is completed
+				dbMan.lockStructureWrite();
+				dbMan.unlockStructureWrite();
+				listener.resourceStructureChanged(e);
 				return true;
 			}
 		};

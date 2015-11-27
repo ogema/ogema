@@ -15,12 +15,10 @@
  */
 package org.ogema.resourcemanager.impl.model.simple;
 
-import org.ogema.core.model.schedule.DefinitionSchedule;
-import org.ogema.core.model.schedule.ForecastSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.resourcemanager.impl.ResourceBase;
-
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 
 /**
@@ -55,13 +53,13 @@ public class DefaultStringResource extends ResourceBase implements StringResourc
 	}
 
 	@Override
-	public ForecastSchedule forecast() {
-		return getSubResource("forecast", ForecastSchedule.class);
+	public AbsoluteSchedule forecast() {
+		return getSubResource("forecast", AbsoluteSchedule.class);
 	}
 
 	@Override
-	public DefinitionSchedule program() {
-		return getSubResource("program", DefinitionSchedule.class);
+	public AbsoluteSchedule program() {
+		return getSubResource("program", AbsoluteSchedule.class);
 	}
 
 	@Override

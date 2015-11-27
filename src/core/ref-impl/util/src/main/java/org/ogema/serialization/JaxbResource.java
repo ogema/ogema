@@ -115,8 +115,8 @@ public class JaxbResource {
 	}
 
 	@XmlElement
-	public boolean isReferencing() {
-		return res.isReference(false);
+	public String getReferencing() {
+		return res.isReference(false) ? res.getLocation() : null;
 	}
 
 	@XmlElements(value = {

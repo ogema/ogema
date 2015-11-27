@@ -81,7 +81,7 @@ public final class AttributeChannel extends Channel {
 				if (i > 2) // Skip the first attribute ID because it is implied
 					// when sending via that attribute
 					messagePayloadBuffer.putShort(Short.reverseBytes(attributeId));
-				logger.info(" " + Integer.toHexString(attributeId));
+				logger.debug(" " + Integer.toHexString(attributeId));
 				clusterAttributes
 						.add(dev.getEndpoint().getClusters().get(clusterId).clusterAttributes.get(attributeId));
 			}
@@ -170,7 +170,6 @@ public final class AttributeChannel extends Channel {
 				try {
 					channelLock.wait();
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}

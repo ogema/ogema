@@ -18,6 +18,10 @@
  */
 package org.ogema.accesscontrol;
 
+import java.util.Set;
+import java.util.Map;
+import java.util.Map.Entry;
+
 /**
  * @author mns
  * 
@@ -104,6 +108,53 @@ public class Util {
 
 		}
 		return success;
+	}
+
+	public static String startsWithAnyValue(Map<String, String> map, String name) {
+		String key = null, value = null;
+		Set<Entry<String, String>> entries = map.entrySet();
+		for (Entry<String, String> e : entries) {
+			value = e.getValue() + "/";
+			if (name.startsWith(value)) {
+				key = e.getKey();
+				break;
+			}
+		}
+		return key;
+	}
+
+	public static String startsWithAnyKey(Map<String, String> map, String name) {
+		String value = null, key = null;
+		Set<Entry<String, String>> entries = map.entrySet();
+		for (Entry<String, String> e : entries) {
+			key = e.getKey() + "/";
+			if (name.startsWith(key)) {
+				value = e.getValue();
+				break;
+			}
+		}
+		return value;
+	}
+
+	public static boolean intersect(String[] fActArr, String[] gActArr) {
+		int f = 0, g = 0;
+		while (true) {
+			try {
+				String fstr = fActArr[f++];
+				while (true) {
+					try {
+						String gstr = gActArr[g++];
+						if (fstr.equals("*") || gstr.equals("*") || fstr.equals(gstr))
+							return true;
+					} catch (ArrayIndexOutOfBoundsException e) {
+						break;
+					}
+				}
+			} catch (ArrayIndexOutOfBoundsException e) {
+				break;
+			}
+		}
+		return false;
 	}
 
 }

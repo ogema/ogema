@@ -15,13 +15,17 @@
  */
 package org.ogema.tools.timeseries.interpolation;
 
+import org.ogema.core.channelmanager.measurements.BooleanValue;
+import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.IntegerValue;
 import org.ogema.core.channelmanager.measurements.LongValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.tools.timeseries.api.InterpolationFunction;
+import org.ogema.tools.timeseries.api.TimeInterval;
 
 /**
  * Step interpolation: Always return a copy of x0.
@@ -30,10 +34,12 @@ public class StepInterpolation implements InterpolationFunction {
 
 	@Override
 	public SampledValue interpolate(SampledValue x0, SampledValue x1, long t, Class<? extends Value> valueType) {
-		if (x0 != null)
+		if (x0 != null) {
 			return new SampledValue(x0.getValue(), t, x0.getQuality());
-		else if (x1 != null)
+		}
+		else if (x1 != null) {
 			return new SampledValue(x1.getValue(), t, Quality.BAD);
+		}
 		throw new IllegalArgumentException("Cannot perform step interpolation with both support points being null.");
 	}
 
@@ -43,47 +49,46 @@ public class StepInterpolation implements InterpolationFunction {
 		final boolean emptyDomain = (dt == 0 || x0.getQuality() == Quality.BAD || x1.getQuality() == Quality.BAD);
 
 		final Value value = x0.getValue();
-		if (value instanceof FloatValue) {
-			if (emptyDomain)
+		if (value instanceof FloatValue || value instanceof DoubleValue || value instanceof BooleanValue) {
+			if (emptyDomain) {
 				return new FloatValue(0.f);
+			}
 			return new FloatValue(value.getFloatValue() * dt);
 		}
 		if (value instanceof LongValue) {
-			if (emptyDomain)
+			if (emptyDomain) {
 				return new LongValue(0L);
+			}
 			return new LongValue(value.getLongValue() * dt);
 		}
 		if (value instanceof IntegerValue) {
-			if (emptyDomain)
+			if (emptyDomain) {
 				return new IntegerValue(0);
+			}
 			return new IntegerValue((int) (value.getIntegerValue() * dt));
 		}
 		throw new IllegalArgumentException("Cannot integrate a function with non-numerical value type "
 				+ value.getClass().getCanonicalName());
 	}
 
-	//    @Override
-	//    public Value integrateAbsolute(SampledValue x0, SampledValue x1, Class<? extends Value> valueType) {
-	//		final long dt = x1.getTimestamp() - x0.getTimestamp();
-	//		final boolean emptyDomain = (dt == 0 || x0.getQuality() == Quality.BAD || x1.getQuality() == Quality.BAD);
-	//
-	//		final Value value = x0.getValue();
-	//		if (value instanceof FloatValue) {
-	//			if (emptyDomain)
-	//				return new FloatValue(0.f);
-	//			return new FloatValue(Math.abs(value.getFloatValue()) * dt);
-	//		}
-	//		if (value instanceof LongValue) {
-	//			if (emptyDomain)
-	//				return new LongValue(0L);
-	//			return new LongValue(Math.abs(value.getLongValue()) * dt);
-	//		}
-	//		if (value instanceof IntegerValue) {
-	//			if (emptyDomain)
-	//				return new IntegerValue(0);
-	//			return new IntegerValue((int) (Math.abs(value.getIntegerValue()) * dt));
-	//		}
-	//		throw new IllegalArgumentException("Cannot integrate a function with non-numerical value type "
-	//				+ value.getClass().getCanonicalName());
-	//    }
+	@Override
+	public TimeInterval getPositiveInterval(SampledValue x0, SampledValue x1, Class<? extends Value> valueType) {
+		if (StringValue.class.isAssignableFrom(valueType)) {
+			throw new RuntimeException("Cannot define positive values for StringValues");
+		}
+		if (x0 == null || x1 == null) {
+			return new TimeInterval(0, 0);
+		}
+		if (x0.getTimestamp() > x1.getTimestamp()) {
+			return getPositiveInterval(x1, x0, valueType);
+		}
+		if (x0.getQuality() == Quality.BAD) {
+			return new TimeInterval(0, 0);
+		}
+		final float value = x0.getValue().getFloatValue();
+		if (value <= 0.) {
+			return new TimeInterval(0, 0);
+		}
+		return new TimeInterval(x0.getTimestamp(), x1.getTimestamp());
+	}
 }

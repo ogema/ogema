@@ -141,10 +141,12 @@ public class ClusterAttribute {
 	}
 
 	public void setValue(Value value) {
-		this.value = value;
-		valueTimestamp = Constants.calendar.getTimeInMillis();
-		if (haslistener) {
-			attributeChannel.updateListener();
+		if (value != null) {
+			this.value = value;
+			valueTimestamp = Constants.calendar.getTimeInMillis();
+			if (haslistener) {
+				attributeChannel.updateListener();
+			}
 		}
 	}
 

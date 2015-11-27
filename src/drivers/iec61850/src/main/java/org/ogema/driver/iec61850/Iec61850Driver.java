@@ -27,9 +27,11 @@ import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
 import org.ogema.core.channelmanager.driverspi.ChannelUpdateListener;
+import org.ogema.core.channelmanager.driverspi.DeviceListener;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
-import org.ogema.core.channelmanager.driverspi.ExceptionListener;
+import org.ogema.core.channelmanager.driverspi.NoSuchChannelException;
+import org.ogema.core.channelmanager.driverspi.NoSuchDeviceException;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.driverspi.ValueContainer;
@@ -41,6 +43,7 @@ import org.ogema.core.channelmanager.measurements.IntegerValue;
 import org.ogema.core.channelmanager.measurements.LongValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.core.channelmanager.measurements.Value;
 import org.openmuc.openiec61850.BasicDataAttribute;
 import org.openmuc.openiec61850.BdaBitString;
 import org.openmuc.openiec61850.BdaBoolean;
@@ -111,6 +114,15 @@ public class Iec61850Driver implements ChannelDriver {
 		System.out.println(channels.get(0).getChannelLocator().getDeviceLocator().getDeviceAddress());
 		Iec61850Connection connectionHandle = connections.get(channels.get(0).getChannelLocator().getDeviceLocator()
 				.getDeviceAddress());
+
+		if (connectionHandle == null) {
+			channelAdded(channels.get(0).getChannelLocator());
+			connectionHandle = connections.get(channels.get(0).getChannelLocator().getDeviceLocator()
+					.getDeviceAddress());
+			if (connectionHandle == null) {
+				throw new IOException("Unable to read channel because it connection cannot be established");
+			}
+		}
 
 		ServerModel serverModel = connectionHandle.getServerModel();
 
@@ -246,7 +258,7 @@ public class Iec61850Driver implements ChannelDriver {
 	 * Frees all channels, devices and interfaces
 	 */
 	@Override
-	public void reset() {
+	public void shutdown() {
 		for (Iec61850Connection con : connections.values()) {
 			con.getClientAssociation().close();
 		}
@@ -360,15 +372,20 @@ public class Iec61850Driver implements ChannelDriver {
 	}
 
 	@Override
-	public void readChannels(List<SampledValueContainer> channels, ChannelUpdateListener listener)
-			throws UnsupportedOperationException {
-		throw new UnsupportedOperationException();
+	public void addDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
 	}
 
 	@Override
-	public void writeChannels(List<ValueContainer> channels, ExceptionListener listener)
-			throws UnsupportedOperationException {
+	public void removeDeviceListener(DeviceListener listener) {
 		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void writeChannel(ChannelLocator channelLocator, Value value) throws UnsupportedOperationException,
+			IOException, NoSuchDeviceException, NoSuchChannelException {
 		throw new UnsupportedOperationException();
 	}
 

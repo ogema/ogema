@@ -27,7 +27,8 @@ public class HMPowerboxTest implements ResourceValueListener<BooleanResource> {
 	public HMPowerboxTest(ResourceAccess ra) {
 		feedback = ra.getResource("HM_ES_PMSw1_Pl_PowerMeter_274155/onOffSwitch/stateFeedback");
 		control = ra.getResource("HM_ES_PMSw1_Pl_PowerMeter_274155/onOffSwitch/stateControl");
-		feedback.addValueListener(this);
+		if (feedback != null)
+			feedback.addValueListener(this);
 	}
 
 	@Override

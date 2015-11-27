@@ -17,6 +17,10 @@ package org.ogema.recordeddata.slotsdb;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.List;
@@ -74,6 +78,7 @@ public final class FileObjectList {
 	 * @throws IOException
 	 */
 	public void reLoadFolder() throws IOException {
+
 		File folder = new File(foldername);
 
 		files = new Vector<FileObject>(1);
@@ -114,6 +119,7 @@ public final class FileObjectList {
 			firstTS = files.get(0).getStartTimeStamp();
 		}
 		folder = null;
+
 	}
 
 	/*

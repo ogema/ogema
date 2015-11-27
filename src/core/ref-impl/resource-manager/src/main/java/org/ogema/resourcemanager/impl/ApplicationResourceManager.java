@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import org.ogema.accesscontrol.AdminPermission;
 
 import org.ogema.accesscontrol.PermissionManager;
@@ -73,6 +74,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	protected final Collection<StructureListenerRegistration> structureListeners;
 	// resource demands registered by this app
 	private final Collection<ResourceDemandListenerRegistration> resourceDemands;
+	private final Map<TreeElement, ResourceAccessRights> accessRights;
 
 	public ApplicationResourceManager(ApplicationManager appMan, Application app, ResourceDBManager dbMan,
 			PermissionManager pManager) {
@@ -89,6 +91,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		this.accessedResources = new HashSet<>();
 		this.structureListeners = new HashSet<>();
 		this.resourceDemands = new HashSet<>();
+        this.accessRights = new ConcurrentHashMap<>();
 		logger = org.slf4j.LoggerFactory.getLogger("org.ogema.core.resourcemanager-" + app.getClass().getName());
 	}
 
@@ -162,7 +165,14 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	}
 
 	protected ResourceAccessRights getAccessRights(TreeElement el) {
-		return permissionManager.getAccessRights(app, getLocationElement(el));
+		TreeElement location = getLocationElement(el);
+		ResourceAccessRights r = accessRights.get(el);
+		if (r == null) {
+			r = permissionManager.getAccessRights(app, location);
+			accessRights.put(location, r);
+		}
+		return r;
+
 	}
 
 	protected final TreeElement getLocationElement(TreeElement el) {
@@ -348,7 +358,6 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	 * resource access rights.
 	 */
 	@Override
-	@SuppressWarnings("unchecked")
 	public <T extends Resource> List<T> getToplevelResources(Class<T> resourceType) {
 		final List<T> result = new ArrayList<>();
 		for (TreeElement top : dbMan.getAllToplevelResources()) {
@@ -361,7 +370,11 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 				continue;
 			}
 			if (resourceType == null || (type != null && resourceType.isAssignableFrom(type))) {
-				result.add((T) getResource("/" + top.getName()));
+                @SuppressWarnings("unchecked")
+                T resource = (T) getResource("/" + top.getName());
+                if (resource != null) {
+                    result.add(resource);
+                }
 			}
 		}
 		return result;

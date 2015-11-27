@@ -37,13 +37,13 @@
                 <div class="col-md-12" >
                     <h2>Applications</h2>
                     <div class="appContainer" ng-repeat="app in applications| filter:q" ng-mouseenter="app.displayButtons = true" ng-mouseleave="app.displayButtons = false">
-                        <div class="applogoarea" ng-if="app.hasWebResources == true && app.id">                           
+                        <div class="applogoarea" ng-if="app.hasWebResources == true && !!app.id">
                             <a href ng-click="openApp(app)">
-                                <img class="applogo" src="/install/installedapps?action=getIcon&app={{app.id}}"/> 
-                            </a>   
+                                <img class="applogo" ng-src="/install/installedapps?action=getIcon&app={{app.id}}"/>
+                            </a>
                         </div>
-                        <div class="applogoarea" ng-if="app.hasWebResources == false && app.id">                           
-                            <img class="applogo" src="/install/installedapps?action=getIcon&app={{app.id}}"/>  
+                        <div class="applogoarea" ng-if="app.hasWebResources == false && !!app.id">
+                            <img class="applogo" ng-src="/install/installedapps?action=getIcon&app={{app.id}}"/>
                         </div>
                         <div class="bundleShortInfos">
                             <b>  {{app.metainfo.Bundle_Name}} </b><br/>
@@ -72,7 +72,7 @@
                             </button>
                         </div>
                     </div>
-                    <button class="btn-success appContainer addApp"   ng-click="installAppFromAppstore('localAppDirectory')">
+                    <!--button class="btn-success appContainer addApp"   ng-click="installAppFromAppstore('localAppDirectory')">
                         <div class="applogoarea">
                             <img class="applogo" src="./img/svg/addappicon.svg" alt=""/> 
                         </div>
@@ -82,7 +82,7 @@
                                 Upload and install a new Application either from a local File or your local Appstore.
                             </div>
                         </div>
-                    </button>   
+                    </button-->   
 
                 </div>
             </div>

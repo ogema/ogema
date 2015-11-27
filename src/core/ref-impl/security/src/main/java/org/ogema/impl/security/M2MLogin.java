@@ -22,6 +22,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import org.ogema.accesscontrol.PermissionManager;
 
 import org.ogema.accesscontrol.SessionAuth;
 import org.osgi.service.useradmin.Authorization;
@@ -38,10 +39,12 @@ public class M2MLogin extends HttpServlet {
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 
-	PermissionManagerImpl permMan;
+	final PermissionManager permMan;
+	final UserAdmin userAdmin;
 
-	public M2MLogin(PermissionManagerImpl permMan) {
+	public M2MLogin(PermissionManager permMan, UserAdmin userAdmin) {
 		this.permMan = permMan;
+		this.userAdmin = userAdmin;
 	}
 
 	/*
@@ -51,9 +54,10 @@ public class M2MLogin extends HttpServlet {
 	 * @see javax.servlet.http.HttpServlet#doPost(javax.servlet.http.HttpServletRequest,
 	 * javax.servlet.http.HttpServletResponse)
 	 */
+	@Override
 	synchronized protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException,
 			IOException {
-		UserAdmin admin = permMan.accessMan.usrAdmin;
+		UserAdmin admin = userAdmin;
 		logger.info(req.toString());
 		String usr = req.getParameter("usr");
 		String pwd = req.getParameter("pwd");

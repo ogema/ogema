@@ -59,11 +59,9 @@ public interface ElectricityStorage extends EnergyStorage {
 	/**
 	 * Electrical connection of the storage. <br>
 	 * Also contains information on rated values (power, voltage, current, power
-	 * factor, etc.). For instance, the maximum allowed charge rate (power) is
-	 * given in {@link org.ogema.core.model.prototypes.Sensor#ratedValues()
-	 * electricityConnection.powerSens.ratedValues}, whereas the maximum allowed
-	 * discharge rate can be found in      {@link org.ogema.core.model.commonsensors.ElPowerSens#ratedPowerGeneration()
-	 * electricityConnection.powerSens.ratedPowerGeneration}.
+	 * factor, etc.), in {@link org.ogema.model.sensors.Sensor#ratedValues()}. 
+	 * For instance, the maximum allowed charge rate (power) is given in 
+	 * {@link org.ogema.model.sensors.Sensor#ratedValues() electricityConnection.powerSensor().ratedValues()}.
 	 */
 	ElectricityConnection electricityConnection();
 

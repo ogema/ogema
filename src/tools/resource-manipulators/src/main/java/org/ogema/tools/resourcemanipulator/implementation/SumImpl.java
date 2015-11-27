@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.tools.resourcemanipulator.ResourceManipulatorImpl;
 import org.ogema.tools.resourcemanipulator.configurations.Sum;
@@ -132,6 +131,18 @@ public class SumImpl implements Sum {
 	@Override
 	public boolean getDisableEmptySum() {
 		return m_deactivateEmtpySum;
+	}
+
+	@Override
+	public void deactivate() {
+		if (m_config != null)
+			m_config.deactivate(true);
+	}
+
+	@Override
+	public void activate() {
+		if (m_config != null)
+			m_config.activate(true);
 	}
 
 }

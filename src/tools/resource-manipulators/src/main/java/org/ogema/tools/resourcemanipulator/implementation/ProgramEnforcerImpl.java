@@ -21,6 +21,7 @@ import org.ogema.core.model.ValueResource;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.tools.resourcemanipulator.configurations.ProgramEnforcer;
 import org.ogema.tools.resourcemanipulator.model.ProgramEnforcerModel;
+import org.ogema.tools.resourcemanipulator.model.RangeFilter;
 
 /**
  * @author Timo Fischer, Fraunhofer IWES
@@ -32,6 +33,7 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 	private long m_updateInterval;
 	private AccessPriority m_priority;
 	private boolean m_exclusiveAccessRequired;
+	private boolean deactivate = true;
 
 	// Configuration this is connected to (null if not connected)
 	private ProgramEnforcerModel m_config;
@@ -47,6 +49,7 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 		m_priority = AccessPriority.valueOf(configResource.priority().getValue());
 		m_exclusiveAccessRequired = configResource.exclusiveAccessRequired().getValue();
 		m_config = configResource;
+		deactivate = m_config.deactivateIfValueMissing().getValue();
 	}
 
 	public ProgramEnforcerImpl(ResourceManipulatorImpl base) {
@@ -64,9 +67,9 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 			return false;
 		}
 		// delete the old configuration if it exsited.
-		if (m_config != null)
+		if (m_config != null) {
 			m_config.delete();
-
+		}
 		m_config = m_base.createResource(ProgramEnforcerModel.class);
 
 		m_config.targetResource().setAsReference(m_targetResource);
@@ -76,6 +79,8 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 		m_config.exclusiveAccessRequired().setValue(m_exclusiveAccessRequired);
 		m_config.priority().create();
 		m_config.priority().setValue(m_priority.toString());
+		m_config.deactivateIfValueMissing().create();
+		m_config.deactivateIfValueMissing().setValue(deactivate);
 
 		m_config.activate(true);
 		return true;
@@ -83,7 +88,7 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 
 	@Override
 	public void remove() {
-		if (m_config != null) {
+		if (m_config != null && m_config.exists()) {
 			m_config.delete();
 		}
 	}
@@ -118,6 +123,61 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 	@Override
 	public long getUpdateInterval() {
 		return m_updateInterval;
+	}
+
+	@Override
+	public void setRangeFilter(float lowerBoundary, float upperBoundary) throws RuntimeException {
+		setRangeFilter(lowerBoundary, upperBoundary, 0);
+	}
+
+	@Override
+	public void setRangeFilter(float lowerBoundary, float upperBoundary, int mode) throws RuntimeException {
+		if (m_config == null || !m_config.exists())
+			throw new RuntimeException("Cannot set filter before ProgramEnforcer has been commited");
+		boolean lowerNaN = Float.isNaN(lowerBoundary);
+		boolean upperNaN = Float.isNaN(upperBoundary);
+		if (lowerNaN && upperNaN) {
+			m_config.range().delete();
+			return;
+		}
+		RangeFilter filter = m_config.range();
+		if (!lowerNaN) {
+			filter.range().lowerLimit().create();
+			filter.range().lowerLimit().setValue(lowerBoundary);
+		}
+		if (!upperNaN) {
+			filter.range().upperLimit().create();
+			filter.range().upperLimit().setValue(upperBoundary);
+		}
+		filter.mode().create();
+		filter.mode().setValue(mode);
+		filter.activate(true);
+
+	}
+
+	@Override
+	public ValueResource getResource() {
+		return (ValueResource) m_targetResource;
+	}
+
+	@Override
+	public void deactivateTargetIfProgramMissing(boolean deactivate) throws RuntimeException {
+		this.deactivate = deactivate;
+		if (m_config != null && m_config.exists() && m_config.deactivateIfValueMissing().exists()) {
+			m_config.deactivateIfValueMissing().setValue(deactivate);
+		}
+	}
+
+	@Override
+	public void deactivate() {
+		if (m_config != null)
+			m_config.deactivate(true);
+	}
+
+	@Override
+	public void activate() {
+		if (m_config != null)
+			m_config.activate(true);
 	}
 
 }

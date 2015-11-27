@@ -4,7 +4,7 @@
     <parent>
     <artifactId>ogema-tests</artifactId>
     <groupId>org.ogema.tests</groupId>
-    <version>2.0.2-SNAPSHOT</version>
+    <version>2.0.4</version>
   </parent>
     
     <artifactId>longterm-logging</artifactId>
@@ -51,6 +51,14 @@
         <dependency>
             <groupId>org.ogema.core</groupId>
             <artifactId>models</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.tools</groupId>
+            <artifactId>resource-manipulators</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.tools</groupId>
+            <artifactId>memory-timeseries</artifactId>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

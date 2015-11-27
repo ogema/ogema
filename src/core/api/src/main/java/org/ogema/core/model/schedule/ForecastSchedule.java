@@ -17,6 +17,8 @@ package org.ogema.core.model.schedule;
 
 /** 
  * Schedule giving a forecast of the value of the resource to which it is attached.
+ * @deprecated use {@link AbsoluteSchedule} instead
  */
+@Deprecated
 public interface ForecastSchedule extends Schedule {
 }

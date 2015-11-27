@@ -27,11 +27,22 @@ public class CmdMessage extends Message {
 
 	private byte flag;
 	private byte type;
-	private String data;
+	public byte[] data;
+	public int sentNum;
 
 	private LocalDevice localDevice;
 
 	public CmdMessage(LocalDevice localDevice, RemoteDevice rd, byte flag, byte type, String data) {
+		super(rd);
+		this.localDevice = localDevice;
+		this.flag = flag;
+		this.type = type;
+		this.dest = rd.getAddress();
+		// this.sentNum = rd.sentMsgNum;
+		this.data = Converter.hexStringToByteArray(data);
+	}
+
+	public CmdMessage(LocalDevice localDevice, RemoteDevice rd, byte flag, byte type, byte[] data) {
 		super(rd);
 		this.localDevice = localDevice;
 		this.flag = flag;
@@ -46,7 +57,7 @@ public class CmdMessage extends Message {
 	}
 
 	@Override
-	public byte[] getFrame(long num) {
+	public byte[] getFrame(int num) {
 		this.num = num;
 		ByteArrayOutputStream body = new ByteArrayOutputStream(1);
 		body.write((byte) num);
@@ -55,9 +66,8 @@ public class CmdMessage extends Message {
 		try {
 			body.write(Converter.hexStringToByteArray(localDevice.getOwnerid()));
 			body.write(Converter.hexStringToByteArray(dest));
-			body.write(Converter.hexStringToByteArray(data));
+			body.write(data);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 

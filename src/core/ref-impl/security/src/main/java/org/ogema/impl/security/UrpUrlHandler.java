@@ -64,7 +64,7 @@ public class UrpUrlHandler implements URLStreamHandlerService {
 
 	@Override
 	public String toExternalForm(URL url) {
-		return url.toString();
+		return "urp:" + url.getPath();
 	}
 
 	@Override

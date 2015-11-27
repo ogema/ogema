@@ -24,7 +24,6 @@ import java.util.Collection;
 import java.util.List;
 
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.SingleValueResource;
 
 /**
@@ -59,6 +58,7 @@ public interface Sum extends ManipulatorConfiguration {
 
 	/**
 	 * Gets the delay time configured for this.
+	 * @return computation delay time
 	 */
 	long getDelay();
 
@@ -78,11 +78,13 @@ public interface Sum extends ManipulatorConfiguration {
 
 	/**
 	 * Gets the target resource in which the result is being written.
+	 * @return the output resource
 	 */
 	Resource getTarget();
 
 	/**
 	 * Gets an unmodifiable list with the inputs.
+	 * @return list of input resources
 	 */
 	List<SingleValueResource> getAddends();
 }

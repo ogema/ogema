@@ -24,6 +24,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -102,6 +103,10 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 
 	String name;
 
+	private Object storageLock;
+
+	private boolean inited;
+
 	/**
 	 * Get the archive instances for the types and resources. If the files already exist then they are opened as
 	 * RandomAccessFile otherwise a new file is created.
@@ -128,15 +133,22 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 			activatePersistence = true;
 		else
 			activatePersistence = false;
+		init();
+		this.inited = true;
 	}
 
 	void init() {
+		if (inited)
+			return;
 		if (activatePersistence) {
 			resourceIO = new DBResourceIO(this);
-			resourceIO.parseResources();
 			persistence = new TimedPersistence(this);
+			this.storageLock = persistence.getStorageLock();
+			resourceIO.parseResources();
 			persistence.startStorage();
 		}
+		else
+			this.storageLock = new Object();
 		dbReady = true;
 	}
 
@@ -382,7 +394,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 				/*
 				 * This method is already overwritten by a model derived from this current one.
 				 */
-				myDebug("Method " + elem.name + " is overwritten by the type " + elem.typeName);
+				logger.debug("Method " + elem.name + " is overwritten by the type " + elem.typeName);
 			}
 			else {
 				// method doesn't represent a type element but its a
@@ -600,9 +612,10 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 					logger.error("Registration table resIDByName is corrupted!");
 			}
 		}
-
-		// register in table of nodes by id as type
-		exist = resNodeByID.remove(e.resID, e);
+		synchronized (storageLock) {
+			// register in table of nodes by id as type
+			exist = resNodeByID.remove(e.resID, e);
+		}
 		if (!exist)
 			logger.error("Registration table resNodeByID is corrupted!");
 	}
@@ -654,12 +667,12 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		if (e == elem)
 			return true;
 		else if ((e != null) && Configuration.LOGGING)
-			System.out.println("A top level Resource exists with the same name: " + elem.name);
+			logger.debug("A top level Resource exists with the same name: " + elem.name);
 		e = resNodeByID.get(elem.resID);
 		if (e == elem)
 			return true;
 		else if ((e != null) && Configuration.LOGGING)
-			System.out.println("A sub level Resource exists with the same name: " + elem.name);
+			logger.debug("A sub level Resource exists with the same name: " + elem.name);
 		return false;
 	}
 
@@ -708,10 +721,11 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		return root.get(name);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<TreeElement> getAllToplevelResources() {
 		Vector<TreeElement> result = new Vector<TreeElement>(root.values());
-		return result;
+		return (Collection<TreeElement>) result.clone();
 	}
 
 	@Override
@@ -769,9 +783,17 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 				path = path.substring(begin, end);
 
 			// Handle the case if the path is '*' or '/*' only
-			if (path.equals("/") || (path.equals("") && wc))
-				return getAllToplevelResources();
+			if (path.equals("/") || (path.equals("") && wc)) {
+				Collection<TreeElementImpl> tops = resNodeByID.values();// getAllToplevelResources();
+				// if a type specified additionally filter the results
+				if (type != null)
+					filterByType(tops, type, result);
+				if (owner != null)
+					filterByOwner(result, owner);
+				return result;
+			}
 
+			// path has an unique value
 			Integer id = resIDByName.get(path);
 			TreeElementImpl te = null;
 			if (id != null) {
@@ -832,6 +854,31 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		return result;
 	}
 
+	private void filterByOwner(HashSet<TreeElement> result, String owner) {
+		Iterator<TreeElement> it = result.iterator();
+		while (it.hasNext()) {
+			TreeElement te = it.next();
+			if (!te.getAppID().equals(owner))
+				result.remove(te);
+		}
+	}
+
+	private void filterByType(Collection<TreeElementImpl> tops, String type, Collection<TreeElement> result) {
+		Class<?> filtercls = null;
+		try {
+			filtercls = Class.forName(type);
+		} catch (ClassNotFoundException e) {
+			return;
+		}
+		Iterator<TreeElementImpl> it = tops.iterator();
+		while (it.hasNext()) {
+			TreeElementImpl te = it.next();
+			Class<?> cls = te.getType();
+			if (filtercls.isAssignableFrom(cls))
+				result.add(te);
+		}
+	}
+
 	@Override
 	public void finishTransaction() {
 		persistence.finishTransaction(0);
@@ -850,15 +897,13 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 			return dbReady;
 	}
 
-	// public static ResourceDBImpl getInstance() {
-	// if (ResourceDBImpl.db == null)
-	// ResourceDBImpl.db = new ResourceDBImpl();
-	// return ResourceDBImpl.db;
-	// }
-
 	@Override
 	public void start(BundleContext context) throws Exception {
-		init();
+		try {
+			init();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		registration = context.registerService(ResourceDB.class, this, null);
 	}
 
@@ -877,8 +922,9 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	 * Used by the tests only
 	 */
 	void restart() {
-		System.out.println("Restart DB!");
-		System.out.println(((TimedPersistence) persistence).task);
+		this.inited = false;
+		logger.debug("Restart DB!");
+		logger.debug(((TimedPersistence) persistence).storageTask.toString());
 		persistence.stopStorage();
 		if (resourceIO != null)
 			resourceIO.closeAll();
@@ -892,12 +938,6 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 
 	protected void setName(String name) {
 		this.name = name;
-	}
-
-	private void myDebug(String message) {
-		if (Configuration.LOGGING) {
-			System.out.println(this.getClass().getCanonicalName().concat(": ").concat(message));
-		}
 	}
 
 	@Override

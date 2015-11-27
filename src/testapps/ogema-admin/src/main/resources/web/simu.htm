@@ -1,4 +1,4 @@
-<!--
+﻿<!--
 
     This file is part of OGEMA.
 
@@ -27,7 +27,7 @@
 function actualize() {
 	if(all_inited && ((get.readyState >= 4)||(get.readyState == 0))){
 		//get.open("GET", "/simu",true);
-		get.open("GET", "/rest/top1/sub1/sub2"+"?param1="+otusr+"&param2="+otpwd,true);
+		get.open("GET", "/rest/resources"+"?user="+otusr+"&pw="+otpwd,true);
 		get.onreadystatechange = process;
 		get.send();
 		}

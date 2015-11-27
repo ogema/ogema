@@ -32,13 +32,12 @@ import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceException;
+import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.connections.ElectricityConnection;
 import org.ogema.model.locations.PhysicalDimensions;
 import org.ogema.model.metering.ElectricityMeter;
 import org.ogema.model.ranges.BinaryRange;
-import org.ogema.resourcemanager.impl.ApplicationResourceManager;
-import org.ogema.resourcetree.TreeElement;
 import org.ops4j.pax.exam.ProbeBuilder;
 import org.ops4j.pax.exam.TestProbeBuilder;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
@@ -60,7 +59,6 @@ public class ResourceTest extends OsgiTestBase {
 
 	@ProbeBuilder
 	public TestProbeBuilder customize(TestProbeBuilder builder) {
-		builder.ignorePackageOf(ApplicationResourceManager.class, TreeElement.class);
 		return builder;
 	}
 
@@ -412,4 +410,18 @@ public class ResourceTest extends OsgiTestBase {
 		assertFalse(opt.isActive());
 	}
 
+	@Test 
+	public void addDecoratorCreatesResource() {
+		Resource res = resMan.createResource(newResourceName(), OnOffSwitch.class);
+		String subres = "justatest";
+		res.getSubResource(subres, StringResource.class);
+		Resource sub = res.addDecorator(subres, StringResource.class);
+		assertTrue("Subresource expected to exist, but found virtual.", sub.exists());
+		try {
+			Resource sub1 = res.getSubResource("test1", StringResource.class);
+			res.addDecorator("test2", sub1);  // set a reference to a virtual resource, expect a VirtualResourceException
+			throw new RuntimeException("VirtualResourceException expected");
+		} catch (VirtualResourceException | ClassCastException e) {}
+		res.delete();
+	}
 }

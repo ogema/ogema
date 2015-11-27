@@ -16,6 +16,7 @@
 package org.ogema.resourcemanager.impl.test;
 
 import org.ogema.exam.DemandTestListener;
+
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -23,9 +24,10 @@ import static org.junit.Assert.*;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
 import org.junit.After;
 import org.junit.Before;
-
+import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ValueResource;
@@ -34,7 +36,9 @@ import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.exam.TestApplication;
 import org.ogema.model.actors.OnOffSwitch;
+import org.ogema.model.devices.buildingtechnology.Thermostat;
 import org.ogema.model.devices.whitegoods.CoolingDevice;
+import org.ogema.model.locations.Room;
 import org.ogema.model.sensors.GenericFloatSensor;
 import org.ogema.model.sensors.Sensor;
 import org.ogema.model.sensors.TemperatureSensor;
@@ -287,6 +291,83 @@ public class ResourceDemandTest extends OsgiTestBase {
 
                 resAcc.removeResourceDemand(Sensor.class, l);
                 sensor.delete();
+	}
+   	
+   	private class RoomListener implements ResourceDemandListener<Room> {
+
+		public volatile CountDownLatch foundLatch;
+		public volatile CountDownLatch lostLatch;
+
+		public volatile String lastAvailable = null;
+		public volatile String lastUnavailable = null;
+		
+		public RoomListener() {
+			reset();
+		}
+		
+		public void reset() {
+			foundLatch = new CountDownLatch(1);
+			lostLatch = new CountDownLatch(1);
+		}
+
+		@Override
+		public void resourceAvailable(Room rm) {
+			lastAvailable = rm.name().getValue();
+//			System.out.println("  Available callback: " + lastAvailable);
+			foundLatch.countDown();
+		}
+
+		@Override
+		public void resourceUnavailable(Room rm) {
+			lastUnavailable = rm.name().getValue();
+//			System.out.println("  Unavailable callback: " + lastUnavailable);
+			lostLatch.countDown();
+		}
+		
+	};
+	
+	@Test
+	public void deleteSubresourceAndRecreateImmediately() throws InterruptedException {
+		String subRoom = "subRoom1";
+		String subRoom2 = "subRoom2";
+		Thermostat thermo = resMan.createResource("randomThermostat", Thermostat.class);
+		thermo.location().room().name().create();
+		thermo.location().room().name().setValue(subRoom);
+		RoomListener listener = new RoomListener();
+		resAcc.addResourceDemand(Room.class, listener);
+		thermo.activate(true);
+		listener.foundLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(subRoom, listener.lastAvailable);	
+		thermo.location().room().delete();
+		thermo.location().room().name().create();
+		thermo.location().room().name().setValue(subRoom2);
+		listener.lostLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(subRoom,listener.lastUnavailable);  // make sure the new resource is not created before the callback has been executed
+	}
+   	
+	@Ignore
+	@Test
+	public void deleteSubresourceAndSetAsReference() throws InterruptedException {
+		String subRoom = "subRoom";
+		String topRoom = "topRoom";
+		Thermostat thermo = resMan.createResource("randomThermostat", Thermostat.class);
+		thermo.location().room().name().create();
+		thermo.location().room().name().setValue(subRoom);
+		Room room = resMan.createResource(topRoom, Room.class);
+		room.name().create();
+		room.name().setValue(topRoom);
+		RoomListener listener = new RoomListener();
+		resAcc.addResourceDemand(Room.class, listener);
+		thermo.activate(true);
+		listener.foundLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(subRoom, listener.lastAvailable);
+		listener.reset();
+		room.activate(true);		
+		listener.foundLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(topRoom,listener.lastAvailable);
+		thermo.location().room().setAsReference(room);
+		listener.lostLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(subRoom,listener.lastUnavailable);  // make sure the new reference is not set before the callback has been executed
 	}
 
 }

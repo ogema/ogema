@@ -18,7 +18,7 @@ package org.ogema.core.channelmanager.driverspi;
 import java.io.IOException;
 import java.util.List;
 
-import org.ogema.core.channelmanager.NoSuchDriverException;
+import org.ogema.core.channelmanager.measurements.Value;
 
 /**
  * The ChannelDriver interface has to be implemented by each low-level protocol driver. The low-level driver has to
@@ -123,22 +123,6 @@ public interface ChannelDriver {
 	public void readChannels(List<SampledValueContainer> channels) throws UnsupportedOperationException, IOException;
 
 	/**
-	 * Asynchronous read, for more details see synchronous read. During the execution of the callback the values of
-	 * channels may not change. Afterwards the channels object should not be read anymore (copies of values should be
-	 * made during callback).
-	 * 
-	 * @param channels
-	 *            list of channels to read.
-	 * @param listener
-	 *            will be invoked when at least one channel value is updated. The list given to the listener will only
-	 *            contain the elements channels that received a new value.
-	 * @throws UnsupportedOperationException
-	 *             if this operation is not supported by the driver
-	 */
-	public void readChannels(List<SampledValueContainer> channels, ChannelUpdateListener listener)
-			throws UnsupportedOperationException;
-
-	/**
 	 * Listen to channels who send data without request, but based on subscription. This method will subscribe to the
 	 * channels specified. Each call to listenChannel resets the list of channels listened to. So to stop all
 	 * subscriptions call this method with an empty list in channels. Management of subscription requests from different
@@ -181,28 +165,13 @@ public interface ChannelDriver {
 			NoSuchDeviceException, NoSuchChannelException;
 
 	/**
-	 * Asynchronous write. See synchronous write for details.
+	 * Shutdown the driver.
 	 * 
-	 * @param channels
-	 *            A list of ValueContainer objects containing the Values and ChannelLocators for each channel that
-	 *            should be written.
-	 * @param listener
-	 *            is called when an exception occurred
-	 * @throws UnsupportedOperationException
-	 *             if this operation is not supported by the driver
+	 * Driver should release all previously allocated resources (e.g. network connections, serial interfaces), aborts
+	 * any running scanning processes and deletes all references to listeners. Afterwards the driver bundle can be
+	 * stopped
 	 */
-	public void writeChannels(List<ValueContainer> channels, ExceptionListener listener)
-			throws UnsupportedOperationException;
-
-	/**
-	 * Reset driver
-	 * 
-	 * ChannelManager will send this message every time it restarts. If the driver receives this message it is assumed
-	 * that the driver releases all previously allocated resources (e.g. network connections, serial interfaces), aborts
-	 * any running scanning processes and deletes all references to listeners.
-	 * 
-	 */
-	public void reset();
+	public void shutdown();
 
 	/**
 	 * A new channel that should be managed by this driver has been added to the system.
@@ -226,4 +195,23 @@ public interface ChannelDriver {
 	 */
 	public void channelRemoved(ChannelLocator channel);
 
+	/**
+	 * Add a DeviceListener consuming asynchronous device found/lost events.
+	 * 
+	 * @param listener
+	 *            The DeviceListener object.
+	 */
+	public void addDeviceListener(DeviceListener listener);
+
+	/**
+	 * Remove a previously added DeviceListener. From this time the listener receives no longer any device found/lost
+	 * events.
+	 * 
+	 * @param listener
+	 *            The DeviceListener object.
+	 */
+	public void removeDeviceListener(DeviceListener listener);
+
+	public void writeChannel(ChannelLocator channelLocator, Value value) throws UnsupportedOperationException,
+			IOException, NoSuchDeviceException, NoSuchChannelException;
 }

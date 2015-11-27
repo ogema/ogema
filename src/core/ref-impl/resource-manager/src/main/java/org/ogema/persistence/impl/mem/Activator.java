@@ -21,7 +21,6 @@ package org.ogema.persistence.impl.mem;
 
 import java.util.Dictionary;
 import java.util.Hashtable;
-import java.util.Properties;
 import org.ogema.persistence.ResourceDB;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;

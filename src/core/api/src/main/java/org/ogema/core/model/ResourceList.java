@@ -106,19 +106,20 @@ public interface ResourceList<T extends Resource> extends Resource {
 	 * Get resource type of all elements of the list. Note: {@link Resource#getResourceType()
 	 * } returns ResourceList, not the type of the elements of the list.
 	 *
-	 * @return The type of this ResourceList's elements.
+	 * @return The type of this ResourceList's elements, or null if the type has not been set
 	 */
 	Class<T> getElementType();
 
 	/**
-	 * Set type of resources in the list (relevant for lists added as decorator
-	 * only)
+	 * Set type of resources in the list (relevant for top-level lists or lists 
+	 * added as decorator only)
 	 *
 	 * @param resType resource type for all resources in the list. Must be set
 	 * for decorators before the first element is accessed.<br>
-	 * The method may only be called once for decorating lists and may not be
-	 * called for other lists at all, otherwise an {@link IllegalStateException}
-	 * is thrown.
+	 * The method may only be called once for top-level lists or decorating lists 
+	 * and may not be called for other lists at all, otherwise an 
+	 * {@link IllegalStateException} is thrown (if the new type coincides with the 
+	 * type already set, no exception is thrown, however). 	 
 	 * @throws IllegalStateException if the type of this ResourceList elements
 	 * has already been set.
 	 */

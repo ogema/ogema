@@ -48,13 +48,16 @@ import org.osgi.framework.BundleReference;
 import org.osgi.framework.ServiceReference;
 import org.osgi.util.tracker.ServiceTracker;
 import org.osgi.util.tracker.ServiceTrackerCustomizer;
+import org.slf4j.Logger;
 
 /**
  *
  */
-@Component(specVersion = "1.1")
+@Component(specVersion = "1.2")
 @Service(AdministrationManager.class)
 public class AdministrationImpl extends SecurityManager implements AdministrationManager {
+
+	private final Logger logger = org.slf4j.LoggerFactory.getLogger("ogema.administration");
 
 	@Reference
 	protected FrameworkClock clock;
@@ -81,6 +84,8 @@ public class AdministrationImpl extends SecurityManager implements Administratio
 	private AccessManager accessMngr;
 
 	private BundleContext context;
+
+	private BundleStoragePolicy storagePolicy;
 
 	public AdministrationImpl() {
 		appAcc = new HashMap<>();
@@ -140,6 +145,12 @@ public class AdministrationImpl extends SecurityManager implements Administratio
 
 		pManTracker = new ServiceTracker<>(ctx, PermissionManager.class, permMancust);
 		pManTracker.open();
+
+		storagePolicy = new BundleStoragePolicy(context, Bundle.INSTALLED | Bundle.UNINSTALLED, null);
+		if (storagePolicy.restrictFSAccess)
+			storagePolicy.open();
+		else
+			storagePolicy = null;
 	}
 
 	protected void completeInit(BundleContext ctx) {
@@ -255,8 +266,8 @@ public class AdministrationImpl extends SecurityManager implements Administratio
 	}
 
 	/*
-	 * Get the first occurrence of a class that belongs to an osgi bundle. All entries up to the class parameter
-	 * are ignored. (non-Javadoc)
+	 * Get the first occurrence of a class that belongs to an osgi bundle. All entries up to the class parameter are
+	 * ignored. (non-Javadoc)
 	 * 
 	 * @see org.ogema.core.administration.AdministrationManager#getContextApp(java.lang.Class)
 	 */

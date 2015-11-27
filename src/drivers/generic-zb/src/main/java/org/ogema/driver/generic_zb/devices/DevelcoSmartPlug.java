@@ -15,6 +15,9 @@
  */
 package org.ogema.driver.generic_zb.devices;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.ChannelConfiguration;
@@ -25,14 +28,13 @@ import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.measurements.ByteArrayValue;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
-import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.units.ElectricCurrentResource;
 import org.ogema.core.model.units.FrequencyResource;
 import org.ogema.core.model.units.VoltageResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
-import org.ogema.core.resourcemanager.ResourceListener;
+import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.driver.generic_zb.Constants;
 import org.ogema.driver.generic_zb.Generic_ZbConfig;
 import org.ogema.driver.generic_zb.Generic_ZbDevice;
@@ -43,7 +45,7 @@ import org.ogema.model.sensors.ElectricCurrentSensor;
 import org.ogema.model.sensors.ElectricFrequencySensor;
 import org.ogema.model.sensors.ElectricVoltageSensor;
 
-public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceListener {
+public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceValueListener<BooleanResource> {
 	private static final byte[] on = {}; // The command does not have a payload
 	private static final ByteArrayValue ON = new ByteArrayValue(on);
 
@@ -64,6 +66,7 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceListen
 	private VoltageResource vRes;
 	private FrequencyResource fRes;
 	private String deviceName;
+	private List<SampledValueContainer> onOffChannelList;
 
 	public DevelcoSmartPlug(Generic_ZbDriver driver, ApplicationManager appManager, Generic_ZbConfig config) {
 		super(driver, appManager, config);
@@ -127,6 +130,11 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceListen
 		onOffConfig.resourceName += "_OnOffAttribute"; // In case of several devices with the same
 		// resourceName
 		onOffConfig.chLocator = addChannel(onOffConfig);
+		// create container list for cyclic read
+		ChannelLocator chloc = onOffConfig.chLocator;
+		SampledValueContainer container = new SampledValueContainer(chloc);
+		onOffChannelList = new ArrayList<SampledValueContainer>(1);
+		onOffChannelList.add(container);
 
 		meterVoltageRMS = new Generic_ZbConfig();
 		meterVoltageRMS.interfaceId = generic_ZbConfig.interfaceId;
@@ -195,7 +203,7 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceListen
 		onOff.requestAccessMode(AccessMode.SHARED, AccessPriority.PRIO_HIGHEST);
 
 		// Add listener to register on/off commands
-		mainsPowerOutlet.addResourceListener(this, true);
+		onOff.addValueListener(this);
 
 		isOn = (BooleanResource) mainsPowerOutlet.onOffSwitch().stateFeedback().create();
 		isOn.activate(true);
@@ -252,7 +260,7 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceListen
 	}
 
 	@Override
-	public void resourceChanged(Resource resource) {
+	public void resourceChanged(BooleanResource resource) {
 		try {
 			if (resource.equals(onOff)) {
 				if (onOff.getValue())
@@ -267,7 +275,8 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceListen
 	}
 
 	private void updateOnOffState() {
-		SampledValueContainer onoffState = channelAccess.readUnconfiguredChannel(onOffConfig.chLocator);
+		channelAccess.readUnconfiguredChannels(onOffChannelList);
+		SampledValueContainer onoffState = onOffChannelList.get(0);
 		Value v = onoffState.getSampledValue().getValue();
 		if (v != null) {
 			isOn.setValue(v.getBooleanValue());

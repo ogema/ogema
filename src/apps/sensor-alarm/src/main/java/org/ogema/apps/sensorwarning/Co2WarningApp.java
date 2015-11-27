@@ -37,7 +37,7 @@ import org.ogema.core.resourcemanager.pattern.ResourcePatternAccess;
  *
  * @author Timo Fischer, Fraunhofer IWES
  */
-@Component(specVersion = "1.1", immediate = true)
+@Component(specVersion = "1.2", immediate = true)
 @Service(Application.class)
 public class Co2WarningApp implements Application, PatternListener<ConfiguredSensorPattern> {
 

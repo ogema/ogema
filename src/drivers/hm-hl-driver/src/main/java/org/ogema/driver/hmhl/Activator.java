@@ -24,10 +24,11 @@ public class Activator implements BundleActivator {
 
 	private ServiceRegistration<?> serviceRegistration;
 	private HM_hlDriver driver;
-	public static boolean bundleIsRunning = true;
+	public static boolean bundleIsRunning;
 
 	@Override
 	public void start(BundleContext context) throws Exception {
+		bundleIsRunning = true;
 		driver = new HM_hlDriver();
 		Application application = driver;
 		serviceRegistration = context.registerService(Application.class.getName(), application, null);

@@ -89,7 +89,7 @@ public class DefaultLogger implements OgemaLogger {
         OgemaFilter consoleFilter = new OgemaFilter();
 
         cacheFilter.setLevelUser(LogLevel.TRACE);
-        fileFilter.setLevelUser(LogLevel.DEBUG);
+        fileFilter.setLevelUser(LogLevel.INFO);
         consoleFilter.setLevelUser(LogLevel.INFO);
 
         filters.put(LogOutput.CACHE, cacheFilter);

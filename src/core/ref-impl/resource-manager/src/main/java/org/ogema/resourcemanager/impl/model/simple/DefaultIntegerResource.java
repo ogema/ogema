@@ -15,13 +15,12 @@
  */
 package org.ogema.resourcemanager.impl.model.simple;
 
-import org.ogema.core.model.schedule.DefinitionSchedule;
-import org.ogema.core.model.schedule.ForecastSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.recordeddata.RecordedData;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.resourcemanager.impl.ResourceBase;
-
+import org.ogema.resourcemanager.impl.model.schedule.HistoricalSchedule;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 
 /**
@@ -59,18 +58,23 @@ public class DefaultIntegerResource extends ResourceBase implements IntegerResou
 	}
 
 	@Override
-	public ForecastSchedule forecast() {
-		return getSubResource("forecast", ForecastSchedule.class);
+	public AbsoluteSchedule forecast() {
+		return getSubResource("forecast", AbsoluteSchedule.class);
 	}
 
 	@Override
-	public DefinitionSchedule program() {
-		return getSubResource("program", DefinitionSchedule.class);
+	public AbsoluteSchedule program() {
+		return getSubResource("program", AbsoluteSchedule.class);
 	}
 
 	@Override
 	public long getLastUpdateTime() {
 		return super.getLastUpdateTime();
+	}
+
+	@Override
+	public AbsoluteSchedule historicalData() {
+		return getSubResource(HistoricalSchedule.PATH_IDENTIFIER, AbsoluteSchedule.class);
 	}
 
 }

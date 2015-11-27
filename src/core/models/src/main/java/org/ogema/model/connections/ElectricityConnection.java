@@ -32,6 +32,9 @@ import org.ogema.model.sensors.ReactivePowerAngleSensor;
  */
 public interface ElectricityConnection extends CircuitConnection {
 
+	@Override
+	ElectricityCircuit input();
+
 	/**
 	 * Power sensor (active power) for the connection.
 	 */

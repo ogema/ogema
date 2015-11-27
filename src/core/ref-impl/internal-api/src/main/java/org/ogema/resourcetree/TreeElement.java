@@ -102,8 +102,8 @@ public interface TreeElement {
 
 	/**
 	 * Gets the name string of the resource associated with this TreeElement. In case of top level resource the name
-	 * string is set at the call to {@link ResourceDB.addResource} and for sub resources it is specified at the call to
-	 * {@link TreeElement.addChild}.
+	 * string is set at the call to {@link ResourceDB#addResource} and for sub resources it is specified at the call to
+	 * {@link TreeElement#addChild}.
 	 * 
 	 * @return The name string.
 	 */
@@ -164,7 +164,7 @@ public interface TreeElement {
 	/**
 	 * Adds a child resource to this node as a required sub resource. If isDecorating is false the caller ensures that
 	 * the child to be added specified by name and type is an element of the type definition of the resource represented
-	 * by this node. {@see getType()}. Otherwise an exception is thrown.
+	 * by this node. {@link #getType}. Otherwise an exception is thrown.
 	 * 
 	 * @param name
 	 *            Name of the sub resource. If the resource doesn't decorate its parent, it has to be a part of the
@@ -191,15 +191,15 @@ public interface TreeElement {
 	/**
 	 * Adds a child resource to this node as a required sub resource which references an other resource instead of being
 	 * an instance of a resource itself. If isDecorating is false the caller ensures that the child to be added
-	 * specified by name and type is an element of the type definition of the resource represented by this node. {@see
-	 * getType()}.
+	 * specified by name and type is an element of the type definition of the resource represented by this node.
+	 * @see #getType() getType
 	 * 
 	 * @param ref
 	 *            The reference to the node which is referenced by this child.
 	 * @param name
 	 *            The name string of the child. This is independent of the name string of the referenced resource.
-	 * @param If
-	 *            true the added sub resource mustn't be a part of the model of the parent otherwise an optional element
+	 * @param isDecorating
+	 *            If true the added sub resource mustn't be a part of the model of the parent otherwise an optional element
 	 *            must exist in the model definition.
 	 * @return The tree node instance representing the added sub resource.
 	 */

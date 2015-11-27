@@ -16,6 +16,7 @@
 package org.ogema.tools.timeseries.interpolation;
 
 import org.ogema.core.channelmanager.measurements.BooleanValue;
+import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.IntegerValue;
 import org.ogema.core.channelmanager.measurements.LongValue;
@@ -23,6 +24,7 @@ import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.tools.timeseries.api.InterpolationFunction;
+import org.ogema.tools.timeseries.api.TimeInterval;
 
 /**
  * Linear interpolation between the points.
@@ -148,7 +150,7 @@ public class LinearInterpolation implements InterpolationFunction {
 		final Value v0 = x0.getValue();
 		final Value v1 = x1.getValue();
 
-		if (v0 instanceof FloatValue) {
+		if (v0 instanceof FloatValue || v0 instanceof DoubleValue || v0 instanceof BooleanValue) {
 			if (emptyDomain)
 				return new FloatValue(0.f);
 			return new FloatValue(0.5f * (v0.getFloatValue() + v1.getFloatValue()) * dt);
@@ -168,69 +170,40 @@ public class LinearInterpolation implements InterpolationFunction {
 				+ v0.getClass().getCanonicalName());
 	}
 
-	//    @Override
-	//    public Value integrateAbsolute(SampledValue x0, SampledValue x1, Class<? extends Value> valueType) {
-	//        final long dt = x1.getTimestamp() - x0.getTimestamp();
-	//        final boolean emptyDomain = (dt == 0 || x0.getQuality() == Quality.BAD || x1.getQuality() == Quality.BAD);
-	//
-	//        final Value v0 = x0.getValue();
-	//        final Value v1 = x1.getValue();
-	//
-	//        if (v0 instanceof FloatValue) {
-	//            if (emptyDomain) return new FloatValue(0.f);
-	//            if (dt < 0) {
-	//                final FloatValue negResult = (FloatValue) integrateAbsolute(x1, x0, valueType);
-	//                return new FloatValue(-negResult.getFloatValue());
-	//            }
-	//
-	//            final float f0 = v0.getFloatValue();
-	//            final float f1 = v1.getFloatValue();
-	//            if (f0 * f1 >= 0) { // no zero-crossing.
-	//                return new FloatValue(0.5f * Math.abs(v0.getFloatValue() + v1.getFloatValue()) * dt);
-	//            }
-	//            final float slope = Math.abs(f1 - f0) / (float) dt;
-	//            final float A0 = 0.5f * f0 * f0 / slope;
-	//            final float A1 = 0.5f * f1 * f1 / slope;
-	//            return new FloatValue(A0 + A1);
-	//        }
-	//
-	//        if (v0 instanceof LongValue) {
-	//            if (emptyDomain) return new LongValue(0L);
-	//            if (dt < 0) {
-	//                final LongValue negResult = (LongValue) integrateAbsolute(x1, x0, valueType);
-	//                return new LongValue(-negResult.getLongValue());
-	//            }
-	//
-	//            final float f0 = v0.getFloatValue();
-	//            final float f1 = v1.getFloatValue();
-	//            if (f0 * f1 >= 0) { // no zero-crossing.
-	//                return new FloatValue(0.5f * Math.abs(v0.getFloatValue() + v1.getFloatValue()) * dt);
-	//            }
-	//            final float slope = Math.abs(f1 - f0) / (float) dt;
-	//            final float A0 = 0.5f * f0 * f0 / slope;
-	//            final float A1 = 0.5f * f1 * f1 / slope;
-	//            return new LongValue( (long) (A0 + A1));
-	//        }
-	//        
-	//        if (v0 instanceof IntegerValue) {
-	//            if (emptyDomain) return new IntegerValue(0);
-	//            if (dt < 0) {
-	//                final IntegerValue negResult = (IntegerValue) integrateAbsolute(x1, x0, valueType);
-	//                return new IntegerValue(-negResult.getIntegerValue());
-	//            }
-	//
-	//            final float f0 = v0.getFloatValue();
-	//            final float f1 = v1.getFloatValue();
-	//            if (f0 * f1 >= 0) { // no zero-crossing.
-	//                return new FloatValue(0.5f * Math.abs(v0.getFloatValue() + v1.getFloatValue()) * dt);
-	//            }
-	//            final float slope = Math.abs(f1 - f0) / (float) dt;
-	//            final float A0 = 0.5f * f0 * f0 / slope;
-	//            final float A1 = 0.5f * f1 * f1 / slope;
-	//            return new IntegerValue( (int) (A0 + A1));            
-	//        }
-	//        
-	//        throw new IllegalArgumentException("Cannot integrate a function with non-numerical value type "
-	//                + v0.getClass().getCanonicalName());
-	//    }
+	@Override
+	public TimeInterval getPositiveInterval(SampledValue s1, SampledValue s2, Class<? extends Value> valueType) {
+		if (!FloatValue.class.isAssignableFrom(valueType)) {
+			throw new RuntimeException("Method only supported for float values so far.");
+		}
+		if (s1 == null || s2 == null) {
+			return new TimeInterval(0, 0);
+		}
+		final Quality q1 = s1.getQuality();
+		final Quality q2 = s2.getQuality();
+		if (q1 == Quality.BAD || q2 == Quality.BAD) {
+			return new TimeInterval(0, 0);
+		}
+		final float x1 = s1.getValue().getFloatValue();
+		final float x2 = s2.getValue().getFloatValue();
+		if (x1 <= 0. && x2 <= 0.) {
+			return new TimeInterval(0, 0);
+		}
+		final long t1 = s1.getTimestamp();
+		final long t2 = s2.getTimestamp();
+		if (x1 * x2 < 0.f) {
+			final float slope = (x2 - x1) / (float) (t2 - t1);
+			// xLast + slope*delta = 0 => delta = -xLast/slope
+			final float delta = -x1 / slope;
+			final long tMid = t1 + (long) delta;
+			if (x1 < 0.f) {
+				return new TimeInterval(tMid, t2);
+			}
+			else {
+				return new TimeInterval(t1, tMid);
+			}
+		}
+		else {
+			return new TimeInterval(t1, t2);
+		}
+	}
 }

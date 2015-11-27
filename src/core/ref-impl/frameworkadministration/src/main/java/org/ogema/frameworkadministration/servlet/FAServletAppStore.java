@@ -65,22 +65,24 @@ public class FAServletAppStore extends HttpServlet {
 	private final AppStore tmpFileUpload;
 	private final long bundleID;
 	private final AdministrationManager administrationManager;
+	private final AppStoreController appStoreController;
 
 	private final BundleIcon defaultIcon = new BundleIcon(getClass().getResource(
 			"/org/ogema/frameworkadministration/gui/img/svg/appdefaultlogo.svg"), BundleIcon.IconType.SVG);
 
 	public FAServletAppStore(PermissionManager permissionManager, BundleContext bundleContext, long bundleID,
-			AdministrationManager administrationManager) {
+			AdministrationManager administrationManager, AppStoreController appStoreController) {
 		this.permissionManager = permissionManager;
 		this.bundleContext = bundleContext;
 		this.bundleID = bundleID;
 		this.administrationManager = administrationManager;
+		this.appStoreController = appStoreController;
 
 		String defaultAppStorePath = administrationManager.getInstallationManager().getDefaultAppStore().getAddress();
 		File file = new File(defaultAppStorePath);
 		file.mkdir();
 
-		// AppStoreController.getInstance().initAppStores();
+		// appStoreController.initAppStores();
 
 		tmpFileUpload = new AppStore("localAppDirectory", defaultAppStorePath, true);
 	}
@@ -113,7 +115,7 @@ public class FAServletAppStore extends HttpServlet {
 
 		// OutputStream bout = resp.getOutputStream();
 		String data = null;
-		logger.info("AdminServlet path URI is " + pi);
+		//		logger.debug("AdminServlet path URI is " + pi);
 
 		int id = -1;
 
@@ -124,7 +126,7 @@ public class FAServletAppStore extends HttpServlet {
 		case "/appstores":
 			logger.info("Get Appstores");
 			try {
-				data = AppStoreController.getInstance().getAppstoresData();
+				data = appStoreController.getAppstoresData();
 				printResponse(resp, data);
 			} catch (Exception e1) {
 				e1.printStackTrace(resp.getWriter());
@@ -135,7 +137,7 @@ public class FAServletAppStore extends HttpServlet {
 		 */
 		case "/apps": // The path is in this case /serletName/path1
 			String appStore = req.getParameter("name");
-			// AppStore appSource = AppStoreController.getInstance().getAppStores().get(appStore);
+			// AppStore appSource = appStoreController.getAppStores().get(appStore);
 			ApplicationSource appSource = administrationManager.getInstallationManager().connectAppSource(appStore);
 			logger.info("Get Apps in " + appSource.getAddress());
 			if (appStore.equals(administrationManager.getInstallationManager().getDefaultAppStore().getName())) {
@@ -146,7 +148,7 @@ public class FAServletAppStore extends HttpServlet {
 				}
 				else {
 					try {
-						data = AppStoreController.getInstance().getAppFiles(f);
+						data = appStoreController.getAppFiles(f);
 						printResponse(resp, data);
 					} catch (Exception e) {
 						e.printStackTrace(resp.getWriter());
@@ -160,14 +162,14 @@ public class FAServletAppStore extends HttpServlet {
 		case "/app":
 			String name = req.getParameter("name");
 			appStore = req.getParameter("appstore");
-			// appSource = AppStoreController.getInstance().getAppStores().get(appStore);
+			// appSource = appStoreController.getAppStores().get(appStore);
 			appSource = administrationManager.getInstallationManager().connectAppSource(appStore);
 			if (appStore == null || name == null) {
 				printResponse(resp, "No appstore or app is selected.");
-				;
+
 				break;
 			}
-			AppStoreController.getInstance().startAppInstall(req, resp, appSource.getAddress(), name);
+			appStoreController.startAppInstall(req, resp, appSource.getAddress(), name);
 			break;
 		case "/resourceperm":
 			resp.setContentType("application/json");
@@ -176,7 +178,7 @@ public class FAServletAppStore extends HttpServlet {
 				id = Integer.valueOf(idStr);
 			String type = req.getParameter("type");
 			String actions = req.getParameter("action");
-			sb = AppStoreController.getInstance().resourceTree2JSON(id);
+			sb = appStoreController.resourceTree2JSON(id);
 			data = sb.toString();
 			printResponse(resp, data);
 			break;
@@ -186,6 +188,7 @@ public class FAServletAppStore extends HttpServlet {
 			idStr = req.getParameter("app");
 
 			if (idStr != null) {
+				//FIXME: remove this error in javascript rather than here (use of angular ng-markups could solve this)  
 				if (idStr.equals("{{app.id}}")) {
 					break;
 				}
@@ -194,7 +197,7 @@ public class FAServletAppStore extends HttpServlet {
 			switch (action) {
 			case "getInfo":
 				if (id != -1) {
-					sb = AppStoreController.getInstance().appInfos2JSON(id);
+					sb = appStoreController.appInfos2JSON(id);
 					data = sb.toString();
 					printResponse(resp, data);
 				}
@@ -245,7 +248,7 @@ public class FAServletAppStore extends HttpServlet {
 				}
 				break;
 			case "listAll":
-				sb = AppStoreController.getInstance().appsList2JSON();
+				sb = appStoreController.appsList2JSON();
 				data = sb.toString();
 				printResponse(resp, data);
 				break;
@@ -257,7 +260,7 @@ public class FAServletAppStore extends HttpServlet {
 				if (!path.equals("#"))
 					alias = req.getParameter("text");
 				id = Integer.valueOf(appid);
-				sb = AppStoreController.getInstance().webResourceTree2JSON(id, path, alias);
+				sb = appStoreController.webResourceTree2JSON(id, path, alias);
 				if (sb != null) {
 					data = sb.toString();
 					printResponse(resp, data);
@@ -274,7 +277,7 @@ public class FAServletAppStore extends HttpServlet {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings( { "unchecked", "fallthrough" })
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		PrintWriter pw = resp.getWriter();
 
@@ -404,7 +407,7 @@ public class FAServletAppStore extends HttpServlet {
 			// Check if the parameter of the current installation process has changed
 			String appname = req.getParameter("name");
 			String appStore = req.getParameter("appstore");
-			// AppStore appSource = AppStoreController.getInstance().getAppStores().get(appStore);
+			// AppStore appSource = appStoreController.getAppStores().get(appStore);
 			ApplicationSource appSource = administrationManager.getInstallationManager().connectAppSource(appStore);
 			InstallableApplication installingApp = (InstallableApplication) req.getSession().getAttribute(
 					AppStoreUtils.INSTALLATION_STATE_ATTR_NAME);
@@ -427,6 +430,7 @@ public class FAServletAppStore extends HttpServlet {
 				break;
 			case DESIRED_PERMS_SENT:
 				installingApp.setState(InstallableApplication.InstallState.RECEIVE_GRANTED);
+				//XXX fall-through ?!?
 			case RECEIVE_GRANTED:
 				if (id != null && id.getLocation().endsWith(appname)) {
 					ap = permissionManager.getPolicies(id);
@@ -542,7 +546,7 @@ public class FAServletAppStore extends HttpServlet {
 			}
 			break;
 		case "/uploadApp":
-			File file = AppStoreController.getInstance().receiveFile(req, resp);
+			File file = appStoreController.receiveFile(req, resp);
 			if (file != null) {
 				Utils.log("app uploaded to appstore", getClass());
 				String message = Utils.createMessage("OK", "app uploaded to appstore");
@@ -555,7 +559,7 @@ public class FAServletAppStore extends HttpServlet {
 				resp.getWriter().write(message);
 			}
 			//String name = file.getName();
-			//AppStoreController.getInstance().startAppInstall(req, resp, tmpFileUpload.getAddress(), name);
+			//appStoreController.startAppInstall(req, resp, tmpFileUpload.getAddress(), name);
 			break;
 		default:
 			break;

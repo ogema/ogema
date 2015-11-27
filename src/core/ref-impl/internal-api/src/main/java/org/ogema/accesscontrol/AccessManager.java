@@ -97,7 +97,7 @@ public interface AccessManager {
 	 * 
 	 * @param user
 	 *            Name of the user it's access rights are changed.
-	 * @param properites
+	 * @param properties
 	 *            The applications properties it's resources will be no longer accessible for the user.
 	 */
 	public void removePermission(String user, AppPermissionFilter properties);
@@ -180,6 +180,8 @@ public interface AccessManager {
 	 *            name of the user.
 	 * @param remotePasswd
 	 *            password given by the user.
+	 * @param isNatural
+	 *            the user is a natural user (false for machine user)
 	 * @return true if the user authentication succeeds false otherwise.
 	 */
 	public boolean authenticate(String remoteUser, String remotePasswd, boolean isNatural);

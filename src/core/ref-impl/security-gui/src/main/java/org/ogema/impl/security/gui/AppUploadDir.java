@@ -39,7 +39,6 @@ public class AppUploadDir implements ApplicationSource {
 
 	@Override
 	public List<InstallableApplication> getAppsAvailable() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 

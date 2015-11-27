@@ -29,7 +29,7 @@ import org.ogema.model.targetranges.TargetRange;
  * property. The prototype is usually not created as a
  * resource itself, but is the basis for different data models for different
  * physical quantities to be measured. For sensors measuring a true/false
- * quantity, use {@link BinarySensor} as a basis model, instead.
+ * quantity, use BinarySensor as a basis model, instead.
  */
 public interface Sensor extends PhysicalElement {
 

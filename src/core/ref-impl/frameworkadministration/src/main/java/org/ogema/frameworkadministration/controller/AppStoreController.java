@@ -27,6 +27,7 @@ import java.util.Dictionary;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +43,11 @@ import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.io.IOUtils;
+import org.apache.felix.scr.annotations.Activate;
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.Service;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -69,19 +75,28 @@ import org.osgi.service.condpermadmin.ConditionInfo;
 import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
 import org.osgi.service.permissionadmin.PermissionInfo;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 
  * @author tgries
  */
+@Component
+@Service(AppStoreController.class)
 public class AppStoreController {
 
 	private static AppStoreController instance = null;
+	private static final String DONT_APPEND = "no_index_html";
 
+	@Reference
 	private AdministrationManager administrationManager;
+	@Reference
 	private PermissionManager permissionManager;
+	@Reference
 	private InstallationManagement installationManager;
+	@Reference
 	private ResourceDB resourceDB;
+
 	private BundleContext bundleContext;
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
@@ -91,14 +106,13 @@ public class AppStoreController {
 	 */
 	public final int MAX_FILE_SIZE = 1024 * 1024 * 1024;
 
-	public static AppStoreController getInstance() {
-		if (instance == null) {
-			instance = new AppStoreController();
-		}
-		return instance;
+	@Activate
+	protected void activate(BundleContext ctx) {
+		this.bundleContext = ctx;
 	}
 
-	private AppStoreController() {
+	@Deactivate
+	protected void deactivate(BundleContext ctx) {
 	}
 
 	public void startAppInstall(HttpServletRequest req, HttpServletResponse resp, String address, String name)
@@ -123,27 +137,36 @@ public class AppStoreController {
 		pw.print(data);
 	}
 
+	// FIXME apps may appear twice here
 	public StringBuffer appsList2JSON() {
 		StringBuffer sb = new StringBuffer();
 		ArrayList<AdminApplication> apps = (ArrayList<AdminApplication>) administrationManager.getAllApps();
 
-		List<AppsJsonGet> list = new ArrayList<AppsJsonGet>();
+		// this causes problems if there is more than one app in a single bundle...
+		// they have the same name, hence will be displayed the same way on the GUI -> filter by using a map
+		//		List<AppsJsonGet> list = new ArrayList<AppsJsonGet>();			
+		Map<String, AppsJsonGet> map = new LinkedHashMap<String, AppsJsonGet>();
+
 		ObjectMapper mapper = new ObjectMapper();
 
 		String result = "{}";
 
 		for (AdminApplication entry : apps) {
 			String name = entry.getID().getBundle().getSymbolicName();
-
 			String fileName = entry.getID().getBundle().getLocation();
 			int lastSeperator = fileName.lastIndexOf("/");
 			fileName = fileName.substring(lastSeperator + 1, fileName.length());
 
 			boolean needFilter = false;
 			for (String filter : AppStoreUtils.FILTERED_APPS) {
-				if (name.contains(filter) && !name.contains("framework-gui")
-						&& !name.contains("framework-administration")) {
+				if (name.contains(filter)) {
 					needFilter = true;
+					for (String exception : AppStoreUtils.FILTER_EXCEPTIONS) {
+						if (name.contains(exception)) {
+							needFilter = false;
+							break;
+						}
+					}
 					break;
 				}
 			}
@@ -174,7 +197,7 @@ public class AppStoreController {
 			singleApp.setId(id);
 			singleApp.setMetainfo(metainfo);
 
-			StringBuffer jsonBuffer = AppStoreController.getInstance().webResourceTree2JSON((int) id, "#", null);
+			StringBuffer jsonBuffer = webResourceTree2JSON((int) id, "#", null);
 			String jsonString = jsonBuffer.toString();
 			List<AppsJsonWebResource> webResourcesApp = new ArrayList<AppsJsonWebResource>();
 
@@ -183,24 +206,37 @@ public class AppStoreController {
 						List.class, AppsJsonWebResource.class));
 
 			} catch (IOException ex) {
-				java.util.logging.Logger.getLogger(AppStoreController.class.getName()).log(Level.SEVERE, null, ex);
+				//				java.util.logging.Logger.getLogger(AppStoreController.class.getName()).log(Level.SEVERE, null, ex);
+				LoggerFactory.getLogger(getClass()).error("Error determining list of installed apps", ex);
 			}
 
 			if (webResourcesApp.isEmpty()) {
 				singleApp.setHasWebResources(false);
 			}
 			else {
-				singleApp.setHasWebResources(true);
-				for (AppsJsonWebResource singleWebResource : webResourcesApp) {
-					String path = singleWebResource.getAlias();
-					String index = "/index.html";
-					singleApp.getWebResourcePaths().add(path + index);
+				if (webResourcesApp.get(0).getAlias().equals("null")) {
+					singleApp.setHasWebResources(false);
 				}
+				else {
+					singleApp.setHasWebResources(true);
+					singleApp.getWebResourcePaths().add(webResourcesApp.get(0).getAlias());
+
+				}
+				//				singleApp.setHasWebResources(true);
+				//				for (AppsJsonWebResource singleWebResource : webResourcesApp) {
+				//					String path = singleWebResource.getAlias();
+				//					String index = "";
+				//					String append = singleWebResource.getId();
+				//					if (!append.equals(DONT_APPEND)) {
+				//						index = "/index.html";
+				//					}
+				//					singleApp.getWebResourcePaths().add(path + index);
+				//				}
 			}
 
-			list.add(singleApp);
+			map.put(name, singleApp);
 		}
-
+		List<AppsJsonGet> list = new ArrayList<AppsJsonGet>(map.values());
 		Collections.sort(list, new AppCompare());
 
 		try {
@@ -253,11 +289,20 @@ public class AppStoreController {
 		sb = new StringBuffer();
 		if (path.equals("#")) {
 			AppID appid = permissionManager.getAdminManager().getAppByBundle(bundleContext.getBundle(id));
-			Map<String, String> entries = permissionManager.getWebAccess().getRegisteredResources(appid);
-			if (entries == null) {
-				sb.append("[]");
-				return sb;
-			}
+
+			String baseUrl = permissionManager.getWebAccess(appid).getStartUrl();
+			Map<String, String> entries = new HashMap<String, String>();
+			entries.put(baseUrl, appid.getIDString());
+			//			if (baseUrl == null) {
+			//				entries = permissionManager.getWebAccess().getRegisteredResources(appid);
+			//			} else {
+			//				entries = new HashMap<String, String>();
+			//				entries.put(baseUrl, DONT_APPEND);
+			//			}
+			//			if (entries == null) {
+			//				sb.append("[]");
+			//				return sb;
+			//			}
 			Set<Map.Entry<String, String>> entrySet = entries.entrySet();
 			sb.append('[');
 			for (Map.Entry<String, String> e : entrySet) {

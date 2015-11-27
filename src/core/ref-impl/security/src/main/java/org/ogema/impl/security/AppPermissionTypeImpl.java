@@ -25,6 +25,8 @@ import org.osgi.service.permissionadmin.PermissionInfo;
 
 public class AppPermissionTypeImpl implements AppPermissionType, Cloneable {
 
+	private static final String BUNDLE_LOCATION_CONDITION_NAME = "org.osgi.service.condpermadmin.BundleLocationCondition";
+
 	HashSet<PermissionInfo> perms;
 	HashSet<ConditionInfo> conds;
 	/*
@@ -55,7 +57,8 @@ public class AppPermissionTypeImpl implements AppPermissionType, Cloneable {
 		if (cond != null)
 			conds.add(cond);
 
-		// If ConditionalPermissionInfo is already set, it is to be invalidate here.
+		// If ConditionalPermissionInfo is already set, it is to be invalidate
+		// here.
 		pInfo = null;
 	}
 
@@ -64,7 +67,8 @@ public class AppPermissionTypeImpl implements AppPermissionType, Cloneable {
 		if (cond != null)
 			conds.add(cond);
 
-		// If ConditionalPermissionInfo is already set, it is to be invalidate here.
+		// If ConditionalPermissionInfo is already set, it is to be invalidate
+		// here.
 		pInfo = null;
 	}
 
@@ -80,7 +84,8 @@ public class AppPermissionTypeImpl implements AppPermissionType, Cloneable {
 
 	@Override
 	public String getDeclarationString() {
-		// Check if this type was already applied. In this case the declaration can be obtained by CPA.
+		// Check if this type was already applied. In this case the declaration
+		// can be obtained by CPA.
 		if (pInfo != null)
 			return pInfo.getEncoded();
 
@@ -100,7 +105,8 @@ public class AppPermissionTypeImpl implements AppPermissionType, Cloneable {
 
 	@Override
 	public ConditionalPermissionInfo getDeclarationInfo() {
-		// Check if this type was already applied. In this case the declaration can be obtained by CPA.
+		// Check if this type was already applied. In this case the declaration
+		// can be obtained by CPA.
 		if (pInfo != null)
 			return pInfo;
 
@@ -136,7 +142,8 @@ public class AppPermissionTypeImpl implements AppPermissionType, Cloneable {
 	@Override
 	public void addCondition(ConditionInfo info) {
 		conds.add(info);
-		// If ConditionalPermissionInfo is already set, it is to be invalidate here.
+		// If ConditionalPermissionInfo is already set, it is to be invalidate
+		// here.
 		pInfo = null;
 	}
 
@@ -144,7 +151,10 @@ public class AppPermissionTypeImpl implements AppPermissionType, Cloneable {
 		if (!inited) {
 			this.name = appp.newTypeName(hashCode());
 			this.cpa = appp.cpa;
-			this.conds.add(appp.blcInfo);
+
+			if (appp.blcInfo != null)
+				this.conds.add(appp.blcInfo);
+
 			inited = true;
 		}
 	}

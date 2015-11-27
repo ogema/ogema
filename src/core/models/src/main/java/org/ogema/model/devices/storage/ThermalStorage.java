@@ -34,9 +34,7 @@ public interface ThermalStorage extends EnergyStorage {
 	TemperatureSensor storageTemperature();
 
 	/**
-	 * Heat connections to the storage. If the storage does not provide the
-	 * {@link #powerSetting()} field the connections may have to be controlled
-	 * individually via the {@link ThermalValve}s acting on them (i.e. referenced via {@link Connection#device() }.
+	 * Heat connections to the storage. 
 	 */
 	ResourceList<ThermalConnection> heatConnections();
 

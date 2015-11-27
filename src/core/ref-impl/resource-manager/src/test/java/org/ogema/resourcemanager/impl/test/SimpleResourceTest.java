@@ -25,8 +25,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.StringValue;
-import org.ogema.core.model.schedule.DefinitionSchedule;
-import org.ogema.core.model.schedule.ForecastSchedule;
+import org.ogema.core.model.schedule.Schedule;
+import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
@@ -147,8 +147,8 @@ public class SimpleResourceTest extends OsgiTestBase {
 	@Test
 	public void optionalSchedulesWork() {
 		final StringResource resource = resMan.createResource(RESNAME + counter++, StringResource.class);
-		final ForecastSchedule forecast = resource.forecast();
-		final DefinitionSchedule program = resource.program();
+		final Schedule forecast = resource.forecast();
+		final Schedule program = resource.program();
 		assertNotNull(forecast);
 		assertNotNull(program);
 
@@ -172,7 +172,7 @@ public class SimpleResourceTest extends OsgiTestBase {
 	@Test
 	public void optionalScheduleWorksWithoutVirtualResources() {
 		final BooleanResource resource = resMan.createResource(RESNAME + counter++, BooleanResource.class);
-		DefinitionSchedule program = (DefinitionSchedule) resource.addOptionalElement("program");
+		Schedule program = (Schedule) resource.addOptionalElement("program");
 		assertNotNull(program);
 		assertTrue(program.exists());
 	}

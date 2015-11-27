@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<og:resource xsi:type="og:FloatResource" xmlns:og="http://www.ogema-source.net/REST" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <name>restSchedulePostTest</name>
+    <type>org.ogema.core.model.units.TemperatureResource</type>
+    <decorating>false</decorating>
+    <active>false</active>
+    <referencing>false</referencing>
+    <resource xsi:type="og:FloatSchedule">
+        <name>forecast</name>
+        <type>org.ogema.core.model.schedule.AbsoluteSchedule</type>
+        <decorating>false</decorating>
+        <active>false</active>
+        <referencing>false</referencing>
+        <interpolationMode>LINEAR</interpolationMode>
+        <lastUpdateTime>48</lastUpdateTime>
+        <start>0</start>
+        <end>50</end>
+        <entry xsi:type="og:SampledFloat">
+            <time>42</time>
+            <quality>GOOD</quality>
+            <value>47.11</value>
+        </entry>
+        <entry xsi:type="og:SampledFloat">
+            <time>44</time>
+            <quality>GOOD</quality>
+            <value>47.13</value>
+        </entry>
+    </resource>
+    <value>0.0</value>
+    <unit>K</unit>
+</og:resource>

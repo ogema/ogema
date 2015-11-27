@@ -50,11 +50,15 @@ public interface MultiSwitch extends Actor {
 	 * they should be chosen equal to these percentages. <br>
 	 * If, in the discrete case, the actual value lies between two allowed
 	 * steps, applications shall assume the closest allowed lower value to be
-	 * selected.
+	 * selected.<br>
+	 * This is the setpoint, the actual measured value is {@link #stateFeedback()}.
 	 */
 	@Override
 	FloatResource stateControl();
 
+	/**
+	 * The actual measured value. See {@link #stateControl()}.
+	 */
 	@Override
 	@NonPersistent
 	FloatResource stateFeedback();
@@ -71,7 +75,7 @@ public interface MultiSwitch extends Actor {
 	 * Since electrical connections are usually modeled with the device being the
 	 * output, positive values mean energy consumption, negatives mean energy generation.
 	 */
-	RealFunction electicPowerFunction();
+	RealFunction electricPowerFunction();
 
 	/**
 	 * Net thermal power of the device as a function of the {@link #stateControl() }. The

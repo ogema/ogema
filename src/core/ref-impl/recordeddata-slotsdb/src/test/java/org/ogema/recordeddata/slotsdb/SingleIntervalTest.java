@@ -17,7 +17,9 @@ package org.ogema.recordeddata.slotsdb;
 
 import java.util.List;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.Quality;
@@ -28,36 +30,54 @@ import org.ogema.core.recordeddata.ReductionMode;
 import org.ogema.recordeddata.DataRecorderException;
 import org.ogema.recordeddata.RecordedDataStorage;
 
-public class SingleIntervalTest {
+/**
+ * Interval: All data of a interval are aggregated to a new value
+ * Tests of this class only perform aggregation on a single interval e.g. from, to matches with the interval size of an interval
+ */
+public class SingleIntervalTest extends SlotsDbTest {
+
+	private static RecordedDataStorage rds;
+
+	@BeforeClass
+	public static void setUp() {
+		deleteTestFiles();
+		generateTestData();
+	}
+
+	@AfterClass
+	public static void tearDown() {
+		deleteTestFiles();
+	}
 
 	/**
-	 * Creates a test dataset with 5 values. Those values are read back by all available reduction modes in a single
-	 * interval. Quality is GOOD, Interval is equidistant, Interval fits with recorded data - no rest.
+	 * Generates demo data
 	 */
-	@Test
-	public void testAllReductionModesOnSingleInterval() throws DataRecorderException {
+	private static void generateTestData() {
+
 		SlotsDb sdb = new SlotsDb();
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);
-		RecordedDataStorage rds = sdb.createRecordedDataStorage("testSingleInterval", conf);
+		RecordedDataStorage rdsTemp;
 
-		// NOTE: setFixedInterval has to match witch timestamps
-		rds.insertValue(new SampledValue(new DoubleValue(1.0), 1000, Quality.GOOD));
-		rds.insertValue(new SampledValue(new DoubleValue(2.0), 2000, Quality.GOOD));
-		rds.insertValue(new SampledValue(new DoubleValue(3.0), 3000, Quality.GOOD));
-		rds.insertValue(new SampledValue(new DoubleValue(4.0), 4000, Quality.GOOD));
-		rds.insertValue(new SampledValue(new DoubleValue(5.0), 5000, Quality.GOOD));
+		try {
+			rdsTemp = sdb.createRecordedDataStorage("testSingleInterval", conf);
+			rdsTemp.insertValue(new SampledValue(new DoubleValue(1.0), 1000, Quality.GOOD));
+			rdsTemp.insertValue(new SampledValue(new DoubleValue(2.0), 2000, Quality.GOOD));
+			rdsTemp.insertValue(new SampledValue(new DoubleValue(3.0), 3000, Quality.GOOD));
+			rdsTemp.insertValue(new SampledValue(new DoubleValue(4.0), 4000, Quality.GOOD));
+			rdsTemp.insertValue(new SampledValue(new DoubleValue(5.0), 5000, Quality.GOOD));
 
-		RecordedDataStorage rds2 = sdb.getRecordedDataStorage("testSingleInterval");
-		testReductionModeNoneOnSingleInterval(rds2);
-		testReductionModeAverageOnSingleInterval(rds2);
-		testReductionModeMinOnSingleInterval(rds2);
-		testReductionModeMaxOnSingleInterval(rds2);
-		testReductionModeMinMaxOnSingleInterval(rds2);
+			//Read back
+			rds = sdb.getRecordedDataStorage("testSingleInterval");
+
+		} catch (DataRecorderException e) {
+			e.printStackTrace();
+		}
 	}
 
-	private void testReductionModeAverageOnSingleInterval(RecordedDataStorage rds) {
+	@Test
+	public void testReductionModeAverageOnSingleInterval() {
 		List<SampledValue> recordedData = rds.getValues(1000, 5001, 5000, ReductionMode.AVERAGE);
 
 		Assert.assertTrue("Expected size = 1 but got " + recordedData.size(), recordedData.size() == 1);
@@ -73,7 +93,8 @@ public class SingleIntervalTest {
 		Assert.assertTrue("Expeced value " + expectedValue + " but got " + value, value == expectedValue);
 	}
 
-	private void testReductionModeMinOnSingleInterval(RecordedDataStorage rds) {
+	@Test
+	public void testReductionModeMinOnSingleInterval() {
 		List<SampledValue> recordedData = rds.getValues(1000, 5001, 5000, ReductionMode.MINIMUM_VALUE);
 
 		Assert.assertTrue("Expected size = 1 but got " + recordedData.size(), recordedData.size() == 1);
@@ -89,7 +110,8 @@ public class SingleIntervalTest {
 		Assert.assertTrue("Expeced value " + expectedValue + " but got " + value, value == expectedValue);
 	}
 
-	private void testReductionModeMaxOnSingleInterval(RecordedDataStorage rds) {
+	@Test
+	public void testReductionModeMaxOnSingleInterval() {
 		List<SampledValue> recordedData = rds.getValues(1000, 5001, 5000, ReductionMode.MAXIMUM_VALUE);
 
 		Assert.assertTrue("Expected size = 1 but got " + recordedData.size(), recordedData.size() == 1);
@@ -105,7 +127,8 @@ public class SingleIntervalTest {
 		Assert.assertTrue("Expeced value " + expectedValue + " but got " + value, value == expectedValue);
 	}
 
-	private void testReductionModeMinMaxOnSingleInterval(RecordedDataStorage rds) {
+	@Test
+	public void testReductionModeMinMaxOnSingleInterval() {
 		List<SampledValue> recordedData = rds.getValues(1000, 5001, 5000, ReductionMode.MIN_MAX_VALUE);
 
 		Assert.assertTrue("Expected size = 2 but got " + recordedData.size(), recordedData.size() == 2);
@@ -124,14 +147,14 @@ public class SingleIntervalTest {
 		Assert.assertTrue("Expeced value " + expectedMaxValue + " but got " + maxValue, maxValue == expectedMaxValue);
 	}
 
-	private void testReductionModeNoneOnSingleInterval(RecordedDataStorage rds) {
+	@Test
+	public void testReductionModeNoneOnSingleInterval() {
+
 		List<SampledValue> recordedData = rds.getValues(1000, 5001);
 		Assert.assertTrue("Expected size = 5 but got " + recordedData.size(), recordedData.size() == 5);
 
 		// read back the values
 		for (int i = 0; i < 5; i++) {
-			// System.out.println("time : " + recordedData.get(i).getTimestamp());
-			// System.out.println("value: " + recordedData.get(i).getValue().getDoubleValue());
 			Assert.assertTrue(recordedData.get(i).getTimestamp() == ((i + 1) * 1000));
 			Assert.assertTrue(recordedData.get(i).getValue().getDoubleValue() == i + 1);
 		}

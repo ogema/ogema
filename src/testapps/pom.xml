@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.ogema</groupId>
 		<artifactId>ogema</artifactId>
-		<version>2.0.3</version>
+		<version>2.0.4</version>
 	</parent>
 
 	<groupId>org.ogema.tests</groupId>
@@ -31,6 +31,7 @@
 		<module>physical-unit-persistence</module>
 		<module>resource-consumption</module>
 	 <module>udp-response-test</module>
+	 <module>one-time-pw-example</module>
 	</modules>
 
 	<build>

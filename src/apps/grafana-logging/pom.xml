@@ -4,13 +4,13 @@
     <parent>
         <groupId>org.ogema.apps</groupId>
         <artifactId>ogema-apps</artifactId>
-        <version>2.0.3</version>
+        <version>2.0.4</version>
     </parent>
     
     <artifactId>grafana-logging</artifactId>
     <packaging>bundle</packaging>
 
-    <name>OGEMA Applications :: Log data visualization</name>
+    <name>Log data visualization</name>
     <description>Grafana log data visualization; displays logged sensor readings. Use Logging Application to enable logging for selected resources.</description>
 	
     <properties>
@@ -60,7 +60,7 @@
          <dependency>
             <groupId>org.ogema.tools</groupId>
             <artifactId>grafana-base</artifactId>
-            <version>2.0.3</version>
+            <version>2.0.4</version>
         </dependency>
     </dependencies>
 </project>

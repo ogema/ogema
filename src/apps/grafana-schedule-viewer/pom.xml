@@ -4,14 +4,14 @@
   <parent>
     <artifactId>ogema-apps</artifactId>
     <groupId>org.ogema.apps</groupId>
-    <version>2.0.3</version>
+    <version>2.0.4</version>
   </parent>
     
     <artifactId>grafana-schedule-viewer</artifactId>
     <packaging>bundle</packaging>
 
-    <name>OGEMA Applications :: Grafana schedule viewer</name>
-    <description>Schedules visualization</description>
+    <name>Schedule viewer</name>
+    <description>Schedules visualization based on the Grafana library</description>
 	
 	<build>
         <plugins>
@@ -56,7 +56,7 @@
          <dependency>
             <groupId>org.ogema.tools</groupId>
             <artifactId>grafana-base</artifactId>
-            <version>2.0.3</version>
+            <version>2.0.4</version>
         </dependency>
     </dependencies>
 </project>

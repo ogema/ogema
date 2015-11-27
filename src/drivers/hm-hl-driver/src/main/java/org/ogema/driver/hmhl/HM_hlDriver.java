@@ -47,7 +47,7 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 	// channelLocator
 	// (resourceId)
 
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger("hm_hl");
+	private Logger logger = org.slf4j.LoggerFactory.getLogger("hm_hl");
 
 	public HM_hlDriver() {
 		this.devices = new HashMap<String, HM_hlDevice>();
@@ -57,8 +57,9 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 
 	@Override
 	public void start(ApplicationManager appManager) {
+		logger = appManager.getLogger();
 		this.appManager = appManager;
-		new Thread(this, "homematic-hld-deviceScan").start();
+		new Thread(this, "homematic-hl-deviceScan").start();
 	}
 
 	@Override
@@ -68,11 +69,17 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 		}
 	}
 
+	/**
+	 * Just to support shell commands
+	 * 
+	 * @param config
+	 */
 	public void resourceAvailable(HM_hlConfig config) {
 		String[] splitAddress = config.channelAddress.split(":");
 		HM_hlDevice device = null;
 		if (!devices.containsKey(config.interfaceId + ":" + config.deviceAddress)) {
-			switch (deviceDesc.getSubType(splitAddress[0])) {
+			String s = deviceDesc.getSubType(splitAddress[0]);
+			switch (s) {
 			case "THSensor":
 				device = new THSensor(this, appManager, config);
 				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
@@ -108,7 +115,7 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
 				break;
 			default:
-				throw new RuntimeException("Message not supported");
+				throw new RuntimeException("Type not supported: " + s);
 			}
 		}
 		else {
@@ -117,19 +124,6 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 		if (device != null)
 			device.addChannel(config);
 
-	}
-
-	public void resourceUnavailable(HM_hlConfig config) {
-		HM_hlDevice device = devices.get(config.interfaceId + ":" + config.deviceAddress);
-		if (device != null) {
-			device.deleteChannel(config);
-			// TODO check endpoints
-			if (device.attributeChannel.isEmpty() && device.commandChannel.isEmpty()) {
-				devices.remove(config.interfaceId + ":" + config.deviceAddress);
-				device.close();
-				device = null;
-			}
-		}
 	}
 
 	public HM_hlDevice getDevice(String key) {
@@ -147,8 +141,8 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 		String deviceKey = deviceLocator.getInterfaceName() + ":" + deviceLocator.getDeviceAddress();
 		HM_hlDevice device = null;
 		if (!devices.containsKey(deviceKey)) {
-
-			switch (deviceDesc.getSubType(deviceLocator.getParameters())) {
+			String s = deviceDesc.getSubType(deviceLocator.getParameters());
+			switch (s) {
 			case "THSensor":
 				device = new THSensor(this, appManager, deviceLocator);
 				break;
@@ -176,7 +170,7 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 				device = new Remote(this, appManager, deviceLocator);
 				break;
 			default:
-				throw new RuntimeException("Message not supported");
+				throw new RuntimeException("Type not supported: " + s);
 			}
 			if (device != null)
 				System.out.println(deviceKey);
@@ -204,7 +198,7 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-			logger.info("Start device scan ...");
+			logger.debug("Start device scan ...");
 			try {
 				this.appManager.getChannelAccess().discoverDevices("homematic-driver", "USB", null, this);
 			} catch (UnsupportedOperationException e) {
@@ -216,7 +210,7 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 				logger
 						.debug("Either the homematic-driver is not yet installed or the coordinator hardware is not connected.");
 			}
-			logger.info("... device scan finished!");
+			logger.debug("... device scan finished!");
 		}
 	}
 }

@@ -241,14 +241,19 @@ public abstract class Generic_ZbDevice implements ChannelEventListener {
 
 	public Value readValue(String channelAddress) {
 		// TODO alternative to printing the value
-		SampledValueContainer sampledValue = null;
+		ChannelLocator chloc = attributeChannel.get(channelAddress);
+		SampledValueContainer container = new SampledValueContainer(chloc);
+
+		List<SampledValueContainer> channelList = new ArrayList<SampledValueContainer>(1);
+
+		channelList.add(container);
+
 		try {
-			sampledValue = channelAccess.readUnconfiguredChannel(attributeChannel.get(channelAddress));
+			channelAccess.readUnconfiguredChannels(channelList);
 		} catch (Throwable e) {
 			e.printStackTrace();
 		}
-
-		return sampledValue.getSampledValue().getValue();
+		return channelList.get(0).getSampledValue().getValue();
 	}
 
 	public void deleteChannel(Generic_ZbConfig config) {

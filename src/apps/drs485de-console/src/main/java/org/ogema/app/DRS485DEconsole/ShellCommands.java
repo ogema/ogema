@@ -15,9 +15,6 @@
  */
 package org.ogema.app.DRS485DEconsole;
 
-import static org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType.FIXED_INTERVAL;
-import static org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType.ON_VALUE_CHANGED;
-
 import java.util.List;
 
 import org.apache.felix.scr.annotations.Component;
@@ -31,17 +28,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
+import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.units.EnergyResource;
-import org.ogema.core.recordeddata.RecordedData;
 import org.ogema.core.recordeddata.RecordedDataConfiguration;
 import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
 import org.ogema.core.recordeddata.ReductionMode;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.security.WebAccessManager;
-import org.ogema.model.devices.sensoractordevices.SingleSwitchBox;
-import org.ogema.core.channelmanager.measurements.SampledValue;
 
 //The annotations encapsulate the OSGi required. They expose the service Application
 //to OSGi, which the OGEMA framework uses to detect this piece of code as an
@@ -51,15 +45,13 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
 @Properties( { @Property(name = "osgi.command.scope", value = "drs485"),
 		@Property(name = "osgi.command.function", value = { "list", "add", "remove", "set", "print" }) })
 /**
- * Console OGEMA application that allows configuration, control and readout 
- * of the DRS485DE driver.
+ * Console OGEMA application that allows configuration, control and readout of the DRS485DE driver.
  * 
  * This application can manage several instances of the DRS485DE meter.
  * 
- * This class is implemented as a plug-in to the gogo shell. 
+ * This class is implemented as a plug-in to the gogo shell.
  * 
- * The properties to the service registration are published through 
- * the scr annotations above. 
+ * The properties to the service registration are published through the scr annotations above.
  * 
  * 
  * 
@@ -68,16 +60,12 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
  */
 public class ShellCommands implements Application {
 
-	// private Map<Integer, Device> devices = new HashMap<Integer, Device>();
 	private Manager manager;
 	private Servlet drs485deServlet;
 	private WebAccessManager wam;
-	private boolean counter = false;
 	private ResourceAccess ra;
 	private Resource res;
 	private EnergyResource eneres;
-
-	// private ApplicationManager appManager;
 
 	@Descriptor("list all instances")
 	public void list() {
@@ -152,7 +140,6 @@ public class ShellCommands implements Application {
 
 	@Override
 	public void start(ApplicationManager appManager) {
-		// this.appManager = appManager;
 		manager = new Manager(appManager);
 		ra = appManager.getResourceAccess();
 		drs485deServlet = new Servlet(this);
@@ -171,10 +158,11 @@ public class ShellCommands implements Application {
 				if (eneres != null) {
 					configureLogging(eneres);
 
-					//					System.out.println("with ReductionMode before: " +  appManager.getFrameworkTime());
-					//					List<SampledValue> list = eneres.getHistoricalData().getValues(1423561200000L, 1423562400000L, 20000, ReductionMode.AVERAGE);
-					//					System.out.println("with ReductionMode after: " +  appManager.getFrameworkTime());
-					//					System.out.println("list with ReductionMode: " +  list); 
+					// System.out.println("with ReductionMode before: " + appManager.getFrameworkTime());
+					// List<SampledValue> list = eneres.getHistoricalData().getValues(1423561200000L, 1423562400000L,
+					// 20000, ReductionMode.AVERAGE);
+					// System.out.println("with ReductionMode after: " + appManager.getFrameworkTime());
+					// System.out.println("list with ReductionMode: " + list);
 
 					System.out.println("without ReductionMode before: " + appManager.getFrameworkTime());
 					List<SampledValue> list2 = eneres.getHistoricalData().getValues(1423561200000L, 1423562400000L,
@@ -184,33 +172,12 @@ public class ShellCommands implements Application {
 				}
 			}
 		}
-
-		//		DateTime now = new DateTime().now();
-		//		System.out.println("before: " +  now.getMillis());
-		//		System.out.println("before outer: " +  appManager.getFrameworkTime());
-		//		
-		//		List<SampledValue> list = eneres.getHistoricalData().getValues(now.minusMinutes(30).getMillis(), now.getMillis(), 60000, ReductionMode.AVERAGE);
-		//		List<SampledValue> list = eneres.getHistoricalData().getValues(1422543600000l, 1422546000000l, 600000, ReductionMode.AVERAGE);
-		//		now = new DateTime().now();
-		//		now = new DateTime().now();
-		//		System.out.println("after outer: " + appManager.getFrameworkTime());
-		//		
-		//		System.out.println("list: " +  list); 
-		//
-		//		// DateTime now = new DateTime().now();
-		//		// System.out.println("before: " + now.getMillis());
-		//		System.out.println("before outer: " + appManager.getFrameworkTime());
-		//
-		//		// List<SampledValue> list = eneres.getHistoricalData().getValues(now.minusMinutes(30).getMillis(),
-		//		// now.getMillis(), 60000, ReductionMode.AVERAGE);
-		//		// now = new DateTime().now();
-		//		System.out.println("after outer: " + appManager.getFrameworkTime());
-		//
-		//		// System.out.println("list: " + list);
 	}
 
 	@Override
 	public void stop(AppStopReason reason) {
+		wam.unregisterWebResource("/drs485de");
+		wam.unregisterWebResource("/drs485de_web");
 		manager.stop();
 	}
 
@@ -239,45 +206,35 @@ public class ShellCommands implements Application {
 	public JSONObject getGraphData() {
 
 		JSONObject json = new JSONObject();
-		try {
+		if (eneres != null) {
+			try {
 
-			// if (res == null || !(res instanceof EnergyResource)) {
-			// throw new RuntimeException();
-			// }
+				json.put("current_drs485de", eneres.getValue() / 3600);
 
-			json.put("current_drs485de", eneres.getValue() / 3600);
-
-		} catch (JSONException e) {
-			e.printStackTrace();
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
 		}
 		return json;
 	}
 
 	public JSONArray getGraphDataHistory() {
-
-		// System.out.println("eneres 1:" + list);
-		// System.out.println("timestamp :" + i + ": "+ list.get(i).getTimestamp());
-		// System.out.println("minute of day:" + testDateTime.minuteOfDay().get());
-		// System.out.println("minute of day now:" + today.minuteOfDay().get());
-		// List<SampledValue> list2 = eneres.getHistoricalData().getValues(1420639200000L);
-		// minuteJumper.minuteOfDay().get()
-		// DateTime today = new DateTime().withTimeAtStartOfDay();
-
-		DateTime now = new DateTime().now();
-
-		List<SampledValue> list = eneres.getHistoricalData().getValues(now.minusDays(1).getMillis(), now.getMillis(),
-				60000, ReductionMode.AVERAGE);
-		System.out.println("historical list :" + list);
-
 		JSONArray json = new JSONArray();
-		try {
+		if (eneres != null) {
+			DateTime now = DateTime.now();
+			List<SampledValue> list = eneres.getHistoricalData().getValues(now.minusDays(1).getMillis(),
+					now.getMillis(), 60000, ReductionMode.AVERAGE);
+			System.out.println("historical list :" + list);
 
-			for (int i = 0; i < list.size() - 1; i++) {
-				json.put(list.get(i).getValue().getDoubleValue() / 3600);
+			try {
+
+				for (int i = 0; i < list.size() - 1; i++) {
+					json.put(list.get(i).getValue().getDoubleValue() / 3600);
+				}
+
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
 		return json;
 	}

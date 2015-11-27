@@ -13,15 +13,6 @@
  * You should have received a copy of the GNU General Public License
  * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
-/**
- * Copyright 2009 - 2014
- *
- * Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
- *
- * Fraunhofer IIS Fraunhofer ISE Fraunhofer IWES
- *
- * All Rights reserved
- */
 package org.ogema.apps.grafana.schedule.viewer;
 
 import java.util.ArrayList;
@@ -35,18 +26,10 @@ import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.SimpleResource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
-import org.ogema.core.model.schedule.ForecastSchedule;
 import org.ogema.core.model.schedule.Schedule;
-import org.ogema.core.model.simple.BooleanResource;
-import org.ogema.core.model.simple.FloatResource;
-import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceManagement;
-import org.ogema.model.actors.Actor;
-import org.ogema.model.sensors.Sensor;
 import org.ogema.tools.grafana.base.InfluxFake;
 
 @Component(specVersion = "1.2", immediate = true)
@@ -57,8 +40,7 @@ public class GrafanaScheduleViewer implements Application, ResourceDemandListene
 	protected ApplicationManager am;
 	protected ResourceManagement rm;
 	protected ResourceAccess ra;
-	protected List<Class<? extends Resource>> definitionScheduleTypes;
-	protected List<Class<? extends Resource>> forecastScheduleTypes;
+	protected List<Class<? extends Resource>> forecastScheduleTypes, programScheduleTypes, otherScheduleTypes;
 	protected InfluxFake infl;
 	protected Map<String, Map> panels;
 	protected Map<String, Map<String, Class<? extends Resource>>> restrictions;
@@ -72,31 +54,32 @@ public class GrafanaScheduleViewer implements Application, ResourceDemandListene
         this.logger = am.getLogger();
         this.rm = am.getResourceManagement();
         this.ra = am.getResourceAccess();
-        this.definitionScheduleTypes = new ArrayList<>();
         this.forecastScheduleTypes = new ArrayList<>();
-        this.restrictions = new LinkedHashMap<String,Map<String,Class<? extends Resource>>>();
+        this.programScheduleTypes = new ArrayList<>();
+        this.otherScheduleTypes = new ArrayList<>();
+        this.restrictions = new LinkedHashMap<String, Map<String, Class<? extends Resource>>>();
         logger.debug("Grafana log app started", getClass().getName());
         String webResourcePackagePath = "org/ogema/apps/grafana/schedule/viewer/grafana-1.9.1";
         String appNameLowerCase = "GrafanaScheduleViewer".toLowerCase();
-        webResourceBrowserPath =am.getWebAccessManager().registerWebResourcePath("", webResourcePackagePath);
+        webResourceBrowserPath = am.getWebAccessManager().registerWebResourcePath("", webResourcePackagePath);
 //        webResourceBrowserPath =am.getWebAccessManager().registerWebResource("/org/ogema/apps/grafana-schedule-viewer",webResourcePackagePath);        
-        panels = new LinkedHashMap<String,Map>();
+        panels = new LinkedHashMap<>();
         // row 1
  /*       Map<String,Class<? extends Resource>> firstRowPanels = new LinkedHashMap<String,Class<? extends Resource>>();       
-        firstRowPanels.put("Programs / Definition schedules",DefinitionSchedule.class);
-        panels.put("Programs / Definition schedules", firstRowPanels);
+         firstRowPanels.put("Programs / Definition schedules",DefinitionSchedule.class);
+         panels.put("Programs / Definition schedules", firstRowPanels);
         
-        // row 2
-        Map<String,Class<? extends Resource>> secondRowPanels = new LinkedHashMap<String,Class<? extends Resource>>();              
-        secondRowPanels.put("Forecast schedules",ForecastSchedule.class);
-        panels.put("Forecast schedules", secondRowPanels); */
-        
-        this.infl = new InfluxFake(am,panels,-1);
+         // row 2
+         Map<String,Class<? extends Resource>> secondRowPanels = new LinkedHashMap<String,Class<? extends Resource>>();              
+         secondRowPanels.put("Forecast schedules",ForecastSchedule.class);
+         panels.put("Forecast schedules", secondRowPanels); */
+
+        this.infl = new InfluxFake(am, panels, -1);
         infl.setStrictMode(true);
         infl.setRestrictions(restrictions);
-        
+
         servletPath = "/apps/ogema/" + appNameLowerCase + "/fake_influxdb/series";
-        am.getWebAccessManager().registerWebResource(servletPath,infl);
+        am.getWebAccessManager().registerWebResource(servletPath, infl);
         ra.addResourceDemand(Schedule.class, this);
     }
 
@@ -108,52 +91,62 @@ public class GrafanaScheduleViewer implements Application, ResourceDemandListene
 		ra.removeResourceDemand(Schedule.class, this);
 	}
 
+	private void tryAddScheduleType(List<Class<? extends Resource>> targetList, Class<? extends Resource> parentType, String prefix, Schedule schedule) {
+        if (targetList.contains(parentType)) {
+            return;
+        }
+        Class<? extends Resource> type = schedule.getResourceType();
+        targetList.add(parentType);
+        Map<String, Class<? extends Resource>> rowPanels = new LinkedHashMap<>();
+        Map<String, Class<? extends Resource>> rowRestrictions = new LinkedHashMap<>();
+        String rowId = prefix + " " + parentType.getSimpleName();
+        rowPanels.put(rowId, type);
+        rowRestrictions.put(rowId, parentType);
+        panels.put(rowId, rowPanels);
+        restrictions.put(rowId, rowRestrictions);
+        infl.setPanels(panels);
+    }
+
 	@Override
 	public void resourceAvailable(Schedule schedule) {
-		Class<? extends Resource> type = schedule.getResourceType();
-		Class<? extends Resource> parentType = null;
-		System.out.println("  Callback for " + schedule.getLocation() + ", type " + type.getSimpleName()
-				+ ", instance of DefinitionSchedule: " + (schedule instanceof DefinitionSchedule)
-				+ ", instance of ForecastSchedule " + (schedule instanceof ForecastSchedule));
+		final Class<? extends Resource> type = schedule.getResourceType();
+		logger.debug("  Callback for " + schedule.getLocation() + ", type " + type.getSimpleName());
+
+		final Class<? extends Resource> parentType;
 		try {
 			parentType = schedule.getParent().getResourceType();
 		} catch (Exception e) {
 			logger.warn("Could not determine type of schedule " + schedule.getLocation() + ". Ignoring it.");
 			return;
 		}
-		//		if (schedule instanceof DefinitionSchedule) {
-		if (DefinitionSchedule.class.isAssignableFrom(type)) {
-			if (!definitionScheduleTypes.contains(parentType)) {
-				definitionScheduleTypes.add(parentType);
-				Map<String, Class<? extends Resource>> rowPanels = new LinkedHashMap<String, Class<? extends Resource>>();
-				Map<String, Class<? extends Resource>> rowRestrictions = new LinkedHashMap<String, Class<? extends Resource>>();
-				String rowId = "Programs: " + parentType.getSimpleName();
-				rowPanels.put(rowId, type);
-				rowRestrictions.put(rowId, parentType);
-				panels.put(rowId, rowPanels);
-				restrictions.put(rowId, rowRestrictions);
-				infl.setPanels(panels);
-			}
+
+		switch (schedule.getName()) {
+		case "program":
+			tryAddScheduleType(programScheduleTypes, parentType, "Program:", schedule);
+			break;
+		case "forecast":
+			tryAddScheduleType(forecastScheduleTypes, parentType, "Forecast:", schedule);
+			break;
+		default:
+			tryAddScheduleType(otherScheduleTypes, parentType, "Other:", schedule);
+			break;
 		}
-		//		else if (schedule instanceof ForecastSchedule) {
-		else if (ForecastSchedule.class.isAssignableFrom(type)) {
-			if (!forecastScheduleTypes.contains(parentType)) {
-				forecastScheduleTypes.add(parentType);
-				Map<String, Class<? extends Resource>> rowPanels = new LinkedHashMap<String, Class<? extends Resource>>();
-				Map<String, Class<? extends Resource>> rowRestrictions = new LinkedHashMap<String, Class<? extends Resource>>();
-				String rowId = "Forecasts: " + parentType.getSimpleName();
-				rowPanels.put(rowId, type);
-				rowRestrictions.put(rowId, parentType);
-				panels.put(rowId, rowPanels);
-				restrictions.put(rowId, rowRestrictions);
-				infl.setPanels(panels);
-			}
-		}
+		//        if (!forecastScheduleTypes.contains(parentType)) {
+		//            forecastScheduleTypes.add(parentType);
+		//            Map<String, Class<? extends Resource>> rowPanels = new LinkedHashMap<>();
+		//            Map<String, Class<? extends Resource>> rowRestrictions = new LinkedHashMap<>();
+		//            String rowId = "Programs: " + parentType.getSimpleName();
+		//            rowPanels.put(rowId, type);
+		//            rowRestrictions.put(rowId, parentType);
+		//            panels.put(rowId, rowPanels);
+		//            restrictions.put(rowId, rowRestrictions);
+		//            infl.setPanels(panels);
+		//        }
+
 	}
 
 	@Override
 	public void resourceUnavailable(Schedule schedule) {
 		// TODO
 	}
-
 }

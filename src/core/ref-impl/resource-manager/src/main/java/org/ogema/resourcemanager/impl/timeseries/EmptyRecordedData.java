@@ -92,10 +92,4 @@ public class EmptyRecordedData implements RecordedDataStorage {
 	public void update(RecordedDataConfiguration configuration) throws DataRecorderException {
 	}
 
-	@Override
-	public Map<String, RecordedDataConfiguration> getPersistenConfigurationMap() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 }

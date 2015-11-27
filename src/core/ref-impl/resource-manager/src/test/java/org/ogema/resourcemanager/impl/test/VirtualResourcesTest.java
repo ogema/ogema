@@ -25,7 +25,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
@@ -170,7 +170,8 @@ public class VirtualResourcesTest extends OsgiTestBase {
 		sw1.stateControl().setAsReference(sw2.stateControl());
 	}
 
-	@Test(expected = VirtualResourceException.class)
+	//	@Test(expected = VirtualResourceException.class)  // behaviour changed
+	@Test
 	public void referencesCannotBeSetOnVirtualResources() {
 		OnOffSwitch sw1 = resMan.createResource(newResourceName(), OnOffSwitch.class);
 		OnOffSwitch sw2 = resMan.createResource(newResourceName(), OnOffSwitch.class);
@@ -224,7 +225,7 @@ public class VirtualResourcesTest extends OsgiTestBase {
 		assertNotNull(x);
 		assertFalse(x.exists());
 
-		DefinitionSchedule ds = s1.reading().getSubResource("data", DefinitionSchedule.class);
+		Schedule ds = s1.reading().getSubResource("data", Schedule.class);
 		assertNotNull(ds);
 		assertFalse(ds.exists());
 	}
@@ -259,7 +260,7 @@ public class VirtualResourcesTest extends OsgiTestBase {
 	@Test
 	public void creatingVirtualDecoratedScheduleWorks() {
 		final FloatResource resource = resMan.createResource(newResourceName(), FloatResource.class);
-		final DefinitionSchedule schedule = resource.getSubResource("myTestDecorator", DefinitionSchedule.class);
+		final Schedule schedule = resource.getSubResource("myTestDecorator", Schedule.class);
 		assertNotNull(schedule);
 		assertFalse(schedule.exists());
 		schedule.create();
@@ -269,7 +270,7 @@ public class VirtualResourcesTest extends OsgiTestBase {
 	@Test
 	public void creatingVirtualOptionalScheduleWorks() {
 		final FloatResource resource = resMan.createResource(newResourceName(), FloatResource.class);
-		final DefinitionSchedule schedule = resource.program();
+		final Schedule schedule = resource.program();
 		assertNotNull(schedule);
 		assertFalse(schedule.exists());
 		schedule.create();
@@ -280,7 +281,7 @@ public class VirtualResourcesTest extends OsgiTestBase {
 	@SuppressWarnings("deprecation")
 	public void virtualSchedulesAreReadable() { //...but return only null
 		final FloatResource resource = resMan.createResource(newResourceName(), FloatResource.class);
-		final DefinitionSchedule schedule = resource.program();
+		final Schedule schedule = resource.program();
 		assertNotNull(schedule);
 		assertFalse(schedule.exists());
 		assertNull(schedule.getValue(42));
@@ -291,7 +292,7 @@ public class VirtualResourcesTest extends OsgiTestBase {
 	@Test
 	public void virtualSchedulesIgnoreWrites() {
 		final FloatResource resource = resMan.createResource(newResourceName(), FloatResource.class);
-		final DefinitionSchedule schedule = resource.program();
+		final Schedule schedule = resource.program();
 		assertNotNull(schedule);
 		assertFalse(schedule.exists());
 		schedule.addValue(47, new FloatValue(11));

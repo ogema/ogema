@@ -28,9 +28,9 @@ import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
 import org.ogema.core.channelmanager.driverspi.ChannelUpdateListener;
+import org.ogema.core.channelmanager.driverspi.DeviceListener;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
-import org.ogema.core.channelmanager.driverspi.ExceptionListener;
 import org.ogema.core.channelmanager.driverspi.NoSuchChannelException;
 import org.ogema.core.channelmanager.driverspi.NoSuchDeviceException;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
@@ -39,6 +39,7 @@ import org.ogema.core.channelmanager.driverspi.ValueContainer;
 import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.core.channelmanager.measurements.Value;
 import org.openmuc.jmbus.DataRecord;
 import org.openmuc.jmbus.DecodingException;
 import org.openmuc.jmbus.HexConverter;
@@ -58,7 +59,7 @@ public class WirelessMBusDriver implements ChannelDriver, WMBusListener {
 
 	private final Map<String, ConnectionHandle> connections = new HashMap<String, ConnectionHandle>();
 	private final List<ConnectionHandle> tranciverList = new LinkedList<ConnectionHandle>();
-	private final Map<String, ChannelUpdateListener> listeners = new HashMap<String, ChannelUpdateListener>();
+	//	private final Map<String, ChannelUpdateListener> listeners = new HashMap<String, ChannelUpdateListener>();
 	private List<SampledValueContainer> sampledValueContainers = new LinkedList<SampledValueContainer>();
 	private final static String ID = "wmbus";
 	private final static String DESCRIPTION = "This is a driver to communicate with wireless M-Bus Devices";
@@ -99,13 +100,6 @@ public class WirelessMBusDriver implements ChannelDriver, WMBusListener {
 	@Override
 	public void readChannels(List<SampledValueContainer> channels) throws UnsupportedOperationException, IOException {
 		throw new UnsupportedOperationException("Synchone Comunikation (Mode T) is not supportet yet");
-	}
-
-	@Override
-	public void readChannels(List<SampledValueContainer> channels, ChannelUpdateListener listener)
-			throws UnsupportedOperationException {
-		throw new UnsupportedOperationException();
-		// TODO Auto-generated method stub
 	}
 
 	@Override
@@ -196,14 +190,7 @@ public class WirelessMBusDriver implements ChannelDriver, WMBusListener {
 	}
 
 	@Override
-	public void writeChannels(List<ValueContainer> channels, ExceptionListener listener)
-			throws UnsupportedOperationException {
-		// TODO Auto-generated method stub
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public void reset() {
+	public void shutdown() {
 		// TODO Auto-generated method stub
 
 	}
@@ -435,6 +422,24 @@ public class WirelessMBusDriver implements ChannelDriver, WMBusListener {
 			throws UnsupportedOperationException {
 		// TODO Auto-generated method stub
 
+	}
+
+	@Override
+	public void addDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void removeDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void writeChannel(ChannelLocator channelLocator, Value value) throws UnsupportedOperationException,
+			IOException, NoSuchDeviceException, NoSuchChannelException {
+		throw new UnsupportedOperationException();
 	}
 
 }

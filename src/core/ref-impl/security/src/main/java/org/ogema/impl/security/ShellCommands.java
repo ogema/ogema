@@ -23,6 +23,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.felix.service.command.Descriptor;
+import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.application.AppID;
 import org.ogema.core.security.AppPermission;
@@ -30,14 +31,14 @@ import org.osgi.framework.BundleContext;
 import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
 
 public class ShellCommands {
-	private PermissionManagerImpl permman;
+	private PermissionManager permman;
 
 	static final String policies_HelpString = "Lists policies as ConditionalPermissionInfo string representation."
 			+ "\n\t-all print the whole list of the of the system policies."
 			+ "\n\t-app print the list of the policies that match ogema applications. A policy is printed out each app that matches."
 			+ "\n\t-help print this message.";
 
-	public ShellCommands(PermissionManagerImpl permMananger, BundleContext context) {
+	public ShellCommands(PermissionManager permMananger, BundleContext context) {
 		Hashtable<String, Object> props = new Hashtable<String, Object>();
 		props.put("osgi.command.scope", "security");
 		props.put("osgi.command.function", new String[] { "policies" });

@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.ogema.driver.xbee.Configuration;
 import org.ogema.driver.xbee.Constants;
+import org.ogema.driver.xbee.manager.zcl.Cluster;
 import org.slf4j.Logger;
 
 /**
@@ -51,23 +52,6 @@ public class MessageHandler implements Runnable {
 		sentMessagesAwaitingResponse = new ConcurrentHashMap<Long, SentMessage>();
 		this.localDevice = device;
 		setCyclicSleepPeriod(cyclicSleepPeriod);
-
-		// timerThread = new Thread(new Runnable() {
-		// public void run() {
-		// while (true) {
-		// try {
-		// Thread.sleep(MIN_WAITING_TIME);
-		// } catch (Exception e) {
-		// e.printStackTrace();
-		// }
-		// synchronized (messageHandlerLock) {
-		// messageHandlerLock.notify();
-		// }
-		// }
-		// }
-		// });
-		// timerThread.setName("xbee-driver-timerThread");
-		// timerThread.start();
 	}
 
 	/**
@@ -114,7 +98,8 @@ public class MessageHandler implements Runnable {
 	 * @param clusterId
 	 * @param payload
 	 */
-	public void messageReceived(Endpoint remoteEndpoint, byte localEndpoint, short clusterId, byte[] payload) {
+	public void messageReceived(Endpoint remoteEndpoint, byte localEndpoint, short clusterId,
+			ByteBuffer payloadBuffer/* byte[] payload */) {
 		if (Configuration.DEBUG)
 			logger.debug("messageReceived");
 		if (remoteEndpoint == null) {
@@ -124,7 +109,6 @@ public class MessageHandler implements Runnable {
 															// etc.)
 			return;
 		}
-		ByteBuffer payloadBuffer = ByteBuffer.wrap(payload);
 		byte frameControl = payloadBuffer.get();
 		if ((frameControl & 0B00000011) == 0) { // profile-wide
 			if ((frameControl & 0B00000100) == 0B00000100) { // manufacturer specific
@@ -133,30 +117,30 @@ public class MessageHandler implements Runnable {
 			payloadBuffer.get(); // sequence number
 			byte command = payloadBuffer.get();
 
+			long addr64 = remoteEndpoint.getDevice().getAddress64Bit();
+			Cluster cluster = remoteEndpoint.getClusters().get(clusterId);
 			switch (command) {
 			case Constants.WRITE_ATTRIBUTES_RESPONSE:
 			case Constants.READ_ATTRIBUTES_RESPONSE:
 				if (Configuration.DEBUG)
 					logger.debug("READ_ATTRIBUTES_RESPONSE");
-				if (sentMessagesAwaitingResponse.containsKey(remoteEndpoint.getDevice().getAddress64Bit())) {
-					SentMessage sentMessage = sentMessagesAwaitingResponse.get(remoteEndpoint.getDevice()
-							.getAddress64Bit());
+				if (sentMessagesAwaitingResponse.containsKey(addr64)) {
+					SentMessage sentMessage = sentMessagesAwaitingResponse.get(addr64);
 					if (command == sentMessage.getResponseType()) {
-						remoteEndpoint.getClusters().get(clusterId)
-								.readMessage(payloadBuffer, command, sentMessage.getChannelLock());
-						sentMessagesAwaitingResponse.remove(remoteEndpoint.getDevice().getAddress64Bit());
+						cluster.readMessage(payloadBuffer, command, sentMessage.getChannelLock());
+						sentMessagesAwaitingResponse.remove(addr64);
 						return;
 					}
 				}
-				remoteEndpoint.getClusters().get(clusterId).readMessage(payloadBuffer, command);
+				cluster.readMessage(payloadBuffer, command);
 				break;
 			case Constants.DEFAULT_RESPONSE:
 				command = payloadBuffer.get(); // The sent command that was sent
 												// to the remote device
 				byte status = payloadBuffer.get();
 				if (Constants.UNSUPPORTED_CLUSTER_COMMAND == status) {
-					if (sentMessagesAwaitingResponse.containsKey(remoteEndpoint.getDevice().getAddress64Bit())) {
-						sentMessagesAwaitingResponse.remove(remoteEndpoint.getDevice().getAddress64Bit());
+					if (sentMessagesAwaitingResponse.containsKey(addr64)) {
+						sentMessagesAwaitingResponse.remove(addr64);
 					}
 				}
 				break;
@@ -199,13 +183,13 @@ public class MessageHandler implements Runnable {
 		txString.append("\nTX status: " + Constants.bytesToHex(deliveryStatus));
 		txString.append("\nTX discovery status: " + Constants.bytesToHex(discoveryStatus));
 		txString.append("\n############################################\n\n");
-		logger.info(txString.toString());
+		logger.debug(txString.toString());
 
 	}
 
 	public void txStatusReceived(ByteBuffer byteBuffer) { // Transmit status
 		if (byteBuffer.position() == byteBuffer.limit()) {
-			logger.info("txStatus empty");
+			logger.debug("txStatus empty");
 			return;
 		}
 		byte frameId = byteBuffer.get(); // omit frameId
@@ -293,6 +277,6 @@ public class MessageHandler implements Runnable {
 	public void setCyclicSleepPeriod(int cyclicSleepPeriod) {
 		this.cyclicSleepPeriod = cyclicSleepPeriod;
 		MIN_WAITING_TIME = cyclicSleepPeriod + 2000;
-		logger.info("min waiting time: " + MIN_WAITING_TIME);
+		logger.debug("min waiting time: " + MIN_WAITING_TIME);
 	}
 }

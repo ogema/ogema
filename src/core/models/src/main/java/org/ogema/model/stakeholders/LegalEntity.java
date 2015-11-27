@@ -29,8 +29,7 @@ public interface LegalEntity extends Data {
 
 	/**
 	 * Type of legal entity<br>
-	 * 1: natural person 10..higher: institution (see {@link org.ogema.core.model.stakeholders.Institution#type
-	 * Institution.type})
+	 * 1: natural person 10..higher: institution 
 	 */
 	IntegerResource type();
 

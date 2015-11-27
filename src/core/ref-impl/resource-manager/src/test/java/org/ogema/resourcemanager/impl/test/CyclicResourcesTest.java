@@ -21,7 +21,7 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.model.devices.generators.PVPlant;
@@ -45,7 +45,7 @@ public class CyclicResourcesTest extends OsgiTestBase {
 		private final ResourceManagement resMan;
 		public PVPlant pvPlant;
 		public FloatResource azimuth;
-		public DefinitionSchedule aziforecast;
+		public Schedule aziforecast;
 		public PVPlant referredPlant;
 
 		/**
@@ -72,7 +72,7 @@ public class CyclicResourcesTest extends OsgiTestBase {
 			azimuth.create();
 			assertNotNull(azimuth);
 			azimuth.setValue(0.f);
-			aziforecast = azimuth.addDecorator("definition", DefinitionSchedule.class);
+			aziforecast = azimuth.addDecorator("definition", Schedule.class);
 			assertNotNull(aziforecast);
 			aziforecast.addDecorator("referringObject", pvPlant);
 			referredPlant = (PVPlant) aziforecast.getSubResource("referringObject");

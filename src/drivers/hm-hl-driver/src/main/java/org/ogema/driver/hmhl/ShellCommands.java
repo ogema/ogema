@@ -73,27 +73,6 @@ public class ShellCommands {
 		driver.resourceAvailable(config);
 	}
 
-	@Descriptor("Deletes a channel.")
-	public void deleteChannel(@Descriptor("The interface ID/Port name.") String interfaceId,
-			@Descriptor("The device address in form of DeviceId e. g. 000000.") String deviceAddress,
-			@Descriptor("The channel address in form of Type:Id e. g. Type:Attribute:0000.") String channelAddress) {
-		HM_hlConfig config = new HM_hlConfig();
-		config.interfaceId = interfaceId;
-		config.deviceAddress = deviceAddress.toUpperCase();
-		config.channelAddress = channelAddress.toUpperCase();
-		driver.resourceUnavailable(config);
-	}
-
-	@Descriptor("Deletes a channel.")
-	public void deleteChannel(@Descriptor("The resourceId.") String resourceId) {
-		ChannelLocator channelLocator = driver.channelMap.get(resourceId);
-		HM_hlConfig config = new HM_hlConfig();
-		config.interfaceId = channelLocator.getDeviceLocator().getInterfaceName();
-		config.deviceAddress = channelLocator.getDeviceLocator().getDeviceAddress().toUpperCase();
-		config.channelAddress = channelLocator.getChannelAddress().toUpperCase();
-		driver.resourceUnavailable(config);
-	}
-
 	@Descriptor("Write to a channel. This can mean overwriting a Attribute or sending a Command.")
 	public void writeChannel(
 			@Descriptor("The interface ID/Port name.") String interfaceId,

@@ -4,7 +4,12 @@ var parentOfDialog = "#wrap";
 var formOfDialog = "#wrap form";
 var numberOfPermEntry = 0;
 
-var additionalPermButton = "<button id='additionalPermButton' onclick='insertAdditionalMask()' type='button'>Add Permission</button>"
+var additionalPermButton = "<button id='additionalPermButton' onclick='insertAdditionalMask()' type='button'>Add Permission</button>";
+var checkAll = "<input type='checkbox' onchange='checkAllBoxes(this, \"c\", \"true\")' name='chkAll' </input><label class='lb' for='chkAll'>Check All</label>";
+var startButton = "<button id='startButton' onclick='startBundle()' type='button'>Start Bundle</button>";
+var removeAllButton = "<button id='removeAllButton' onclick='removeAll()' type='button'>Remove All Permissions</button>";
+var defaultkey = "defaultPolicy";
+var dialogBundleName = "<div id='dialogBundleName'></div>"
 
 function NewPerms() {
 	var widthWindow = $(window).width() * 0.8;
@@ -23,8 +28,8 @@ function NewPerms() {
 
 		/* check if the resourceDialog already exists */
 		createActionsdialog();
-
-		var action = undefined, appID = undefined;
+		
+		var action = undefined, appID = undefined; return2url=false; returnUrl = undefined;
 		var locationSearch = window.location.search.substring(1);
 		if (locationSearch != undefined) {
 			var arr1 = new Array();
@@ -38,6 +43,10 @@ function NewPerms() {
 					action = arr2[i];
 				else if (arr1[i] == "id")
 					appID = arr2[i];
+				else if (arr1[i] == "return2url") {
+					return2url = true;
+					returnUrl = arr2[i];
+				}
 			}
 			if (appID != undefined) {
 				curAppId = appID;
@@ -58,7 +67,19 @@ function NewPerms() {
 					// permissionDialog(appID);
 					// openDia(parentOfDialog);
 					appendDialog(parentOfDialog);
-					getGrantedPerms(curAppId, parentOfDialog, formOfDialog);
+					getGrantedPerms(curAppId, parentOfDialog, formOfDialog, null);
+				} else if (action == "listperms"){ // start listing all granted and
+					// demanded permissions
+					appendDialog(parentOfDialog);
+					getPermList(curAppId, parentOfDialog, formOfDialog);
+					$(".installButton").hide();
+
+				}
+			}else{
+				if (action == "defaultpolicy"){
+					curAppId = -1;
+					appendDialog(parentOfDialog);
+					getDefaultPerms(-1, parentOfDialog, formOfDialog, null);
 				}
 			}
 		}
@@ -210,7 +231,7 @@ function NewPerms() {
 		 *            appName appstore and appname.
 		 */
 		$.getJSON("/security/config/localepermissions?id=" + appNumber, function(json, xhr) {
-			evalPermData(json, appNumber, dialog, form);
+			evalPermData(json, appNumber, dialog, form, false);
 			window.setTimeout(function() {
 				$(dialog).dialog("open");
 			}, 100);
@@ -222,6 +243,8 @@ function NewPerms() {
 			return false;
 		});
 	}
+	
+	
 
 	function appendDialog(appid) {
 		$("#wrap").dialog({
@@ -272,10 +295,7 @@ function NewPerms() {
 							// if everything is ok, get the filled in input and
 							// do something with it....
 							var jsonContent = getGrantedBack($(this));
-							sendPermsToServer(curAppId, jsonContent);
-							setTimeout(function() {
-								getGrantedPerms(curAppId, parentOfDialog, formOfDialog);
-							}, 3000);
+							sendPermsToServerWithRedirect(curAppId, jsonContent, parentOfDialog, formOfDialog, returnUrl);						
 						} else {
 							alert("Invalid input.");
 						}
@@ -284,11 +304,59 @@ function NewPerms() {
 			} ]
 		});
 	}
-
-	// get permissions from server for the given url
-	function evalPermData(json, appNumber, dialog, form) {
-		$(dialog).dialog("option", "title", "Permissions demanded by bundle " + json.name);
-		$(form).empty();
+	
+/**
+ * Get all granted and demanded Permissions to fill the Dialog
+ */
+	
+	function getPermList(appNumber, dialog, form){
+		
+		$.getJSON("/security/config/listpermissions?id="+appNumber, function(json, xhr){
+			
+			$(dialog).dialog("option", "title", "Demanded and granted permissions for the bundle " + json.granted.bundlename);
+			$(".ui-dialog-titlebar").addClass("permsDialog");
+			$(form).empty();
+			//display the Bundlename as a header
+			if($("#dialogBundleName").length==0){
+				$(dialog).prepend(dialogBundleName);
+			}else{
+				$("#dialogBundleName").empty();
+			}
+			$("#dialogBundleName").text("Demanded and granted permissions for the bundle " + json.granted.bundlename)
+			//granted Permissions
+			$(form).append('<div id="granted" class="headline"><label class="lb">Granted permissions:</label>');
+			writeGrantedInDia(json.granted, appNumber, dialog, form, true);
+			
+			//demanded Permissions
+			$(form).append('<div id="demanded" class="headline"><label class="lb">Demanded permissions:</label>');
+			evalPermData(json.demanded, appNumber, dialog, form, true);
+			
+			window.setTimeout(function() {
+				$(dialog).dialog("open");
+			}, 100);
+		}).fail(function(jqXHR, textStatus, error) {
+			$(".ui-dialog-content").dialog("close");
+			var err = textStatus + ", " + error;
+			alert("Error occured: " + err);
+			return false;
+		});
+	}
+/**
+ * 	Write the demanded Permissions into the Dialog
+ * 
+ * @param{Boolean}
+ * 			listonly: List view or new Installation
+ * @param{Object}
+ * 			json: json data containing the demanded Permissions
+ */
+	
+	function evalPermData(json, appNumber, dialog, form, listonly) {
+		if(!listonly){
+			$(dialog).dialog("option", "title", "Permissions demanded by bundle " + json.name);
+			$(".ui-dialog-titlebar").addClass("permsDialog");
+			$(form).empty();
+		}
+		
 		// loops through each permission-string
 		for (var i = 0; i < json.permissions.length; i++) {
 			// get the single elements of each permission
@@ -300,16 +368,23 @@ function NewPerms() {
 			var permMethod = getPermMethod(json.permissions[i]);
 			var id = "" + appNumber + i;
 			// write elements in dialog
-			writeInDia(permName, permResource, permMethod, id, form, "grant");
+			writeInDia(permName, permResource, permMethod, id, form, "grant", listonly);
 			numberOfPermEntry++;
 		}
-		if (i > 0)
-			$("#heading").add("<br> <em>Check the box to customize demanded permission</em>");
 
-		$(form).append(additionalPermButton);
-
+		if(!listonly){
+			$(form).append(additionalPermButton);
+			$(form).prepend(checkAll);
+			if($("#dialogBundleName").length==0){
+				$(dialog).prepend(dialogBundleName);
+			}else{
+				$("#dialogBundleName").empty();
+			}
+			$("#dialogBundleName").text("Permissions demanded by bundle " + json.name)
+		}
+		
 		// adding an icon to the AddPermission-button
-		$(form + " > button").button({
+		$("button#additionalPermButton").button({
 			icons : {
 				primary : "ui-icon-plus"
 			}
@@ -345,13 +420,15 @@ function methodsToArray(content) {
 	return methods;
 }
 
+
+
 /**
  * Get the Permissions to fill in the dialog of this app from the server.
  * 
  * @param {number}
  *            rowNum rownumber/appnumber of the current chosen app.
  */
-function getGrantedPerms(appNumber, dialog, form) {
+function getGrantedPerms(appNumber, dialog, form, filtered) {
 	/**
 	 * get permission-JSON-data for the current appstore and the chosen app.
 	 * 
@@ -362,50 +439,97 @@ function getGrantedPerms(appNumber, dialog, form) {
 	$.getJSON("/security/config/grantedpermissions?id=" + appNumber, function(json, xhr) {
 		// get permissions from server for the given url
 		{
+			if(json.editable=="false"){
+				alert("Bundles that are a part of Ogema Core can not be edited.")
+				return;
+			}
 			// clear the dialog before for-loop
 			$(dialog).dialog("option", "title", "Permissions granted to the bundle " + json.bundlename);
+			$(".ui-dialog-titlebar").addClass("permsDialog");
 			$(form).empty();
-			// loops through each permission-string
-			for (var i = 0; i < json.policies.length; i++) {
-				// check if the policy is a default one, in this
-				// case ignore
-				// it, becasue default policies shouldn't be edited
-				// in this
-				// context.
-				var policy = json.policies[i];
-				var modename = policy.mode.toLowerCase();
-
-				if (policy.conditions.length == 0)
-					continue;
-				var permissions = policy.permissions;
-				var length = permissions.length;
-				for (var j = 0; j < length; j++) {
-					var entry = permissions[j];
-					// get the single elements of each permission
-					// get permission name
-					var permName = entry.type;
-					// get permission resource
-					var permResource = entry.filter;
-					// get permission method
-					var permMethod = methodsToArray(entry.actions);
-					var id = "" + appNumber + i + j;
-					// write elements in dialog
-					writeInDia(permName, permResource, permMethod, id, form, modename);
-					var selector = "#c" + id;
-					changeGrantedHeadline(id, json.policies[i].name, entry, appNumber);
-					$(selector).hide();
-					numberOfPermEntry++;
-				}
-				if (j > 0)
-					$("#heading").add("<br> <em>Remove or customize granted permissions</em>");
+			
+			writeGrantedInDia(json, appNumber, dialog, form, false)
+			
+			//if Permissions were filtered
+			if (filtered != null){
+				$(form).append('<div id="filtered" class="headline"><label class="lb">The following permissions were filtered:</label>');
+				writeFilteredInDia(filtered, appNumber, dialog, form);
 			}
-
+			if($("#dialogBundleName").length==0){
+				$(dialog).prepend(dialogBundleName);
+			}else{
+				$("#dialogBundleName").empty();
+			}
+			$("#dialogBundleName").text("Permissions granted to the bundle " + json.bundlename)
 			$(form).append(additionalPermButton);
+			$(form).append(startButton);
+			$(form).append(removeAllButton);
 
 			// adding an icon to the AddPermission-button
-			$(dialog + " form > button").button({
+			$("button#additionalPermButton").button({
 				icons : {
 					primary : "ui-icon-plus"
+				}
+			});
+			$("button#startButton").button({
+				icons : {
+					primary : "ui-icon-play"
+				}
+			});
+			$("button#removeAllButton").button({
+				icons: {
+					primary: "ui-icon-trash"
+				}
+			});
+		}
+		
+		window.setTimeout(function() {
+			$(dialog).dialog("open");
+		}, 100);
+	}).fail(function(jqXHR, textStatus, error) {
+		$(".ui-dialog-content").dialog("close");
+		var err = textStatus + ", " + error;
+		alert("Error occured: " + err);
+		return false;
+	});
+}
+
+
+function getDefaultPerms(appNumber, dialog, form, filtered){
+	$.getJSON("/security/config/defaultpolicy", function(json, xhr) {
+		// get permissions from server for the given url
+		{
+			// clear the dialog before for-loop
+			$(dialog).dialog("option", "title", "Permissions granted by " + json.bundlename);
+			$(".ui-dialog-titlebar").addClass("permsDialog");
+			$(form).empty();
+			// loops through each permission-string
+			
+			writeGrantedInDia(json, -1, dialog, form, false)
+			
+			//if Permissions were filtered
+			if (filtered != null){
+				$(form).append('<div id="filtered" class="headline"><label class="lb">The following permissions were filtered:</label>');
+				writeFilteredInDia(filtered, appNumber, dialog, form);
+			}
+			if($("#dialogBundleName").length==0){
+				$(dialog).prepend(dialogBundleName);
+			}else{
+				$("#dialogBundleName").empty();
+			}
+			$("#dialogBundleName").text("Permissions granted by " + json.bundlename)
+			$(form).append(additionalPermButton);
+			$(form).append(removeAllButton);
+
+			// adding an icon to the AddPermission-button
+			$("button#additionalPermButton").button({
+				icons : {
+					primary : "ui-icon-plus"
+				}
+			});
+			$("button#removeAllButton").button({
+				icons: {
+					primary: "ui-icon-trash"
 				}
 			});
 		}
@@ -421,69 +545,111 @@ function getGrantedPerms(appNumber, dialog, form) {
 }
 
 /**
- * Write permissions into the dialog.
+ * 	Write the grated Permissions into the Dialog
  * 
- * @param {number}
- *            diaNum DialogNumber
- * @param {String}
- *            permName Name of the permission.
- * @param {String}
- *            permResource Resource of the permission.
- * @param {String}
- *            permMethod Method(s) of the permission.
- * @param {number}
- *            i Index of the permission concerning all permissions for this app.
- *            Needed for identifying later.
- * @param {number}
- *            appNumber Number of the app converning all apps in this appstore.
- * @return {boolean} isAllPerm False: Not AllPerm. Extra additional
- *         permission-option at the end.
+ * @param{Boolean}
+ * 			listonly: List view or new Installation
+ * @param{Object}
+ * 			json: json data containing the grated Permissions
  */
-function writeInDia(name, resource, method, id, form, modename) {
+function writeGrantedInDia(json, appNumber, dialog, form, listonly){
+	
+	for (var i = 0; i < json.policies.length; i++) {
+				var policy = json.policies[i];
+							
+				//if the bundle is not default Policy and conditions.length = 0
+				if (appNumber!=-1 && policy.conditions.length == 0)
+					continue;
+				
+				var modename = policy.mode.toLowerCase();
+				var permissions = policy.permissions;
+				var length = permissions.length;
+				for (var j = 0; j < length; j++) {
+					var entry = permissions[j];
+					// get the single elements of each permission
+					// get permission name
+					var permName = entry.type;
+					// get permission resource
+					var permResource = entry.filter;
+					// get permission method
+					var permMethod =entry.actions;
+					if(permMethod != undefined){
+						permMethod = methodsToArray(permMethod);
+					}
+					var id = "" + appNumber + i + j;
+					// write elements in dialog
+					writeInDia(permName, permResource, permMethod, id, form, modename, listonly);
+					var selector = "#c" + id;
+					changeGrantedHeadline(id, json.policies[i].name, entry, appNumber);
+					$(selector).hide();
+					numberOfPermEntry++;
+				}
+				if (j > 0)
+					$("#heading").add("<br> <em>Remove or customize granted permissions</em>");
+			}
+}
+
+/**
+ * Write the filtered Permissions into the Dialog
+ * 
+ * @param {Object}
+ * 		 filtered json data containing the filtered Permissions
+ * 
+ */
+function writeFilteredInDia(filtered, appNumber, dialog, form){
+	
+	for (var i = 0; i<filtered.filtered.length; i++){
+		var entry = filtered.filtered[i];
+		var mode = entry.mode.toLowerCase();
+		var permName = entry.permname;
+		var filter = entry.filter;
+		var permMethod = entry.actions;
+		if (permMethod != undefined){
+			permMethod = methodsToArray(permMethod);
+		}
+		var id = "f"+appNumber+i;
+		writeInDia(permName, filter, permMethod, id, form, mode, true)
+		
+	}
+}
+
+
+/**
+ * Write the Permissions into the Dialog
+ * 
+ * @param {String} name
+ * 			Name of the Permission
+ * @param {String} resource
+ * 			Filter of the Permission
+ * @param {Array} method
+ * 			Array of Actions of the Permission
+ * @param {Number} id
+ * 			Bundle ID, -1 for Default Policy
+ * @param {String} modename
+ * 			Access decision, allow/deny
+ * @param {Boolean} listonly
+ * 			List-view or New Installation/ Customization
+ */
+function writeInDia(name, resource, method, id, form, modename, listonly) {
 
 	// adds dialog widget
 	$(".dialogActions").dialog({
 		autoOpen : false
 	});
-
-	// is the permission an AllPermission?
-	var isAllPerm;
-	if (name == "java.security.AllPermission") {
-		isAllPerm = true;
-	} else {
-		isAllPerm = false;
-	}
-
-	// is the permission an accesscontrol permission?
-	var isResourcePerm;
-	if (checkForResourcePerms(name) == true) {
-		isResourcePerm = true;
-	} else {
-		isResourcePerm = false;
-	}
-
+	
+	
+	
 	if (typeof (method) != "object") {
 		var tmpmethod = [];
 		if (method != "")
 			tmpmethod.push(method);
 		method = tmpmethod;
 	}
-	if (name == "")
-		return;
-	// only for not-AllPermissions
-	if (isAllPerm) { // if it is an AllPermission only write its name
-		appendAllPerm(form, id, name);
-		return;
-	}
-	// only for Not-Array (single) method
-	if (isResourcePerm == false) { // if it is not an
-		// resource permission
-		appendAnyPermission(form, id, method, resource, name);
-	} else { // if it is an resource permission
-		appendResourcePerm(form, id, method, resource, name);
-	}
+	
+	buildHtmlContainer(form, id, name, listonly, method, resource);
+	
+	// change headline color if the permission is in negative mode	
 
-	// change headline color if the permission is in negative mode
 	var selector = "#c" + id;
 	if (modename.toLowerCase() == "deny") {
 		$(selector).parent().css('background-color', '#FF6600');
@@ -493,116 +659,204 @@ function writeInDia(name, resource, method, id, form, modename) {
 	}
 }
 
-function appendAllPerm(form, id, name) {
-	var part = "<div class='wrapsOnePerm' id='permContainer" + id + "' >" + headline(id, name) + "<div class='bodyOfPerm'> </div> </div>";
-	$(form).append(part);
+function buildHtmlContainer(form, id, name, listonly, method, resource){
+	//build the PermContainer
+	var permCont = document.createElement("DIV");
+	permCont.id = "permContainer"+id;
+	permCont.className = "wrapsOnePerm";
+	
+	//build the Headline
+	var headline = buildHtmlHeadline(id, name, listonly);
+	
+	//build the bodyOfPerm
+	var bodyOfPerm = buildBodyOfPerm(id, name, listonly, method, resource);
+	
+	//append the headline & the body to the PermContainer
+	permCont.appendChild(headline);
+	permCont.appendChild(bodyOfPerm);
+	
+	//append the PermContainer to the Form
+	$(form).append(permCont);
 }
 
-function appendAnyPermission(form, id, method, resource, name) { // if
-	// it
-	// is
-	// not an
-	// Resource permission
-	var txt = "";
+function buildBodyOfPerm(id, name, listonly, method, resource){
+	//build the bodyOfPerm
+	var bodyOfPerm=document.createElement("DIV");
+	bodyOfPerm.className="bodyOfPerm";
+	
+	//if the permission is not AllPermission
+	if(name.indexOf("java.security.AllPermission")==-1){
+		//create and fill the Filter
+		var fInput = document.createElement("INPUT");	
+		fInput.type = "text";		
+		fInput.setAttribute("value", resource);
+		fInput.title="Please provide the resource.";	
+		fInput.id="Filter"+id;
+		fInput.className="FilterInput";
+		
+		if(listonly)
+			fInput.readOnly=true;	
+		
+		bodyOfPerm.innerHTML = "Filter:";
+		bodyOfPerm.appendChild(document.createElement("br"));
+		bodyOfPerm.appendChild(fInput);
+		bodyOfPerm.appendChild(document.createElement("br"));
+		bodyOfPerm.innerHTML = bodyOfPerm.innerHTML + "Action:"
+		bodyOfPerm.appendChild(document.createElement("br"));
+		
+		//if actions exist
+		if(method[0]!=undefined && method[0]!=null){		
+			for (var v = 0; v < method.length; v++) { 
+				//for each action: add to the bodyOfPerm	
+				
+				if(!listonly){
+					//input for the actions if the permission is to be modified
+					var aInput = document.createElement("INPUT");
+					
+					aInput.id="m"+id+v;
+					aInput.type = "checkbox";
+					aInput.setAttribute("onchange", "singleHighlight("+id+v+")");
+					aInput.className="m";
+					
+					bodyOfPerm.appendChild(aInput);
+				}
+				//labels for the actions
+				var aLabel = document.createElement("LABEL");
+				
+				aLabel.className="lb";
+				aLabel.htmlFor="m"+id+v;
+				aLabel.textContent = method[v];
+				
+				bodyOfPerm.appendChild(aLabel);
 
-	for (var v = 0; v < method.length; v++) { // for each
-		// method
-		txt = txt + "<input type='checkbox' onchange='singleHighlight(" + id + v + ")' class='m' id='m" + id + v + "'> <label class='lb' for='m" + id + v
-				+ "'>" + method[v] + "</label>";
-		if (v != method.length - 1) {
-			txt = txt + "<br>";
-
-		} else {
-			txt = txt + "";
+				if (v != method.length - 1) {
+					bodyOfPerm.appendChild(document.createElement("br"));
+				}
+			}
 		}
-	}
-
-	var part = "<div class='wrapsOnePerm' id='permContainer" + id + "'>" + headline(id, name)
-			+ "<div class='bodyOfPerm'> Filter: <br> <input type='text' value='" + resource + "' title='Please provide the resource.'> <br> Action: <br>" + txt
-			+ " </div> </div>";
-	$(form).append(part);
-}
-
-function appendResourcePerm(form, id, method, resource, name) { // if
-	// it
-	// is
-	// an
-	// resource
-	// permission
-	var txt = "";
-
-	for (var v = 0; v < method.length; v++) { // for each
-		// method
-		txt = txt + "<input type='checkbox' onchange='singleHighlight(" + id + v + ")' class='m' id='m" + id + v + "'> <label class='lb' for='m" + id + v
-				+ "'>" + method[v] + "</label>";
-		if (v != method.length - 1) {
-			txt = txt + "<br>";
-
-		} else {
-			txt = txt + "";
+		//ResourceTree
+		if(name.indexOf("ResourcePermission")!=-1){
+			var resDiv = document.createElement("DIV");
+			var testTree = document.createElement("DIV");
+			
+			resDiv.className = "resDiv";
+			resDiv.style.display = "none";
+			
+			testTree.className = "testTree";
+			testTree.id="testTree"+id;			
+			
+			resDiv.appendChild(testTree);
+			bodyOfPerm.appendChild(resDiv);
 		}
+		
 	}
-
-	var part = "<div class='wrapsOnePerm' id='permContainer"
-			+ id
-			+ "'>"
-			+ headline(id, name)
-			+ "<div class='bodyOfPerm'> Filter: <br> <input type='text' value='"
-			+ resource
-			+ "' title='Please provide the resource.'> <br> Action: <br>"
-			+ txt
-			+ " <div class='resDiv' style='display:none;'> <div class='testTree' id='testTree"
-			+ id
-			+ "'> </div>  </div> <div id='actions"
-			+ id
-			+ "' style='display: none;'> <p> </p> <div class='wrapActions' style='display:none;'> <input type='checkbox' id='1"
-			+ id
-			+ "' name='read'><label for='1"
-			+ id
-			+ "'>read</label> <input type='checkbox' id='2"
-			+ id
-			+ "' name='write'><label for='2"
-			+ id
-			+ "'>write</label><input type='checkbox' id='3"
-			+ id
-			+ "' name='addSub'><label for='3"
-			+ id
-			+ "'>addSub</label><input type='checkbox' id='4"
-			+ id
-			+ "' name='create'><label for='4"
-			+ id
-			+ "'>create</label><input type='checkbox' id='5"
-			+ id
-			+ "' name='delete'><label for='5"
-			+ id
-			+ "'>delete</label><div class='checkResActions'> Set Actions </div> </div> <div class=justShowActions  style='display:none;'> <input type='checkbox' id='1"
-			+ id + "' name='read'><label for='1" + id + "'>read</label> <input type='checkbox' id='2" + id + "' name='write'><label for='2" + id
-			+ "'>write</label><input type='checkbox' id='3" + id + "' name='addSub'><label for='3" + id + "'>addSub</label><input type='checkbox' id='4" + id
-			+ "' name='create'><label for='4" + id + "'>create</label><input type='checkbox' id='5" + id + "' name='delete'><label for='5" + id
-			+ "'>delete</label> <input type='checkbox' id='6" + id + "' name='activity'><label for='6" + id
-			+ "'>activity</label> Recursive:  <input type='radio' id='recursiveyes' name='recursive' value='YES'><label"
-			+ "for='recursiveyes'>YES</label> <input type='radio' id='recursiveno' name='recursive' value='NO'> <label"
-			+ "for='recursiveno'>NO</label> </div> </div> </div>";
-	$(form).append(part);
+	return bodyOfPerm;
 }
 
-function headline(id, name) {
-	var buttonContainer = "<div id='grantedButtons" + id + "' align='right'></div>";
-
-	return "<div class='headLine'><input type='checkbox' onchange='boxCheck(" + id + ")' class='p' id='c" + id + "'> <label class='lb' for='c" + id + "'>"
-			+ name + "</label>" + buttonContainer + "</div>";
+function appendNewFilter(id){
+	var newFilter = document.createElement("DIV");
+	var newfInput = document.createElement("INPUT");
+	
+	newFilter.innerHTML = "New Filter: <br>";
+	newFilter.id="newFilter"+id;
+	
+	newfInput.type = "text";
+	newfInput.title="Please provide the resource.";
+	newfInput.innerHTML = newfInput.innerHTML + "<br>";
+	newfInput.id="newFilterInput"+id;
+	newfInput.className="newFilterInput";
+	
+	$(newFilter).insertAfter("#Filter"+id);
+	$(newfInput).insertAfter("#newFilter"+id);
+	
+	$("#newFilterInput"+id).change(function(){			
+		writeResourceInDia(id, true);
+	});
+		  
+	
+	
 }
 
+function buildHtmlHeadline(id, name, listonly){
+	//build the Headline
+	var headline = document.createElement("DIV");
+	var hInput = document.createElement("INPUT");
+	var hLabel = document.createElement("LABEL");
+	
+	headline.className="headline";
+	
+	hInput.id = "c"+id;
+	hInput.className = "p";
+	hInput.type="checkbox";
+	
+	if(listonly)
+		hInput.style.display = "none";
+	
+	hLabel.className = "lb";
+	hLabel.htmlFor = hInput.id;
+	hLabel.textContent = name;
+	
+	headline.appendChild(hInput);
+	headline.appendChild(hLabel);
+	
+	//enable the selection of the permission and build 
+	//the ButtonSet if the permission is to be modified
+	if (!listonly){
+		id=""+id;
+		hInput.setAttribute("onchange", "boxCheck('"+id+"')");
+		
+		var grantedButtons = document.createElement("DIV");
+		grantedButtons.id= "grantedButtons"+id;
+		grantedButtons.setAttribute('align', 'right');
+		
+		//add the Checkbox for resource customization if the 
+		//Permission is a ResourcePermission
+		if (name.indexOf("ResourcePermission")!=-1){
+			var resInput = document.createElement("INPUT");
+			var resLabel = document.createElement("LABEL");
+			
+			resInput.id = "resCheck"+id;
+			resInput.type = "checkbox";
+			resInput.className = "resCheck";
+			resInput.setAttribute("onchange", "displayRessources("+id+")");
+			
+			resLabel.className = "resCheck";
+			resLabel.htmlFor=resInput.id
+			resLabel.textContent="No customization of Resource Permission";
+			
+			grantedButtons.appendChild(resInput);	
+			grantedButtons.appendChild(resLabel);				
+		}
+		headline.appendChild(grantedButtons);
+	}
+	return headline;	
+}
+
+/**
+ * Assign the Functions to the Remove and Customize Buttons
+ * 
+ * @param {Number} id
+ * 			ID of the Permission
+ * @param {String} policyname
+ * 			Name of the Permission
+ * @param {String} permDescr
+ * 			Filter value of the Permission
+ */
 function changeGrantedHeadline(id, policyname, permDescr, appNumber) {
 	var selector = "#grantedButtons" + id;
 	// Create an input type dynamically.
 	var removeButton = document.createElement("input");
+	var name = [];
+	var entry = [];
+	name[0]=policyname;
+	entry[0]=permDescr;
+
 	removeButton.type = "button";
 	removeButton.value = "Remove";
 	removeButton.setAttribute("align", "right");
 	// Assign different attributes to the element.
 	removeButton.onclick = function() { // Note this is a function
-		sendRemovePermission(appNumber, policyname, permDescr);
+		sendRemovePermission(appNumber, name, entry, 1);
 	};
 	removeButton.className = ".ui-button.cancelButton";
 	// Append the element in page (in span).
@@ -621,24 +875,124 @@ function changeGrantedHeadline(id, policyname, permDescr, appNumber) {
 	};
 	// Append the element in page (in span).
 	$(selector).append(customizeButton);
+	
+	
 }
 
-function sendRemovePermission(appNumber, policyname, permDescr) {
+/**
+ * Post to Server to remove a Permission
+ *
+ * @param {String} policyname
+ * 			Name of the Permission
+ * @param {String} permDescr
+ * 			Filter value of the Permission
+ * @param {Number} count
+ * 			Number of Permissions to be removed (currently always 1)
+ */
+function sendRemovePermission(appNumber, policyname, permDescr, count) {
 	var toBeRemoved = new Object();
-	toBeRemoved.id = appNumber;
-	toBeRemoved.policyname = policyname;
-	toBeRemoved.permission = permDescr;
+	toBeRemoved['id'] = appNumber;
+	toBeRemoved['count']=count;
+	
+	for(var i = 0; i<count; i++){		
+		if (policyname[i].indexOf(defaultkey)!=-1){
+			toBeRemoved['mode'+i]=policyname[i].substring(policyname[i].indexOf(defaultkey)+defaultkey.length)
+		}else{
+			toBeRemoved['mode'+i]=null;
+		}
+		toBeRemoved['policyname'+i] = policyname[i];
+		toBeRemoved['permission'+i] = permDescr[i];	
+	}
 
 	var content = JSON.stringify(toBeRemoved);
 
-	$.post("/security/config/removepermission?id=" + appNumber, {
+	$.post("/security/config/removepermission?id=" + appNumber+"&count=" + count, {
 		remove : content
 	}, function(data, status) { // if successfull
 		// refresh the view
-		setTimeout(function() {
-			getGrantedPerms(curAppId, parentOfDialog, formOfDialog);
-		}, 3000);
+		if (appNumber!=-1){
+			setTimeout(function() {			
+				getGrantedPerms(curAppId, parentOfDialog, formOfDialog, null);
+				}, 3000);
+			}else{
+			setTimeout(function() {			
+				getDefaultPerms(appNumber, parentOfDialog, formOfDialog, null);
+				}, 3000);
+			}
+		
 		alert("Data send to server for appID: " + appNumber + "\nResponse: " + data + "\nStatus: " + status);
+	}).fail(function(xhr, textStatus, errorThrown) {
+		// if http-post fails
+		if (textStatus != "" && errorThrown != "") {
+			alert("Somthing went wrong: " + textStatus + "\nError: " + errorThrown);
+		} else {
+			alert("Error.");
+		}
+	});
+}
+
+/**
+ * Check all Checkboxes
+ * 
+ * @param {Object} allcheck
+ * 			This Checkbox
+ * @param {String} idStr
+ * 			prefix of the IDs of the Checkboxes which should be checked/unchecked
+ * @param {Boolean} change
+ * 			fire onchange event
+ */
+function checkAllBoxes(allcheck, idStr, change) {
+    var checkboxes = $("input:checkbox");
+    var changetrue = (change === 'true');
+        
+    if (allcheck.checked) {
+        for (var i = 0; i < checkboxes.length; i++) {
+            if (checkboxes[i].id.indexOf(idStr) == 0) {
+                checkboxes[i].checked = true;
+                if (changetrue==true){
+                	checkboxes[i].onchange(); 	
+                }
+            }
+        }
+    } else {
+        for (var i = 0; i < checkboxes.length; i++) {
+            if (checkboxes[i].id.indexOf(idStr) == 0) {
+                checkboxes[i].checked = false;
+                if (changetrue==true){
+                	checkboxes[i].onchange();
+                }
+            }
+        }
+    }
+}
+
+function startBundle() {
+	var portletID = curAppId;
+	$.getJSON("/security/config/installedapps?action=start&app=" + portletID, function(json) {
+		alert(json.statusInfo);
+	});	
+}
+function removeAll(){
+	
+	var conf = confirm("Are you sure you want to remove all Permissions?")
+	if (conf!=true)
+		return;
+	
+	$.post("/security/config/removeall?id="+curAppId, {
+		
+	}, function(data, status) { // if successfull
+		// refresh the view
+		if (curAppId!=-1){
+			setTimeout(function() {			
+				getGrantedPerms(curAppId, parentOfDialog, formOfDialog, null);
+				}, 3000);
+			}else{
+			setTimeout(function() {			
+				getDefaultPerms(curAppId, parentOfDialog, formOfDialog, null);
+				}, 3000);
+			}
+		
+		alert("Data send to server for appID: " + curAppId + "\nResponse: " + data + "\nStatus: " + status);
 	}).fail(function(xhr, textStatus, errorThrown) {
 		// if http-post fails
 		if (textStatus != "" && errorThrown != "") {

@@ -34,6 +34,7 @@ import org.ops4j.pax.exam.ProbeBuilder;
 import org.ops4j.pax.exam.TestProbeBuilder;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
+import org.osgi.framework.Constants;
 
 /**
  * Test get and set on the different primitive array resource types (int, float, long (=time), boolean, String)
@@ -45,7 +46,7 @@ public class ArrayResourceTest extends OsgiTestBase {
 
 	@ProbeBuilder
 	public TestProbeBuilder buildCustomProbe(TestProbeBuilder builder) {
-		builder.setHeader("Export-Package", "org.ogema.resourcemanager.impl.test");
+		builder.setHeader(Constants.EXPORT_PACKAGE, "org.ogema.resourcemanager.impl.test");
 		return builder;
 	}
 
@@ -60,7 +61,7 @@ public class ArrayResourceTest extends OsgiTestBase {
 	@Test
 	public void settingFloatArrayWorks() throws ResourceException {
 		MultiSwitch swtch = resMan.createResource(newResourceName(), MultiSwitch.class);
-		FloatArrayResource ar = swtch.electicPowerFunction().values().create();
+		FloatArrayResource ar = swtch.electricPowerFunction().values().create();
 		float[] newVal = { 0, 1, 1, 2, 3, 5, 8, 13 };
 		ar.setValues(Arrays.copyOf(newVal, newVal.length));
 

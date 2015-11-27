@@ -44,6 +44,9 @@ public class FlexibleIntervalFileObject extends FileObject {
 	void readHeader(DataInputStream dis) throws IOException {
 		startTimeStamp = dis.readLong();
 		storagePeriod = dis.readLong(); /* is -1 for disabled storagePeriod */
+
+		// line below should be obsolete, since flexible interval needs no rounded timestamp
+		//startTimeStamp = FileObjectProxy.getRoundedTimestamp(startTimeStamp, storagePeriod);
 	}
 
 	@Override

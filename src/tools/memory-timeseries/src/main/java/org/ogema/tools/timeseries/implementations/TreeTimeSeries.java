@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.NavigableSet;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import org.ogema.core.channelmanager.measurements.FloatValue;
 
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
@@ -222,6 +223,7 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 	@Override
 	public boolean replaceValues(long startTime, long endTime, Collection<SampledValue> values) {
 		deleteValues(startTime, endTime);
+		if (values == null) values = Collections.emptyList();
 		addValues(values);
 		return true;
 	}
@@ -367,5 +369,11 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 	public final boolean addValueSchedule(long startTime, long stepSize, List<Value> values, long timeOfCalculation) {
             return replaceValuesFixedStep(startTime, values, stepSize, timeOfCalculation);
 	}
+
+    @Override
+    public SampledValue getValueSecure(long t) {
+        final SampledValue result = getValue(t);
+        return (result!=null) ? result : new SampledValue(new FloatValue(0.f), t, Quality.BAD);
+    }
     
 }

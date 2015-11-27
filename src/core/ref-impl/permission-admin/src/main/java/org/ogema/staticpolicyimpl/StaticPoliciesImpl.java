@@ -97,7 +97,7 @@ public class StaticPoliciesImpl implements BundleActivator, StaticPolicies {
 
 						// replace user data with the appropriate condition information
 						line = line.replaceFirst("(.*natural)[ \t]*\"([a-zA-Z_0-9]*)\"",
-								"$1 \"file:./ogema/users/$2/urp$2\"");
+								"$1 \"urp:$2\"");
 						line = line.replaceFirst("(.*\\[)natural(.*)",
 								"$1org.osgi.service.condpermadmin.BundleLocationCondition$2");
 						staticpInfos.add(line);
@@ -115,7 +115,7 @@ public class StaticPoliciesImpl implements BundleActivator, StaticPolicies {
 
 							// replace user data with the appropriate condition information
 							line = line.replaceFirst("(.*machine)[ \t]*\"([a-zA-Z_0-9]*)\"",
-									"$1 \"file:./ogema/users/$2/urp$2\"");
+									"$1 \"urp:$2\"");
 							line = line.replaceFirst("(.*\\[)[ \t]*machine(.*)",
 									"$1org.osgi.service.condpermadmin.BundleLocationCondition$2");
 							staticpInfos.add(line);

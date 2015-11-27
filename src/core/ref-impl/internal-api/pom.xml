@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.ogema.ref-impl</groupId>
 		<artifactId>ref-impl</artifactId>
-		<version>2.0.3</version>
+		<version>2.0.4</version>
 	</parent>
 
 	<artifactId>internal-api</artifactId>
@@ -41,8 +41,7 @@
 							org.ogema.persistence,
 							org.ogema.resourcetree,
 							org.ogema.recordeddata,
-                            org.ogema.timer,
-                            org.ogema.driverconfig
+                            org.ogema.timer
 						</Export-Package>
 						<DynamicImport-Package>*</DynamicImport-Package>
 					</instructions>

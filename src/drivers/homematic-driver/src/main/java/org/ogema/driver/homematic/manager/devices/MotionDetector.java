@@ -18,10 +18,12 @@ package org.ogema.driver.homematic.manager.devices;
 import org.ogema.core.channelmanager.measurements.BooleanValue;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.Value;
+import org.ogema.driver.homematic.HMDriver;
 import org.ogema.driver.homematic.manager.DeviceAttribute;
 import org.ogema.driver.homematic.manager.RemoteDevice;
 import org.ogema.driver.homematic.manager.StatusMessage;
 import org.ogema.driver.homematic.manager.SubDevice;
+import org.ogema.driver.homematic.manager.messages.CmdMessage;
 import org.ogema.driver.homematic.tools.Converter;
 
 public class MotionDetector extends SubDevice {
@@ -52,13 +54,13 @@ public class MotionDetector extends SubDevice {
 			// long brightness = Converter.toLong(msg[2]);
 
 			if (remoteDevice.getDeviceType().equals("004A"))
-				System.out.println("SabotageError: " + (((err & 0x0E) > 0) ? "on" : "off"));
+				HMDriver.logger.debug("SabotageError: " + (((err & 0x0E) > 0) ? "on" : "off"));
 			else
-				System.out.println("Cover: " + (((err & 0x0E) > 0) ? "open" : "closed"));
+				HMDriver.logger.debug("Cover: " + (((err & 0x0E) > 0) ? "open" : "closed"));
 
 			err_str = ((err & 0x80) > 0) ? "low" : "ok";
 			float batt = ((err & 0x80) > 0) ? 5 : 95;
-			System.out.println("Battery: " + err_str);
+			HMDriver.logger.debug("Battery: " + err_str);
 			deviceAttributes.get((short) 0x0003).setValue(new FloatValue(batt));
 		}
 		else if (msg.msg_type == 0x41) {
@@ -84,10 +86,10 @@ public class MotionDetector extends SubDevice {
 
 			if (cnt != old_cnt) {
 				old_cnt = cnt;
-				System.out.println("State: motion");
+				HMDriver.logger.info("State: motion");
 				deviceAttributes.get((short) 0x0001).setValue(new BooleanValue(true));
-				System.out.println("MotionCount: " + cnt + " next Trigger: " + nextTr + "s");
-				System.out.println("Brightness: " + brightn);
+				HMDriver.logger.info("MotionCount: " + cnt + " next Trigger: " + nextTr + "s");
+				HMDriver.logger.info("Brightness: " + brightn);
 				deviceAttributes.get((short) 0x0002).setValue(new FloatValue(brightn));
 				if (timer.isAlive()) {
 					motionInRun = true;
@@ -109,11 +111,12 @@ public class MotionDetector extends SubDevice {
 								else {
 									repeat = false;
 									deviceAttributes.get((short) 0x0001).setValue(new BooleanValue(false));
-									System.out.println("reset State: no motion");
+									HMDriver.logger.info("reset State: no motion");
 								}
 							}
 						}
 					};
+					timer.setName("homematic-ll-timer");
 					timer.start();
 
 				}
@@ -127,6 +130,19 @@ public class MotionDetector extends SubDevice {
 	@Override
 	public void channelChanged(byte identifier, Value value) {
 		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void parseMessage(StatusMessage msg, CmdMessage cmd) {
+		byte msgType = msg.msg_type;
+		byte contentType = msg.msg_data[0];
+		if ((msgType == 0x10 && (contentType == 0x02) || (contentType == 0x03))) {
+			// Configuration response Message
+			parseConfig(msg, cmd);
+		}
+		else
+			parseValue(msg);
 
 	}
 }

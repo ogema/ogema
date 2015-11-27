@@ -16,14 +16,11 @@
 package org.ogema.tools.resourcemanipulator.test.rad;
 
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
-import org.ogema.core.model.simple.StringResource;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.units.TemperatureResource;
-import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.CreateMode;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.Existence;
-import org.ogema.model.prototypes.Configuration;
 import org.ogema.model.ranges.TemperatureRange;
 import org.ogema.model.sensors.TemperatureSensor;
 import org.ogema.model.targetranges.TemperatureTargetRange;
@@ -45,13 +42,13 @@ public class TemperatureSensorPattern extends ResourcePattern<TemperatureSensor>
 	public final TemperatureResource lowerLimit = controlLimits.lowerLimit();
 
 	@Existence(required = CreateMode.OPTIONAL)
-	public final DefinitionSchedule lowerLimitProgram = lowerLimit.program();
+	public final AbsoluteSchedule lowerLimitProgram = lowerLimit.program();
 
 	@Existence(required = CreateMode.OPTIONAL)
 	public final TemperatureResource upperLimit = controlLimits.upperLimit();
 
 	@Existence(required = CreateMode.OPTIONAL)
-	public final DefinitionSchedule upperLimitProgram = upperLimit.program();
+	public final AbsoluteSchedule upperLimitProgram = upperLimit.program();
 
 	/**
 	 * Default constructor required by OGEMA framework. Do not change.

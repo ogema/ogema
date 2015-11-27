@@ -2,7 +2,7 @@ body#appsBody {
 	height: 100.3%;
 	color: #56555A;
 	font-family: arial, sans-serif;
-	background: #596778;
+	background: white;
 	margin-bottom: 0px;
 	margin-top: 0px;
 	padding-bottom: 0px;
@@ -12,7 +12,7 @@ div#header {
 	-moz-box-shadow: 0 0 5px #000;
 	-webkit-box-shadow: 0 0 5px #000;
 	box-shadow: 0 0 5px #000;
-	background: white url(images/ogema.png);
+	background: #F5F5F5 url(images/ogema.png);
 	background-repeat: no-repeat;
 	background-position: 90% 50%;
 	background-size: 360px 150px;
@@ -29,12 +29,12 @@ div#header {
 	margin: auto;
 	padding: 0 30px
 }
-
+ 
 div#wrapper {
 	-moz-box-shadow: 0 0 5px #000;
 	-webkit-box-shadow: 0 0 5px #000;
 	box-shadow: 0 0 5px #000;
-	background: #FFFFFF;
+	background: #F5F5F5;
 	width: 70%;
 	min-width: 600px;
 	min-height: 70%;
@@ -50,7 +50,7 @@ div#wrapper {
 
 div#outerTableWrap {
 	display: block;
-	background: none repeat scroll 0 0 #FFFFFF;
+	background: #E9E9E9 repeat scroll 0 0;
 	border: 1px solid #808080;
 	border-radius: 5px 5px 5px 5px;
 	margin: 10px 0 0;
@@ -67,7 +67,7 @@ div#footer {
 	-moz-box-shadow: 0 0 5px #000;
 	-webkit-box-shadow: 0 0 5px #000;
 	box-shadow: 0 0 5px #000;
-	background: #FFFFFF;
+	background: #F5F5F5;
 	width: 70%;
 	min-width: 600px;
 	height: 30px;
@@ -111,7 +111,7 @@ tr {
 }
 /* table data and head elements */
 th, td {
-	background: #FFFFFF;
+	background: #E9E9E9;
 	color: #56555A;
 	font-size: 1em;
 	font-weight: normal;
@@ -380,4 +380,5 @@ div.conditions {
 #toMainPage {
 	font-size: 0.8em !important;
 	border: none !important;
+	background: #E9E9E9;
 }

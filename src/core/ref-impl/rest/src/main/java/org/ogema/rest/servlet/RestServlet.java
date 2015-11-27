@@ -51,7 +51,7 @@ public class RestServlet extends HttpServlet implements Application {
 
 	final static String alias = "/rest/resources";
 
-	final boolean SECURITY_ENABLED = "on".equalsIgnoreCase(System.getProperty("org.ogema.security", "off"));
+	boolean SECURITY_ENABLED;// "on".equalsIgnoreCase(System.getProperty("org.ogema.security", "off"));
 
 	/**
 	 * URL parameter defining the maximum depth of the resource tree in the response, default is 0, i.e. transfer only
@@ -85,6 +85,7 @@ public class RestServlet extends HttpServlet implements Application {
 
 	protected void activate(Map<String, ?> config) {
 		restAcc = new RestAccess(permMan, adminMan);
+		SECURITY_ENABLED = permMan.isSecure();
 	}
 
 	protected void deactivate(Map<String, ?> config) {
@@ -103,8 +104,8 @@ public class RestServlet extends HttpServlet implements Application {
 		} catch (ServletException | NamespaceException ex) {
 			appman.getLogger().error("could not register servlet");
 		}
-		
-		appman.getWebAccessManager().registerWebResourcePath("/rest-gui", "rest/gui");
+
+		String url = appman.getWebAccessManager().registerWebResourcePath("/rest-gui", "rest/gui");
 	}
 
 	@Override
@@ -160,100 +161,113 @@ public class RestServlet extends HttpServlet implements Application {
 
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		if (!setAccessContext(req, resp)) {
-			return;
-		}
-		resp.setCharacterEncoding("UTF-8");
-		String path = req.getPathInfo();
-		if (path == null || path.equals("/")) {
-			resp.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-			return;
-		}
-		ResourceRequestInfo r = selectResource(req.getPathInfo());
-		if (r == null) {
-			resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-			return;
-		}
-		SerializationManager sman = getSerializationManager(req, resp);
-		ResourceReader reader = ResourceReaders.forRequest(req, sman, resp);
-		ResourceWriter w = ResourceWriters.forRequest(req, sman, resp);
-		if (resp.isCommitted()) {
-			return;
-		}
-		reader.readResource(req.getReader(), r.getResource());
-		resp.setContentType(w.contentType());
+		try {
+			if (!setAccessContext(req, resp)) {
+				return;
+			}
+			resp.setCharacterEncoding("UTF-8");
+			ResourceRequestInfo r = selectResource(req.getPathInfo());
+			if (r == null) {
+				resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+				return;
+			}
+			SerializationManager sman = getSerializationManager(req, resp);
+			ResourceReader reader = ResourceReaders.forRequest(req, sman, resp);
+			ResourceWriter w = ResourceWriters.forRequest(req, sman, resp);
+			if (resp.isCommitted()) {
+				return;
+			}
+			reader.readResource(req.getReader(), r.getResource());
+			resp.setContentType(w.contentType());
 
-		if (r.isSchedule()) {
-			w.writeSchedule((Schedule) r.getResource(), r.getStart(), r.getEnd(), resp.getWriter());
+			if (r.isSchedule()) {
+				w.writeSchedule((Schedule) r.getResource(), r.getStart(), r.getEnd(), resp.getWriter());
+			}
+			else {
+				w.write(r.getResource(), resp.getWriter());
+			}
+			resp.flushBuffer();
+			permMan.resetAccessContext();
+		} catch (Exception e) {
+			resp.setStatus(500);
+			e.printStackTrace(resp.getWriter());
 		}
-		else {
-			w.write(r.getResource(), resp.getWriter());
-		}
-		resp.flushBuffer();
-		permMan.resetAccessContext();
 	}
 
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		SerializationManager sman = getSerializationManager(req, resp);
-		ResourceReader reader = ResourceReaders.forRequest(req, sman, resp);
-		ResourceWriter w = ResourceWriters.forRequest(req, sman, resp);
-		if (resp.isCommitted()) {
-			return;
-		}
-		resp.setCharacterEncoding("UTF-8");
-		if (!setAccessContext(req, resp)) {
-			return;
-		}
-		resp.setContentType(w.contentType());
-		String path = req.getPathInfo();
-		if (path == null || path.equals("/")) {
-			Resource resource = reader.createResource(req.getReader(), null);
-			w.write(resource, resp.getWriter());
-		}
-		else {
-			Resource r = selectResource(req.getPathInfo()).getResource();
-			if (r == null) {
-				resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+		try {
+			SerializationManager sman = getSerializationManager(req, resp);
+			ResourceReader reader = ResourceReaders.forRequest(req, sman, resp);
+			ResourceWriter w = ResourceWriters.forRequest(req, sman, resp);
+			if (resp.isCommitted()) {
+				return;
 			}
-			else {
-				Resource resource = reader.createResource(req.getReader(), r);
+			resp.setCharacterEncoding("UTF-8");
+			if (!setAccessContext(req, resp)) {
+				return;
+			}
+			resp.setContentType(w.contentType());
+			String path = req.getPathInfo();
+			if (path == null || path.equals("/")) {
+				Resource resource = reader.createResource(req.getReader(), new RootResource(appman));
 				w.write(resource, resp.getWriter());
 			}
+			else {
+				Resource r = selectResource(req.getPathInfo()).getResource();
+				if (r == null) {
+					resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+				}
+				else {
+					Resource resource = reader.createResource(req.getReader(), r);
+					w.write(resource, resp.getWriter());
+				}
+			}
+			permMan.resetAccessContext();
+		} catch (Exception e) {
+			resp.setStatus(500);
+			e.printStackTrace(resp.getWriter());
 		}
-		permMan.resetAccessContext();
 	}
 
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		if (!setAccessContext(req, resp)) {
-			return;
-		}
-		resp.setCharacterEncoding("UTF-8");
-		String path = req.getPathInfo();
-		if (path == null || path.equals("/")) {
-			resp.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-			return;
-		}
+		try {
+			if (!setAccessContext(req, resp)) {
+				return;
+			}
+			resp.setCharacterEncoding("UTF-8");
+			String path = req.getPathInfo();
+			if (path == null || path.equals("/")) {
+				resp.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+				return;
+			}
 
-		ResourceRequestInfo r = selectResource(req.getPathInfo());
-		if (r == null) {
-			resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+			ResourceRequestInfo r = selectResource(req.getPathInfo());
+			if (r == null) {
+				resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+			}
+			else {
+				r.resource.delete();
+				resp.sendError(HttpServletResponse.SC_OK);
+			}
+			permMan.resetAccessContext();
+		} catch (Exception e) {
+			resp.setStatus(500);
+			e.printStackTrace(resp.getWriter());
 		}
-		else {
-			r.resource.delete();
-			resp.sendError(HttpServletResponse.SC_OK);
-		}
-		permMan.resetAccessContext();
 	}
 
 	protected ResourceRequestInfo selectResource(String pathInfo) {
+		if (pathInfo == null || pathInfo.isEmpty() || "/".equals(pathInfo)) {
+			return new ResourceRequestInfo(new RootResource(appman), false, 0, 0);
+		}
 		if (pathInfo.startsWith("/")) {
 			pathInfo = pathInfo.substring(1);
 		}
 		String[] path = pathInfo.split("/");
-		if (path.length == 0) {
-			return null;
+		if (path.length == 0 || path[0].isEmpty()) {
+			return new ResourceRequestInfo(new RootResource(appman), false, -1, -1);
 		}
 		Resource r = appman.getResourceAccess().getResource(path[0]);
 		for (int i = 1; i < path.length && r != null; i++) {

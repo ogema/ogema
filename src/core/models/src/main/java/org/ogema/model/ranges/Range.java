@@ -48,7 +48,7 @@ public interface Range extends Data {
 	/**
 	 * If true the lower limit is considered part of the range, otherwise the lower limit value is considered outside
 	 * the range. If not set, the lower limit is included. <br>
-	 * For more details see {@link isUpperLimitIncluded#upperLimitIncluded}.
+	 * For more details see {@link #upperLimitIncluded()}.
 	 */
 	BooleanResource lowerLimitIncluded();
 }

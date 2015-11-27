@@ -16,7 +16,7 @@
 package org.ogema.core.channelmanager.driverspi;
 
 /**
- * Monitor avalible Channels
+ * Monitor available Channels
  * 
  */
 public interface ChannelScanListener {

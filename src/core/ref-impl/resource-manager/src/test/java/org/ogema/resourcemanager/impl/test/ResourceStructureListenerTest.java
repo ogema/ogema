@@ -16,16 +16,24 @@
 package org.ogema.resourcemanager.impl.test;
 
 import java.util.concurrent.CountDownLatch;
+
 import org.ogema.exam.StructureTestListener;
+
 import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
 import org.junit.Ignore;
 import org.junit.Test;
+import org.ogema.core.administration.RegisteredStructureListener;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.units.PowerResource;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
+import org.ogema.core.resourcemanager.ResourceStructureEvent.EventType;
+
 import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.REFERENCE_ADDED;
 import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.REFERENCE_REMOVED;
 import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.RESOURCE_ACTIVATED;
@@ -34,9 +42,13 @@ import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.RE
 import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.RESOURCE_DELETED;
 import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.SUBRESOURCE_ADDED;
 import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.SUBRESOURCE_REMOVED;
+
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.model.actors.OnOffSwitch;
+import org.ogema.model.devices.generators.ElectricHeater;
+import org.ogema.model.locations.Room;
 import org.ogema.model.sensors.PowerSensor;
+import org.ogema.model.sensors.TemperatureSensor;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 
@@ -117,9 +129,7 @@ public class ResourceStructureListenerTest extends OsgiTestBase {
 
 		sw2.stateFeedback().addStructureListener(l);
 		assertFalse(l.eventReceived(SUBRESOURCE_ADDED));
-
 		sw.stateFeedback().forecast().create();
-
 		assertTrue("no callback received", l.awaitEvent(SUBRESOURCE_ADDED));
 	}
 
@@ -186,9 +196,10 @@ public class ResourceStructureListenerTest extends OsgiTestBase {
 		l.setExpectedChangedResource(sw.settings().alarmLimits().upperLimit());
 
 		final BooleanResource upperLimit = sw.settings().alarmLimits().upperLimit();
-		final BooleanResource upperLimit2 = sw2.settings().alarmLimits().upperLimit();
+
+		sw2.settings().alarmLimits().upperLimit().create();
+
 		upperLimit.addStructureListener(l);
-		upperLimit2.create();
 		assertFalse(upperLimit.exists());
 
 		sw.settings().create();
@@ -268,9 +279,10 @@ public class ResourceStructureListenerTest extends OsgiTestBase {
 
 		sw.addStructureListener(l);
 		sw2.stateFeedback().create();
+		assertFalse(sw.stateFeedback().exists());
 		sw.stateFeedback().setAsReference(sw2.stateFeedback());
+		//setAsReference WILL cause a SUBRESOURCE_REMOVED cb, followed by SUBRESOURCE_ADDED!
 		assertTrue(sw.stateFeedback().exists());
-		assertFalse(l.eventReceived(SUBRESOURCE_REMOVED));
 		sw2.stateFeedback().delete();
 		assertFalse(sw.stateFeedback().exists());
 		assertFalse(sw2.stateFeedback().exists());
@@ -469,6 +481,120 @@ public class ResourceStructureListenerTest extends OsgiTestBase {
 
 		assertFalse(f.isActive());
 		assertTrue(l.awaitEvent(RESOURCE_DEACTIVATED));
+	}
+
+	class EventTestListener implements ResourceStructureListener {
+
+		public EventType lastType = null;
+		public CountDownLatch latch = new CountDownLatch(1);
+
+		@Override
+		public void resourceStructureChanged(ResourceStructureEvent event) {
+			lastType = event.getType();
+			latch.countDown();
+		}
+
+		public void reset() {
+			latch = new CountDownLatch(1);
+		}
+	};
+
+	@Test
+	public void callbackEventTypeWorks() throws InterruptedException {
+		final OnOffSwitch sw = resMan.createResource(newResourceName(), OnOffSwitch.class);
+		final OnOffSwitch sw2 = resMan.createResource(newResourceName(), OnOffSwitch.class);
+		EventTestListener listener = new EventTestListener();
+		sw.stateControl().addStructureListener(listener);
+
+		// create 
+		sw.stateControl().create();
+		listener.latch.await(5, TimeUnit.SECONDS);
+		assertEquals(EventType.RESOURCE_CREATED, listener.lastType);
+		// activate
+		listener.reset();
+		sw.stateControl().activate(false);
+		listener.latch.await(5, TimeUnit.SECONDS);
+		assertEquals(EventType.RESOURCE_ACTIVATED, listener.lastType);
+		// add reference
+		listener.reset();
+		sw2.stateControl().setAsReference(sw.stateControl());
+		listener.latch.await(5, TimeUnit.SECONDS);
+		assertEquals(EventType.REFERENCE_ADDED, listener.lastType);
+		// add subresource
+		listener.reset();
+		Resource subres = sw.stateControl().getSubResource("testDecorator", OnOffSwitch.class).create();
+		listener.latch.await(5, TimeUnit.SECONDS);
+		assertEquals(EventType.SUBRESOURCE_ADDED, listener.lastType);
+		// remove reference
+		listener.reset();
+		sw2.stateControl().delete();
+		listener.latch.await(5, TimeUnit.SECONDS);
+		assertEquals(EventType.REFERENCE_REMOVED, listener.lastType); // -> RESOURCE_DELETED instead
+		// deactivate
+		listener.reset();
+		sw.stateControl().deactivate(false);
+		listener.latch.await(5, TimeUnit.SECONDS);
+		assertEquals(EventType.RESOURCE_DEACTIVATED, listener.lastType);
+		// remove subresource
+		listener.reset();
+		subres.delete();
+		listener.latch.await(5, TimeUnit.SECONDS);
+		assertEquals(EventType.SUBRESOURCE_REMOVED, listener.lastType);
+		// delete
+		listener.reset();
+		sw.stateControl().delete();
+		listener.latch.await(5, TimeUnit.SECONDS);
+		assertEquals(EventType.RESOURCE_DELETED, listener.lastType);
+		// recreate
+		listener.reset();
+		sw.stateControl().create();
+		listener.latch.await(5, TimeUnit.SECONDS);
+		assertEquals(EventType.RESOURCE_CREATED, listener.lastType);
+		// clean up
+		sw.stateControl().removeStructureListener(listener);
+		sw2.delete();
+		sw.delete(); // -> null pointer exception
+	}
+
+	@Test
+	public void doubleReferencesWork() throws InterruptedException {
+		ElectricHeater a = resMan.createResource("a", ElectricHeater.class);
+		Room b = resMan.createResource("b", Room.class);
+		TemperatureSensor c = resMan.createResource("c", TemperatureSensor.class);
+		c.reading().create();
+		final CountDownLatch latch = new CountDownLatch(1);
+
+		StructureTestListener listener = new StructureTestListener();
+
+		a.location().room().temperatureSensor().reading().addStructureListener(listener);
+		assertFalse(a.location().room().temperatureSensor().reading().exists());
+
+		a.location().room().setAsReference(b);
+
+		//a.location().room().temperatureSensor().reading().create();
+		//a.location().room().temperatureSensor().reading().activate(false);
+
+		assertTrue(b.equalsLocation(a.location().room()));
+		b.temperatureSensor().setAsReference(c); // <-- broken!
+		//b.temperatureSensor().reading().create(); // <-- broken!
+		//a.location().room().temperatureSensor().setAsReference(c); // works
+
+		assertTrue(a.location().room().temperatureSensor().reading().exists());
+		//a.location().room().temperatureSensor().reading().activate(false);
+
+		System.out.println("registered structure listeners:");
+		for (RegisteredStructureListener rsl : getApplicationManager().getAdministrationManager().getAppById(
+				getApplicationManager().getAppID().toString()).getStructureListeners()) {
+			System.out.printf("%s: %s%n", rsl.getResource(), rsl.getListener());
+		}
+
+		//latch.await(5, TimeUnit.SECONDS);
+		assertTrue("missing create callback", listener.awaitCreate(5, TimeUnit.SECONDS));
+		//assertEquals("Missing structure changed callback; ", 0, latch.getCount());
+		a.location().room().temperatureSensor().reading().removeStructureListener(listener);
+		c.delete();
+		b.delete();
+		a.delete();
 	}
 
 }

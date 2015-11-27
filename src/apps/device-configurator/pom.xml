@@ -6,11 +6,11 @@
 	<parent>
 		<groupId>org.ogema.apps</groupId>
 		<artifactId>ogema-apps</artifactId>
-		<version>2.0.3</version>
+		<version>2.0.4</version>
 	</parent>
 
 	<artifactId>device-configurator</artifactId>
-	<name>OGEMA Applications :: device-configurator </name>
+	<name>Device-configurator </name>
 
 	<description>
         Application that visualizes the installed drivers and devices. Additionally it provides a look at the resource tree.
@@ -67,6 +67,11 @@
 				<groupId>org.apache.felix</groupId>
 				<artifactId>maven-bundle-plugin</artifactId>
 				<extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Export-Package>org.ogema.driverconfig</Export-Package>
+                    </instructions>
+                </configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.felix</groupId>

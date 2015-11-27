@@ -16,10 +16,13 @@
 package org.ogema.core.rads.listening;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
+import org.ogema.core.rads.creation.PatternFactory;
 import org.ogema.core.rads.tools.RadFactory;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
@@ -43,15 +46,18 @@ public class RadAssembler<T extends Resource, P extends ResourcePattern<T>> {
 
     private final RadFactory<T,P> m_factory;
     private final Map<String,CompletionListener<P>> m_completionListeners = new HashMap<>();
+    private final List<String> availablePatterns = new LinkedList<String>();
+    private final Object m_container;
     
-    public RadAssembler(ApplicationManager appMan, Class<P> radClass, AccessPriority writePriority, PatternListener<P> listener) {
+    @SuppressWarnings("rawtypes")
+	public RadAssembler(ApplicationManager appMan, Class<P> radClass, AccessPriority writePriority, PatternListener<P> listener, PatternFactory<P> factory, Object container) {
         m_appMan = appMan;
         logger = appMan.getLogger();
         m_listener = listener;        
-        m_radClass = radClass;
-        
-        m_factory = new RadFactory<>(radClass, writePriority);
-        m_primaryDemandListener = new PrimaryDemandListener<>(m_appMan, m_factory.getDemandedModel(), m_radClass, primaryRadListener);                
+        m_radClass = radClass;      
+        m_container = container;
+        m_factory = new RadFactory<>(radClass, writePriority, factory);
+        m_primaryDemandListener = new PrimaryDemandListener<>(m_appMan, m_factory.getDemandedModel(), m_radClass, primaryRadListener, factory);                
     }
 
     public void start() {
@@ -67,18 +73,18 @@ public class RadAssembler<T extends Resource, P extends ResourcePattern<T>> {
 
         @Override
         public void patternAvailable(P rad) {
-            final CompletionListener<P> completeListener = new CompletionListener<>(m_appMan, rad, m_factory.getResourceFieldInfos());
+            final CompletionListener<P> completeListener = new CompletionListener<>(m_appMan, rad, m_factory.getResourceFieldInfos(), m_container);
             completeListener.start(m_completionListener);
-            m_completionListeners.put(rad.model.getLocation(),completeListener);
+            m_completionListeners.put(rad.model.getPath(),completeListener);
         }
 
         @Override
         public void patternUnavailable(P object2beLost) {
         	//System.out.println("  RadAssembler: unavailable " + object2beLost.model.getLocation() + ", " + m_appMan.getAppID().getIDString());
         	
-            // primary demand lost. Stop all completion listeners. -> no, stop only the one for the specific rad
+            // primary demand lost. Stop all completion listeners for the specific rad
 //            for (CompletionListener<P> listener : m_completionListeners) {
-        	CompletionListener<P> listener = m_completionListeners.get(object2beLost.model.getLocation());
+        	CompletionListener<P> listener = m_completionListeners.get(object2beLost.model.getPath());
         	if (listener == null) {
         		logger.warn("AdvancedAccess internal error... CompletionListener found null.");
         		return;
@@ -86,8 +92,8 @@ public class RadAssembler<T extends Resource, P extends ResourcePattern<T>> {
             listener.stop();
 //            }
 //            m_completionListeners.clear();
-            m_completionListeners.remove(object2beLost.model.getLocation());
-            m_listener.patternUnavailable(object2beLost);
+            m_completionListeners.remove(object2beLost.model.getPath());
+            m_completionListener.patternUnavailable(object2beLost);
         }
     };    
     
@@ -96,11 +102,12 @@ public class RadAssembler<T extends Resource, P extends ResourcePattern<T>> {
         @Override
         public void patternAvailable(P fulfilledDemand) {   
              m_listener.patternAvailable(fulfilledDemand);
+             availablePatterns.add(fulfilledDemand.model.getPath());
         }
 
         @Override
         public void patternUnavailable(P object2beLost) {
-            m_listener.patternUnavailable(object2beLost);
+        	if (availablePatterns.remove(object2beLost.model.getPath())) m_listener.patternUnavailable(object2beLost);
         }
     };
 }

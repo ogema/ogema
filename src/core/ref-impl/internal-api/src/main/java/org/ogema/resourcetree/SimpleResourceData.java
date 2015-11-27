@@ -17,7 +17,7 @@ package org.ogema.resourcetree;
 
 /**
  * Each node of a simple resource in resource tree owns an instance of SimpleResourceData that holds the value(s) of the
- * resource. SimpleResourceData instance can be obtained by calling {@link TreeElement.getData()}. Note that the right
+ * resource. SimpleResourceData instance can be obtained by calling {@link TreeElement#getData()}. Note that the right
  * method to be called depends on the type of the simple resource. A call to a method that doesn't match the type of the
  * simple resource causes an {@link UnsupportedOperationException}. For example if the simple resource has the type
  * BooleanResource the setter/getter getBoolean()/setBoolean() are to be called. Calls to all other getter/setter cause
@@ -53,7 +53,7 @@ public interface SimpleResourceData {
 	/**
 	 * Sets the boolean value.
 	 * 
-	 * @param The
+	 * @param z
 	 *            boolean value.
 	 * @throws UnsupportedOperationException
 	 *             If the resource is not from type BooleanResource
@@ -72,7 +72,7 @@ public interface SimpleResourceData {
 	/**
 	 * Sets the Float value.
 	 * 
-	 * @param The
+	 * @param f
 	 *            Float value.
 	 * @throws UnsupportedOperationException
 	 *             If the resource is not from type FloatResource
@@ -91,7 +91,7 @@ public interface SimpleResourceData {
 	/**
 	 * Sets the Integer value.
 	 * 
-	 * @param The
+	 * @param i
 	 *            Integer value.
 	 * @throws UnsupportedOperationException
 	 *             If the resource is not from type IntegerResource
@@ -110,7 +110,7 @@ public interface SimpleResourceData {
 	/**
 	 * Sets the Long value.
 	 * 
-	 * @param The
+	 * @param j
 	 *            Long value.
 	 * @throws UnsupportedOperationException
 	 *             If the resource is not from type LongResource
@@ -129,7 +129,7 @@ public interface SimpleResourceData {
 	/**
 	 * Sets the String value.
 	 * 
-	 * @param The
+	 * @param s
 	 *            String value.
 	 * @throws UnsupportedOperationException
 	 *             If the resource is not from type StringResource
@@ -148,7 +148,7 @@ public interface SimpleResourceData {
 	/**
 	 * Sets the boolean array value.
 	 * 
-	 * @param The
+	 * @param aZ
 	 *            boolean array value.
 	 * @throws UnsupportedOperationException
 	 *             If the resource is not from type BooleanArrayResource
@@ -167,7 +167,7 @@ public interface SimpleResourceData {
 	/**
 	 * Sets the Float array value.
 	 * 
-	 * @param The
+	 * @param aF
 	 *            Float array value.
 	 * @throws UnsupportedOperationException
 	 *             If the resource is not from type FloatArrayResource
@@ -186,7 +186,7 @@ public interface SimpleResourceData {
 	/**
 	 * Sets the Integer array value.
 	 * 
-	 * @param The
+	 * @param aI
 	 *            Integer array value.
 	 * @throws UnsupportedOperationException
 	 *             If the resource is not from type IntegerArrayResource
@@ -205,7 +205,7 @@ public interface SimpleResourceData {
 	/**
 	 * Sets the Long array value.
 	 * 
-	 * @param The
+	 * @param aJ
 	 *            Long array value.
 	 * @throws UnsupportedOperationException
 	 *             If the resource is not from type LongArrayResource
@@ -224,7 +224,7 @@ public interface SimpleResourceData {
 	/**
 	 * Sets the String array value.
 	 * 
-	 * @param The
+	 * @param aS
 	 *            String array value.
 	 * @throws UnsupportedOperationException
 	 *             If the resource is not from type StringArrayResource
@@ -243,7 +243,7 @@ public interface SimpleResourceData {
 	/**
 	 * Sets the byte array value.
 	 * 
-	 * @param The
+	 * @param aB
 	 *            byte array value.
 	 * @throws UnsupportedOperationException
 	 *             If the resource is not from type OpaqueResource

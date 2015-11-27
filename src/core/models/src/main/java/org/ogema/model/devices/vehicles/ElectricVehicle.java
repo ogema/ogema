@@ -21,7 +21,7 @@ import org.ogema.model.devices.storage.ElectricityStorage;
 /**
  * Electric vehicle (car, bus, bike, ...). If the vehicle is available at a 
  * charging station this should be indicated by its {@link #battery() } location
- * pointing to the {@link ElectricityChargingStation} it is connected to.
+ * pointing to the {@link org.ogema.model.devices.storage.ElectricityChargingStation} it is connected to.
  */
 public interface ElectricVehicle extends Vehicle {
 

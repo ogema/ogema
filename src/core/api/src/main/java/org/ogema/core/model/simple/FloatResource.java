@@ -15,9 +15,10 @@
  */
 package org.ogema.core.model.simple;
 
-import org.ogema.core.model.schedule.DefinitionSchedule;
-import org.ogema.core.model.schedule.ForecastSchedule;
+import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.recordeddata.RecordedData;
+import org.ogema.core.timeseries.TimeSeries;
 
 /**
  * Simple resource holding a float value.
@@ -47,7 +48,7 @@ public interface FloatResource extends SingleValueResource {
 	 * (either the best individual forecast or the best combined forecast). The
 	 * other forecasts can be added as decorators.
 	 */
-	ForecastSchedule forecast();
+	AbsoluteSchedule forecast();
 
 	/**
 	 * Future behavior of this value that shall be reached through management
@@ -55,6 +56,17 @@ public interface FloatResource extends SingleValueResource {
 	 * The data type, unit and interpretation of
 	 * the values in the schedule are the same as the value in this.
 	 */
-	DefinitionSchedule program();
+	AbsoluteSchedule program();
+
+	/**
+	 * Historical data, including data obtained through the OGEMA logging service and
+	 * explicitly added historical data. <br>
+	 * In order to access only the data logged by the framework use the method
+	 * {@link #getHistoricalData()} instead. <br>
+	 * Note that the {@link TimeSeries#deleteValues} methods only remove the explicitly added data here, 
+	 * not the framework log data. You can override a logged data point by adding a {@link SampledValue} at 
+	 * the same timestamp. The logged value will still be accessible via {@link #getHistoricalData()}.
+	 */
+	AbsoluteSchedule historicalData();
 
 }

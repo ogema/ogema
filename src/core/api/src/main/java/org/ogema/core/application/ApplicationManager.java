@@ -15,6 +15,7 @@
  */
 package org.ogema.core.application;
 
+import java.io.File;
 import java.io.Serializable;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
@@ -191,4 +192,20 @@ public interface ApplicationManager extends Serializable {
 	 * @return
 	 */
 	AppID getAppID();
+
+	/**
+	 * Get a File object in the default OSGi bundle-storage location of the application. The application does not need 
+	 * a special permission to read, write, create and delete files in this location, but the available disk space 
+	 * may be limited by the framework. A {@code File} object for the base directory of the persistent storage
+	 * area can be obtained by calling this method with an empty string. <br>
+	 * 
+	 * This method is equivalent to BundleContext#getDataFile(String) of the underlying OSGi-framework.
+	 * 
+	 * @param filename
+	 * 			Filename relative to the bundle-storage location
+	 * @return
+	 * 			A {@code File} object that represents the requested file or
+	 *         {@code null} if the platform does not have file system support.
+	 */
+	File getDataFile(String filename);
 }

@@ -55,7 +55,7 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 	/**
 	 * if set, the event thread exits
 	 */
-	private boolean exit;
+	private volatile boolean exit;
 
 	public HardwareManagerImpl(NativeAccess nativeAccess) {
 		devices = new HashMap<String, HardwareDescriptorImpl>();
@@ -78,7 +78,7 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 			}
 
 		logger.info("Starting event thread.");
-		thread = new Thread(this);
+		thread = new Thread(this, "OGEMA HardwareManager event thread");
 		thread.start();
 	}
 

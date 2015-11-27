@@ -17,10 +17,10 @@ package org.ogema.recordeddata.slotsdb;
 
 import java.util.List;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
-import org.ogema.core.channelmanager.measurements.DoubleValue;
-import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.recordeddata.RecordedDataConfiguration;
 import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
@@ -28,7 +28,20 @@ import org.ogema.core.recordeddata.ReductionMode;
 import org.ogema.recordeddata.DataRecorderException;
 import org.ogema.recordeddata.RecordedDataStorage;
 
-public class EmptyStorageTest {
+/**
+ * Performs tests on an empty storage 
+ */
+public class EmptyStorageTest extends SlotsDbTest {
+
+	@BeforeClass
+	public static void setUp() {
+		deleteTestFiles();
+	}
+
+	@AfterClass
+	public static void tearDown() {
+		deleteTestFiles();
+	}
 
 	/**
 	 * Creates a new storage which holds no data. Tests all ReductionModes. Result of the getValues(...) should be a

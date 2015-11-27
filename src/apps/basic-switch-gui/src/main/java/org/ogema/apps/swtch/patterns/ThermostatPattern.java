@@ -46,6 +46,7 @@ public class ThermostatPattern extends ResourcePattern<Thermostat> {
 	/**
 	 * Battery charge status
 	 */
+	@Existence(required = CreateMode.OPTIONAL)
 	public FloatResource batteryCharge = model.battery().chargeSensor().reading();
 
 	/**
@@ -56,11 +57,13 @@ public class ThermostatPattern extends ResourcePattern<Thermostat> {
 	/**
 	 * Control setting defining if the switch is controllable or not.
 	 */
+	@Existence(required = CreateMode.OPTIONAL)
 	public final BooleanResource isSwitchControllable = model.valve().setting().controllable();
 
 	/**
 	 * Temperature setpoint set by the OGEMA management system.
 	 */
+	@Existence(required = CreateMode.OPTIONAL)
 	public final TemperatureResource localDesiredTemperature = model.temperatureSensor().settings().setpoint();
 
 	/**

@@ -28,20 +28,24 @@ import org.slf4j.Logger;
 class CommDevice {
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+	private final ChannelManagerImpl channelManager;
 
-	public CommDevice(DeviceLocator device, ChannelDriver driver) {
+	public CommDevice(DeviceLocator device, ChannelDriver driver, ChannelManagerImpl channelManager) {
 		this.channels = new LinkedList<Channel>();
 		this.deviceLocator = device;
+		this.channelManager = channelManager;
 
 		this.readerThread = new DeviceReaderThread(this, driver);
-		this.readerThread.updateConfiguration();
+		// this.readerThread.updateConfiguration();
 		this.readerThread.start();
+
 	}
 
 	private final DeviceReaderThread readerThread;
 	private final DeviceLocator deviceLocator;
 	private final List<Channel> channels;
-	private List<SampledValueContainer> valueContainers = null;
+
+	// private List<SampledValueContainer> valueContainers = null;
 
 	public DeviceLocator getDeviceLocator() {
 		return deviceLocator;
@@ -60,39 +64,45 @@ class CommDevice {
 
 	public void addChannel(Channel channel) {
 
-		new SampledValueContainer(channel.getConfiguration().getChannelLocator());
-
-		logger.debug("Add channel with interval " + channel.getConfiguration().getSamplingPeriod());
-		this.channels.add(channel);
-
-		if (channel.getConfiguration().getSamplingPeriod() > 0) {
-
-			this.readerThread.updateConfiguration();
-
-			logger.debug("Add channel with interval " + channel.getConfiguration().getSamplingPeriod());
-
+		if (logger.isDebugEnabled()) {
+			logger.debug("Add channel " + channel.getConfiguration().getChannelLocator().getChannelAddress()
+					+ " with interval " + channel.getConfiguration().getSamplingPeriod());
 		}
 
-		valueContainers = null;
+		channels.add(channel);
+
+		if (channel.getConfiguration().getSamplingPeriod() > 0) {
+			readerThread.updateConfiguration();
+		}
+
+		// ### Für was ist das gut?
+		// valueContainers = null;
 	}
 
 	public void removeChannel(Channel channel) {
+
+		logger.debug("### removeChannel called");
+
 		if (channels.contains(channel)) {
 			channels.remove(channel);
-			this.readerThread.updateConfiguration();
+			readerThread.updateConfiguration();
 			readerThread.removeChannel(channel);
+			if (channels.size() == 0) {
+				readerThread.close();
+				channelManager.removeDevice(this);
+			}
 		}
 	}
 
-	public List<SampledValueContainer> getValueContainers() {
-		if (valueContainers == null) {
-			valueContainers = new LinkedList<SampledValueContainer>();
-			for (Channel channel : channels) {
-				valueContainers.add(channel.getSampledValueContainer());
-			}
-		}
-		return valueContainers;
-	}
+	// public List<SampledValueContainer> getValueContainers() {
+	// if (valueContainers == null) {
+	// valueContainers = new LinkedList<SampledValueContainer>();
+	// for (Channel channel : channels) {
+	// valueContainers.add(channel.getSampledValueContainer());
+	// }
+	// }
+	// return valueContainers;
+	// }
 
 	public boolean doesChannelMatch(Channel channel) {
 		if (channel.getConfiguration().getChannelLocator().getDeviceLocator().equals(deviceLocator)) {

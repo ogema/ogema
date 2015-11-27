@@ -52,10 +52,6 @@ public class AppAdminAccessImpl implements AdminApplication {
 		this.appman = appman;
 	}
 
-	public AppAdminAccessImpl(Bundle b, Application app, ApplicationManagerImpl appman, AccessManager am) {
-		this(b, app, AppIDImpl.getNewID(b, app), appman, am);
-	}
-
 	//	/*
 	//	 * (non-Javadoc)
 	//	 * 
@@ -176,32 +172,32 @@ public class AppAdminAccessImpl implements AdminApplication {
 	 * 
 	 * @see org.ogema.core.administration.AdminApplication#stop()
 	 */
-	@Override
-	public void stop() {
-		// TODO Auto-generated method stub
-
-	}
+	//	@Override
+	//	public void stop() {
+	//		// TODO Auto-generated method stub
+	//
+	//	}
 
 	/*
 	 * (non-Javadoc)
 	 * 
 	 * @see org.ogema.core.administration.AdminApplication#start()
 	 */
-	@Override
-	public void start() {
-		// TODO Auto-generated method stub
-	}
+	//	@Override
+	//	public void start() {
+	//		// TODO Auto-generated method stub
+	//	}
 
 	/*
 	 * (non-Javadoc)
 	 * 
 	 * @see org.ogema.core.administration.AdminApplication#remove()
 	 */
-	@Override
-	public void remove() {
-		// TODO Auto-generated method stub
-
-	}
+	//	@Override
+	//	public void remove() {
+	//		// TODO Auto-generated method stub
+	//
+	//	}
 
 	@Override
 	public Bundle getBundleRef() {

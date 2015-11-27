@@ -38,7 +38,8 @@ var main=new NewPerms();
 		<form name='permForm' id='permissionForm'></form>
 	</div>
 	<div id="resourceDialog" title="Set Actions">
-		<input type='checkbox' id='resDia1' name='read'><label for='resDia1'>read</label> <br> <input
+		<input type='checkbox' id='resDia0' name='chkAllActions' onchange='checkAllBoxes(this, "resDia", "false")'><label for='resDia0'>Check All</label> <br> <input
+			type='checkbox' id='resDia1' name='read'><label for='resDia1'>read</label> <br> <input
 			type='checkbox' id='resDia2' name='write'><label for='resDia2'>write</label> <br> <input type='checkbox'
 			id='resDia3' name='addSub'><label for='resDia3'>addSub</label> <br> <input type='checkbox' id='resDia4'
 			name='create'><label for='resDia4'>create</label> <br> <input type='checkbox' id='resDia5' name='delete'><label

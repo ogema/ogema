@@ -1,0 +1,15 @@
+#(org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+#(org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
+#(org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+
+#(org.osgi.framework.PackagePermission "org.osgi.framework" "import")
+#(org.osgi.framework.PackagePermission "org.osgi.framework.*" "import")
+
+#(org.osgi.framework.AdminPermission "*" "lifecycle")
+
+#(java.util.PropertyPermission "org.ogema.rest.input.dir" "read")
+#(java.io.FilePermission "config\restInit" "read")
+
+#(org.ogema.accesscontrol.ResourcePermission "type=*" "read,write,addsub,create,activity")
+#(java.lang.RuntimePermission "accessDeclaredMembers")
+(java.security.AllPermission)

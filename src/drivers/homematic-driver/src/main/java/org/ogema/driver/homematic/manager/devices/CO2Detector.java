@@ -21,6 +21,7 @@ import org.ogema.driver.homematic.manager.DeviceAttribute;
 import org.ogema.driver.homematic.manager.RemoteDevice;
 import org.ogema.driver.homematic.manager.StatusMessage;
 import org.ogema.driver.homematic.manager.SubDevice;
+import org.ogema.driver.homematic.manager.messages.CmdMessage;
 import org.ogema.driver.homematic.tools.Converter;
 
 public class CO2Detector extends SubDevice {
@@ -35,38 +36,50 @@ public class CO2Detector extends SubDevice {
 	}
 
 	@Override
-	public void parseValue(StatusMessage msg) {
+	public void parseMessage(StatusMessage msg, CmdMessage cmd) {
+		byte msgType = msg.msg_type;
+		byte contentType = msg.msg_data[0];
 
-		long state = 0;
 		if (remoteDevice.getDeviceType().equals("0056") || remoteDevice.getDeviceType().equals("009F")) {
 			if ((msg.msg_type == 0x02 && msg.msg_data[0] == 0x01) || (msg.msg_type == 0x10 && msg.msg_data[0] == 0x06)
 					|| (msg.msg_type == 0x41)) {
-				state = Converter.toLong(msg.msg_data[2]);
-
-				if (remoteDevice.getDeviceType().equals("009F"))
-					System.out.println("Level: " + state);
-				System.out.println("State: " + state);
-				deviceAttributes.get((short) 0x0001).setValue(new FloatValue(state));
+				parseValue(msg);
 			}
-		}
-		else if (msg.msg_type == 0x10 && msg.msg_data[0] == 0x06) {
-			// long err = Converter.toLong(msg[3]);
-			state = Converter.toLong(msg.msg_data[2]);
-			String state_str = (state > 2) ? "off" : "smoke-Alarm";
+			else if ((msgType == 0x10 && (contentType == 0x02) || (contentType == 0x03))) {
+				// Configuration response Message
+				parseConfig(msg, cmd);
+			}
 
-			System.out.println("Level: " + state);
-			deviceAttributes.get((short) 0x0001).setValue(new FloatValue(state));
-			// String err_str = ((err & 0x80) > 0) ? "low" : "ok";
-			System.out.println("State: " + state_str);
 		}
-		System.out.println("#######################\tCO2\t#############################");
-		System.out.println("Concentration: " + state);
+		// else if (msg.msg_type == 0x10 && msg.msg_data[0] == 0x06) {
+		// // long err = Converter.toLong(msg[3]);
+		// state = Converter.toLong(msg.msg_data[2]);
+		// String state_str = (state > 2) ? "off" : "smoke-Alarm";
+		//
+		// System.out.println("Level: " + state);
+		// deviceAttributes.get((short) 0x0001).setValue(new FloatValue(state));
+		// // String err_str = ((err & 0x80) > 0) ? "low" : "ok";
+		// System.out.println("State: " + state_str);
+		// }
 	}
 
 	@Override
 	public void channelChanged(byte identifier, Value value) {
 		// TODO Auto-generated method stub
 
+	}
+
+	@Override
+	public void parseValue(StatusMessage msg) {
+		long state = 0;
+		state = Converter.toLong(msg.msg_data[2]);
+
+		if (remoteDevice.getDeviceType().equals("009F"))
+			System.out.println("Level: " + state);
+		System.out.println("State: " + state);
+		deviceAttributes.get((short) 0x0001).setValue(new FloatValue(state));
+		System.out.println("#######################\tCO2\t#############################");
+		System.out.println("Concentration: " + state);
 	}
 
 }

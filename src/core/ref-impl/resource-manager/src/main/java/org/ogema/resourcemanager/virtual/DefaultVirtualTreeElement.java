@@ -177,7 +177,19 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
 			return existingChild;
 		}
 		Object existingResRef = (existingChild != null) ? existingChild.getResRef() : null;
-		TreeElement newElement = el.addChild(name, type, isDecorating);
+        TreeElement newElement;
+        try {
+            newElement = el.addChild(name, type, isDecorating);
+        } catch (ResourceAlreadyExistsException e) {
+            newElement = el.getChild(name);
+            if (!type.isAssignableFrom(newElement.getType())) {
+                throw new ResourceAlreadyExistsException(
+                        String.format("cannot create subresource %s:%s on resource %s, subresource already exists and has incompatible type (%s)",
+                                name, type, getPath(), newElement.getType()
+                        )
+                );
+            }
+        }
 		virtualSubresources.remove(name);
 		DefaultVirtualTreeElement newChild = resourceDB.getElement(newElement);
 		if (existingResRef != null) {
@@ -197,14 +209,19 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
 		DefaultVirtualTreeElement reference;
 		if (existingChild != null) {
 			reference = existingChild;
-            reference.setEl(el.addReference(direktRef, name, isDecorating));
+            reference.setEl(getEl().addReference(direktRef, name, isDecorating));
 		}
 		else {
-			reference = resourceDB.getElement(el.addReference(direktRef, name, isDecorating));
+			reference = resourceDB.getElement(getEl().addReference(direktRef, name, isDecorating));
 		}
+        
+        //FIXME: need to check StructureListenerRegistrations
+        ((ElementInfo)getResRef()).updateStructureListenerRegistrations();
 
 		if (virtualSubresources.containsKey(name)) {
-			virtualSubresources.get(name).realizedBy(el.getChild(name));
+            TreeElement newRealElement = getEl().getChild(name);
+            DefaultVirtualTreeElement existingVirtualElement = virtualSubresources.get(name);
+			existingVirtualElement.realizedBy(newRealElement);
 			virtualSubresources.remove(name);
 		}
 
@@ -469,7 +486,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
 	@Override
 	public String getLocation() {
 		// TODO Auto-generated method stub
-		return null;
+		return el.getLocation();
 	}
 
 }

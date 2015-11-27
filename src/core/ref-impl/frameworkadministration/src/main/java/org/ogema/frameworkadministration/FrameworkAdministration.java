@@ -38,7 +38,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.useradmin.UserAdmin;
 
-@Component(specVersion = "1.1", immediate = true)
+@Component(specVersion = "1.2", immediate = true)
 @Service(Application.class)
 public class FrameworkAdministration implements Application {
 
@@ -46,6 +46,9 @@ public class FrameworkAdministration implements Application {
 	protected ApplicationManager appMan;
 	protected ResourceManagement resMan;
 	protected ResourceAccess resAcc;
+
+	@Reference
+	private AppStoreController appStoreController;
 
 	@Reference
 	private AdministrationManager administrationManager;
@@ -88,12 +91,6 @@ public class FrameworkAdministration implements Application {
 
 		LoggerController.getInstance().setAdministrationManager(administrationManager);
 
-		AppStoreController.getInstance().setAdministrationManager(administrationManager);
-		AppStoreController.getInstance().setPermissionManager(permissionManager);
-		AppStoreController.getInstance().setResourceDB(resourceDB);
-		AppStoreController.getInstance().setBundleContext(bundleContext);
-		AppStoreController.getInstance().setInstallationManager(installationManager);
-
 		UserController.getInstance().setAccessManager(accessManager);
 		UserController.getInstance().setPermissionManager(permissionManager);
 		UserController.getInstance().setBundleContext(bundleContext);
@@ -112,12 +109,13 @@ public class FrameworkAdministration implements Application {
 		String aliasUserServlet = appManager.getWebAccessManager().registerWebResource(
 				"/apps/ogema/frameworkadminuser", new FAServletUser());
 
-		appStoreServlet = new FAServletAppStore(permissionManager, bundleContext, bundleID, administrationManager);
-		appStoreServlet.register(permissionManager.getWebAccess());
+		appStoreServlet = new FAServletAppStore(permissionManager, bundleContext, bundleID, administrationManager,
+				appStoreController);
+		appStoreServlet.register(appManager.getWebAccessManager());
 
-		logger.info("registered html on {}", aliasHtml);
-		logger.info("registered logger servlet on {}", aliasLoggerServlet);
-		logger.info("registered user servlet on {}", aliasUserServlet);
+		logger.debug("registered html on {}", aliasHtml);
+		logger.debug("registered logger servlet on {}", aliasLoggerServlet);
+		logger.debug("registered user servlet on {}", aliasUserServlet);
 
 	}
 
@@ -126,7 +124,7 @@ public class FrameworkAdministration implements Application {
 		appMan.getWebAccessManager().unregisterWebResource("/ogema/frameworkadminindex");
 		appMan.getWebAccessManager().unregisterWebResource("/apps/ogema/frameworkadmin");
 		appMan.getWebAccessManager().unregisterWebResource("/apps/ogema/frameworkadminuser");
-		appStoreServlet.unregister(permissionManager.getWebAccess());
+		appStoreServlet.unregister(appMan.getWebAccessManager());
 		logger.debug("{} stopped", getClass().getName());
 	}
 

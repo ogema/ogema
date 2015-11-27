@@ -105,8 +105,9 @@ public interface AppPermission {
 	public AppPermissionType addException(String permName, String[] args, ConditionInfo cond);
 
 	/**
-	 * Removes an negative policy which was added before via {@link AppPermission#addException(java.lang.String, java.lang.String[], org.osgi.service.condpermadmin.ConditionInfo) addException}.
-	 * Each AppPermissionType has an unique id as name string, see {@link AppPermissionType#getName() }.
+	 * Removes an negative policy which was added before via
+	 * {@link AppPermission#addException(java.lang.String, java.lang.String[], org.osgi.service.condpermadmin.ConditionInfo)
+	 * addException}. Each AppPermissionType has an unique id as name string, see {@link AppPermissionType#getName() }.
 	 * 
 	 * @param name
 	 *            Name string which is unique for the AppPermissionType
@@ -175,8 +176,9 @@ public interface AppPermission {
 	public AppPermissionType addPermission(String perm, String[] args, ConditionInfo cond);
 
 	/**
-	 * Removes an positive policy which was added before via {@link AppPermission#addPermission(java.lang.String, java.lang.String[], org.osgi.service.condpermadmin.ConditionInfo) addPermission}.
-	 * Each AppPermissionType has an unique id as name string, see {@link AppPermissionType#getName() }.
+	 * Removes an positive policy which was added before via
+	 * {@link AppPermission#addPermission(java.lang.String, java.lang.String[], org.osgi.service.condpermadmin.ConditionInfo)
+	 * addPermission}. Each AppPermissionType has an unique id as name string, see {@link AppPermissionType#getName() }.
 	 * 
 	 * @param name
 	 *            Name string which is unique for the AppPermissionType
@@ -195,8 +197,19 @@ public interface AppPermission {
 	/**
 	 * Removes all policies added to this AppPermission before by calling the addException/addPermission methods. After
 	 * the execution of this method no one of the policies added before is considered by the permission check. System
-	 * policies that are set by the system aren't removed by this method.
+	 * policies that are set by the system and potentially more than one application has right of are not removed by
+	 * this method.
 	 */
 	public void removeAllPolicies();
+
+	/**
+	 * Remove all policies with positive access type. See {@link AppPermission#removeAllPolicies()}
+	 */
+	public void removePermissions();
+
+	/**
+	 * Remove all policies with negative access type. See {@link AppPermission#removeAllPolicies()}
+	 */
+	public void removeExceptions();
 
 }

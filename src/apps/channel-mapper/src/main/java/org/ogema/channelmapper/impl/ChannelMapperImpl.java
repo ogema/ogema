@@ -90,7 +90,6 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 			this.mappedElemente = mappedElemente;
 			this.resource = resource;
 
-			// TODO Auto-generated constructor stub
 		}
 
 		@Override
@@ -110,10 +109,10 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 
 	}
 
-	public void addMappedElements(MappedElement mappedElemente, Resource resource, List<ChannelLocator> channelsList)
+	public void addMappedElements(MappedElement mappedElement, Resource resource, List<ChannelLocator> channels)
 			throws ChannelConfigurationException {
-		List<ChannelLocator> channels = channelsList;
-		ChannelDescription channelDescription = mappedElemente.getChannelDescription();
+
+		ChannelDescription channelDescription = mappedElement.getChannelDescription();
 		DeviceLocator deviceLocator = channelAccess.getDeviceLocator(channelDescription.getDriverId(),
 				channelDescription.getInterfaceId(), channelDescription.getDeviceAddress(), channelDescription
 						.getParameters());
@@ -134,14 +133,14 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 				channels.add(channelLocator);
 			}
 		} catch (ChannelConfigurationException e) {
-			throw new ChannelConfigurationException(
-					"Configuration failed: proof the channelmapper.config file \n and proof that all used driver services are registered!");
+			throw new ChannelConfigurationException("Configuration of channel " + channelLocator.getChannelAddress()
+					+ "failed, check if all drivers are installed!", e);
 		}
 
 		if (resource != null) {
 			int count = 0;
 			int pos[] = new int[20];
-			String atributePath = mappedElemente.getAttributePath();
+			String atributePath = mappedElement.getAttributePath();
 			Resource subResource = resource;
 			for (int i = 0; i < atributePath.length(); i++) {
 				if (atributePath.charAt(i) == '.') {
@@ -408,8 +407,6 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 		try {
 			Thread.sleep(3000);
 		} catch (InterruptedException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
 		}
 		channelAccess = appManager.getChannelAccess();
 		resourceAccess = appManager.getResourceAccess();
@@ -458,9 +455,7 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 					try {
 						addMappedElements(mappedElemente, resource, channels);
 					} catch (ChannelConfigurationException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-						logger.info("Driver doesn't exist, wait 30 sec");
+						logger.info("Driver doesn't exist, wait 30 sec", e);
 						timer.schedule(new Task(mappedElemente, resource), 30000);
 					}
 				}

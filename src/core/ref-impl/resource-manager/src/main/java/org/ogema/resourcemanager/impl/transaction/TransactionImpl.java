@@ -18,6 +18,8 @@ package org.ogema.resourcemanager.impl.transaction;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,6 +31,7 @@ import org.ogema.core.channelmanager.measurements.LongValue;
 import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.array.ArrayResource;
 import org.ogema.core.model.array.BooleanArrayResource;
 import org.ogema.core.model.array.ByteArrayResource;
 import org.ogema.core.model.array.FloatArrayResource;
@@ -39,6 +42,7 @@ import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
+import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
@@ -70,6 +74,7 @@ public class TransactionImpl implements Transaction {
     private final ResourceDBManager m_dbMan;
     private final ApplicationManager m_appMan;
 
+    // Maps between resources containing a value and their to-write and last-read values.
     private final Map<String, RwPair<Boolean>> m_boolMap = new HashMap<>();
     private final Map<String, RwPair<Float>> m_floatMap = new HashMap<>();
     private final Map<String, RwPair<Integer>> m_intMap = new HashMap<>();
@@ -82,6 +87,10 @@ public class TransactionImpl implements Transaction {
     private final Map<String, RwPair<String[]>> m_stringArrayMap = new HashMap<>();
     private final Map<String, RwPair<long[]>> m_longArrayMap = new HashMap<>();
     private final Map<String, RwPair<MemoryTimeSeries>> m_scheduleMap = new HashMap<>();
+    
+    // List of resources that do not contain a value (used in activation/de-activation)
+    private final Set<String> m_complexResources = new HashSet<>();
+    
 
     public TransactionImpl(ResourceDBManager dbMan, ApplicationManager appMan) {
         m_dbMan = dbMan;
@@ -90,7 +99,7 @@ public class TransactionImpl implements Transaction {
 
     }
 
-    private Collection<String> getAllPaths() {
+    private Collection<String> getAllPathsWithValues() {
         final Collection<String> result = new ArrayList<>();
         result.addAll(m_boolMap.keySet());
         result.addAll(m_floatMap.keySet());
@@ -107,6 +116,12 @@ public class TransactionImpl implements Transaction {
         return result;
     }
 
+    private Collection<String> getAllPaths() {
+        final Collection<String> result = getAllPathsWithValues();
+        result.addAll(m_complexResources);
+        return result;
+    }
+    
     @Override
     public void addTree(Resource rootResource, boolean addReferencedSubresources) {
         final List<Resource> resources;
@@ -123,6 +138,8 @@ public class TransactionImpl implements Transaction {
     public void addResource(Resource resource) {
         final Class<? extends Resource> resType = resource.getResourceType();
         final String path = resource.getPath();
+        
+        if (SingleValueResource.class.isAssignableFrom(resType)) {
         if (BooleanResource.class.isAssignableFrom(resType)) {
             m_boolMap.put(path, new RwPair<Boolean>());
             return;
@@ -135,10 +152,6 @@ public class TransactionImpl implements Transaction {
             m_intMap.put(path, new RwPair<Integer>());
             return;
         }
-        if (org.ogema.core.model.simple.OpaqueResource.class.isAssignableFrom(resType)) {
-            m_byteArrayMap.put(path, new RwPair<byte[]>());
-            return;
-        }
         if (StringResource.class.isAssignableFrom(resType)) {
             m_stringMap.put(path, new RwPair<String>());
             return;
@@ -147,8 +160,10 @@ public class TransactionImpl implements Transaction {
             m_timeMap.put(path, new RwPair<Long>());
             return;
         }
-
-        // arrays
+        throw new UnsupportedOperationException("Cannot handle SingleValueResource of type " + resType.getCanonicalName());        
+        }
+        
+        if (ArrayResource.class.isAssignableFrom(resType)) {
         if (ByteArrayResource.class.isAssignableFrom(resType)) {
             m_byteArrayMap.put(path, new RwPair<byte[]>());
             return;
@@ -174,13 +189,23 @@ public class TransactionImpl implements Transaction {
             return;
         }
 
+        // legacy support for deprecated types
+                if (org.ogema.core.model.simple.OpaqueResource.class.isAssignableFrom(resType)) {
+            m_byteArrayMap.put(path, new RwPair<byte[]>());
+            return;
+        }
+
+        throw new UnsupportedOperationException("Cannot handle ArrayResource of type " + resType.getCanonicalName());                
+        }
+        
         // schedules
         if (Schedule.class.isAssignableFrom(resType)) {
             m_scheduleMap.put(path, new RwPair<MemoryTimeSeries>());
             return;
         }
 
-        throw new UnsupportedOperationException("Cannot handle resource type " + resType.getCanonicalName());
+        // neither SingleValueResource, nor ArrayResource, not Schedule: Assume complex resource
+        m_complexResources.add(path);
     }
 
     @Override
@@ -252,6 +277,7 @@ public class TransactionImpl implements Transaction {
         removeByPath(resource, m_stringArrayMap);
         removeByPath(resource, m_longArrayMap);
         removeByPath(resource, m_scheduleMap);
+        m_complexResources.remove(resource.getPath());
     }
 
     /**
@@ -270,6 +296,15 @@ public class TransactionImpl implements Transaction {
         removeByLocation(resource, m_stringArrayMap);
         removeByLocation(resource, m_longArrayMap);
         removeByLocation(resource, m_scheduleMap);
+        
+        // treatment for complex resources
+        final ResourceAccess resAcc = m_appMan.getResourceAccess();
+        final Iterator<String> iter = m_complexResources.iterator();
+        while (iter.hasNext()) {
+            final String path = iter.next();
+            final Resource existingResource = resAcc.getResource(path);
+            if (existingResource.equalsLocation(resource)) iter.remove();
+        }
     }
 
     @Override
@@ -286,7 +321,7 @@ public class TransactionImpl implements Transaction {
 
     // ---- Getters ----
     /**
-     * Tries to find the entry for the resource in the map and returs its
+     * Tries to find the entry for the resource in the map and returns its
      * associated read value, if possible. Throws a NoSuchResourcException, if
      * the resource could not be found in the application. This is the generic
      * version of the typed get<Type> methods.
@@ -604,33 +639,39 @@ public class TransactionImpl implements Transaction {
             final BooleanResource resource = (BooleanResource) resAcc.getResource(path);
             final RwPair<Boolean> pair = m_boolMap.get(path);
             final Boolean value = pair.write;
-            if (resource.exists() && value != null) {
-                resource.setValue(value);
+            if (!resource.exists()) {
+                pair.read = null;
+            } else if (value==null) {
                 pair.read = resource.getValue();
             } else {
-                pair.read = null;
+                resource.setValue(value);
+                pair.read = resource.getValue();
             }
         }
         for (String path : m_floatMap.keySet()) {
             final FloatResource resource = (FloatResource) resAcc.getResource(path);
             final RwPair<Float> pair = m_floatMap.get(path);
             final Float value = pair.write;
-            if (resource.exists() && value != null) {
-                resource.setValue(value);
+            if (!resource.exists()) {
+                pair.read = null;
+            } else if (value==null) {
                 pair.read = resource.getValue();
             } else {
-                pair.read = null;
+                resource.setValue(value);
+                pair.read = resource.getValue();
             }
         }
         for (String path : m_intMap.keySet()) {
             final IntegerResource resource = (IntegerResource) resAcc.getResource(path);
             final RwPair<Integer> pair = m_intMap.get(path);
             final Integer value = pair.write;
-            if (resource.exists() && value != null) {
-                resource.setValue(value);
+            if (!resource.exists()) {
+                pair.read = null;
+            } else if (value==null) {
                 pair.read = resource.getValue();
             } else {
-                pair.read = null;
+                resource.setValue(value);
+                pair.read = resource.getValue();
             }
         }
         for (String path : m_byteArrayMap.keySet()) {
@@ -639,44 +680,52 @@ public class TransactionImpl implements Transaction {
             final ByteArrayResource resource = (ByteArrayResource) untypedResource;
             final RwPair<byte[]> pair = m_byteArrayMap.get(path);
             final byte[] value = pair.write;
-            if (resource.exists() && value != null) {
-                resource.setValues(value);
+            if (!resource.exists()) {
+                pair.read = null;
+            } else if (value==null) {
                 pair.read = resource.getValues();
             } else {
-                pair.read = null;
-            }                                
+                resource.setValues(value);
+                pair.read = resource.getValues();
+            }
             } else if (untypedResource instanceof org.ogema.core.model.simple.OpaqueResource) {
             final org.ogema.core.model.simple.OpaqueResource resource = (org.ogema.core.model.simple.OpaqueResource) untypedResource;
             final RwPair<byte[]> pair = m_byteArrayMap.get(path);
             final byte[] value = pair.write;
-            if (resource.exists() && value != null) {
-                resource.setValue(value);
+            if (!resource.exists()) {
+                pair.read = null;
+            } else if (value==null) {
                 pair.read = resource.getValue();
             } else {
-                pair.read = null;
-            }                
+                resource.setValue(value);
+                pair.read = resource.getValue();
+            }
             }
         }
         for (String path : m_stringMap.keySet()) {
             final StringResource resource = (StringResource) resAcc.getResource(path);
             final RwPair<String> pair = m_stringMap.get(path);
             final String value = pair.write;
-            if (resource.exists() && value != null) {
-                resource.setValue(value);
+            if (!resource.exists()) {
+                pair.read = null;
+            } else if (value==null) {
                 pair.read = resource.getValue();
             } else {
-                pair.read = null;
+                resource.setValue(value);
+                pair.read = resource.getValue();
             }
         }
         for (String path : m_timeMap.keySet()) {
             final TimeResource resource = (TimeResource) resAcc.getResource(path);
             final RwPair<Long> pair = m_timeMap.get(path);
             final Long value = pair.write;
-            if (resource.exists() && value != null) {
-                resource.setValue(value);
+            if (!resource.exists()) {
+                pair.read = null;
+            } else if (value==null) {
                 pair.read = resource.getValue();
             } else {
-                pair.read = null;
+                resource.setValue(value);
+                pair.read = resource.getValue();
             }
         }
 
@@ -685,55 +734,65 @@ public class TransactionImpl implements Transaction {
             final BooleanArrayResource resource = (BooleanArrayResource) resAcc.getResource(path);
             final RwPair<boolean[]> pair = m_booleanArrayMap.get(path);
             final boolean[] value = pair.write;
-            if (resource.exists() && value != null) {
-                resource.setValues(value);
+            if (!resource.exists()) {
+                pair.read = null;
+            } else if (value==null) {
                 pair.read = resource.getValues();
             } else {
-                pair.read = null;
+                resource.setValues(value);
+                pair.read = resource.getValues();
             }
         }
         for (String path : m_floatArrayMap.keySet()) {
             final FloatArrayResource resource = (FloatArrayResource) resAcc.getResource(path);
             final RwPair<float[]> pair = m_floatArrayMap.get(path);
             final float[] value = pair.write;
-            if (resource.exists() && value != null) {
-                resource.setValues(value);
+            if (!resource.exists()) {
+                pair.read = null;
+            } else if (value==null) {
                 pair.read = resource.getValues();
             } else {
-                pair.read = null;
+                resource.setValues(value);
+                pair.read = resource.getValues();
             }
         }
         for (String path : m_intArrayMap.keySet()) {
             final IntegerArrayResource resource = (IntegerArrayResource) resAcc.getResource(path);
             final RwPair<int[]> pair = m_intArrayMap.get(path);
             final int[] value = pair.write;
-            if (resource.exists() && value != null) {
-                resource.setValues(value);
+            if (!resource.exists()) {
+                pair.read = null;
+            } else if (value==null) {
                 pair.read = resource.getValues();
             } else {
-                pair.read = null;
+                resource.setValues(value);
+                pair.read = resource.getValues();
             }
         }
         for (String path : m_stringArrayMap.keySet()) {
             final StringArrayResource resource = (StringArrayResource) resAcc.getResource(path);
             final RwPair<String[]> pair = m_stringArrayMap.get(path);
             final String[] value = pair.write;
-            if (resource.exists() && value != null) {
-                resource.setValues(value);
+            if (!resource.exists()) {
+                pair.read = null;
+            } else if (value==null) {
                 pair.read = resource.getValues();
             } else {
-                pair.read = null;
+                resource.setValues(value);
+                pair.read = resource.getValues();
             }
         }
         for (String path : m_longArrayMap.keySet()) {
             final TimeArrayResource resource = (TimeArrayResource) resAcc.getResource(path);
             final RwPair<long[]> pair = m_longArrayMap.get(path);
             final long[] value = pair.write;
-            if (resource.exists() && value != null) {
-                resource.setValues(value);
+            if (!resource.exists()) {
+                pair.read = null;
+            } else if (value==null) {
                 pair.read = resource.getValues();
             } else {
-                pair.read = null;
+                resource.setValues(value);
+                pair.read = resource.getValues();
             }
         }
 
@@ -750,6 +809,24 @@ public class TransactionImpl implements Transaction {
             resource.activate(false);
         m_dbMan.unlockWrite();
     }
+
+    /*
+    @Override
+    public void activate(Resource target, boolean recursive) {
+        //FIXME
+        System.err.println("FIXME: TransactionImpl#activate");
+        addResource(target);
+        activate();
+    }
+    
+    @Override
+    public void deactivate(Resource target, boolean recursive) {
+        //FIXME
+        System.err.println("FIXME: TransactionImpl#deactivate");
+        addResource(target);
+        deactivate();
+    } 
+    */
 
     @Override
     public void deactivate() {
@@ -807,15 +884,21 @@ public class TransactionImpl implements Transaction {
             final Schedule schedule = (Schedule) resAcc.getResource(path);
             final RwPair<MemoryTimeSeries> pair = m_scheduleMap.get(path);
             final MemoryTimeSeries value = pair.write;
-            if (schedule.exists() && value != null) {
+            if (!schedule.exists()) {
+                pair.read = null;
+            } else if (value==null) {
+                if (pair.read == null) {
+                    final Class<? extends Value> valueType = getValueType(schedule);
+                    pair.read = new ArrayTimeSeries(valueType);
+                }
+                pair.read.read(schedule);                
+            } else {
                 value.write(schedule);
                 if (pair.read == null) {
                     final Class<? extends Value> valueType = getValueType(schedule);
                     pair.read = new ArrayTimeSeries(valueType);
                 }
                 pair.read.read(schedule);
-            } else {
-                pair.read = null;
             }
         }
     }
@@ -824,7 +907,7 @@ public class TransactionImpl implements Transaction {
         for (String path : m_scheduleMap.keySet()) {
             final Schedule schedule = (Schedule) resAcc.getResource(path);
             final RwPair<MemoryTimeSeries> pair = m_scheduleMap.get(path);
-            if (!schedule.exists() || pair.write == null) {
+            if (!schedule.exists()) {
                 pair.read = null;
                 continue;
             }

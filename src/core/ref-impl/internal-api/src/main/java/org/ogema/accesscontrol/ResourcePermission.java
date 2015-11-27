@@ -22,6 +22,7 @@ import java.util.StringTokenizer;
 
 import org.ogema.core.model.Resource;
 import org.ogema.resourcetree.TreeElement;
+import org.slf4j.Logger;
 
 /**
  * @author Zekeriya Mansuroglu
@@ -49,8 +50,10 @@ public class ResourcePermission extends Permission {
 	public static final int _NOACTIONS = 0;
 	private static final String INVALID_CLASS_NAME = "$";
 
+	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+
 	/**
-	 * The canonical form of the actions -> "read,write,create,addsub,delete,activity"
+	 * The canonical form of the actions "read,write,create,addsub,delete,activity"
 	 */
 	String actions;
 
@@ -170,7 +173,10 @@ public class ResourcePermission extends Permission {
 				this.type = INVALID_CLASS_NAME;
 			else
 				this.type = type.getName();
-			this.path = te.getPath();
+			this.path = te.getLocation(); // Security Requirement PERM-SEC 2: The queried path of a resource is
+			// translated into a path free of OGEMA 2.0 references (location) before the
+			// check. OGEMA 2.0 references may point to any position of the tree and do
+			// not forward any permission.
 			this.owner = te.getAppID();
 			this.node = te;
 		} catch (Throwable e) {
@@ -314,7 +320,7 @@ public class ResourcePermission extends Permission {
 		}
 	}
 
-	private Class<?> getClassPrivileged(String typename) {
+	private Class<?> getClassPrivileged(final String typename) {
 		Class<?> result = null;
 		final String name = typename;
 		result = AccessController.doPrivileged(new PrivilegedAction<Class<?>>() {
@@ -322,9 +328,13 @@ public class ResourcePermission extends Permission {
 				try {
 					return Class.forName(name);
 				} catch (ClassNotFoundException ioe) {
-					ioe.printStackTrace();
+					logger
+							.warn(String
+									.format(
+											"Resource type class %s couldn't be loaded. Therefor the type hierarchy can't be considered while permission check. To avoid this the type class should be exported by the system or any other application.",
+											typename));
+					return null;
 				}
-				return null;
 			}
 		});
 		return result;
@@ -486,27 +496,31 @@ public class ResourcePermission extends Permission {
 		return bitMask;
 	}
 
-	/* @formatter:off */
 	/**
 	 * Check if this granted permission implies the permission given as argument.
 	 * 
-	 * First the queried path is translated into a path free of OGEMA references. OGEMA references may
-	 * point to any position of the tree and do not forward any permission. The implies() Method of the
-	 * ResourcePermission returns true if the following conditions are met:
-	 *	•	the action flag of the queried permission was set in the granted permission
-	 *	•	first the path is searched backwards, if an element of the granted type is found – starting with the queried resource. If type is Null, the queried resource is the element. If no element of the type was found, the permission is denied.
-	 *	•	the path of the element found from the type check (further queried path) fits into the granted path. The element “*” in the granted path includes subpathes, while a granted path without “*” means equality.  
-	 *	•	the owner of the queried permission (owner of the referenced resource) is equal to the owner of the granted permission or the owner of the granted permission is null (Note that the handling of the owner property depends on the action set. See the description of the owner property above in this section.)
-	 *	•	the number of the created resources due to this granted permission is smaller than the granted number (valid for CREATE, ADDSUB and DELETE)
+	 * First the queried path is translated into a path free of OGEMA references. OGEMA references may point to any
+	 * position of the tree and do not forward any permission. The implies() Method of the ResourcePermission returns
+	 * true if the following conditions are met: • the action flag of the queried permission was set in the granted
+	 * permission • first the path is searched backwards, if an element of the granted type is found – starting with the
+	 * queried resource. If type is Null, the queried resource is the element. If no element of the type was found, the
+	 * permission is denied. • the path of the element found from the type check (further queried path) fits into the
+	 * granted path. The element “*” in the granted path includes subpathes, while a granted path without “*” means
+	 * equality. • the owner of the queried permission (owner of the referenced resource) is equal to the owner of the
+	 * granted permission or the owner of the granted permission is null (Note that the handling of the owner property
+	 * depends on the action set. See the description of the owner property above in this section.) • the number of the
+	 * created resources due to this granted permission is smaller than the granted number (valid for CREATE, ADDSUB and
+	 * DELETE)
 	 * 
-	 * Example: Grant to create 25 resources of any type in the structure fridge on the first floor:
-	 * new ResourcePermission(ResourcePermission.CREATE, “firstFloor/myFridge/*”, null,null, 25);
-	 * Now creating a resource would cause the check:
+	 * Example: Grant to create 25 resources of any type in the structure fridge on the first floor: new
+	 * ResourcePermission(ResourcePermission.CREATE, “firstFloor/myFridge/*”, null,null, 25); Now creating a resource
+	 * would cause the check:
 	 * 
-	 * permisssionManager.handlePermission(new ResourcePermission(ResourcePermission.CREATE, “firstFloor/myFridge/Doorsensor”,Sensor.class,null,3));
-	 * This permission would be granted.
+	 * permisssionManager.handlePermission(new ResourcePermission(ResourcePermission.CREATE,
+	 * “firstFloor/myFridge/Doorsensor”,Sensor.class,null,3)); This permission would be granted.
 	 *
-	 * @param p the permission to be checked.
+	 * @param p
+	 *            the permission to be checked.
 	 * @return true, if this granted permission implies the queried permission, false otherwise.
 	 */
 	/* @formatter:on */
@@ -539,7 +553,18 @@ public class ResourcePermission extends Permission {
 				TreeElement parent = qp.node;
 				boolean success = false;
 				while (parent != null) {
-					if (parent.getType().getName().equals(this.type)) {
+					Class<?> cls = getClassPrivileged(this.type);
+					Class<?> parentCls = parent.getType();
+					if (cls != null && parentCls != null) {
+						if (cls.isAssignableFrom(parentCls)) {
+							success = true;
+							break;
+						}
+					}
+					else if (parent.getType().getName().equals(this.type)) { // This case is the fall back solution, if
+						// the model class couldn't be loaded.
+						// In this case the check can not be
+						// consider the type hierarchy.
 						success = true;
 						break;
 					}

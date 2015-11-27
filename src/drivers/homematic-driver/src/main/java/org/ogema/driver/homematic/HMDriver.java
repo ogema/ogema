@@ -26,14 +26,15 @@ import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
 import org.ogema.core.channelmanager.driverspi.ChannelUpdateListener;
+import org.ogema.core.channelmanager.driverspi.DeviceListener;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
-import org.ogema.core.channelmanager.driverspi.ExceptionListener;
 import org.ogema.core.channelmanager.driverspi.NoSuchChannelException;
 import org.ogema.core.channelmanager.driverspi.NoSuchDeviceException;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.driverspi.ValueContainer;
+import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.hardwaremanager.HardwareDescriptor;
 import org.ogema.core.hardwaremanager.HardwareListener;
 import org.ogema.driver.homematic.manager.RemoteDevice;
@@ -42,12 +43,14 @@ import org.slf4j.Logger;
 
 public class HMDriver implements ChannelDriver, HardwareListener {
 
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger("homematic-driver");
+	public final static Logger logger = org.slf4j.LoggerFactory.getLogger("homematic-driver");
 
 	private final Map<String, Connection> connectionsMap; // <interfaceId, connection>
 	private final String driverId = "homematic-driver";
 	private final String description = "Ogema Homematic Driver";
 	private final Map<ChannelUpdateListener, List<Channel>> listenerMap;
+
+	private final Object connectionLock = new Object();
 
 	protected ChannelAccess channelAccess;
 
@@ -133,20 +136,15 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 				Connection con = findConnection(channelLocator.getDeviceLocator().getInterfaceName());
 				Device dev = con.findDevice(channelLocator.getDeviceLocator());
 				Channel channel = dev.findChannel(channelLocator);
-
-				// read data
-				container.setSampledValue(channel.readValue(con));
-
+				// in case of configuration channel we get null
+				if (channel != null) {
+					// read data
+					container.setSampledValue(channel.readValue(con));
+				}
 			} catch (NullPointerException e) {
 				throw new IOException("Unknown channel: " + channelLocator, e);
 			}
 		}
-	}
-
-	@Override
-	public void readChannels(List<SampledValueContainer> channels, ChannelUpdateListener listener)
-			throws UnsupportedOperationException {
-		throw new UnsupportedOperationException();
 	}
 
 	@Override
@@ -195,25 +193,7 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 	}
 
 	@Override
-	public void writeChannels(List<ValueContainer> channels, ExceptionListener listener)
-			throws UnsupportedOperationException {
-		for (ValueContainer container : channels) {
-			ChannelLocator channelLocator = container.getChannelLocator();
-
-			try {
-				Connection con = findConnection(channelLocator.getDeviceLocator().getInterfaceName());
-				Device dev = con.findDevice(channelLocator.getDeviceLocator());
-				Channel channel = dev.findChannel(channelLocator);
-				channel.writeValue(con, container.getValue());
-
-			} catch (Exception e) {
-				listener.exceptionOccured(e);
-			}
-		}
-	}
-
-	@Override
-	public void reset() {
+	public void shutdown() {
 		// TODO Auto-generated method stub
 
 	}
@@ -279,7 +259,7 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 	}
 
 	public void enablePairing(final String iface) {
-		new Thread() {
+		Thread pairing = new Thread() {
 			@Override
 			public void run() {
 				try {
@@ -294,6 +274,65 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 					e.printStackTrace();
 				}
 			}
-		}.start();
+		};
+		pairing.setName("homematic-ll-enablePairing");
+		pairing.start();
+
+	}
+
+	@Override
+	public void addDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void removeDeviceListener(DeviceListener listener) {
+
+	}
+
+	public void establishConnection() {
+		final String portname = Connection.getPortName();
+		Connection con = connectionsMap.get(portname);
+		if (con == null) {
+			final HMDriver driver = this;
+			Thread connectThread = new Thread() {
+				@Override
+				public void run() {
+
+					Connection con = new Connection(connectionLock, portname, "HMUSB");
+					synchronized (connectionLock) {
+						while (!con.hasConnection() && Activator.bundleIsRunning) {
+							try {
+								connectionLock.wait();
+							} catch (InterruptedException ex) {
+								ex.printStackTrace();
+							}
+						}
+					}
+					addConnection(con);
+					driver.enablePairing("USB");
+				}
+			};
+			connectThread.setName("homematic-ll-connect");
+			connectThread.start();
+		}
+		else {
+			con.getLocalDevice().restart();
+		}
+	}
+
+	@Override
+	public void writeChannel(ChannelLocator channelLocator, Value value) throws UnsupportedOperationException,
+			IOException, NoSuchDeviceException, NoSuchChannelException {
+		try {
+			Connection con = findConnection(channelLocator.getDeviceLocator().getInterfaceName());
+			Device dev = con.findDevice(channelLocator.getDeviceLocator());
+			Channel channel = dev.findChannel(channelLocator);
+			channel.writeValue(con, value);
+
+		} catch (NullPointerException e) {
+			throw new IOException("Unknown channel: " + channelLocator, e);
+		}
 	}
 }

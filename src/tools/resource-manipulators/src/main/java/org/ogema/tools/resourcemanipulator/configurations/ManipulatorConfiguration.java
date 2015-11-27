@@ -37,4 +37,14 @@ public interface ManipulatorConfiguration {
 	 * Stops the manipulator and removes it from the system.
 	 */
 	void remove();
+
+	/**
+	 * Stops the manipulator, but does not remove the settings.
+	 */
+	void deactivate();
+
+	/**
+	 * Restarts the manipulator when it has been deactivated. Does not do anything if the manipulator is active already.
+	 */
+	void activate();
 }

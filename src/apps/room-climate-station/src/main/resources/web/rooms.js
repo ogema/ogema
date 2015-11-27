@@ -5,6 +5,8 @@ var red = "rgba(255,51,51,.6)";
 var blue = "rgba(63,169,245,.5)";
 var titleString;
 
+var inOperation=false;
+
 function room() {
 	$(document).ready(function() {
 		tempOut = "";
@@ -75,6 +77,8 @@ function room() {
 }
 
 function pollData() {
+	if(!inOperation){
+	inOperation=true;
 	$.getJSON("/rcsservice/getData" + window.location.search, function(data) {
 
 		// upper-right corner
@@ -84,7 +88,7 @@ function pollData() {
 			tempOut = data.tempOut;
 		// lower-right corner
 		if (data.rhOut != null && data.rhOut != undefined && !isNaN(data.rhOut)) {
-			humidityOut = Math.round(data.rhOut);
+			humidityOut = Math.round(data.rhOut*100);
 		} else
 			humidityOut = data.rhOut;
 		// upper-left corner
@@ -94,7 +98,7 @@ function pollData() {
 			tempIn = data.tempIn;
 		// lower-left corner
 		if (data.rhIn != null && data.rhIn != undefined && !isNaN(data.rhIn)) {
-			humidityIn = Math.round(data.rhIn);
+			humidityIn = Math.round(data.rhIn*100);
 		} else
 			humidityIn = data.rhIn;
 
@@ -134,7 +138,8 @@ function pollData() {
 		} else
 			smoke = 'X';
 		draw();
-	});
+		inOperation=false;
+	});}
 }
 
 function setmessage(msgbox, msg, prio) {

@@ -18,7 +18,7 @@ package org.ogema.model.functions;
 import org.ogema.core.model.array.FloatArrayResource;
 
 /**
- * An R->R function. The meaning of the input and output parameters must
+ * An R to R function. The meaning of the input and output parameters must
  * be defined in the data model using this.
  */
 public interface RealFunction extends Function {

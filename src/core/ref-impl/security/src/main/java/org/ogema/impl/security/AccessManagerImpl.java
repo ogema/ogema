@@ -15,11 +15,6 @@
  */
 package org.ogema.impl.security;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -45,6 +40,7 @@ import org.osgi.framework.BundleException;
 import org.osgi.framework.BundleListener;
 import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceReference;
+import org.osgi.service.useradmin.Authorization;
 import org.osgi.service.useradmin.Group;
 import org.osgi.service.useradmin.Role;
 import org.osgi.service.useradmin.User;
@@ -261,19 +257,7 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	static final String rolesFile = "ogema.roles";
 	static final String rolesDir = "ogema";
 
-	/*
-	 * These user roles normally would dynamically granted by the framework administration. Therefore interacts the
-	 * AccessManager with the system administrator over the web interface.
-	 */
-	private static final String SECURITY_URP_FILE = "urp";
-
-	private static final String SECURITY_URP_SOURCE_DIR = "ogema";
-
-	private static final String SECURITY_URP_DEST_DIR = "ogema/users";
-
 	private static final String USER_URP_ID_NAME = "URPid";
-
-	private static final String APPLICATION_ROLES_FILTER = "(" + OGEMA_ROLE_NAME + "=" + OGEMA_APPLICATION + ")";
 
 	/**
 	 * An user is created and and added to the user management. The user could represent an App or a natural person
@@ -292,7 +276,7 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	public boolean createUser(final String user, final boolean natural) {
 		Role role = usrAdmin.getRole(user);
 		if (role == null) {
-			AccessController.doPrivileged(new PrivilegedAction<Bundle>() {
+			Bundle b = AccessController.doPrivileged(new PrivilegedAction<Bundle>() {
 				public Bundle run() {
 					Bundle result = installURPBundle(user);
 					if (result != null) {
@@ -310,7 +294,10 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 					return result;
 				}
 			});
-			return true;
+			if (b == null)
+				return false;
+			else
+				return true;
 		}
 		else if (Configuration.DEBUG) {
 			logger.debug("User already exist: " + user);
@@ -325,8 +312,10 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 			logger.info(String.format("User rights proxy installed: %s", b.getLocation()));
 			b.start();
 		} catch (BundleException e) {
-			if (b == null)
-				logger.info("Installation of user rights proxy bundle failed.");
+			logger.debug("BundleException.TYPE: %d", e.getType());
+			if (b == null) {
+				logger.info("Installation of user rights proxy bundle failed.", e.getCause());
+			}
 			else {
 				logger.error("URP bundle failed to start.", e);
 			}
@@ -364,7 +353,7 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 
 	private void addPermList(AppID appid, List<AppPermissionFilter> props) {
 		String args[] = new String[2];
-		args[1] = "";
+		args[1] = null;
 		AppPermission ap = permMan.getPolicies(appid);
 
 		for (AppPermissionFilter approps : props) {
@@ -385,7 +374,7 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 		args[0] = props.getFilterString();
 		if (args[0] == null)
 			args[0] = "*";
-		args[1] = "";
+		args[1] = null;
 
 		AppPermission ap = permMan.getPolicies(appid);
 		{
@@ -478,6 +467,8 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	}
 
 	private boolean isPermitted(String username, AppID app) {
+		if (!permMan.isSecure())
+			return true;
 		Bundle b = app.getBundle();
 		WebAccessPermission wap = new WebAccessPermission(b.getSymbolicName(), username, null, b.getVersion());
 		UserRightsProxy urp = urpMap.get(username);
@@ -492,6 +483,8 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 
 	@Override
 	public boolean authenticate(String userName, final String password, boolean isnatural) {
+		if (!permMan.isSecure())
+			return true;
 		Role role = usrAdmin.getRole(userName);
 		if (role == null)
 			return false;
@@ -612,13 +605,19 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 
 	@Override
 	public boolean isAllAppsPermitted(String user) {
-		// TODO Auto-generated method stub
-		return false;
+		User usr = (User) usrAdmin.getRole(user);
+		if (usr == null)
+			return false;
+		Authorization auth = usrAdmin.getAuthorization(usr);
+		return auth.hasRole(ALLAPPS);
 	}
 
 	@Override
 	public boolean isNoAppPermitted(String user) {
-		// TODO Auto-generated method stub
-		return false;
+		User usr = (User) usrAdmin.getRole(user);
+		if (usr == null)
+			return false;
+		Authorization auth = usrAdmin.getAuthorization(usr);
+		return auth.hasRole(NOAPPS);
 	}
 }

@@ -146,7 +146,7 @@ enum ResourceFactoryASM {
 				try {
 					Method define = ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class, ProtectionDomain.class);
 					define.setAccessible(true);
-					logger.info("created implementation class for type {} ({} bytes, {} ms)",
+					logger.debug("created implementation class for type {} ({} bytes, {} ms)",
 							ogemaType, bytes.length, System.currentTimeMillis()-startTime);
                     @SuppressWarnings("unchecked")
                     Class<? extends ResourceBase> implementationClass =

@@ -17,35 +17,37 @@ package org.ogema.apps.cs;
 
 import javax.servlet.ServletException;
 
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.resourcemanager.ResourceAccess;
+import org.ogema.core.security.WebAccessManager;
 import org.ogema.persistence.ResourceDB;
-import org.osgi.framework.BundleActivator;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.BundleException;
 import org.osgi.service.http.HttpService;
 import org.osgi.service.http.NamespaceException;
 
-public class Activator implements Application, BundleActivator {
+@Component(specVersion = "1.2", immediate = true)
+@Service(Application.class)
+public class Activator implements Application {
 
+	@Reference
 	ResourceDB db;
+
+	@Reference
 	private HttpService http;
 	private ResourceAccess ra;
 
-	public void start(BundleContext bc) throws BundleException {
-		db = (ResourceDB) bc.getService(bc.getServiceReference(ResourceDB.class.getName()));
-		http = (HttpService) bc.getService(bc.getServiceReference(HttpService.class.getName()));
-		bc.registerService(Application.class, this, null);
-	}
+	private CommonServlet cs;
 
-	public void stop(BundleContext context) {
-	}
+	private WebAccessManager wam;
 
 	@Override
 	public void start(ApplicationManager appManager) {
-
-		new CommonServlet(appManager.getWebAccessManager(), this.db, appManager.getResourceAccess());
+		this.wam = appManager.getWebAccessManager();
+		cs = new CommonServlet(this.db, appManager.getResourceAccess());
+		this.wam.registerWebResource("/service", cs);
 		ra = appManager.getResourceAccess();
 		ServletAndroid servlet = new ServletAndroid(ra);
 		try {
@@ -63,5 +65,7 @@ public class Activator implements Application, BundleActivator {
 
 	@Override
 	public void stop(AppStopReason reason) {
+		http.unregister("/servletAndroid");
+		this.wam.unregisterWebResource("/service");
 	}
 }

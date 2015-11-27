@@ -92,18 +92,18 @@ public interface AdminApplication {
 	 */
 	public boolean isRunning();
 
-	/**
+	/*
 	 * stop bundle, but do not uninstall
 	 */
-	public void stop();
+	//	public void stop();
 
-	/**
+	/*
 	 * Stop and restart bundle
 	 */
-	public void start();
+	//	public void start();
 
-	/**
+	/*
 	 * stop and uninstall bundle
 	 */
-	public void remove();
+	//	public void remove();
 }

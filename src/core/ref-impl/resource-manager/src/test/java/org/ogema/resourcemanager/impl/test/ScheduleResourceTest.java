@@ -16,6 +16,7 @@
 package org.ogema.resourcemanager.impl.test;
 
 import org.ogema.exam.DemandTestListener;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -24,13 +25,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import org.junit.After;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Ignore;
 
 import static org.junit.Assert.*;
 
 import org.junit.Test;
+import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.measurements.BooleanValue;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.IntegerValue;
@@ -40,8 +43,9 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
-import org.ogema.core.model.schedule.ForecastSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
+import org.ogema.core.model.schedule.Schedule;
+import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
@@ -49,6 +53,9 @@ import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
+import org.ogema.core.recordeddata.RecordedData;
+import org.ogema.core.recordeddata.RecordedDataConfiguration;
+import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
 import org.ogema.core.resourcemanager.ResourceException;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
@@ -91,7 +98,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 			return m_schedules.get(primitiveClass);
 		}
 		final Resource simple = createSimpleResource(primitiveClass);
-		final Schedule schedule = simple.addDecorator("schedule", DefinitionSchedule.class);
+		final Schedule schedule = simple.addDecorator("schedule", Schedule.class);
 		m_schedules.put(primitiveClass, schedule);
 		return schedule;
 	}
@@ -138,7 +145,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 
 		{
 			final String forecastName = "myTestForecast";
-			ForecastSchedule schedule = simple.addDecorator(forecastName, ForecastSchedule.class);
+			Schedule schedule = simple.addDecorator(forecastName, Schedule.class);
 			assertNotNull(schedule);
 			assertNotNull("forecast schedule not created", simple.getSubResource(forecastName));
 			assertEquals(forecastName, simple.getSubResource(forecastName).getName());
@@ -146,7 +153,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 			final Schedule schedule2 = (Schedule) simple.getSubResource(forecastName);
 			assert schedule1.equalsPath(schedule2);
 			Class<?> scheduleClass = simple.getSubResource(forecastName).getResourceType();
-			assertEquals(ForecastSchedule.class, scheduleClass);
+			assertEquals(Schedule.class, scheduleClass);
 			assertEquals(schedule.getSubResources(false).size(), 0);
 			assertEquals(schedule.getSubResources(true).size(), 0);
 			List<Resource> subres = schedule.getDirectSubResources(false);
@@ -156,12 +163,12 @@ public class ScheduleResourceTest extends OsgiTestBase {
 
 		{
 			final String definitionName = "definition";
-			DefinitionSchedule schedule = simple.addDecorator(definitionName, DefinitionSchedule.class);
+			Schedule schedule = simple.addDecorator(definitionName, Schedule.class);
 			assertNotNull(schedule);
 			assertNotNull("definition schedule not created", simple.getSubResource(definitionName));
 			assertEquals(definitionName, simple.getSubResource(definitionName).getName());
 			Class<?> scheduleClass = simple.getSubResource(definitionName).getResourceType();
-			assertEquals(DefinitionSchedule.class, scheduleClass);
+			assertEquals(Schedule.class, scheduleClass);
 			assertEquals(schedule.getSubResources(false).size(), 0);
 			assertEquals(schedule.getSubResources(true).size(), 0);
 			assertEquals(schedule.getDirectSubResources(false).size(), 0);
@@ -431,7 +438,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 	@Test
 	public void replacingValuesInARangeWorks() throws Exception {
 		FloatResource fr = resMan.createResource("scheduleTest_" + System.currentTimeMillis(), FloatResource.class);
-		Schedule schedule = fr.addDecorator("data", DefinitionSchedule.class);
+		Schedule schedule = fr.addDecorator("data", Schedule.class);
 		schedule.addValue(1, new FloatValue((41)));
 		schedule.addValue(2, new FloatValue((42)));
 		schedule.addValue(3, new FloatValue((43)));
@@ -457,7 +464,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		assertTrue("did not receive resource available callback", listener.awaitAvailable());
 		resAcc.removeResourceDemand(Schedule.class, listener);
 		// TODO check for the other way round (currently works)
-		// TODO check for DefinitionSchedule and ForecastSchedule.
+		// TODO check for Schedule and Schedule.
 	}
 
 	/*
@@ -497,8 +504,8 @@ public class ScheduleResourceTest extends OsgiTestBase {
 	public void addDecoratorWithReferenceReplacesExistingElement() {
 		FloatResource test1 = resMan.createResource(RESNAME + counter++, FloatResource.class);
 		FloatResource test2 = resMan.createResource(RESNAME + counter++, FloatResource.class);
-		Resource a = test1.addDecorator("schedule", DefinitionSchedule.class);
-		Resource b = test2.addDecorator("schedule", DefinitionSchedule.class);
+		Resource a = test1.addDecorator("schedule", Schedule.class);
+		Resource b = test2.addDecorator("schedule", Schedule.class);
 		assert !a.equalsLocation(b);
 		test2.addDecorator("schedule", a);
 		assert a.equalsLocation(test2.getSubResource("schedule"));
@@ -532,4 +539,115 @@ public class ScheduleResourceTest extends OsgiTestBase {
 			Assert.fail(e.getMessage());
 		}
 	}
+	
+	private void fillHistoricalScheduleWithLogData(FloatResource fr) throws InterruptedException {  // adds maximum 100 log data points, but typically much less (1-10)
+		RecordedData rd = fr.getHistoricalData();
+		RecordedDataConfiguration rdc = new RecordedDataConfiguration();
+		rdc.setFixedInterval(20);  // log every ms
+		rdc.setStorageType(StorageType.FIXED_INTERVAL);
+		rd.setConfiguration(rdc); // start logging
+		System.out.println("  Logging started");
+		fr.activate(true);
+		Thread.sleep(200);  // 
+		rd.setConfiguration(null); // stop logging
+		System.out.println("  Logging stopped");	
+		Thread.sleep(100);
+	}
+	
+	private void fillHistoricalScheduleWithExplicitData(FloatResource fr) throws InterruptedException {  // adds 100 explicit data points, starting in 1ms from now
+		List<SampledValue> artificialData = new LinkedList<SampledValue>();
+		long now =getApplicationManager().getFrameworkTime();
+		for (int i=0;i<100;i++) {
+			SampledValue sv= new SampledValue(new FloatValue(17*i), now + i+1, Quality.GOOD);
+			artificialData.add(sv);
+		}
+		fr.historicalData().addValues(artificialData);
+	}
+	
+	@Test 
+	public void testHistoricalSchedule() throws InterruptedException {
+		FloatResource fr = resMan.createResource("testFloat", FloatResource.class);
+		fr.historicalData().create();
+		assert(fr.historicalData().getClass().getSimpleName().equals("HistoricalSchedule")) : "historical data is not a HistoricalSchedule";
+		fr.setValue(17);
+		fillHistoricalScheduleWithLogData(fr);
+		List<SampledValue> historicalValues = fr.historicalData().getValues(0);
+		System.out.println("  There are " + historicalValues.size() + " log data values out of expected 100. Time difference: "
+				+ (historicalValues.get(historicalValues.size()-1).getTimestamp() -historicalValues.get(0).getTimestamp()) );
+		fillHistoricalScheduleWithExplicitData(fr);
+		historicalValues = fr.historicalData().getValues(0);
+		System.out.println("  There are " + historicalValues.size() + " historical values out of expected 200. Time difference: "
+				+ (historicalValues.get(historicalValues.size()-1).getTimestamp() -historicalValues.get(0).getTimestamp()) );
+		assert(historicalValues.size() > 101) : "Logged values not accessible via historical data"; // actually we would expect 200 values here, 
+						// but it is not realistic to log a value every ms. Here we only demand that 2 values within 200ms can be logged; may still fail on very slow machines
+		fr.delete();
+	}
+	
+
+	@Test
+	public void historicalScheduleWorksWithReferences() {
+		FloatResource fr1 = resMan.createResource("testFloat1", FloatResource.class);
+		FloatResource fr2 = resMan.createResource("testFloat2", FloatResource.class);
+		fr1.historicalData().create();
+		fr1.program().create();
+		fr2.program().setAsReference(fr1.historicalData());
+		fr2.historicalData().setAsReference(fr1.program());
+		System.out.println("  Classes: program: " + fr2.program().getClass().getSimpleName() + ", historicalData: " + fr2.historicalData().getClass().getSimpleName());
+//		assert (fr2.program() instanceof HistoricalSchedule) : "Reference to HistoricalSchedule is not itself a HistoricalSchedule";						// not possible
+//		assert (!(fr2.historicalData() instanceof HistoricalSchedule)) : "Reference to a non-HistoricalSchdedule unexpectedly is a HistoricalSchedule";		// not possible
+		assert (fr2.program().getClass().getSimpleName().equals("HistoricalSchedule")) : "Reference to HistoricalSchedule is not itself a HistoricalSchedule";						
+		assert (!(fr2.historicalData().getClass().getSimpleName().equals("HistoricalSchedule"))) : "Reference to a non-HistoricalSchdedule unexpectedly is a HistoricalSchedule";
+		fr1.delete();
+		fr2.delete();
+	}
+	
+	@Ignore  // FIXME logging problem? Sometimes fr.historicalData().getValue() does not get access to logged data
+	@Test
+	public void historicalScheduleInterpolationModeWorks() throws InterruptedException {
+		FloatResource fr = resMan.createResource("testFloat1", FloatResource.class);
+		fr.historicalData().create();
+		fr.historicalData().setInterpolationMode(InterpolationMode.LINEAR);
+		fillHistoricalScheduleWithLogData(fr);
+		List<SampledValue> values = fr.historicalData().getValues(0);
+		assert (values.size() > 0) : "HistoricalSchedule found empty, although log data should be available";
+		long lastTimeStamp = values.get(values.size() -1).getTimestamp();
+//		System.out.println("    Last logging time stamp is " + lastTimeStamp + ", nr values: " + values.size());
+		Thread.sleep(400);
+		fillHistoricalScheduleWithExplicitData(fr);
+		long midTime = lastTimeStamp + 200;
+		values = fr.historicalData().getValues(0);
+		SampledValue sv = fr.historicalData().getValue(midTime); 
+//		System.out.println("             Mid time stamp is " + midTime+ ", nr values: " + values.size());
+//		System.out.println("        last overall timestamp " + values.get(values.size()-1).getTimestamp());
+		assert (sv != null && sv.getQuality() == Quality.GOOD) : "Found invalid historical data point, despite Interpolation mode LINEAR: " + sv;
+		System.out.println("  HistoricalSchedule.getValue() works fine with Interpolation mode LINEAR. " + sv);
+		fr.historicalData().setInterpolationMode(InterpolationMode.NONE);
+		sv = fr.historicalData().getValue(midTime); 
+		assert (sv == null || sv.getQuality() == Quality.BAD) : "Found valid historical data point, despite Interpolation mode NONE";
+		System.out.println("  HistoricalSchedule.getValue() works fine with Interpolation mode NONE. " + sv);
+		fr.delete();		
+	}
+	
+	@Test
+	public void explicitDataTakesPrecedenceOverLogData() throws InterruptedException {
+		FloatResource fr = resMan.createResource("testFloat1", FloatResource.class);
+		fr.historicalData().create();
+		fr.setValue(17);
+		fr.activate(true);
+		fr.historicalData().setInterpolationMode(InterpolationMode.LINEAR);
+		fillHistoricalScheduleWithLogData(fr);
+		List<SampledValue> values = fr.historicalData().getValues(0);
+		assert (values.size() > 0) : "HistoricalSchedule found empty, although log data should be available";
+		long lastTimeStamp = values.get(values.size() -1).getTimestamp();
+		int sz = values.size();
+		fr.historicalData().addValue(lastTimeStamp,new FloatValue(19)); // override last log data
+		values = fr.historicalData().getValues(0);
+		assert (values.size() == sz) : "Size of historicalData schedule has changed, although only a value has been replaced";
+		float val = values.get(values.size()-1).getValue().getFloatValue();
+		assertEquals("Unexpected value.",19,val,0.5F );
+		System.out.println("  Expected value found " + val);
+		fr.delete();		
+	}
+	
+	
 }

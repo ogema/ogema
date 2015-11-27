@@ -153,6 +153,10 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 		((VirtualTreeElement) m_values).create();
 	}
 
+	public Class<? extends Value> getValueType() {
+		return m_valueType;
+	}
+
 	/**
 	 * Adds the respective child tree element if it does not exist. If the
 	 * element already exists (because OGEMA is started from the persistent

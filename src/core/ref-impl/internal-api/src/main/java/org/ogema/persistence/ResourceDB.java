@@ -71,8 +71,6 @@ public interface ResourceDB {
 	 * @param name
 	 *            Fully qualified name of the class defining the type. @see
 	 * @return A collection of {@link Class} references where each child is represented by its type definition class.
-	 * @throws TypeNotFoundException
-	 *             if a type with the specified name doesn't exist in the DB. {@link addOrUpdateResourceType}
 	 */
 	public Collection<Class<?>> getTypeChildren(String name);
 
@@ -101,14 +99,14 @@ public interface ResourceDB {
 	 *            Unique name for the top level resource which is demanded by the application.
 	 * @param type
 	 *            resolved class reference of the interface defining the resource type.
+	 * @param appID
+	 *            application for which this resource is created.
 	 * @return TreeElement object representing the top level resource added to the database.
 	 * @throws ResourceAlreadyExistsException
 	 *             if a top level resource with the same name already exists.
 	 * @throws InvalidResourceTypeException
 	 *             if the class defining the type is not a valid type definition or its sub resources are not fully
 	 *             resolved.
-	 * @throws TypeNotFoundException
-	 *             if the demanded resource type not yet registered in the database. @see addOrUpdateResourceType
 	 */
 	public TreeElement addResource(String name, Class<? extends Resource> type, String appID)
 			throws ResourceAlreadyExistsException, InvalidResourceTypeException;
@@ -116,8 +114,8 @@ public interface ResourceDB {
 	/**
 	 * Remove the top level resource from the data base permanently.
 	 * 
-	 * @param id
-	 *            Index of the resource to be deleted.
+	 * @param elem
+	 *            Resource to be deleted.
 	 */
 	public void deleteResource(TreeElement elem);
 

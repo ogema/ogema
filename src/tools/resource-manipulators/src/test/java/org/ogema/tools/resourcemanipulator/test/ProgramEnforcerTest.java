@@ -21,12 +21,15 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.application.Timer;
 import org.ogema.core.application.TimerListener;
 import org.ogema.core.channelmanager.measurements.FloatValue;
@@ -35,18 +38,21 @@ import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
+import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
+import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.resourcemanager.pattern.PatternListener;
 import org.ogema.core.resourcemanager.pattern.ResourcePatternAccess;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.exam.OsgiAppTestBase;
+import org.ogema.model.sensors.TemperatureSensor;
 import org.ogema.tools.resourcemanipulator.ResourceManipulator;
 import org.ogema.tools.resourcemanipulator.ResourceManipulatorImpl;
 import org.ogema.tools.resourcemanipulator.configurations.ProgramEnforcer;
@@ -109,13 +115,15 @@ public class ProgramEnforcerTest extends OsgiAppTestBase {
 
 	public FloatResource createFloatWithSchedule() {
 		final FloatResource result = resman.createResource("TESTFLOAT" + (counter++), FloatResource.class);
-		final DefinitionSchedule program = result.program().create();
+		final AbsoluteSchedule program = result.program();
+		program.create();
 		return result;
 	}
 
 	public IntegerResource createIntWithSchedule() {
 		final IntegerResource result = resman.createResource("TESTINT" + (counter++), IntegerResource.class);
-		final DefinitionSchedule program = result.program().create();
+		final AbsoluteSchedule program = result.program();
+		program.create();
 		return result;
 	}
 
@@ -123,10 +131,9 @@ public class ProgramEnforcerTest extends OsgiAppTestBase {
 	public void testResourceActivationDeactivation() throws InterruptedException {
 
 		final ResourceManipulator tool = new ResourceManipulatorImpl(getApplicationManager());
-
 		final FloatResource res = createFloatWithSchedule();
 
-		final DefinitionSchedule program = res.program();
+		final AbsoluteSchedule program = res.program();
 		assertTrue(res.exists());
 		program.setInterpolationMode(InterpolationMode.STEPS);
 		res.activate(true);
@@ -175,7 +182,7 @@ public class ProgramEnforcerTest extends OsgiAppTestBase {
 		tool.start();
 		final IntegerResource res = createIntWithSchedule();
 
-		final DefinitionSchedule program = res.program();
+		final AbsoluteSchedule program = res.program();
 		assertTrue(res.exists());
 		program.setInterpolationMode(InterpolationMode.STEPS);
 		res.activate(true);
@@ -216,8 +223,9 @@ public class ProgramEnforcerTest extends OsgiAppTestBase {
 
 	int resourceCounter = 0;
 
+	@Ignore
 	@Test
-	public void testEnforcingMultipleProgramsRADs() {
+	public void testEnforcingMultipleProgramsRADs() throws InterruptedException {
 		final ResourcePatternAccess resourcePatternAccess = getApplicationManager().getResourcePatternAccess();
 		final ResourceManipulator resourceManipulator = new ResourceManipulatorImpl(getApplicationManager());
 		resourceManipulator.start();
@@ -292,10 +300,7 @@ public class ProgramEnforcerTest extends OsgiAppTestBase {
 		room3.model.temperatureSensor().setAsReference(tempSens3.model);
 		room3.model.activate(true);
 		
-		try {
-			assertTrue("pattern not available", latch.await(3, TimeUnit.SECONDS));
-		} catch (InterruptedException e) {
-		}
+		assertTrue("pattern not available", latch.await(3, TimeUnit.SECONDS));
 		
 		sleep(2000);
 
@@ -308,6 +313,135 @@ public class ProgramEnforcerTest extends OsgiAppTestBase {
 			assertEquals(19.f, p.lowerLimit.getKelvin(), 0.f);
 			assertEquals(23.f, p.upperLimit.getKelvin(), 0.f);
 		}
+	}
+
+	class ChangedListener implements ResourceValueListener<TemperatureResource> {
+
+		public volatile CountDownLatch latch = new CountDownLatch(1);
+		private final long startTime;
+		private long lastWriteTime = -1;
+		private final ApplicationManager am;
+		volatile float value = -1;
+
+		public ChangedListener(ApplicationManager am) {
+			this.am = am;
+			this.startTime = am.getFrameworkTime();
+		}
+
+		public void reset() {
+			latch = new CountDownLatch(1);
+		}
+
+		public long getLastWriteTime() {
+			return lastWriteTime;
+		}
+
+		@Override
+		public void resourceChanged(TemperatureResource resource) {
+			value = resource.getValue();
+			lastWriteTime = am.getFrameworkTime() - startTime;
+			latch.countDown();
+		}
+	};
+
+	/**
+	 * Fills a program schedule with values 10, 20, 8, -2, and applies a {@link ProgramEnforcer}, with
+	 * range filter (see {@link ProgramEnforcer#setRangeFilter(float, float, int)}) with upper limit 10;
+	 * so that the second value should not be applied to the target resource. <br>
+	 * The test is vulnerable to timing issues.
+	 * @throws InterruptedException
+	 */
+	@Ignore
+	@Test
+	public void testRangeFilter() throws InterruptedException {
+		long TEST_INTERVAL = 1000;
+		TemperatureSensor sensor = resman.createResource("testTempSens", TemperatureSensor.class);
+		sensor.reading().program().create();
+		sensor.reading().program().setInterpolationMode(InterpolationMode.STEPS);
+		int nrVal = 5;
+		List<SampledValue> values = getTestValues(TEST_INTERVAL, 5);
+		sensor.reading().program().addValues(values);
+		sensor.activate(true);
+		ChangedListener listener = new ChangedListener(getApplicationManager());
+		sensor.reading().addValueListener(listener);
+
+		final ResourceManipulator tool = new ResourceManipulatorImpl(getApplicationManager());
+		tool.start();
+		ProgramEnforcer config = tool.createConfiguration(ProgramEnforcer.class);
+		// note: timestep should be irrelevant here
+		config.enforceProgram(sensor.reading(), -1l);
+		config.commit();
+		config.setRangeFilter(Float.NaN, 10f, 1); // only upper limit is set
+		Thread.sleep(100); // make sure the first value is out of scope
+
+		for (int i = 1; i < nrVal; i++) {
+			listener.latch.await(1500, TimeUnit.MILLISECONDS); // we should wait between 1 and 2 seconds here, because in one case no callback is expected
+			if (i == 2) {
+				System.out.println("  Value found: i = " + i + ", value = " + listener.value);
+				assertEquals("Resource value does not match expected schedule value. Probably filter does not work",
+						10, listener.value, 0.1F);
+			}
+			else {
+				System.out.println("  Value found: i = " + i + ", value = " + listener.value);
+				assertEquals("Resource value does not match expected schedule value. i = " + i + ", time difference: "
+						+ listener.getLastWriteTime(), getValue(i), listener.value, 0.1);
+			}
+			assert (sensor.reading().isActive()) : "Target resource unexpectedly found inactive."; // sometimes fails when i=4, and value is still on the one for i=3; very rarely
+			listener.reset();
+		}
+		sensor.reading().removeValueListener(listener);
+		config.remove();
+		tool.stop();
+		sensor.delete();
+		Thread.sleep(2000); // otherwise test environment will complain that it could not stop
+		// sleeping thread from tool.stop() or callbacks triggered by config.remove()
+	}
+
+	private float getValue(int i) {
+		return (i < 3) ? 10 * i : (38 - 10 * i);
+	}
+
+	private List<SampledValue> getTestValues(final long TEST_INTERVAL, final int nrVal) {
+		long currentTime = getApplicationManager().getFrameworkTime();
+		List<SampledValue> values = new LinkedList<SampledValue>();
+		for (int i = 0; i < nrVal; i++) {
+			SampledValue sv = new SampledValue(new FloatValue(getValue(i)), currentTime + TEST_INTERVAL * i,
+					Quality.GOOD);
+			values.add(sv);
+		}
+		values.add(new SampledValue(new FloatValue(0), currentTime + TEST_INTERVAL * nrVal, Quality.BAD));
+		return values;
+	}
+
+	@Ignore
+	@Test
+	public void testDeactivationConfiguration() throws InterruptedException {
+		TemperatureSensor sensor = resman.createResource("testTempSens", TemperatureSensor.class);
+		sensor.reading().program().create();
+		long TEST_INTERVAL = 1000;
+		int nrVal = 2;
+		sensor.reading().program().setInterpolationMode(InterpolationMode.STEPS);
+		sensor.reading().program().addValues(getTestValues(TEST_INTERVAL, nrVal));
+		sensor.activate(true);
+
+		final ResourceManipulator tool = new ResourceManipulatorImpl(getApplicationManager());
+		tool.start();
+		ProgramEnforcer config = tool.createConfiguration(ProgramEnforcer.class);
+		// note: timestep should be irrelevant here
+		config.enforceProgram(sensor.reading(), -1l);
+		config.deactivateTargetIfProgramMissing(false);
+		config.commit();
+
+		Thread.sleep(TEST_INTERVAL * (nrVal + 1));
+		assert (sensor.reading().isActive()) : "Target resource unexpectedly found inactive";
+		config.deactivateTargetIfProgramMissing(true);
+		sensor.reading().program().addValues(getTestValues(TEST_INTERVAL, nrVal));
+		config.commit();
+		Thread.sleep(TEST_INTERVAL * (nrVal + 2));
+		assert (!sensor.reading().isActive()) : "Target resource unexpectedly found active";
+		tool.deleteAllConfigurations();
+		Thread.sleep(1000); // allow callbacks from delete methods to complete
+		sensor.delete();
 	}
 
 	private void sleep(int millis) {

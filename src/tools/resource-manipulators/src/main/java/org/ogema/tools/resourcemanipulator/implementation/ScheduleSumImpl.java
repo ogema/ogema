@@ -22,7 +22,6 @@ import java.util.List;
 
 import org.ogema.tools.resourcemanipulator.ResourceManipulatorImpl;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.tools.resourcemanipulator.configurations.ScheduleSum;
@@ -41,6 +40,7 @@ public class ScheduleSumImpl implements ScheduleSum {
 	private Schedule m_output;
 	private long m_delay;
 	private boolean m_deactivateEmtpySum;
+	private boolean m_activationControl;
 
 	// Configuration this is connected to (null if not connected)
 	private ScheduleSumModel m_config;
@@ -54,6 +54,7 @@ public class ScheduleSumImpl implements ScheduleSum {
         m_output = configResource.resultBase().program();
         m_delay = configResource.delay().getValue();
         m_deactivateEmtpySum = configResource.deactivateEmptySum().getValue();
+        m_activationControl = configResource.activationControl().getValue();
 		m_config = configResource;
 	}
 
@@ -63,6 +64,7 @@ public class ScheduleSumImpl implements ScheduleSum {
 		m_output = null;
 		m_delay = 0;
 		m_deactivateEmtpySum = false;
+		m_activationControl = false;
 		m_config = null;
 	}
 
@@ -107,7 +109,8 @@ public class ScheduleSumImpl implements ScheduleSum {
 		m_config.delay().setValue(m_delay);
 		m_config.deactivateEmptySum().create();
 		m_config.deactivateEmptySum().setValue(m_deactivateEmtpySum);
-
+		m_config.activationControl().create();
+		m_config.activationControl().setValue(m_activationControl);
 		m_config.activate(true);
 		return true;
 	}
@@ -147,13 +150,37 @@ public class ScheduleSumImpl implements ScheduleSum {
 	}
 
 	@Override
+	@Deprecated
 	public void setDisableEmptySum(boolean emptySumDisables) {
 		m_deactivateEmtpySum = emptySumDisables;
 	}
 
 	@Override
+	@Deprecated
 	public boolean getDisableEmptySum() {
 		return m_deactivateEmtpySum;
+	}
+
+	@Override
+	public void setActivationControl(boolean controlSetting) {
+		m_activationControl = controlSetting;
+	}
+
+	@Override
+	public boolean getActivationControl() {
+		return m_activationControl;
+	}
+
+	@Override
+	public void deactivate() {
+		if (m_config != null)
+			m_config.deactivate(true);
+	}
+
+	@Override
+	public void activate() {
+		if (m_config != null)
+			m_config.activate(true);
 	}
 
 }

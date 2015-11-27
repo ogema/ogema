@@ -25,9 +25,9 @@ import org.apache.wicket.request.resource.ResourceReference;
 import org.ogema.app.resource.management.tablegui.ResourcesTablePanel;
 import org.ogema.app.resource.management.tablegui.SchedulesTablePanel;
 import org.ogema.app.webresman.ResourceTypeContentPanel;
-import org.ogema.service.webresourcemanager.ApplicationPage;
-import org.ogema.service.webresourcemanager.ApplicationPanel;
-import org.ogema.service.webresourcemanager.ComponentProvider;
+import org.ogema.apps.wicket.ApplicationPage;
+import org.ogema.apps.wicket.ApplicationPanel;
+import org.ogema.apps.wicket.ComponentProvider;
 import org.osgi.framework.Bundle;
 
 @Service(ComponentProvider.class)
@@ -52,11 +52,12 @@ public class ResManagementProvider implements ComponentProvider {
 		return null;
 	}
 
-	@Override
-	public Bundle getTargetApp() {
-		Bundle bundle = ResManagementGuiActivator.getBundle();
-		return bundle;
-	}
+	
+//	@Override
+//	public Bundle getTargetApp() {
+//		Bundle bundle = ResManagementGuiActivator.getBundle();
+//		return bundle;
+//	}
 
 	@Override
 	public ResourceReference getImage() {

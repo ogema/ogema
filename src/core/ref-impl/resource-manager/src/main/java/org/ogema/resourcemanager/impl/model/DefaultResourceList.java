@@ -146,7 +146,8 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 
 	@Override
     public List<T> getAllElements() {
-        synchronized (getListEl()) {
+        getResourceDB().lockRead();
+        try {
             List<String> elementNames = getElementNames();
             List<T> rval = new ArrayList<>(elementNames.size());
             boolean update = false;
@@ -163,6 +164,8 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
                 updateElementsNode(elementNames);
             }
             return rval;
+        } finally {
+            getResourceDB().unlockRead();
         }
     }
 
@@ -176,7 +179,8 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	public <T extends Resource> T addDecorator(String name, Class<T> resourceType)
 			throws ResourceAlreadyExistsException, NoSuchResourceException {
 		if (getElementType() != null && getElementType().isAssignableFrom(resourceType)) {
-			synchronized (getListEl()) {
+			getResourceDB().lockStructureWrite();
+			try {
 				T dec = super.addDecorator(name, resourceType);
 				List<String> elementNames = getElementNames();
 				if (!elementNames.contains(name)) {
@@ -184,6 +188,8 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 					updateElementsNode(elementNames);
 				}
 				return dec;
+			} finally {
+				getResourceDB().unlockStructureWrite();
 			}
 		}
 		else {
@@ -195,7 +201,8 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	public <T extends Resource> T addDecorator(String name, T decorator) throws ResourceAlreadyExistsException,
 			NoSuchResourceException, ResourceGraphException {
 		if (getElementType() != null && getElementType().isAssignableFrom(decorator.getResourceType())) {
-			synchronized (getListEl()) {
+			getResourceDB().lockStructureWrite();
+			try {
 				T dec = super.addDecorator(name, decorator);
 				List<String> elementNames = getElementNames();
 				if (!elementNames.contains(name)) {
@@ -203,6 +210,8 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 					updateElementsNode(elementNames);
 				}
 				return dec;
+			} finally {
+				getResourceDB().unlockStructureWrite();
 			}
 		}
 		return super.addDecorator(name, decorator);
@@ -212,9 +221,12 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	public void add(T arg0) {
 		Objects.requireNonNull(arg0, "reference must not be null");
 		checkType(arg0);
-		synchronized (getListEl()) {
+		getResourceDB().lockStructureWrite();
+		try {
 			String name = findNewName();
 			addDecorator(name, arg0);
+		} finally {
+			getResourceDB().unlockStructureWrite();
 		}
 	}
 
@@ -224,9 +236,12 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 		if (elementType == null) {
 			throw new IllegalStateException("array element type has not been set.");
 		}
-		synchronized (getListEl()) {
+		getResourceDB().lockStructureWrite();
+		try {
 			String name = findNewName();
 			return addDecorator(name, elementType);
+		} finally {
+			getResourceDB().unlockStructureWrite();
 		}
 	}
 
@@ -236,15 +251,19 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 		if (elementType == null) {
 			throw new IllegalStateException("array element type has not been set.");
 		}
-		synchronized (getListEl()) {
+		getResourceDB().lockStructureWrite();
+		try {
 			String name = findNewName();
 			return addDecorator(name, type);
+		} finally {
+			getResourceDB().unlockStructureWrite();
 		}
 	}
 
 	@Override
 	public void remove(T element) {
-		synchronized (getListEl()) {
+		getResourceDB().lockStructureWrite();
+		try {
 			List<String> elementNames = getElementNames();
 			for (T e : getAllElements()) {
 				if (e.equalsLocation(element)) {
@@ -253,6 +272,8 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 				}
 			}
 			updateElementsNode(elementNames);
+		} finally {
+			getResourceDB().unlockStructureWrite();
 		}
 	}
 
@@ -265,18 +286,20 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	@SuppressWarnings("unchecked")
 	public void setElementType(Class<? extends Resource> resType) {
 		Objects.requireNonNull(resType, "resource type must not be null");
-		if (elementType != null) {
-			throw new IllegalStateException("resource type already set");
+		if (elementType == null) {
+			elementType = (Class<T>) resType;
+			getEl().setResourceListType(resType);
 		}
-		elementType = (Class<T>) resType;
-		getEl().setResourceListType(resType);
+		else if (!elementType.equals(resType)) {
+			throw new IllegalStateException("resource type already set and not equal to new type");
+		}
 	}
 
 	@Override
 	public boolean contains(Resource resource) {
 		Objects.requireNonNull(resource, "resource must not be null");
 		for (Resource element : getAllElements()) {
-			if (element.equalsLocation(element)) {
+			if (element.equalsLocation(resource)) {
 				return true;
 			}
 		}
@@ -285,12 +308,15 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 
 	@Override
 	public void deleteElement(String name) {
-		synchronized (getListEl()) {
+		getResourceDB().lockStructureWrite();
+		try {
 			List<String> elementNames = getElementNames();
 			super.deleteElement(name);
 			if (elementNames.remove(name)) {
 				updateElementsNode(elementNames);
 			}
+		} finally {
+			getResourceDB().unlockStructureWrite();
 		}
 	}
 

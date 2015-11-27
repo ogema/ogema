@@ -4,11 +4,11 @@
 	<parent>
 		<artifactId>ogema-apps</artifactId>
 		<groupId>org.ogema.apps</groupId>
-		<version>2.0.3</version>
+		<version>2.0.4</version>
 	</parent>
 
 	<artifactId>graph-generator</artifactId>                    
-        <name>OGEMA Applications :: Graph Generator</name>
+        <name>Graph Generator</name>
         <description>
             Application that writes out the current state of the resource graph.
             It is possible to download a file with the specific graph notation (gviz)

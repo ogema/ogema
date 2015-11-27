@@ -17,12 +17,13 @@ package org.ogema.resourcemanager.impl.model.schedule;
 
 import java.util.Collection;
 import java.util.List;
+
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
-import org.ogema.core.model.schedule.ForecastSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
+import org.ogema.core.model.schedule.RelativeSchedule;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.persistence.impl.faketree.ScheduleTreeElement;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
@@ -35,7 +36,9 @@ import org.ogema.resourcemanager.virtual.VirtualTreeElement;
  *
  * @author Timo Fischer, Fraunhofer IWES
  */
-public class DefaultSchedule extends ResourceBase implements DefinitionSchedule, ForecastSchedule {
+@SuppressWarnings("deprecation")
+public class DefaultSchedule extends ResourceBase implements org.ogema.core.model.schedule.DefinitionSchedule,
+		org.ogema.core.model.schedule.ForecastSchedule, AbsoluteSchedule, RelativeSchedule {
 
 	private final ApplicationManager m_appMan;
 	private final ScheduleTreeElement m_scheduleElement;
@@ -54,9 +57,14 @@ public class DefaultSchedule extends ResourceBase implements DefinitionSchedule,
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T extends Resource> T create() {
-		DefaultSchedule s = super.create();
-		m_scheduleElement.create();
-		return (T) s;
+		getResourceDB().lockStructureWrite();
+		try {
+			DefaultSchedule s = super.create();
+			m_scheduleElement.create();
+			return (T) s;
+		} finally {
+			getResourceDB().unlockStructureWrite();
+		}
 	}
 
 	@Override

@@ -16,18 +16,19 @@
 package org.ogema.core.security;
 
 import java.util.Map;
+import java.util.Set;
 
 import javax.servlet.Servlet;
 import javax.servlet.http.HttpSession;
 
 import org.ogema.core.application.AppID;
+import org.ogema.core.application.ApplicationManager;
 
 /**
- * Methods for applications to register resources that are accessible vie web interface. This
- * implies setting the web-resource that is considered the application's start page: All registration
- * calls to {@link #registerWebResource(java.lang.String, java.lang.String) } are recorded in order.
- * The start page of the application is considered the first/oldest so-registered web-resource that contains
- * an index.html file and which has not been unregistered, since.
+ * Provides methods for an application to register servlets and web pages.
+ * An Application's WebAccessManager is obtained via {@link ApplicationManager#getWebAccessManager() }.
+ * See {@link #registerStartUrl(java.lang.String) registerStartUrl} on how to set an application's
+ * start page.
  */
 public interface WebAccessManager {
 
@@ -83,13 +84,63 @@ public interface WebAccessManager {
 	public boolean authenticate(HttpSession ses, String usr, String pwd);
 
 	/**
-	 * Gets a map of all web resources registered by an application which is specified with AppID object.
+	 * Gets a map of all static web resources registered by an application which is specified with AppID object.
 	 * 
 	 * @param appid
 	 *            The id object of the application.
 	 * @return A map of (alias, name) pairs of the registered web resources.
+	 * @deprecated not application-specific, use {@link #getRegisteredResources() } instead.
 	 */
+	@Deprecated
 	public Map<String, String> getRegisteredResources(AppID appid);
+
+	/**
+	 * Gets a set of all servlet aliases registered by an application which is specified with AppID object.
+	 * 
+	 * @param appid
+	 *            The id object of the application.
+	 * @return A set of registered servlet aliases.
+	 * @deprecated not application-specific, use {@link #getRegisteredServlets() } instead.
+	 */
+	@Deprecated
+	public Set<String> getRegisteredServlets(AppID appid);
+
+	/**
+	 * Returns a map of all static web resources that have been registered with this WebAccessManager.
+	 * 
+	 * @return A map of (alias, name) pairs of the registered web resources.
+	 */
+	public Map<String, String> getRegisteredResources();
+
+	/**
+	 * Returns the set servlet aliases that have been registered with this WebAccessManager.
+	 * 
+	 * @return A set of registered servlet aliases.
+	 */
+	public Set<String> getRegisteredServlets();
+
+	/**
+	 * Set the URL of the start page of an application. Either a static webresource (HTML file) or a servlet 
+	 * (generating dynamic HTML) should be registered at this URL. <br>
+	 * Case 1: This method is never called: a default start page is chosen, i.e. if the app has registered
+	 * any static web resources, a file index.html is assumed to exist in the base folder. If there are no static web resources,
+	 * the app will not be listed in the framework GUI <br>
+	 * Case 2: The method is called with argument null: The app will not be listed in the framework GUI<br>
+	 * Case 3: A proper url is passed to the method: this URL will be registered as the apps start page 
+	 *
+	 * @param url
+	 * 			  Start page URL
+	 */
+	public void registerStartUrl(String url);
+
+	/**
+	 * Get URL of the start page of an application; may be null, if the application has not registered a start page 
+	 * via {@link #registerStartUrl(org.ogema.core.application.AppID, java.lang.String) } yet and has no static web resources.
+	 * 
+	 * @param appid
+	 *            The id object of the application.
+	 */
+	public String getStartUrl();
 
 	/**
 	 * Unregisters a webresource that was registered with registerWebResourcePath before. The alias has to be equal to
@@ -97,7 +148,7 @@ public interface WebAccessManager {
 	 * 
 	 * @param alias 
 	 *              the alias string
-	 * @return true is unregister was successfull, false otherwise. 
+	 * @return true if unregister was successful, false otherwise. 
 	 */
 	public boolean unregisterWebResourcePath(String alias);
 
@@ -109,7 +160,7 @@ public interface WebAccessManager {
 	 *      groupid: org.ogema.apps
 	 *      name: my-app
 	 *      alias: servlet
-	 *      newly generated alias -> /org/ogema/apps/my-app/servlet
+	 *      newly generated alias = /org/ogema/apps/my-app/servlet
 	 * 
 	 * @param alias
 	 *              the alias string
@@ -130,8 +181,8 @@ public interface WebAccessManager {
 	 *      groupid: org.ogema.apps
 	 *      name: my-app
 	 *      alias: /
-	 *      newly generated alias -> /org/ogema/apps/my-app/
-	 *      index.html ->            /org/ogema/apps/my-app/index.html
+	 *      newly generated alias = /org/ogema/apps/my-app/
+	 *      index.html =            /org/ogema/apps/my-app/index.html
 	 * 
 	 * @param alias
 	 *              the alias string

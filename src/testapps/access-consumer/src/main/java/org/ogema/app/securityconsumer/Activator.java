@@ -28,20 +28,23 @@ package org.ogema.app.securityconsumer;
 
 import java.io.IOException;
 
-import org.osgi.framework.BundleActivator;
-import org.osgi.framework.BundleContext;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
+import org.osgi.framework.BundleActivator;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceRegistration;
 
 public class Activator implements BundleActivator, Application {
 	public static boolean bundleIsRunning = true;
+	private ServiceRegistration<Application> me;
 
 	public void start(BundleContext bc) throws IOException {
-		bc.registerService(Application.class, this, null);
+		me = bc.registerService(Application.class, this, null);
 	}
 
 	public void stop(BundleContext bc) throws IOException {
 		bundleIsRunning = false;
+		me.unregister();
 	}
 
 	@Override
@@ -51,13 +54,11 @@ public class Activator implements BundleActivator, Application {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		new HMPowerboxTest(appManager.getResourceAccess());
+		//		new HMPowerboxTest(appManager.getResourceAccess());
 	}
 
 	@Override
 	public void stop(AppStopReason reason) {
-		// TODO Auto-generated method stub
-
 	}
 
 }

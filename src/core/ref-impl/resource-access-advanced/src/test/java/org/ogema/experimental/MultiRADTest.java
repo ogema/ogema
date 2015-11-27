@@ -47,6 +47,10 @@ public class MultiRADTest extends OsgiTestBase {
 
 	class RADListener implements PatternListener<HeatPumpRad> {
 
+		public CountDownLatch foundLatch1 = new CountDownLatch(1);
+		public CountDownLatch lostLatch1 = new CountDownLatch(1);
+		public CountDownLatch foundLatch2 = new CountDownLatch(1);
+		public CountDownLatch lostLatch2 = new CountDownLatch(1);
 		public boolean available1 = false;
 		public boolean available2 = false;
 		public boolean nonavailable1 = false;
@@ -60,9 +64,11 @@ public class MultiRADTest extends OsgiTestBase {
 			switch (pump.model.getLocation()) {
 			case "HPTestName1":
 				available1 = true;
+				foundLatch1.countDown();
 				break;
 			case "HPTestName2":
 				available2 = true;
+				foundLatch2.countDown();
 				break;
 			}
 		}
@@ -72,9 +78,11 @@ public class MultiRADTest extends OsgiTestBase {
 			switch (pump.model.getLocation()) {
 			case "HPTestName1":
 				nonavailable1 = true;
+				lostLatch1.countDown();
 				break;
 			case "HPTestName2":
 				nonavailable2 = true;
+				lostLatch2.countDown();
 				break;
 			}
 		}
@@ -89,19 +97,21 @@ public class MultiRADTest extends OsgiTestBase {
 		final HeatPumpRad rad1 = advAcc.createResource("HPTestName1", HeatPumpRad.class);
 		final HeatPumpRad rad2 = advAcc.createResource("HPTestName2", HeatPumpRad.class);
 		rad1.model.activate(true);
+		listener.foundLatch1.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.foundLatch1.getCount());
 		rad2.model.activate(true);
-		Thread.sleep(3000);
-		assertTrue(listener.available1);
-		assertTrue(listener.available2);
+		listener.foundLatch2.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.foundLatch2.getCount());
 		rad1.model.delete();
+		listener.lostLatch1.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.lostLatch1.getCount());
 		rad2.conn.deactivate(false);
-		listener.available2 = false;
-		Thread.sleep(3000);
-		assertTrue(listener.nonavailable1);
-		assertTrue(listener.nonavailable2);
+		listener.lostLatch2.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.lostLatch2.getCount());
+		listener.foundLatch2 = new CountDownLatch(1);
 		rad2.conn.activate(false);
-		Thread.sleep(3000);
-		assertTrue(listener.available2);
+		listener.foundLatch2.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.foundLatch2.getCount());
 	}
 
 }

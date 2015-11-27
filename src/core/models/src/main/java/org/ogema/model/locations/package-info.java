@@ -14,9 +14,9 @@
  * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
 /**
- * Different places and locations, which are special cases of {@link PhysicalElement}s.
+ * Different places and locations, which are special cases of {@link org.ogema.model.prototypes.PhysicalElement}s.
  * "Larger" locations contain a list of sub-locations.
- * The sub-locations can refer back to the super-locations via the {@link PhysicalElement#location()} field
+ * The sub-locations can refer back to the super-locations via the {@link org.ogema.model.prototypes.PhysicalElement#location()} field
  * that is common to all physical elements.
  */
 package org.ogema.model.locations;

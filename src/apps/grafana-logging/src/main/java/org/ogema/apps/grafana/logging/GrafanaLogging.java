@@ -16,9 +16,6 @@
 package org.ogema.apps.grafana.logging;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,28 +27,26 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.SimpleResource;
-import org.ogema.core.model.simple.BooleanResource;
-import org.ogema.core.model.units.TemperatureResource;
+import org.ogema.core.model.simple.OpaqueResource;
+import org.ogema.core.model.simple.SingleValueResource;
+import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.model.actors.Actor;
-import org.ogema.model.actors.OnOffSwitch;
-import org.ogema.model.sensors.HumiditySensor;
-import org.ogema.model.sensors.PowerSensor;
 import org.ogema.model.sensors.Sensor;
-import org.ogema.model.sensors.TemperatureSensor;
+import org.ogema.model.smartgriddata.Price;
 import org.ogema.tools.grafana.base.InfluxFake;
 
 @Component(specVersion = "1.2", immediate = true)
 @Service(Application.class)
-public class GrafanaLogging implements Application, ResourceDemandListener<SimpleResource> {
+public class GrafanaLogging implements Application, ResourceDemandListener<SingleValueResource> {
 
 	protected OgemaLogger logger;
 	protected ApplicationManager am;
 	protected ResourceManagement rm;
 	protected ResourceAccess ra;
-	protected List<Class<? extends Resource>> resourceTypes;
+	protected List<Class<? extends SingleValueResource>> resourceTypes;
 	protected Map<String, Map> panels;
 	protected long updateInterval = 5000; // 5s
 	protected InfluxFake infl;
@@ -77,7 +72,7 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Simpl
         this.infl.setStrictMode(true);
         servletPath = "/apps/ogema/" + appNameLowerCase + "/fake_influxdb/series";
         am.getWebAccessManager().registerWebResource(servletPath,infl);
-        ra.addResourceDemand(SimpleResource.class, this);
+        ra.addResourceDemand(SingleValueResource.class, this);
 
     }
 
@@ -85,32 +80,31 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Simpl
 	public void stop(AppStopReason reason) {
 		am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
 		am.getWebAccessManager().unregisterWebResource(servletPath);
-		ra.removeResourceDemand(SimpleResource.class, this);
+		ra.removeResourceDemand(SingleValueResource.class, this);
 	}
 
-	public List<Class<? extends Resource>> getResourceTypes() {
+	public List<Class<? extends SingleValueResource>> getResourceTypes() {
 		return resourceTypes;
 	}
 
 	@Override
-	public void resourceAvailable(SimpleResource resource) {
-		Resource res = resource.getParent();
-		if (res == null || !(res instanceof Sensor || res instanceof Actor))
+	public void resourceAvailable(SingleValueResource resource) {
+		Class<? extends SingleValueResource> type = (Class<? extends SingleValueResource>) resource.getResourceType();
+		if (StringResource.class.isAssignableFrom(type))
 			return;
-		//		if (resource instanceof BooleanResource) return;
-		Class<? extends Resource> type = res.getResourceType();
 		if (!resourceTypes.contains(type)) {
 			resourceTypes.add(type);
-			Map<String, Class<? extends Resource>> rowPanels = new LinkedHashMap<String, Class<? extends Resource>>();
+			Map<String, Class<? extends SingleValueResource>> rowPanels = new LinkedHashMap<String, Class<? extends SingleValueResource>>();
 			rowPanels.put(type.getSimpleName(), type);
 			panels.put(type.getSimpleName(), rowPanels);
 			infl.setPanels(panels);
+			logger.debug("New type added to logging panels: " + type.getSimpleName());
 		}
 		//System.out.println("Panels: " + panels.toString());
 	}
 
 	@Override
-	public void resourceUnavailable(SimpleResource resource) {
+	public void resourceUnavailable(SingleValueResource resource) {
 		// TODO
 	}
 

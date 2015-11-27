@@ -16,7 +16,7 @@
 package org.ogema.core.channelmanager.driverspi;
 
 /**
- * Monitor avalibile Devices
+ * Monitor available Devices in synchronous way
  */
 public interface DeviceScanListener {
 	/**

@@ -1,31 +1,38 @@
 /**
  * This file is part of OGEMA.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * OGEMA is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License version 3 as published by the Free
+ * Software Foundation.
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ * OGEMA is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License along with
+ * OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ogema.rest.tests;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.List;
 
 import javax.inject.Inject;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.transform.stream.StreamSource;
+import org.apache.http.HttpResponse;
 
 import org.apache.http.StatusLine;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.client.fluent.Response;
 import org.apache.http.entity.ContentType;
@@ -42,17 +49,21 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.measurements.FloatValue;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.core.model.Resource;
+import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.schedule.Schedule;
-import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.StringResource;
+import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
+import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.exam.OsgiAppTestBase;
 import org.ogema.model.locations.Room;
 import org.ogema.model.locations.WorkPlace;
 import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.prototypes.PhysicalElement;
+import org.ogema.model.sensors.ElectricPowerSensor;
 import org.ops4j.pax.exam.Configuration;
 import org.ops4j.pax.exam.CoreOptions;
 import org.ops4j.pax.exam.Option;
@@ -66,12 +77,23 @@ import org.osgi.service.http.HttpService;
  */
 @ExamReactorStrategy(PerClass.class)
 public class RestTest extends OsgiAppTestBase {
+    
+    /* returns body as string, regardless of server return code */
+    final static ResponseHandler<String> TOSTRINGHANDLER = new ResponseHandler<String>() {
 
-	/*
-	@Inject
-	@Filter("(osgi.web.symbolicname=org.ogema.ref-impl.rest)")
-	ServletContext servletContext;
-	 */
+            @Override
+            public String handleResponse(HttpResponse hr) throws ClientProtocolException, IOException {
+                InputStream is = hr.getEntity().getContent();
+                StringBuilder sb = new StringBuilder();
+                try (InputStreamReader r = new InputStreamReader(is); BufferedReader br = new BufferedReader(r)){
+                    String line;
+                    while ((line = br.readLine())!=null) {
+                        sb.append(line).append("\n");
+                    }
+                    return sb.toString();
+                }
+            }
+        };
 
 	OnOffSwitch sw;
 	final String baseUrl = "http://localhost:" + HTTP_PORT + "/rest/resources";
@@ -103,7 +125,7 @@ public class RestTest extends OsgiAppTestBase {
 		sw.heatCapacity().create();
 		sw.heatCapacity().setValue(47.11f);
 
-		schedule = sw.heatCapacity().addDecorator("defSchedule", DefinitionSchedule.class);
+		schedule = sw.heatCapacity().addDecorator("defSchedule", Schedule.class);
 		schedule.addValue(1L, new FloatValue(1.5f), 100000);
 		schedule.addValue(2L, new FloatValue(2.5f));
 		schedule.addValue(3L, new FloatValue(3.5f));
@@ -219,29 +241,88 @@ public class RestTest extends OsgiAppTestBase {
 	}
 
 	@Test
-	public void restPutWorksForResourceLists() throws Exception {
+	public void restPostScheduleWorks() throws Exception {
 		waitForServer();
-		Room room = getApplicationManager().getResourceManagement().createResource(
-				"room1_" + System.currentTimeMillis(), Room.class);
-		room.addOptionalElement("workPlaces");
+		TemperatureResource t = getApplicationManager().getResourceAccess().getResource("restSchedulePostTest");
+		assertNull(t);
+
+		Request post = Request.Post(baseUrl).bodyStream(getClass().getResourceAsStream("/scheduletest.xml"),
+				ContentType.APPLICATION_XML);
+		Response resp = post.execute();
+		System.out.println(resp.returnResponse().getStatusLine());
+
+		t = getApplicationManager().getResourceAccess().getResource("restSchedulePostTest");
+		assertNotNull(t);
+		assertEquals(InterpolationMode.LINEAR, t.forecast().getInterpolationMode());
+		List<SampledValue> values = t.forecast().getValues(0);
+		assertEquals(2, values.size());
+	}
+    
+    @Test
+    public void restPutWorksForTopLevelResourceLists() throws Exception {
+        waitForServer();
+        
+        ResourceList<PhysicalElement> l = getApplicationManager().getResourceManagement().createResource(newResourceName(), ResourceList.class);
+        l.setElementType(PhysicalElement.class);
+        
+        PhysicalElement pe = l.add();
+        pe.name().create();
+        pe.name().setValue("testElement");
+        
+        String name = l.getName();
+        String url = baseUrl + "/" + name + "?depth=100";
+        String xml = Request.Get(url).addHeader("Content-Type", "application/xml").execute().returnContent().asString();
+        
+        System.out.println(xml);
+        l.delete();
+        assertNull("resource must be deleted", getApplicationManager().getResourceAccess().getResource(name));
+        
+        Response r = Request.Post(baseUrl).bodyString(xml, ContentType.APPLICATION_XML).execute();
+        
+        System.out.println(r.handleResponse(TOSTRINGHANDLER));
+        ResourceList<?> recreated = getApplicationManager().getResourceAccess().getResource(name);
+        assertNotNull("resource has been created", recreated);
+        assertEquals("correct element type has been set", PhysicalElement.class, recreated.getElementType());
+        assertEquals("resource list elements correct", 1, recreated.getAllElements().size());
+    }
+
+	@Test
+	public void restPutWorksForResourceLists_XML() throws Exception {
+		restPutWorksForResourceLists(ContentType.APPLICATION_XML);
+	}
+
+	@Test
+	@Ignore
+	public void restPutWorksForResourceLists_JSON() throws Exception {
+		restPutWorksForResourceLists(ContentType.APPLICATION_JSON);
+	}
+
+	private void restPutWorksForResourceLists(ContentType contentType) throws Exception {
+		waitForServer();
+		Room room = getApplicationManager().getResourceManagement().createResource(newResourceName(), Room.class);
+		room.workPlaces().create();
+		ResourceList<WorkPlace> wps = room.workPlaces();
 		WorkPlace wp1 = room.workPlaces().add();
-		/* TODO
-		 String url = baseUrl + "/" + room.getName() + "?depth=100";
-		 waitForServer();
-		 org.ogema.serialization.jaxb.Resource roomFromRest = getJson(url);
+		String wpName = wp1.getName();
+		assertTrue(wp1.exists());
+		assertEquals(1, room.workPlaces().size());
 
-		 org.ogema.serialization.jaxb.Resource wpNew = new org.ogema.serialization.jaxb.Resource();
-		 wpNew.setName("wpPutTest");
-		 wpNew.setType(WorkPlace.class);
+		String url = baseUrl + "/" + room.getName() + "?depth=100";
+		waitForServer();
 
-		 roomFromRest.get("workPlaces").getSubresources().add(wpNew);
-		 putXml(url, roomFromRest);
+		String roomAsString = Request.Get(url).addHeader("Content-Type", contentType.toString()).execute()
+				.returnContent().asString();
+		System.out.println(roomAsString);
 
-		 assertEquals(2, room.workPlaces().getAllElements().size());
-		 assertNotNull(room.workPlaces().getSubResource("wpPutTest"));
-		 assertTrue(room.workPlaces().contains(room.workPlaces().getSubResource("wpPutTest")));
-		 assertEquals(room.workPlaces().getSubResource("wpPutTest"), room.workPlaces().getAllElements().get(1));
-		 */
+		wp1.delete();
+
+		assertEquals("list should be empty", 0, room.workPlaces().size());
+
+		Request.Put(baseUrl + "/" + room.getName()).bodyString(roomAsString, contentType).execute();
+
+		assertEquals("list should contain 1 room", 1, room.workPlaces().getAllElements().size());
+		assertEquals(wpName, room.workPlaces().getAllElements().get(0).getName());
+
 	}
 
 	org.ogema.serialization.jaxb.Resource getXml(String url) throws Exception {
@@ -277,6 +358,52 @@ public class RestTest extends OsgiAppTestBase {
 		org.ogema.core.model.Resource newResource = getApplicationManager().getResourceAccess().getResource(newName);
 		assertNotNull(newResource);
 		assertTrue(response.contains(newName));
+	}
+
+	/* also tests correct creation of references between 2 newly created top level resources */
+	@Test
+	public void restPutWorksForTopLevelResources() throws Exception {
+		waitForServer();
+
+		ResourceAccess resacc = getApplicationManager().getResourceAccess();
+		ResourceManagement resman = getApplicationManager().getResourceManagement();
+		String s1name = newResourceName();
+		String s2name = newResourceName();
+
+		ElectricPowerSensor s1 = resman.createResource(s1name, ElectricPowerSensor.class);
+		ElectricPowerSensor s2 = resman.createResource(s2name, ElectricPowerSensor.class);
+
+		s2.physDim().length().create();
+		s2.physDim();
+		s2.physDim().length().setValue(2);
+
+		s1.physDim().setAsReference(s2.physDim());
+
+		String url = String.format("%s/%s?depth=100", baseUrl, "");
+		Request get = Request.Get(url).addHeader("Accept", "application/xml");
+		String xml = get.execute().returnContent().asString();
+
+		System.out.println(xml);
+
+		s1.delete();
+		s2.delete();
+
+		assertNull(resacc.getResource(s1name));
+		assertNull(resacc.getResource(s2name));
+
+		Request put = Request.Put(url).addHeader("Accept", "application/xml").bodyString(xml,
+				ContentType.APPLICATION_XML);
+		Response putResponse = put.execute();
+		assertEquals(2, putResponse.returnResponse().getStatusLine().getStatusCode() / 100);
+		//System.out.println(putResponse.returnContent().asString());
+
+		assertNotNull(s1 = resacc.getResource(s1name));
+		assertNotNull(s2 = resacc.getResource(s2name));
+
+		assertTrue(s1.physDim().isReference(false));
+		assertTrue(s1.physDim().equalsLocation(s2.physDim()));
+		assertEquals(2, s2.physDim().length().getValue(), 0);
+		assertEquals(2, s1.physDim().length().getValue(), 0);
 	}
 
 	@Test
@@ -421,6 +548,49 @@ public class RestTest extends OsgiAppTestBase {
 
 		assertNull(resacc.getResource(name));
 		assertFalse(pe.exists());
+	}
+    
+    @Test
+	public void restDeleteWorksForToplevelResourceLists() throws Exception {
+		waitForServer();
+        
+        ResourceList<Resource> l = getApplicationManager().getResourceManagement().createResource(newResourceName(), ResourceList.class);
+        l.setElementType(Resource.class);
+        String name = l.getName();
+        
+        l.add(getApplicationManager().getResourceManagement().createResource(newResourceName(), StringResource.class));
+        
+        String url = baseUrl + "/" + l.getPath();
+        Response r = Request.Delete(url).execute();
+        
+        //System.out.println(r.returnContent());
+        
+        assertNull("resource must not exist", getApplicationManager().getResourceAccess().getResource(name));
+    }
+
+	@Test
+	public void restReturnsInactiveResources() throws IOException {
+		ResourceManagement resman = getApplicationManager().getResourceManagement();
+		Room r = resman.createResource(newResourceName(), Room.class);
+		r.co2Sensor().name().create();
+		r.activate(true);
+		String testString = "notAUsualName" + Math.random();
+		r.co2Sensor().name().setValue(testString);
+		r.co2Sensor().deactivate(true);
+		assertFalse(r.co2Sensor().name().isActive());
+
+		String response = Request.Get(baseUrl + "/" + r.getPath() + "?depth=100").execute().returnContent().asString();
+		System.out.println(response);
+
+		assertTrue(response.contains(r.co2Sensor().getResourceType().getCanonicalName()));
+		assertTrue(response.contains(testString));
+
+		// test again with top level resource
+		r.deactivate(true);
+		assertFalse(r.isActive());
+		response = Request.Get(baseUrl + "?depth=100").execute().returnContent().asString();
+		assertTrue(response.contains(r.co2Sensor().getResourceType().getCanonicalName()));
+		assertTrue(response.contains(testString));
 	}
 
 }

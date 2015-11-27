@@ -17,10 +17,12 @@ package org.ogema.driver.homematic.manager.devices;
 
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.Value;
+import org.ogema.driver.homematic.HMDriver;
 import org.ogema.driver.homematic.manager.DeviceAttribute;
 import org.ogema.driver.homematic.manager.RemoteDevice;
 import org.ogema.driver.homematic.manager.StatusMessage;
 import org.ogema.driver.homematic.manager.SubDevice;
+import org.ogema.driver.homematic.manager.messages.CmdMessage;
 import org.ogema.driver.homematic.tools.Converter;
 
 public class THSensor extends SubDevice {
@@ -67,11 +69,11 @@ public class THSensor extends SubDevice {
 			batt = ((temp & 0x8000) > 0) ? 5 : 95;
 		}
 
-		System.out.println("Temperatur: " + ((float) temp) / 10 + " C");
-		System.out.println("State of Battery: " + err_str);
+		HMDriver.logger.debug("Temperatur: " + ((float) temp) / 10 + " C");
+		HMDriver.logger.debug("State of Battery: " + err_str);
 		temperature = new FloatValue(temp / 10f);
 		if (hum < 100) {
-			System.out.println("Humidity: " + hum + "%");
+			HMDriver.logger.debug("Humidity: " + hum + "%");
 			humidity = new FloatValue(hum);
 		}
 		batteryStatus = new FloatValue(batt);
@@ -83,7 +85,19 @@ public class THSensor extends SubDevice {
 	@Override
 	public void channelChanged(byte identifier, Value value) {
 		// TODO Auto-generated method stub
-
 	}
 
+	@Override
+	public void parseMessage(StatusMessage msg, CmdMessage cmd) {
+		byte msgType = msg.msg_type;
+		byte contentType = msg.msg_data[0];
+
+		if ((msgType == 0x10 && (contentType == 0x02) || (contentType == 0x03))) {
+			// Configuration response Message
+			parseConfig(msg, cmd);
+		}
+		else {
+			parseValue(msg);
+		}
+	}
 }

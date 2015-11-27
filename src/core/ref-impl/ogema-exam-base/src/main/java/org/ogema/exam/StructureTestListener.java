@@ -32,6 +32,7 @@ public class StructureTestListener implements ResourceStructureListener {
     final Map<ResourceStructureEvent.EventType, CountDownLatch> eventLatches = new EnumMap<>(ResourceStructureEvent.EventType.class);
     Resource expectedSource;
     Resource expectedChangedResource;
+    ResourceStructureEvent lastEvent;
     {
         reset();
     }
@@ -47,6 +48,7 @@ public class StructureTestListener implements ResourceStructureListener {
     @Override
     public void resourceStructureChanged(ResourceStructureEvent event) {
         System.out.printf("%s: %s, %s%n", event.getType(), event.getSource(), event.getChangedResource());
+        lastEvent = event;
         if (expectedSource != null) {
             Assert.assertEquals("wrong event source", expectedSource, event.getSource());
         }
@@ -88,6 +90,10 @@ public class StructureTestListener implements ResourceStructureListener {
 
     public boolean eventReceived(ResourceStructureEvent.EventType type) {
         return eventLatches.get(type).getCount() == 0;
+    }
+    
+    public ResourceStructureEvent getLastEvent() {
+        return lastEvent;
     }
     
 }

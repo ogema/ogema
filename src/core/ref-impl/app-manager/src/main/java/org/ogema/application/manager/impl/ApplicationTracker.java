@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Reference;
@@ -41,7 +42,6 @@ import org.ogema.recordeddata.DataRecorder;
 import org.ogema.resourcemanager.impl.ResourceDBManager;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceReference;
 import org.osgi.util.tracker.ServiceTracker;
 import org.osgi.util.tracker.ServiceTrackerCustomizer;
@@ -54,245 +54,255 @@ import org.slf4j.Logger;
 // ReferencePolicy.DYNAMIC, bind = "addApplication", unbind = "removeApplication")
 public class ApplicationTracker {
 
-	static class ApplicationData {
+    public static final String WORKQUEUE_DRAIN_INTERVAL = "ogema.apps.workqueuedrain";
+    final long drain_interval = Long.getLong(WORKQUEUE_DRAIN_INTERVAL, 2000);
 
-		final ApplicationManagerImpl appMan;
+    static class ApplicationData {
 
-		/*
-		 * TODO depending on how security will be realized in practice, this may be redundant. mns: It is redundant,
-		 * security relevant info is hooked up on AppID
-		 */
-		// final ClassLoader classLoader;
-		public ApplicationData(ApplicationManagerImpl appMan/* , ClassLoader classLoader */) {
-			this.appMan = appMan;
-			// this.classLoader = classLoader;
-		}
-	}
+        final ApplicationManagerImpl appMan;
 
-	@Reference
-	protected TimerScheduler timerScheduler;
-	// for calling ApplicationManagerImpl.drainWorkQueue periodically.
-	private Timer drainTimer;
+        /*
+         * TODO depending on how security will be realized in practice, this may be redundant. mns: It is redundant,
+         * security relevant info is hooked up on AppID
+         */
+        // final ClassLoader classLoader;
+        public ApplicationData(ApplicationManagerImpl appMan/* , ClassLoader classLoader */) {
+            this.appMan = appMan;
+            // this.classLoader = classLoader;
+        }
+    }
 
-	@Reference
-	protected FrameworkClock clock;
+    @Reference
+    protected TimerScheduler timerScheduler;
+    // for calling ApplicationManagerImpl.drainWorkQueue periodically.
+    private Timer drainTimer;
 
-	private final Map<Application, ApplicationManagerImpl> apps = new HashMap<>();
+    @Reference
+    protected FrameworkClock clock;
 
-	private final Map<Application, AppAdminAccessImpl> appAdmins = new HashMap<>();
+    private final Map<Application, ApplicationManagerImpl> apps = new ConcurrentHashMap<>();
 
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+    private final Map<Application, AppAdminAccessImpl> appAdmins = new HashMap<>();
 
-	@Reference(bind = "setPermissionManager")
-	private PermissionManager permissionManager;
-	private ServiceTracker<Application, Application> tracker;
+    private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 
-	@Reference(bind = "setResourceDB")
-	protected ResourceDB resDB;
-	protected ResourceDBManager resDBManager;
+    @Reference(bind = "setPermissionManager")
+    private PermissionManager permissionManager;
+    private ServiceTracker<Application, Application> tracker;
 
-	@Reference(bind = "setChannelAccess")
-	protected ChannelAccess channelAccess;
+    @Reference(bind = "setResourceDB")
+    protected ResourceDB resDB;
+    protected ResourceDBManager resDBManager;
 
-	@Reference(bind = "setHardwareManager")
-	protected HardwareManager hardwareManager;
+    @Reference(bind = "setChannelAccess")
+    protected ChannelAccess channelAccess;
 
-	@Reference
-	protected DataRecorder recordedData;
+    @Reference(bind = "setHardwareManager")
+    protected HardwareManager hardwareManager;
 
-	@Reference
-	protected AdministrationManager administration;
+    @Reference
+    protected DataRecorder recordedData;
 
-	protected BundleContext ctx;
+    @Reference
+    protected AdministrationManager administration;
 
-	ServiceTrackerCustomizer<Application, Application> trackerCustomizer = new ServiceTrackerCustomizer<Application, Application>() {
+    protected BundleContext ctx;
 
-		@Override
-		public Application addingService(ServiceReference<Application> sr) {
-			Application app = ctx.getService(sr);
-			if (app == null) {
-				logger.warn("got a null service object from service reference {}, bundle {}", sr, sr.getBundle());
-				return null;
-			}
-			addApplication(app, sr.getBundle());
-			return app;
-		}
+    ServiceTrackerCustomizer<Application, Application> trackerCustomizer = new ServiceTrackerCustomizer<Application, Application>() {
 
-		@Override
-		public void modifiedService(ServiceReference<Application> sr, Application t) {
-		}
+        @Override
+        public Application addingService(ServiceReference<Application> sr) {
+            Application app = ctx.getService(sr);
+            if (app == null) {
+                logger.warn("got a null service object from service reference {}, bundle {}", sr, sr.getBundle());
+                return null;
+            }
+            addApplication(app, sr.getBundle());
+            return app;
+        }
 
-		@Override
-		public void removedService(ServiceReference<Application> sr, Application t) {
-			removeApplication(t);
-		}
-	};
+        @Override
+        public void modifiedService(ServiceReference<Application> sr, Application t) {
+        }
 
-	public ApplicationTracker() {
-	}
+        @Override
+        public void removedService(ServiceReference<Application> sr, Application t) {
+            removeApplication(t);
+        }
+    };
 
-	protected void setResourceDB(ResourceDB db) {
-		this.resDB = db;
-	}
+    public ApplicationTracker() {
+    }
 
-	protected void setChannelAccess(ChannelAccess ca) {
-		this.channelAccess = ca;
-	}
+    protected void setResourceDB(ResourceDB db) {
+        this.resDB = db;
+    }
 
-	protected void setHardwareManager(HardwareManager hardwareManager) {
-		this.hardwareManager = hardwareManager;
-	}
+    protected void setChannelAccess(ChannelAccess ca) {
+        this.channelAccess = ca;
+    }
 
-	protected void activate(BundleContext ctx, Map<String, Object> config) {
-		this.ctx = ctx;
-		try {
-			resDBManager = new ResourceDBManager(resDB, recordedData, timerScheduler,
-					permissionManager.getAccessManager());
+    protected void setHardwareManager(HardwareManager hardwareManager) {
+        this.hardwareManager = hardwareManager;
+    }
 
-			tracker = new ServiceTracker<>(ctx, Application.class, trackerCustomizer);
-			tracker.open();
+    protected void activate(BundleContext ctx, Map<String, Object> config) {
+        this.ctx = ctx;
+        try {
+            resDBManager = new ResourceDBManager(resDB, recordedData, timerScheduler,
+                    permissionManager.getAccessManager());
 
-			TimerTask drainTask = new TimerTask() {
+            tracker = new ServiceTracker<>(ctx, Application.class, trackerCustomizer);
+            tracker.open();
 
-				@Override
-				public void run() {
-					drainWorkQueues();
-				}
-			};
-			drainTimer = new Timer("Application work queue sweeper", true);
-			drainTimer.schedule(drainTask, 0, 2000);
+            TimerTask drainTask = new TimerTask() {
 
-			logger.debug("{} activated", getClass().getName());
-		} catch (Throwable t) {
-			logger.error("could not activate ServiceTracker", t);
-			throw t;
-		}
-	}
+                @Override
+                public void run() {
+                    drainWorkQueues();
+                }
+            };
+            drainTimer = new Timer("Application work queue sweeper", true);
+            drainTimer.schedule(drainTask, 0, drain_interval);
 
-	protected void deactivate(Map<String, Object> config) {
-		tracker.close();
-		synchronized (apps) {
-			Iterator<Application> it = apps.keySet().iterator();
-			while (it.hasNext()) {
-				Application app = it.next();
-				ApplicationManagerImpl appMan = apps.get(app)/* .appMan */;
-				appMan.stopApplication();
-				appMan.close();
-				it.remove();
-			}
-		}
-		drainTimer.cancel();
-		logger.debug("ApplicationTracker deactivated.");
-	}
+            logger.debug("{} activated", getClass().getName());
+        } catch (Throwable t) {
+            logger.error("could not activate ApplicationTracker", t);
+            throw t;
+        }
+    }
 
-	protected void addApplication(Application app, Bundle b) {
-		synchronized (apps) {
-			logger.debug("new App registered: {}@{}", app, b);
-			AppIDImpl id = AppIDImpl.getNewID(b, app);
-			ApplicationManagerImpl appMan = new ApplicationManagerImpl(app, this, id);
-			createApplicationAdmin(app, id, b, appMan);
-			apps.put(app, appMan);
-			appMan.startApplication();
-		}
-	}
+    protected void deactivate(Map<String, Object> config) {
+        tracker.close();
+        synchronized (apps) {
+            Iterator<Application> it = apps.keySet().iterator();
+            while (it.hasNext()) {
+                Application app = it.next();
+                ApplicationManagerImpl appMan = apps.get(app)/* .appMan */;
+                appMan.stopApplication();
+                appMan.close();
+                it.remove();
+            }
+        }
+        drainTimer.cancel();
+        logger.debug("ApplicationTracker deactivated.");
+    }
 
-	protected AppAdminAccessImpl createApplicationAdmin(Application app, AppIDImpl id, Bundle b,
-			ApplicationManagerImpl appman) {
-		AccessManager am = permissionManager.getAccessManager();
-		AppAdminAccessImpl aaa = new AppAdminAccessImpl(b, app, id, appman, am);
-		/*
-		 * Initiate creation of an app role (group) used by access rights management. TODO This role has to be removed
-		 * if the app is uninstalled.
-		 */
-		am.registerApp(id);
+    protected void addApplication(Application app, Bundle b) {
+        synchronized (apps) {
+            logger.debug("new App registered: {}@{}", app, b);
+            AppIDImpl id = AppIDImpl.getNewID(b, app);
+            ApplicationManagerImpl appMan = new ApplicationManagerImpl(app, this, id);
+            createApplicationAdmin(app, id, b, appMan);
+            apps.put(app, appMan);
+            appMan.startApplication();
+        }
+    }
 
-		Hashtable<String, Object> props = new Hashtable<>();
-		props.put("appID", aaa.id.getIDString());
-		aaa.registration = ctx.registerService(AdminApplication.class, aaa, props);
-		appAdmins.put(app, aaa);
-		return aaa;
-	}
+    protected AppAdminAccessImpl createApplicationAdmin(Application app, AppIDImpl id, Bundle b,
+            ApplicationManagerImpl appman) {
+        AccessManager am = permissionManager.getAccessManager();
+        AppAdminAccessImpl aaa = new AppAdminAccessImpl(b, app, id, appman, am);
+        /*
+         * Initiate creation of an app role (group) used by access rights management. TODO This role has to be removed
+         * if the app is uninstalled.
+         */
+        am.registerApp(id);
 
-	protected AppID removeApplication(Application app) {
-		synchronized (apps) {
-			ApplicationManagerImpl appMan = apps.remove(app);
-			AccessManager am = permissionManager.getAccessManager();
-			if (appMan != null) {
-				appMan.stopApplication();
-				unregisterWebResources(appMan.getAppID());
-				appMan.close();
-			}
-			else {
-				logger.warn("tried to remove non existent app {}", app);
-			}
+        Hashtable<String, Object> props = new Hashtable<>();
+        props.put("appID", aaa.id.getIDString());
+        aaa.registration = ctx.registerService(AdminApplication.class, aaa, props);
+        appAdmins.put(app, aaa);
+        return aaa;
+    }
 
-			AppAdminAccessImpl aaa = appAdmins.remove(app);
+    protected AppID removeApplication(Application app) {
+        synchronized (apps) {
+            ApplicationManagerImpl appMan = apps.remove(app);
+            AccessManager am = permissionManager.getAccessManager();
+            if (appMan != null) {
+                appMan.stopApplication();
+                unregisterWebResources(appMan.getAppID());
+                unregisterServlets(appMan.getAppID());
+                appMan.close();
+            } else {
+                logger.warn("tried to remove non existent app {}", app);
+            }
 
-			/*
-			 * The app role (group) created at the installation of the app used by access rights management has to be
-			 * removed because the app is uninstalled.
-			 */
-			am.unregisterApp(aaa.id);
-			aaa.registration.unregister();
-			return appMan != null ? appMan.getAppID() : null;
-		}
-	}
+            AppAdminAccessImpl aaa = appAdmins.remove(app);
 
-	private void unregisterWebResources(AppID app) {
-		WebAccessManager webAccess = getWebAccessManager();
-		assert webAccess != null;
-		// FIXME: getRegisteredResources does not return servlets
-		for (String alias : webAccess.getRegisteredResources(app).keySet().toArray(new String[]{})) {
-			webAccess.unregisterWebResource(alias);
-		}
-	}
+            /*
+             * The app role (group) created at the installation of the app used by access rights management has to be
+             * removed because the app is uninstalled.
+             */
+            am.unregisterApp(aaa.id);
+            aaa.registration.unregister();
+            return appMan != null ? appMan.getAppID() : null;
+        }
+    }
 
-	/**
-	 * remove finished items (Futures) from the work queues of registered application managers and log all uncaught
-	 * exceptions.
-	 */
-	protected void drainWorkQueues() {
-		logger.trace("draining application manager work queues ({} apps)", apps.size());
-		synchronized (apps) {
-			for (ApplicationManagerImpl ad : apps.values()) {
-				ad.drainWorkQueue();
-			}
-		}
-	}
+    @SuppressWarnings("deprecation")
+    private void unregisterWebResources(AppID app) {
+        WebAccessManager webAccess = getWebAccessManager(app);
+        assert webAccess != null;
+        for (String alias : webAccess.getRegisteredResources(app).keySet().toArray(new String[]{})) {
+            webAccess.unregisterWebResource(alias);
+        }
+    }
+    
+    @SuppressWarnings("deprecation")
+    private void unregisterServlets(AppID app) {
+        WebAccessManager webAccess = getWebAccessManager(app);
+        assert webAccess != null;
+        for (String alias : webAccess.getRegisteredServlets(app).toArray(new String[]{})) {
+            webAccess.unregisterWebResource(alias);
+        }
+    }
 
-	protected void setPermissionManager(PermissionManager permissionManager) {
-		this.permissionManager = permissionManager;
-	}
+    /**
+     * remove finished items (Futures) from the work queues of registered
+     * application managers and log all uncaught exceptions.
+     */
+    protected void drainWorkQueues() {
+        logger.trace("draining application manager work queues ({} apps)", apps.size());
+        for (ApplicationManagerImpl ad : apps.values()) {
+            ad.drainWorkQueue();
+        }
+    }
 
-	protected ResourceDBManager getResourceDBManager() {
-		return resDBManager;
-	}
+    protected void setPermissionManager(PermissionManager permissionManager) {
+        this.permissionManager = permissionManager;
+    }
 
-	protected TimerScheduler getTimerScheduler() {
-		return timerScheduler;
-	}
+    protected ResourceDBManager getResourceDBManager() {
+        return resDBManager;
+    }
 
-	protected FrameworkClock getClock() {
-		return clock;
-	}
+    protected TimerScheduler getTimerScheduler() {
+        return timerScheduler;
+    }
 
-	protected AccessManager getAccessManager() {
-		return permissionManager.getAccessManager();
-	}
+    protected FrameworkClock getClock() {
+        return clock;
+    }
 
-	protected PermissionManager getPermissionManager() {
-		return permissionManager;
-	}
+    protected AccessManager getAccessManager() {
+        return permissionManager.getAccessManager();
+    }
 
-	protected ChannelAccess getChannelAccess() {
-		return channelAccess;
-	}
+    protected PermissionManager getPermissionManager() {
+        return permissionManager;
+    }
 
-	protected HardwareManager getHardwareManager() {
-		return hardwareManager;
-	}
+    protected ChannelAccess getChannelAccess() {
+        return channelAccess;
+    }
 
-	protected WebAccessManager getWebAccessManager() {
-		return permissionManager.getWebAccess();
-	}
+    protected HardwareManager getHardwareManager() {
+        return hardwareManager;
+    }
+
+    protected WebAccessManager getWebAccessManager(AppID app) {
+        return permissionManager.getWebAccess(app);
+    }
 }

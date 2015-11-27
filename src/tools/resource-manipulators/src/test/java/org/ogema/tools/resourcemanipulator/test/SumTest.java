@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -32,6 +34,7 @@ import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.ResourceValueListener;
+import org.ogema.core.resourcemanager.Transaction;
 import org.ogema.exam.OsgiAppTestBase;
 import org.ogema.tools.resourcemanipulator.ResourceManipulator;
 import org.ogema.tools.resourcemanipulator.ResourceManipulatorImpl;
@@ -244,7 +247,7 @@ public class SumTest extends OsgiAppTestBase {
 
 	private class SumValueListener implements ResourceValueListener<SingleValueResource> {
 
-		private CountDownLatch latch = new CountDownLatch(1);
+		private volatile CountDownLatch latch = new CountDownLatch(1);
 
 		@Override
 		public void resourceChanged(SingleValueResource resource) {
@@ -262,5 +265,56 @@ public class SumTest extends OsgiAppTestBase {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
+	}
+
+	@Test
+	public void deactivationWorks() throws InterruptedException {
+		int i = 1;
+		Collection<IntegerResource> floats = createAndActivateIntegerResources(2);
+
+		IntegerResource sum = createAndActivateIntResource();
+		int currentSum = 0;
+
+		SumValueListener listener = new SumValueListener();
+		Sum sumConfig = tool.createConfiguration(Sum.class);
+		sumConfig.setAddends(floats, sum);
+		sumConfig.setDelay(500);
+		sumConfig.commit();
+
+		sum.addValueListener(listener);
+		Transaction t = getApplicationManager().getResourceAccess().createTransaction();
+		for (IntegerResource fl : floats) {
+			t.addResource(fl);
+			t.setInteger(fl, ++i);
+			//fl.setValue(++i);
+			currentSum += i;
+		}
+		t.write();
+
+		assertTrue("sum should update", listener.latch.await(5, TimeUnit.SECONDS));
+		assertEquals("ResourceManipulator (Sum) failed", currentSum, sum.getValue());
+
+		listener.latch = new CountDownLatch(1);
+		sumConfig.deactivate();
+		for (IntegerResource fl : floats) {
+			fl.setValue(++i);
+		}
+		assertFalse("sum should not update again", listener.latch.await(1, TimeUnit.SECONDS));
+		assertEquals("sum should still have old value", currentSum, sum.getValue());
+
+		sumConfig.activate();
+		sleep(1000); // activate triggers a rewrite of sum already, wait here to ensure that this will not mistakenly trigger the latch
+		listener.setLatch(new CountDownLatch(1));
+		currentSum = 0;
+		for (IntegerResource fl : floats) {
+			t.setInteger(fl, ++i);
+			//fl.setValue(++i);
+			currentSum += i;
+		}
+		t.write();
+		assertTrue("sum should update", listener.latch.await(5, TimeUnit.SECONDS));
+		assertEquals("ResourceManipulator (Sum) failed", currentSum, sum.getValue());
+		sum.removeValueListener(listener);
+		tool.deleteAllConfigurations();
 	}
 }

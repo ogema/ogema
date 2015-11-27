@@ -18,6 +18,7 @@ package org.ogema.application.manager.impl;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.ogema.core.application.AppID;
 import org.ogema.core.application.Application;
@@ -50,6 +51,9 @@ public class AppIDImpl implements AppID {
 		return id;
 	}
 
+	UnsupportedOperationException uoe = new UnsupportedOperationException(
+			"group, user and version are not yet supported.");
+
 	static AppIDImpl getNewID(Application app) {
 		AppIDImpl result = null;
 		ClassLoader cl = app.getClass().getClassLoader();
@@ -63,6 +67,8 @@ public class AppIDImpl implements AppID {
 		return result;
 	}
 
+	static final AtomicInteger instanceCounter = new AtomicInteger();
+
 	private static String createID(Bundle bundle, Application app) {
 		String loc = bundle.getLocation();
 		int begin = loc.lastIndexOf('/') + 1;
@@ -70,9 +76,10 @@ public class AppIDImpl implements AppID {
 		if (begin > end)
 			end = loc.length();
 		String appName = app.getClass().getSimpleName();
-		// return String.format("[%d]_%s@%d/%s", instanceCounter.incrementAndGet(), appName, bundle.getBundleId(), loc
-		// .substring(begin, end));// loc.substring(begin, end) + "_" + bundle.getBundleId();
-		return String.format("%s@%d/%s", appName, bundle.getBundleId(), loc.substring(begin, end));
+		return String.format("[%d]_%s@%d", instanceCounter.incrementAndGet(), app.getClass(), bundle.getBundleId(),
+				bundle.getLocation());
+		//.substring(begin, end));// loc.substring(begin, end) + "_" + bundle.getBundleId();
+		//return String.format("%s@%d/%s", appName, bundle.getBundleId(), loc.substring(begin, end));
 	}
 
 	static AppIDImpl getNewID(Bundle b, Application app) {
@@ -105,9 +112,7 @@ public class AppIDImpl implements AppID {
 
 	@Override
 	public int hashCode() {
-		int hash = 5;
-		hash = 43 * hash + Objects.hashCode(this.id);
-		return hash;
+		return id.hashCode();
 	}
 
 	public boolean equals(Object o) {
@@ -121,21 +126,22 @@ public class AppIDImpl implements AppID {
 
 	@Override
 	public String toString() {
-		return "AppIDImpl{" + "bundle=" + bundle + ", app=" + app + '}';
+		//return "AppIDImpl{" + "bundle=" + bundle + ", app=" + app + '}';
+		return id;
 	}
 
 	@Override
 	public String getOwnerGroup() {
-		return group;
+		throw uoe;
 	}
 
 	@Override
 	public String getOwnerUser() {
-		return user;
+		throw uoe;
 	}
 
 	@Override
 	public String getVersion() {
-		return version;
+		throw uoe;
 	}
 }

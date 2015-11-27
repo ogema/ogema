@@ -65,10 +65,12 @@ public class Remote extends HM_hlDevice {
 			if (arr[0] == 0) { // Shorts
 				BooleanResource sw = shorts[arr[1] - 1];
 				sw.setValue(value.getBooleanValue());
+				sw.activate(true);
 			}
 			else if (arr[0] == 1) { // Longs
 				BooleanResource sw = longs[arr[1] - 1];
 				sw.setValue(value.getBooleanValue());
+				sw.activate(true);
 			}
 		}
 	}
@@ -110,17 +112,19 @@ public class Remote extends HM_hlDevice {
 		 */
 		// Create top level resource
 		RemoteControl rem = resourceManager.createResource(hm_hlConfig.resourceName, RemoteControl.class);
-		rem.activate(true);
 
 		StateOfChargeSensor eSens = rem.battery().chargeSensor().create();
 		batteryStatus = (FloatResource) eSens.reading().create();
-		batteryStatus.activate(true);
+		// batteryStatus.activate(true);
 		batteryStatus.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 		batteryStatus.setValue(95);
 
 		longPress = (ResourceList<BooleanResource>) rem.longPress().create();
 		shortPress = (ResourceList<BooleanResource>) rem.shortPress().create();
-
+		// Remote control value resources can be set active immediately, since the default value of
+		// the status resource (longPress = false, shortPress = false)
+		// is actually the correct value as long as no message is received
+		rem.activate(true);
 		int numOfLongElements = longPress.size();
 		int numOfShortElements = shortPress.size();
 
@@ -132,9 +136,11 @@ public class Remote extends HM_hlDevice {
 			if (splitChannel[0].equals("Sw") || splitChannel[0].equals("Btn")) {
 				for (int i = numOfLongElements; i < numOfSwitches; i++) {
 					BooleanResource ll = longPress.add();
-					ll.activate(true);
+					// ll.activate(true);
 					ll.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
+				}
+				for (int i = 0; i < numOfSwitches; i++) {
 					attributeConfig = new HM_hlConfig();
 					attributeConfig.driverId = hm_hlConfig.driverId;
 					attributeConfig.interfaceId = hm_hlConfig.interfaceId;
@@ -147,9 +153,11 @@ public class Remote extends HM_hlDevice {
 
 				for (int i = numOfShortElements; i < numOfSwitches; i++) {
 					BooleanResource sh = shortPress.add();
-					sh.activate(true);
+					// sh.activate(true);
 					sh.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
+				}
+				for (int i = 0; i < numOfSwitches; i++) {
 					attributeConfig = new HM_hlConfig();
 					attributeConfig.driverId = hm_hlConfig.driverId;
 					attributeConfig.interfaceId = hm_hlConfig.interfaceId;
@@ -161,12 +169,16 @@ public class Remote extends HM_hlDevice {
 				}
 			}
 		}
-		longPress.activate(true);
-		shortPress.activate(true);
+		// longPress.activate(true);
+		// shortPress.activate(true);
 	}
 
 	protected void unifyResourceName(HM_hlConfig config) {
 		config.resourceName += Constants.HM_REMOTE_RES_NAME + config.deviceAddress.replace(':', '_');
 	}
 
+	@Override
+	protected void terminate() {
+		removeChannels();
+	}
 }

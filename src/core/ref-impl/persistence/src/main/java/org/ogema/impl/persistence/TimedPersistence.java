@@ -40,25 +40,17 @@ public class TimedPersistence implements PersistencePolicy {
 		resIO = db.resourceIO;
 		this.db = db;
 		// check if the property to activate persistence debugging is set
-		String period = System.getProperty(DBConstants.PROP_NAME_TIMEDPERSISTENCE_PERIOD, null);
-		if (period == null)
-			storePeriod = DEFAULT_STOREPERIOD;
-		else
-			try {
-				storePeriod = Integer.valueOf(period);
-			} catch (NumberFormatException e) {
-				storePeriod = DEFAULT_STOREPERIOD;
-			}
-		this.timer = new Timer("Storage-" + db.name);
+		storePeriod = Integer.getInteger(DBConstants.PROP_NAME_TIMEDPERSISTENCE_PERIOD, DEFAULT_STOREPERIOD);
+		this.timer = new Timer("Storage-TimedPersistence-" + db.name);
 	}
 
-	TimerTask task = new TimerTask() {
+	TimerTask storageTask = new TimerTask() {
 
 		@Override
 		synchronized public void run() {
 			/*
 			 * If the previous storage not yet finished or resource management has reported a transaction, no storage
-			 * mustn't be triggered.
+			 * must be triggered.
 			 */
 			if (running || inTX || resIO.changes.size() <= 0)
 				return;
@@ -69,12 +61,9 @@ public class TimedPersistence implements PersistencePolicy {
 				 */
 				if (resIO.compactionRequired()) {
 					resIO.resDataFiles.updateNextOut();
-					assert resIO.resDataFiles.out.size() == 0;
 					resIO.currentDataFileName = resIO.resDataFiles.fileNew.getName();
 					resIO.dbFileInitialOffset = 0;
 					resIO.compact();
-					running = false;
-					return;
 				}
 				boolean fileChanged = false;
 				Change ch = null;
@@ -122,16 +111,8 @@ public class TimedPersistence implements PersistencePolicy {
 
 	@Override
 	public void store(int resID, org.ogema.persistence.PersistencePolicy.ChangeInfo changeInfo) {
-		synchronized (task) {
-			Change ch = resIO.changes.put(resID, new Change(resID, changeInfo));
-			if (Configuration.LOGGING && ch != null) {
-				try {
-					System.out.println(db.resNodeByID.get(resID).path + " storage status changed to "
-							+ ch.status.name());
-				} catch (Throwable e) {
-					e.printStackTrace();
-				}
-			}
+		synchronized (storageTask) {
+			resIO.changes.put(resID, new Change(resID, changeInfo));
 		}
 	}
 
@@ -158,18 +139,16 @@ public class TimedPersistence implements PersistencePolicy {
 	@Override
 	public void startStorage() {
 		stop = false;
-		timer.schedule(task, storePeriod, storePeriod);
+		timer.schedule(storageTask, storePeriod, storePeriod);
 	}
 
 	@Override
 	public void stopStorage() {
 		stop = true;
-		while (running) {
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
+	}
+
+	@Override
+	public Object getStorageLock() {
+		return storageTask;
 	}
 }

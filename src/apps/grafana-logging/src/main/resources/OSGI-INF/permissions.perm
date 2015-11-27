@@ -3,11 +3,11 @@
 (org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
 
 (org.osgi.framework.PackagePermission "org.ogema.tools.grafana.base" "import")
-(org.osgi.framework.PackagePermission "org.ogema.tools.grafana.base.InfluxFake" "import")
+(org.osgi.framework.PackagePermission "org.ogema.tools.grafana.base.*" "import")
 
 (org.osgi.framework.PackagePermission "javax.servlet" "import")
 (org.osgi.framework.PackagePermission "javax.servlet.*" "import")
 
 (org.ogema.accesscontrol.ResourcePermission "path=*" "read")
 
-(java.lang.RuntimePermission "getClassLoader")
+#(java.lang.RuntimePermission "getClassLoader")

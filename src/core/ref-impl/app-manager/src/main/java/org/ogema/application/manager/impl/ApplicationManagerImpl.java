@@ -15,6 +15,7 @@
  */
 package org.ogema.application.manager.impl;
 
+import java.io.File;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
@@ -55,6 +56,7 @@ import org.ogema.core.tools.SerializationManager;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.timer.TimerScheduler;
 import org.ogema.tools.impl.SerializationManagerImpl;
+import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,9 +66,13 @@ public class ApplicationManagerImpl implements ApplicationManager {
 	final TimerScheduler scheduler;
 	final List<Timer> timers;
 	private final FrameworkClock clock;
+
 	protected final ExecutorService executor;
 	private final Queue<Future<?>> workQueue;
+	private static final int WORKQUEUE_FORCE_DRAIN_SIZE = 50;
+	private final Callable<Void> drainWorkQueueTask;
 	private final ApplicationThreadFactory tfac;
+
 	private final Application application;
 	private ApplicationTracker tracker;
 	protected final Logger logger;
@@ -75,7 +81,17 @@ public class ApplicationManagerImpl implements ApplicationManager {
 	private final AppID appID;
 	private final List<ExceptionListener> exceptionListeners = new ArrayList<>();
 
+	BundleContext bContext;
+
 	public ApplicationManagerImpl(Application app, ApplicationTracker tracker, AppID id) {
+		this.drainWorkQueueTask = new Callable<Void>() {
+
+			@Override
+			public Void call() throws Exception {
+				drainWorkQueue();
+				return null;
+			}
+		};
 		this.tracker = Objects.requireNonNull(tracker);
 		this.scheduler = tracker.getTimerScheduler();
 		this.clock = tracker.getClock();
@@ -87,10 +103,20 @@ public class ApplicationManagerImpl implements ApplicationManager {
 		this.resMan = new ApplicationResourceManager(this, app, tracker.getResourceDBManager(),
 				tracker.getPermissionManager());
 		timers = new LinkedList<>();
+
+		this.bContext = id.getBundle().getBundleContext();
 	}
 
 	// constructor used only for timer tests
 	protected ApplicationManagerImpl(Application app, TimerScheduler sched, FrameworkClock clock) {
+		this.drainWorkQueueTask = new Callable<Void>() {
+
+			@Override
+			public Void call() throws Exception {
+				drainWorkQueue();
+				return null;
+			}
+		};
 		this.application = app;
 		this.scheduler = sched;
 		this.clock = clock;
@@ -227,7 +253,8 @@ public class ApplicationManagerImpl implements ApplicationManager {
 	@Override
 	public void addExceptionListener(ExceptionListener listener) {
 		if (exceptionListeners.contains(listener)) {
-			logger.debug("Application tried to add an already-registered exception listener a second time. Request has been ignored.");
+			logger.debug(
+					"Application tried to add an already-registered exception listener a second time. Request has been ignored.");
 		}
 		else {
 			exceptionListeners.add(listener);
@@ -236,7 +263,7 @@ public class ApplicationManagerImpl implements ApplicationManager {
 
 	@Override
 	public WebAccessManager getWebAccessManager() {
-		return tracker.getWebAccessManager();
+		return tracker.getWebAccessManager(appID);
 	}
 
 	@Override
@@ -290,6 +317,11 @@ public class ApplicationManagerImpl implements ApplicationManager {
 		}
 		Future<T> f = executor.submit(application);
 		workQueue.add(f);
+		if (workQueue.size() > WORKQUEUE_FORCE_DRAIN_SIZE) {
+			if (workQueue.peek().isDone()) {
+				executor.submit(drainWorkQueueTask);
+			}
+		}
 		return f;
 	}
 
@@ -297,33 +329,37 @@ public class ApplicationManagerImpl implements ApplicationManager {
 	 * Removes completed futures from the workqueue and logs all exceptions as warnings.
 	 */
 	protected void drainWorkQueue() {
+		int done = 0;
 		while (!workQueue.isEmpty() && workQueue.peek().isDone()) {
 			Future<?> f = workQueue.remove();
 			try {
 				f.get();
+				done++;
 			} catch (ExecutionException ee) {
 				reportException(ee.getCause());
 			} catch (InterruptedException ie) {
 				// after isDone() == true?!?
-				getLogger().error(
-						"really unexpected exception in ApplicationManagerImpl.drainWorkQueue(), review code", ie);
+				getLogger().error("really unexpected exception in ApplicationManagerImpl.drainWorkQueue(), review code",
+						ie);
 			}
 		}
+		// System.out.printf("%d jobs done, %d in queue%n", done, workQueue.size());
 	}
 
 	@Override
 	public SerializationManager getSerializationManager() {
-        if (System.getSecurityManager() == null){
-            return new SerializationManagerImpl(getResourceAccess(), getResourceManagement());
-        } else {
-            return AccessController.doPrivileged(new PrivilegedAction<SerializationManager>() {
+		if (System.getSecurityManager() == null) {
+			return new SerializationManagerImpl(getResourceAccess(), getResourceManagement());
+		}
+		else {
+			return AccessController.doPrivileged(new PrivilegedAction<SerializationManager>() {
 
-                @Override
-                public SerializationManager run() {
-                    return new SerializationManagerImpl(getResourceAccess(), getResourceManagement());
-                }
-            });
-        }
+				@Override
+				public SerializationManager run() {
+					return new SerializationManagerImpl(getResourceAccess(), getResourceManagement());
+				}
+			});
+		}
 	}
 
 	/**
@@ -339,7 +375,13 @@ public class ApplicationManagerImpl implements ApplicationManager {
 	}
 
 	@Override
-	public SerializationManager getSerializationManager(int maxDepth, boolean followReferences, boolean writeSchedules) {
+	public File getDataFile(String filename) {
+		return this.bContext.getDataFile(filename);
+	}
+
+	@Override
+	public SerializationManager getSerializationManager(int maxDepth, boolean followReferences,
+			boolean writeSchedules) {
 		final SerializationManagerImpl result = new SerializationManagerImpl(getResourceAccess(),
 				getResourceManagement());
 		result.setMaxDepth(maxDepth);

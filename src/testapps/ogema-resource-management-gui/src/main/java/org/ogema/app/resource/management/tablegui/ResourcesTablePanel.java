@@ -59,8 +59,7 @@ import org.apache.wicket.util.resource.IResourceStream;
 import org.apache.wicket.util.string.Strings;
 import org.ogema.app.resource.management.gui.ResManagementGuiActivator;
 import org.ogema.app.resource.management.tablegui.util.Util;
-import org.ogema.service.webresourcemanager.ApplicationPanel;
-import org.ogema.service.webresourcemanager.JSWidget;
+import org.ogema.apps.wicket.ApplicationPanel;
 
 /**
  * 
@@ -1102,11 +1101,6 @@ public class ResourcesTablePanel extends ApplicationPanel {
 
 	public String getTitle() {
 		return "Resources Table Viewer";
-	}
-
-	@Override
-	public Map<String, JSWidget> getWidgets() {
-		return null;
 	}
 
 	public String getAppName() {

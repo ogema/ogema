@@ -16,23 +16,20 @@
 package org.ogema.driver.mbus;
 
 import java.io.IOException;
-import java.net.ConnectException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Iterator;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Service;
-import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
 import org.ogema.core.channelmanager.driverspi.ChannelUpdateListener;
+import org.ogema.core.channelmanager.driverspi.DeviceListener;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
-import org.ogema.core.channelmanager.driverspi.ExceptionListener;
 import org.ogema.core.channelmanager.driverspi.NoSuchChannelException;
 import org.ogema.core.channelmanager.driverspi.NoSuchDeviceException;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
@@ -42,13 +39,10 @@ import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
+import org.openmuc.jmbus.DataRecord;
 import org.openmuc.jmbus.DecodingException;
 import org.openmuc.jmbus.MBusSap;
-import org.ogema.driver.mbus.ConnectionHandle;
-import org.openmuc.jmbus.VariableDataStructure;
-import org.openmuc.jmbus.DataRecord;
-
-//import org.openmuc.jmbus.VariableDataBlock;
+import org.openmuc.jmbus.VariableDataStructure; //import org.openmuc.jmbus.VariableDataBlock;
 //import org.openmuc.jmbus.VariableDataResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,8 +93,8 @@ public class MBusDriver implements ChannelDriver {
 	}
 
 	@Override
-	public synchronized void readChannels(List<SampledValueContainer> channels) throws UnsupportedOperationException,
-			IOException {
+	public synchronized void readChannels(List<SampledValueContainer> channels)
+			throws UnsupportedOperationException, IOException {
 
 		long timestamp = System.currentTimeMillis();
 
@@ -119,8 +113,8 @@ public class MBusDriver implements ChannelDriver {
 					connectionHandle.setConnected(true);
 				}
 
-				response = mBusSap.read(new Integer(deviceLocator.getDeviceAddress().substring(1,
-						deviceLocator.getDeviceAddress().length())));
+				response = mBusSap.read(new Integer(
+						deviceLocator.getDeviceAddress().substring(1, deviceLocator.getDeviceAddress().length())));
 
 				if (response != null) {
 					try {
@@ -131,7 +125,8 @@ public class MBusDriver implements ChannelDriver {
 						logger.error("Couldn't decode mbus resopnse.", e);
 						connection.setSampledValue(new SampledValue(new DoubleValue(0), timestamp, Quality.BAD));
 					}
-				} else {
+				}
+				else {
 					throw new IOException("read response = null");
 				}
 
@@ -172,12 +167,6 @@ public class MBusDriver implements ChannelDriver {
 	}
 
 	@Override
-	public void readChannels(List<SampledValueContainer> channels, ChannelUpdateListener listener)
-			throws UnsupportedOperationException {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
 	public void listenChannels(List<SampledValueContainer> channels, ChannelUpdateListener listener)
 			throws UnsupportedOperationException, NoSuchDeviceException, NoSuchChannelException, IOException {
 		throw new UnsupportedOperationException();
@@ -192,24 +181,16 @@ public class MBusDriver implements ChannelDriver {
 	}
 
 	@Override
-	public void writeChannels(List<ValueContainer> channels, ExceptionListener listener)
-			throws UnsupportedOperationException {
-		throw new UnsupportedOperationException();
+	public void shutdown() {
 
-	}
-
-	@Override
-	public void reset() {
-
-		/*Iterator<Map.Entry<String, ConnectionHandle>> it = connections.entrySet().iterator();
-
-		while (it.hasNext()) {
-			String key = it.next().getKey();
-			ConnectionHandle handle = connections.get(key);
-			handle.getMBusSap().close();
-
-		}
-		connections.clear();*/
+		/*
+		 * Iterator<Map.Entry<String, ConnectionHandle>> it = connections.entrySet().iterator();
+		 * 
+		 * while (it.hasNext()) { String key = it.next().getKey(); ConnectionHandle handle = connections.get(key);
+		 * handle.getMBusSap().close();
+		 * 
+		 * } connections.clear();
+		 */
 	}
 
 	@Override
@@ -246,6 +227,24 @@ public class MBusDriver implements ChannelDriver {
 			sb.append(String.format("%1$02X", b));
 		}
 		return sb.toString();
+	}
+
+	@Override
+	public void addDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void removeDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void writeChannel(ChannelLocator channelLocator, Value value) throws UnsupportedOperationException,
+			IOException, NoSuchDeviceException, NoSuchChannelException {
+		throw new UnsupportedOperationException();
 	}
 
 }

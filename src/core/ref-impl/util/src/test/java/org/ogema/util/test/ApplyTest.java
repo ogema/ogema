@@ -33,11 +33,10 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.Quality;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.tools.SerializationManager;
@@ -84,7 +83,7 @@ public class ApplyTest extends OsgiAppTestBase {
 		meter = getApplicationManager().getResourceManagement().createResource("meter" + counter++,
 				ElectricityMeter.class);
 		meter.connection().powerSensor().reading().create();
-		sched = meter.connection().powerSensor().reading().addDecorator("sched", DefinitionSchedule.class);
+		sched = meter.connection().powerSensor().reading().addDecorator("sched", AbsoluteSchedule.class);
 		meter.connection().powerSensor().reading().setValue(47.11f);
 		sman = getApplicationManager().getSerializationManager();
 		jaxbUnmarshalling = JAXBContext
@@ -93,9 +92,8 @@ public class ApplyTest extends OsgiAppTestBase {
 	}
 
 	@Test
-	public void updatingSimpleResourceWorks() throws IOException {
+	public void updatingSimpleResourceWorksJson() throws IOException {
 		sman.setSerializeSchedules(true);
-		JsonNode json = new ObjectMapper().readTree(sman.toJson(meter));
 		String s = sman.toJson(meter);
 		System.out.println(s);
 		assertTrue(s.contains("47.11"));
@@ -176,7 +174,7 @@ public class ApplyTest extends OsgiAppTestBase {
 	FloatSchedule createTestSchedule() {
 		FloatSchedule schedule = new FloatSchedule();
 		schedule.setName("data");
-		schedule.setType(DefinitionSchedule.class);
+		schedule.setType(AbsoluteSchedule.class);
 
 		SampledValue v = new SampledFloat();
 		v.setQuality(Quality.GOOD);
@@ -191,7 +189,7 @@ public class ApplyTest extends OsgiAppTestBase {
 		v = new SampledFloat();
 		v.setQuality(Quality.GOOD);
 		v.setTime(3);
-		v.setValue(new FloatValue(43));
+		v.setValue(new FloatValue(44));
 		schedule.getEntry().add(v);
 
 		return schedule;
@@ -248,6 +246,35 @@ public class ApplyTest extends OsgiAppTestBase {
 
 		assertEquals(3, ogemaSchedule.getValues(0).size());
 		assertEquals(2, ogemaSchedule.getValues(0).get(1).getValue().getFloatValue(), 0);
+	}
+
+	@Test
+	public void deletingScheduleIntervalWorks() throws Exception {
+		/*
+		 * modify a schedule with [start,end) range set.
+		 */
+		Resource floatRes = new Resource();
+		floatRes.setName("scheduleTest");
+		floatRes.setType(FloatResource.class);
+		// floatRes.setDecorating(Boolean.TRUE);
+		FloatSchedule schedule = createTestSchedule();
+
+		floatRes.getSubresources().add(schedule);
+		Resource meter1 = unmarshal(sman.toXml(meter), Resource.class);
+		meter1.getSubresources().add(floatRes);
+		sman.applyXml(marshal(meter1), meter, true);
+
+		schedule.getEntry().clear();
+		schedule.setStart(2L);
+		schedule.setEnd(3L);
+
+		sman.applyXml(marshal(meter1), meter, true);
+
+		Schedule ogemaSchedule = (Schedule) meter.getSubResource("scheduleTest").getSubResource("data");
+
+		assertEquals(2, ogemaSchedule.getValues(0).size());
+		assertEquals(42, ogemaSchedule.getValues(0).get(0).getValue().getFloatValue(), 0);
+		assertEquals(44, ogemaSchedule.getValues(0).get(1).getValue().getFloatValue(), 0);
 	}
 
 }

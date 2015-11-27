@@ -50,7 +50,7 @@ public class RestHttpContext implements HttpContext {
 		 */
 
 		String scheme = request.getScheme();
-		if (securemode && !scheme.equals("https")) {
+		if (securemode && (!scheme.equals("https") && !OgemaHttpContext.isLoopbackAddress(request.getRemoteAddr()))) {
 			logger.info("\tSecure connection is required.");
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 			response.getOutputStream().write("\tSecure connection is required.".getBytes());

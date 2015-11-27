@@ -18,6 +18,7 @@ package org.ogema.tools.timeseries.implementations;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.ogema.core.channelmanager.measurements.FloatValue;
 
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
@@ -34,8 +35,9 @@ import org.ogema.tools.timeseries.interpolation.StepInterpolation;
 import org.ogema.tools.memoryschedules.tools.SampledValueSortedList;
 
 /**
- * TimeSeries implementation internally based on an array of sampled values. In a logging-like scenario where data are
- * always appended behind the existing ones this should have a better performance than the {@link TreeTimeSeries}.
+ * TimeSeries implementation internally based on an array of sampled values. In
+ * a logging-like scenario where data are always appended behind the existing
+ * ones this should have a better performance than the {@link TreeTimeSeries}.
  *
  * @author Timo Fischer, Fraunhofer IWES
  */
@@ -52,8 +54,9 @@ public class ArrayTimeSeries implements MemoryTimeSeries {
 	}
 
 	/**
-	 * Copy-constructor from another time series. Note that the TimeSeries interface provides no means of telling the
-	 * user what the actual data type is, so it must be provided explicitly.
+	 * Copy-constructor from another time series. Note that the TimeSeries
+	 * interface provides no means of telling the user what the actual data type
+	 * is, so it must be provided explicitly.
 	 */
 	public ArrayTimeSeries(ReadOnlyTimeSeries other, Class<? extends Value> type) {
 		this.m_type = type;
@@ -108,12 +111,13 @@ public class ArrayTimeSeries implements MemoryTimeSeries {
 	}
 
 	/**
-	 * Checks if a given timestamp is in the range generally covered by the 
+	 * Checks if a given timestamp is in the range generally covered by the
 	 * schedule (irrespective of the value qualities).
 	 */
 	private boolean isInsideTimeSeriesRange(long timestamp) {
-		if (m_values.isEmpty())
+		if (m_values.isEmpty()) {
 			return false;
+		}
 		final long tmin = m_values.get(0).getTimestamp();
 		final long tmax = m_values.get(m_values.size() - 1).getTimestamp();
 		switch (m_interpolationMode) {
@@ -134,7 +138,6 @@ public class ArrayTimeSeries implements MemoryTimeSeries {
 	//		return !m_values.isEmpty()
 	//				&& ((m_values.get(0).getTimestamp() <= timestamp) && (m_values.get(m_values.size() - 1).getTimestamp() >= timestamp));
 	//	}
-
 	@Override
 	public SampledValue getNextValue(long time) {
 		return m_values.getNextValue(time);
@@ -253,17 +256,17 @@ public class ArrayTimeSeries implements MemoryTimeSeries {
 	}
 
 	@Override
-	public void shiftTimestamps(long dt) {
-		final List<SampledValue> shiftedValues = new ArrayList<>(m_values.getValues().size());
-		for (SampledValue value : m_values.getValues()) {
-			final long t = value.getTimestamp() + dt;
-			// if (t<0) continue;
-			final SampledValue newValue = new SampledValue(value.getValue(), t, value.getQuality());
-			shiftedValues.add(newValue);
-		}
-		m_values.clear();
-		m_values.addValuesCopies(shiftedValues);
-	}
+    public void shiftTimestamps(long dt) {
+        final List<SampledValue> shiftedValues = new ArrayList<>(m_values.getValues().size());
+        for (SampledValue value : m_values.getValues()) {
+            final long t = value.getTimestamp() + dt;
+            // if (t<0) continue;
+            final SampledValue newValue = new SampledValue(value.getValue(), t, value.getQuality());
+            shiftedValues.add(newValue);
+        }
+        m_values.clear();
+        m_values.addValuesCopies(shiftedValues);
+    }
 
 	@Override
 	public MemoryTimeSeries clone() {
@@ -297,6 +300,12 @@ public class ArrayTimeSeries implements MemoryTimeSeries {
 	@Override
 	public final boolean addValueSchedule(long startTime, long stepSize, List<Value> values, long timeOfCalculation) {
 		return replaceValuesFixedStep(startTime, values, stepSize, timeOfCalculation);
+	}
+
+	@Override
+	public SampledValue getValueSecure(long t) {
+		final SampledValue result = getValue(t);
+		return (result != null) ? result : new SampledValue(new FloatValue(0.f), t, Quality.BAD);
 	}
 
 }

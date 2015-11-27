@@ -731,6 +731,7 @@ public class AdminServlet extends HttpServlet {
 		sb = new StringBuffer();
 		if (path.equals("#")) {
 			AppID appid = pman.getAdminManager().getAppByBundle(admin.osgi.getBundle(id));
+			@SuppressWarnings("deprecation")
 			Map<String, String> entries = pman.getWebAccess().getRegisteredResources(appid);
 			if (entries == null) {
 				sb.append("[]");

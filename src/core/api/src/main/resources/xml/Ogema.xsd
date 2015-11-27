@@ -588,6 +588,7 @@
     <xs:group name="CommonScheduleElements">
         <xs:sequence>
             <xs:group ref="og:CommonResourceElements" />
+            <xs:element name="interpolationMode" type="xs:string" minOccurs="0" maxOccurs="1" />
             <xs:element name="lastUpdateTime" type="xs:long" minOccurs="0" maxOccurs="1" />
             <xs:element name="lastCalculationTime" type="xs:long" minOccurs="0" maxOccurs="1" />
             <xs:element name="start" type="xs:long" minOccurs="0" maxOccurs="1" default="0" >

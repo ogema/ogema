@@ -1,8 +1,8 @@
 ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope', '$filter', '$modal', '$window', '$upload', function ($scope, ogemaGateway, $rootScope, $filter, $modal, $window, $upload) {
-        var path = "/install/installedapps";
+        var path = "/install/installedapps"+"?user="+otusr+"&pw="+otpwd;
 
         $rootScope.initApplications = function () {
-            var path = "/install/installedapps";
+            var path = "/install/installedapps"+"?user="+otusr+"&pw="+otpwd;
 
             ogemaGateway.getJSON(path, {"action": "listAll"}).then(function (result) {
                 $rootScope.applications = result;
@@ -55,7 +55,7 @@ ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope'
             });
 
             modalInstance.result.then(function (policies) {
-                var path = "/install/installedapps?action=setPermission&app=" + $rootScope.editBundle.id;
+                var path = "/install/installedapps?action=setPermission&app=" + $rootScope.editBundle.id+"&user="+otusr+"&pw="+otpwd;
                 var sendPolicies = angular.toJson({policies: policies.policies})
 
                 ogemaGateway.postFormPolicies(path, sendPolicies).then(function (result) {

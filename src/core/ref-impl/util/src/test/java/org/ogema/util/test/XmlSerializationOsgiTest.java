@@ -25,10 +25,13 @@ import java.util.List;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.transform.stream.StreamSource;
 
 import org.junit.Assert;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.FloatValue;
@@ -40,7 +43,7 @@ import org.ogema.core.model.array.FloatArrayResource;
 import org.ogema.core.model.array.IntegerArrayResource;
 import org.ogema.core.model.array.StringArrayResource;
 import org.ogema.core.model.array.TimeArrayResource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.resourcemanager.ResourceManagement;
@@ -88,7 +91,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		sw.addOptionalElement("timeBeforeSwitchOff");
 		sw.timeBeforeSwitchOff().setValue(Long.MAX_VALUE);
 
-		Schedule schedule = sw.heatCapacity().addDecorator("defSchedule", DefinitionSchedule.class);
+		Schedule schedule = sw.heatCapacity().addDecorator("defSchedule", AbsoluteSchedule.class);
 		schedule.addValue(1L, new FloatValue(1f), 100000);
 		schedule.addValue(2L, new FloatValue(2f));
 		schedule.addValue(3L, new FloatValue(3f));
@@ -248,7 +251,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 	}
 
 	@Test
-	public void complexArrayRoundtrip() throws Exception {
+	public void resourceListRoundtrip() throws Exception {
 		Room room = resman.createResource("testRoom", Room.class);
 		room.addOptionalElement("workPlaces");
 		WorkPlace wp1 = room.workPlaces().add();
@@ -266,7 +269,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 	}
 
 	@Test
-	public void complexArrayRootRoundtrip() throws Exception {
+	public void resourceListRootRoundtrip() throws Exception {
 		Room room = resman.createResource("testRoom2", Room.class);
 		room.addOptionalElement("workPlaces");
 		WorkPlace wp1 = room.workPlaces().add();
@@ -319,6 +322,200 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 				.get("strings")).getValues());
 		Assert.assertEquals(Arrays.asList(0xdeadbeefL, 1L, 2L, 3L), ((org.ogema.serialization.jaxb.TimeArrayResource) r
 				.get("longs")).getValues());
+	}
+
+	@Test
+	public void arraysOfBoolWork() throws IOException, JAXBException, SAXException {
+		Resource arrays = resman.createResource(newResourceName(), Resource.class);
+
+		BooleanArrayResource bools = arrays.addDecorator("arr", BooleanArrayResource.class);
+		bools.setValues(new boolean[] { true, false });
+
+		StringWriter output = new StringWriter();
+		sman.setMaxDepth(100);
+		sman.writeXml(output, arrays);
+		System.out.println(output);
+
+		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		validateOgemaXml(output.toString());
+		Unmarshaller u = ctx.createUnmarshaller();
+		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
+
+		List<Boolean> serializedValues = ((org.ogema.serialization.jaxb.BooleanArrayResource) r.get("arr")).getValues();
+		System.out.println(serializedValues);
+		Assert.assertEquals(2, serializedValues.size());
+
+		serializedValues.add(true);
+		Marshaller m = ctx.createMarshaller();
+		output = new StringWriter();
+		m.marshal(r, output);
+
+		System.out.println(output);
+		sman.applyXml(output.toString(), arrays, true);
+
+		//FIXME: lazy/brittle string comparison
+		assertEquals(serializedValues.toString(), Arrays.toString(bools.getValues()));
+	}
+
+	@Test
+	public void arraysOfByteWork() throws IOException, JAXBException, SAXException {
+		Resource arrays = resman.createResource(newResourceName(), Resource.class);
+
+		ByteArrayResource bytes = arrays.addDecorator("arr", ByteArrayResource.class);
+		bytes.setValues(new byte[] { 0, 1, 3 });
+
+		StringWriter output = new StringWriter();
+		sman.setMaxDepth(100);
+		sman.writeXml(output, arrays);
+		System.out.println(output);
+
+		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		validateOgemaXml(output.toString());
+		Unmarshaller u = ctx.createUnmarshaller();
+		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
+
+		byte[] serializedValues = ((org.ogema.serialization.jaxb.ByteArrayResource) r.get("arr")).getValues();
+		Assert.assertEquals(3, serializedValues.length);
+
+		serializedValues[1] = 7;
+		Marshaller m = ctx.createMarshaller();
+		output = new StringWriter();
+		m.marshal(r, output);
+
+		System.out.println(output);
+		sman.applyXml(output.toString(), arrays, true);
+
+		assertArrayEquals(serializedValues, bytes.getValues());
+	}
+
+	@Test
+	public void arraysOfFloatWork() throws IOException, JAXBException, SAXException {
+		Resource arrays = resman.createResource(newResourceName(), Resource.class);
+
+		FloatArrayResource floats = arrays.addDecorator("arr", FloatArrayResource.class);
+		floats.setValues(new float[] { 1f, 2f });
+
+		StringWriter output = new StringWriter();
+		sman.setMaxDepth(100);
+		sman.writeXml(output, arrays);
+		System.out.println(output);
+
+		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		validateOgemaXml(output.toString());
+		Unmarshaller u = ctx.createUnmarshaller();
+		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
+
+		List<Float> serializedValues = ((org.ogema.serialization.jaxb.FloatArrayResource) r.get("arr")).getValues();
+		System.out.println(serializedValues);
+		Assert.assertEquals(2, serializedValues.size());
+
+		serializedValues.add(0f);
+		Marshaller m = ctx.createMarshaller();
+		output = new StringWriter();
+		m.marshal(r, output);
+
+		System.out.println(output);
+		sman.applyXml(output.toString(), arrays, true);
+
+		//FIXME: lazy/brittle string comparison
+		assertEquals(serializedValues.toString(), Arrays.toString(floats.getValues()));
+	}
+
+	@Test
+	public void arraysOfIntegerWork() throws IOException, JAXBException, SAXException {
+		Resource arrays = resman.createResource(newResourceName(), Resource.class);
+
+		IntegerArrayResource ints = arrays.addDecorator("arr", IntegerArrayResource.class);
+		ints.setValues(new int[] { 3, 1 });
+
+		StringWriter output = new StringWriter();
+		sman.setMaxDepth(100);
+		sman.writeXml(output, arrays);
+		System.out.println(output);
+
+		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		validateOgemaXml(output.toString());
+		Unmarshaller u = ctx.createUnmarshaller();
+		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
+
+		List<Integer> serializedValues = ((org.ogema.serialization.jaxb.IntegerArrayResource) r.get("arr")).getValues();
+		System.out.println(serializedValues);
+		Assert.assertEquals(2, serializedValues.size());
+
+		serializedValues.add(42);
+		Marshaller m = ctx.createMarshaller();
+		output = new StringWriter();
+		m.marshal(r, output);
+
+		System.out.println(output);
+		sman.applyXml(output.toString(), arrays, true);
+
+		//FIXME: lazy/brittle string comparison
+		assertEquals(serializedValues.toString(), Arrays.toString(ints.getValues()));
+	}
+
+	@Test
+	public void arraysOfStringWork() throws IOException, JAXBException, SAXException {
+		Resource arrays = resman.createResource(newResourceName(), Resource.class);
+
+		StringArrayResource strings = arrays.addDecorator("arr", StringArrayResource.class);
+		strings.setValues(new String[] { "a", "b", "c" });
+
+		StringWriter output = new StringWriter();
+		sman.setMaxDepth(100);
+		sman.writeXml(output, arrays);
+		System.out.println(output);
+
+		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		validateOgemaXml(output.toString());
+		Unmarshaller u = ctx.createUnmarshaller();
+		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
+
+		List<String> serializedValues = ((org.ogema.serialization.jaxb.StringArrayResource) r.get("arr")).getValues();
+		System.out.println(serializedValues);
+		Assert.assertEquals(3, serializedValues.size());
+
+		serializedValues.add("d");
+		Marshaller m = ctx.createMarshaller();
+		output = new StringWriter();
+		m.marshal(r, output);
+
+		System.out.println(output);
+		sman.applyXml(output.toString(), arrays, true);
+		assertEquals(serializedValues, Arrays.asList(strings.getValues()));
+	}
+
+	@Test
+	public void arraysOfTimeWork() throws IOException, JAXBException, SAXException {
+		Resource arrays = resman.createResource(newResourceName(), Resource.class);
+
+		TimeArrayResource longs = arrays.addDecorator("arr", TimeArrayResource.class);
+		longs.setValues(new long[] { 0xcafebabeL, 1 });
+
+		StringWriter output = new StringWriter();
+		sman.setMaxDepth(100);
+		sman.writeXml(output, arrays);
+		System.out.println(output);
+
+		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		validateOgemaXml(output.toString());
+		Unmarshaller u = ctx.createUnmarshaller();
+		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
+
+		List<Long> serializedValues = ((org.ogema.serialization.jaxb.TimeArrayResource) r.get("arr")).getValues();
+		System.out.println(serializedValues);
+		Assert.assertEquals(2, serializedValues.size());
+
+		serializedValues.add(42L);
+		Marshaller m = ctx.createMarshaller();
+		output = new StringWriter();
+		m.marshal(r, output);
+
+		System.out.println(output);
+		sman.applyXml(output.toString(), arrays, true);
+
+		//FIXME: lazy/brittle string comparison
+		assertEquals(serializedValues.toString(), Arrays.toString(longs.getValues()));
 	}
 
 }

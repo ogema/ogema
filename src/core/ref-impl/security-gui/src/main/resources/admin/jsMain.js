@@ -2,6 +2,9 @@
 // The MIT License (MIT)
 // Copyright (c) 2013 - AGENCE WEB COHERACTIO
 
+var btn = $.fn.button.noConflict() // reverts $.fn.button to jqueryui btn
+$.fn.btn = btn // assigns bootstrap button functionality to $.fn.btn
+
 $.widget("ui.dialog", $.ui.dialog, {
 	options : {
 		clickOutside : false, // Determine if clicking outside
@@ -72,7 +75,7 @@ $(function() {
 		},
 		minWidth : 300,
 		minHeight : 100,
-		width : $("div#wrap").width(),
+		width : $("div#sysApps").width(),
 		height : $(window).height() - 500
 	});
 
@@ -93,8 +96,30 @@ $(function() {
 		},
 		minWidth : 300,
 		minHeight : 100,
-		width : $("div#wrap").width(),
+		width : $("div#sysApps").width(),
 		height : $(window).height() - 300
+	});
+	
+	$("#changeDefStartLevel").dialog({
+		autoOpen : false,
+		resizeable : true,
+		draggable : true,
+		close : function() {
+			$(this).html("");
+			$('div#wrap').css('opacity', '1.0');
+			$('div#footer').css('opacity', '1.0');
+			$('div#header').css('opacity', '1.0');
+		},
+		open : function() {
+			$('div#wrap').css('opacity', '0.3');
+			$('div#footer').css('opacity', '0.3');
+			$('div#header').css('opacity', '0.3');
+		},
+		minWidth : 300,
+		minHeight : 100,
+		height : 250,
+		width: $("div#sysApps").width(),		
+		
 	});
 
 	$("button#done").button({
@@ -129,8 +154,14 @@ $(function() {
 	});
 	// ------------------------------------ SYSTEM APPS
 	// ------------------------------------ //
-	$("div#systemApps .head").click(function() {
-		listSysApps();
+	$("#installed").click(function() {
+		$("#newInstallDiv").hide();	
+		if($("#sysApps").is(":hidden")){
+			listSysApps();
+			$("#sysApps").show();
+			$("#installed").toggleClass("hover");
+			$("#newInstall").toggleClass("hover");			
+		}
 	});
 
 	// ------------ APP MANAGEMENT
@@ -207,17 +238,33 @@ $(function() {
 			$("#menu").css("display", "none");
 		}
 	});
+	
+	$("#store").click(function() {
+		var displayAppstores = $("#menu").css("display");
+
+		if (displayAppstores == "none") {
+			showAppstores();
+			$("#menu").css("display", "block");
+		} else {
+			$("#menu").html("");
+			$("#menu").css("display", "none");
+		}
+	});
 
 	// click on head toggles its part
-	$("div p.head").click(function() {
-		$(this).parent().siblings().find("div.part").hide();
-		$(this).parent().find("div.part").toggle("slide", {
-			direction : "up"
-		}, function() {
-			$('html, body').animate({
-				"scrollTop" : $(this).offset().top
-			}, 'fast')
-		});
+	$("#newInstall").click(function() {
+		
+		if($("#newInstallDiv").is(":hidden")){
+			$("#sysApps").hide();
+			$("#newInstallDiv").show();
+			$("#installed").toggleClass("hover");
+			$("#newInstall").toggleClass("hover");			
+		}else{
+			$("#newInstallDiv").hide();
+			$("#sysApps").show();
+			$("#installed").toggleClass("hover");
+			$("#newInstall").toggleClass("hover");			
+		}
 	});
 });
 
@@ -225,14 +272,76 @@ $(function() {
 
 // ------------------ SYSTEM APPS //
 function listSysApps() {
+	
+	$("div#buttonSet > button").button();
+	$("button#showInfo").button({
+		icons : {
+			primary : "ui-icon-info"
+		}
+	});
+	$("button#update").button({
+		icons : {
+			primary : "ui-icon-refresh"
+		}
+	});
+	$("button#remove").button({
+		icons : {
+			primary : "ui-icon-trash"
+		}
+	});
+	$("button#setPerms").button({
+		icons : {
+			primary : "ui-icon-gear"
+		}
+	});
+	$("button#listAllPerms").button({
+		icons : {
+			primary : "ui-icon-note"
+		}
+	});
+	$("button#webResources").button({
+		icons : {
+			primary : "ui-icon-folder-collapsed"
+		}
+	});
+	$("button#start").button({
+		icons : {
+			primary : "ui-icon-play"
+		}
+	});
+	$("button#stop").button({
+		icons : {
+			primary : "ui-icon-stop"
+		}
+	});
+	$("button#defaultPerms").button({
+		icons: {
+			primary : "ui-icon-script"
+		}
+	});
+	$("button#newPolicy").button({
+		icons: {
+			primary : "ui-icon-document"
+		}
+	});
+	$("button#changeDefStart").button({
+		icons: {
+			primary : "ui-icon-wrench"
+		}
+	});
+		
 	var jsonArr = [];
 	$("div#sortableApps").html("");
 	$.getJSON("/security/config/installedapps?action=listAll", function(json) {
 		for (var v = 0; v < json.length; v++) {
 			$("div#sortableApps").append(
-					"<div class='column'> <div class='portlet'> <div class='portlet-header' id='" + json[v].id + "'></div> <div class='portlet-content'>"
+					"<div class='column'> <div class='portlet'> <div class='portlet-header' id='" + json[v].id + "' title='" + json[v].description + "'>" +
+							"<img class='portlet-images' src='/security/config/geticon?id="+json[v].id+"' ></div> <div class='portlet-content'>"
 							+ json[v].name + "</div> </div></div>");
 		}
+		$("div.portlet-header").tooltip({
+			position: {my: "center bottom", at: "center top"}
+		});
 		$(".column").sortable({
 			connectWith : ".column",
 			handle : ".portlet-header",
@@ -251,6 +360,7 @@ function listSysApps() {
 
 		// Select an appPortlet, when
 		// dblClick
+		
 		$("div.portlet-header").dblclick(function() {
 			$("div.portlet-header").removeClass("selectedPortlet");
 			$(this).addClass("selectedPortlet");
@@ -267,42 +377,7 @@ function listSysApps() {
 			selectedApp = "";
 		});
 
-		$("div#buttonSet > button").button();
-		$("button#showInfo").button({
-			icons : {
-				primary : "ui-icon-info"
-			}
-		});
-		$("button#update").button({
-			icons : {
-				primary : "ui-icon-refresh"
-			}
-		});
-		$("button#setPerms").button({
-			icons : {
-				primary : "ui-icon-gear"
-			}
-		});
-		$("button#installPerms").button({
-			icons : {
-				primary : "ui-icon-wrench"
-			}
-		});
-		$("button#webResources").button({
-			icons : {
-				primary : "ui-icon-folder-collapsed"
-			}
-		});
-		$("button#start").button({
-			icons : {
-				primary : "ui-icon-play"
-			}
-		});
-		$("button#stop").button({
-			icons : {
-				primary : "ui-icon-stop"
-			}
-		});
+		
 	});
 
 }
@@ -375,6 +450,60 @@ function showAppInfo() {
 	}
 }
 
+function changeDefaultStartLevel(){
+	
+	$.getJSON("/security/config/frameworkstartlevel", function(json, xhr){
+		fillStartLevelDialog(json.defaultlvl, json.currentlvl);
+	}).fail(function(xhr, textStatus, errorThrown){
+		console.log("FAIL : " + textStatus);
+	});
+	
+}
+
+function fillStartLevelDialog(defaultlvl, currentlvl){
+	$("#changeDefStartLevel").html("");
+	$("#changeDefStartLevel").append("<p id='currlvl' class='currentlvl'>The current Startlevel for newly installed Bundles is: "+currentlvl+"</p><br>");
+	
+	$("#changeDefStartLevel").append("<form name='changelvl' id='changelvlform'>Select the Startlevel for all Bundles which are installed after this point:"
+			+"<br><br><input id='newStartLevel' type='text' pattern='[0-9]*'></input><br><br>"
+			+"<submit id='applychange' onclick='applyStartLevel("+defaultlvl+")'>Change Startlevel</submit></form><br>");
+	
+	
+	if($("#changeDefStartLevel").html()!=""){
+		$("#changeDefStartLevel").dialog("open");
+		$("submit#applychange").button({
+			icons : {
+				primary : "ui-icon-arrowrefresh-1-s"
+			}
+		});
+		$("input#newStartLevel").spinner({
+			 min : defaultlvl
+		});
+		$("input#newStartLevel").spinner( "value", currentlvl );
+	}
+}
+
+function applyStartLevel(defaultlvl){
+	var newStartLevel = $("#newStartLevel").val();
+	if (newStartLevel>=defaultlvl){
+		$.post("/security/config/newstartlevel?level="+newStartLevel,{
+			
+		}, function(data, status){
+			alert("Data send to server: Response: " + data + "\nStatus: " + status);
+			$("#changeDefStartLevel").dialog("close");
+		}).fail(function(xhr, textStatus, errorThrown) {
+			// if http-post fails
+			if (textStatus != "" && errorThrown != "") {
+				alert("Somthing went wrong: " + textStatus + "\nError: " + errorThrown);
+			} else {
+				alert("Error.");
+			}
+		});
+	}else{
+		alert("The startlevel can not be lower than "+defaultlvl);
+	}
+}
+
 // Update appPortlet (name and permissions)
 function updateApp() {
 
@@ -386,6 +515,27 @@ function updateApp() {
 	} else {
 		alert("Wählen Sie ein Bundle!");
 	}
+}
+
+function removeBundle(){
+	
+	if ($(".selectedPortlet")[0]) {
+		var portletID = $(".selectedPortlet")[0].id;
+		$.getJSON("/security/config/startlevel?id="+portletID, function(json) {
+			if (json.editable == false){
+				alert("Bundles that are a part of Ogema Core can not be removed.");
+				return;
+			}else{
+				$.getJSON("/security/config/installedapps?action=delete&app="+portletID, function(json){
+					alert(json.statusInfo);
+					listSysApps();
+				});
+			}
+		});		
+	} else {
+		alert("Wählen Sie ein Bundle!");
+	}
+	
 }
 
 function startBundle() {
@@ -413,9 +563,28 @@ function stopBundle() {
 }
 
 function editPerms() {
+	
 	if ($(".selectedPortlet")[0]) {
 		var portletID = $(".selectedPortlet")[0].id;
-		var url = "/security-gui/editperms.html?action=editperms&id=" + portletID;
+		$.getJSON("/security/config/startlevel?id="+portletID, function(json) {
+			if (json.editable == false){
+				alert("Bundles that are a part of Ogema Core can not be edited.");
+				return;
+			}else{
+				var url = "/security-gui/editperms.html?action=editperms&id=" + portletID;
+				var win = window.open(url, '_blank');
+				win.focus();
+			}
+		});		
+	} else {
+		alert("Wählen Sie ein Bundle!");
+	}
+}
+
+function listAllPerms() {
+	if ($(".selectedPortlet")[0]) {
+		var portletID = $(".selectedPortlet")[0].id;
+		var url = "/security-gui/editperms.html?action=listperms&id=" + portletID;
 		var win = window.open(url, '_blank');
 		win.focus();
 	} else {
@@ -423,21 +592,33 @@ function editPerms() {
 	}
 }
 
-function installPerms() {
-	if ($(".selectedPortlet")[0]) {
-		var portletID = $(".selectedPortlet")[0].id;
-		var url = "/security-gui/editperms.html?action=newperms&id=" + portletID;
+function defaultPerms(){
+	
+		var url = "/security-gui/editperms.html?action=defaultpolicy"
 		var win = window.open(url, '_blank');
 		win.focus();
-	} else {
-		alert("Wählen Sie ein Bundle!");
-	}
+	
 }
 
 function installPermsByID(portletID) {
 	var url = "/security-gui/editperms.html?action=newperms&id=" + portletID;
 	var win = window.open(url, '_blank');
 	win.focus();
+}
+
+function createNewPolicy(){
+	$.post("/security/config/newpolicy",{
+		
+	}, function(data, status) { // if successfull
+		alert("Data send to server \nResponse: " + data + "\nStatus: " + status);
+	}).fail(function(xhr, textStatus, errorThrown) {
+		// if http-post fails
+		if (textStatus != "" && errorThrown != "") {
+			alert("Somthing went wrong: " + textStatus + "\nError: " + errorThrown);
+		} else {
+			alert("Error.");
+		}
+	});		
 }
 
 function showWebResources() {

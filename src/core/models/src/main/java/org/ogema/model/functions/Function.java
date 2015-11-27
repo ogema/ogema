@@ -23,7 +23,7 @@ import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.model.prototypes.Data;
 
 /**
- * Data basic model for a function X->X. A function is modeled similarly to a
+ * Data basic model for a function X to X. A function is modeled similarly to a
  * schedule: it consists of a number of support points (x,f,q) defined at range
  * elements x with a value of f and a quality q. The values of the function
  * between the support points, and with that the domain of the function, are

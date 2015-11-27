@@ -43,10 +43,12 @@ public interface InterpolationFunction {
 	 */
 	Value integrate(SampledValue x0, SampledValue x1, Class<? extends Value> valueType);
 
-	//    /**
-	//     * Integrate over the abosolute from x0 to x1, assuming no further points lie between the two points.
-	//     * Note that the result can still be negative if the timestamp of x1 preceeds that of x0.
-	//     * @see {@link #integrate(org.ogema.channelmanager.measurements.SampledValue, org.ogema.channelmanager.measurements.SampledValue, java.lang.Class) }
-	//     */
-	//    Value integrateAbsolute(SampledValue x0, SampledValue x1, Class<? extends Value> valueType);
+	/**
+	 * Gets the interval on which the interpolation between the two support points is positive.
+	 * The value at the lower timestamp may be zero for linear interpolation if none of the other
+	 * points is zero. The larger timestamp is exclusive in the resulting interval. For the
+	 * interpolation mode NONE, the 2nd argument is ignored (since this can return only a single
+	 * interval). Returns an empty interval if no suitable positive domain is found.
+	 */
+	TimeInterval getPositiveInterval(SampledValue x0, SampledValue x1, Class<? extends Value> valueType);
 }

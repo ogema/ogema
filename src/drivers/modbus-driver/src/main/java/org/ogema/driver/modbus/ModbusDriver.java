@@ -18,22 +18,25 @@ package org.ogema.driver.modbus;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
-
 import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
 import org.ogema.core.channelmanager.driverspi.ChannelUpdateListener;
+import org.ogema.core.channelmanager.driverspi.DeviceListener;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
-import org.ogema.core.channelmanager.driverspi.ExceptionListener;
+import org.ogema.core.channelmanager.driverspi.NoSuchChannelException;
+import org.ogema.core.channelmanager.driverspi.NoSuchDeviceException;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.driverspi.ValueContainer;
+import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.hardwaremanager.HardwareDescriptor;
 import org.ogema.core.hardwaremanager.HardwareListener;
 import org.ogema.core.hardwaremanager.HardwareManager;
@@ -162,7 +165,7 @@ public class ModbusDriver implements ChannelDriver, HardwareListener {
 	 * Frees all channels, devices and interfaces
 	 */
 	@Override
-	public void reset() {
+	public void shutdown() {
 		for (Connection con : connectionList) {
 			removeConnection(con);
 			con.close();
@@ -283,24 +286,6 @@ public class ModbusDriver implements ChannelDriver, HardwareListener {
 		throw new UnsupportedOperationException();
 	}
 
-	/**
-	 * Asynchronous read channel method - not mandatory
-	 */
-	@Override
-	public void readChannels(List<SampledValueContainer> channels, ChannelUpdateListener listener)
-			throws UnsupportedOperationException {
-		throw new UnsupportedOperationException();
-	}
-
-	/**
-	 * Asynchronous write channel method - not mandatory
-	 */
-	@Override
-	public void writeChannels(List<ValueContainer> channels, ExceptionListener listener)
-			throws UnsupportedOperationException {
-		throw new UnsupportedOperationException();
-	}
-
 	@Override
 	public void hardwareAdded(HardwareDescriptor descriptor) {
 		// TODO Auto-generated method stub
@@ -320,6 +305,34 @@ public class ModbusDriver implements ChannelDriver, HardwareListener {
 
 	public HardwareManager getHardwareManager() {
 		return hardwareManager;
+	}
+
+	@Override
+	public void addDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void removeDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void writeChannel(ChannelLocator channelLocator, Value value) throws UnsupportedOperationException,
+			IOException, NoSuchDeviceException, NoSuchChannelException {
+		try {
+			Connection con = findConnection(channelLocator.getDeviceLocator().getInterfaceName());
+			Device dev = con.findDevice(channelLocator.getDeviceLocator());
+			Channel channel = dev.findChannel(channelLocator);
+
+			// write data
+			channel.writeValue(con, value);
+
+		} catch (NullPointerException e) {
+			throw new IOException("Unknown channel: " + channelLocator, e);
+		}
 	}
 
 }

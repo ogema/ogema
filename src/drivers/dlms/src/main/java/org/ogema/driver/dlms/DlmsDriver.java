@@ -38,9 +38,9 @@ import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
 import org.ogema.core.channelmanager.driverspi.ChannelUpdateListener;
+import org.ogema.core.channelmanager.driverspi.DeviceListener;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
-import org.ogema.core.channelmanager.driverspi.ExceptionListener;
 import org.ogema.core.channelmanager.driverspi.NoSuchChannelException;
 import org.ogema.core.channelmanager.driverspi.NoSuchDeviceException;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
@@ -158,12 +158,6 @@ public class DlmsDriver implements ChannelDriver {
 	}
 
 	@Override
-	public void readChannels(List<SampledValueContainer> channels, ChannelUpdateListener listener)
-			throws UnsupportedOperationException {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
 	public void listenChannels(List<SampledValueContainer> channels, ChannelUpdateListener listener)
 			throws UnsupportedOperationException, NoSuchDeviceException, NoSuchChannelException, IOException {
 		// TODO Auto-generated method stub
@@ -178,14 +172,7 @@ public class DlmsDriver implements ChannelDriver {
 	}
 
 	@Override
-	public void writeChannels(List<ValueContainer> channels, ExceptionListener listener)
-			throws UnsupportedOperationException {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void reset() {
+	public void shutdown() {
 		// TODO Auto-generated method stub
 
 	}
@@ -354,6 +341,25 @@ public class DlmsDriver implements ChannelDriver {
 		}
 
 		return null;
+
+	}
+
+	@Override
+	public void addDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void removeDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void writeChannel(ChannelLocator channelLocator, Value value) throws UnsupportedOperationException,
+			IOException, NoSuchDeviceException, NoSuchChannelException {
+		// TODO Auto-generated method stub
 
 	}
 

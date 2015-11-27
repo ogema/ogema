@@ -31,10 +31,19 @@ import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.resourcemanager.VirtualResourceException;
 
 /**
+ * An incomplete Resource implementation that implements just enough methods
+ * to be useful for (de-)serialization. Used by the REST interface as virtual root of
+ * the OGEMA resource tree, i.e. as resource containing all OGEMA top level Resources
+ * (such a resource does not actually exist).
+ * Returns {@link Resource} as resource type.
+ * 
+ * FIXME: written to work with SerializationManagerImpl (assumes implementation details)
  * 
  * @author jlapp
  */
 public class RootResource implements Resource {
+
+	public static final String ROOT_PATH = "/";
 
 	final ApplicationManager appMan;
 
@@ -49,7 +58,7 @@ public class RootResource implements Resource {
 
 	@Override
 	public String getPath(String delimiter) {
-		return "/";
+		return ROOT_PATH;
 	}
 
 	@Override
@@ -59,7 +68,7 @@ public class RootResource implements Resource {
 
 	@Override
 	public Class<? extends Resource> getResourceType() {
-		return getClass();
+		return Resource.class;
 	}
 
 	@Override
@@ -125,7 +134,7 @@ public class RootResource implements Resource {
 
 	@Override
 	public <T extends Resource> T getSubResource(String name) {
-		throw new UnsupportedOperationException("Not supported yet.");
+		return appMan.getResourceAccess().getResource(name);
 	}
 
 	@Override
@@ -152,7 +161,7 @@ public class RootResource implements Resource {
 	@Override
 	public <T extends Resource> T addDecorator(String name, Class<T> resourceType)
 			throws ResourceAlreadyExistsException {
-		throw new UnsupportedOperationException("Not supported yet.");
+		return appMan.getResourceManagement().createResource(name, resourceType);
 	}
 
 	@Override
@@ -198,7 +207,11 @@ public class RootResource implements Resource {
 
 	@Override
 	public <T extends Resource> T getSubResource(String name, Class<T> type) throws NoSuchResourceException {
-		throw new UnsupportedOperationException("Not supported yet.");
+		T rval = appMan.getResourceAccess().getResource(name);
+		if (rval == null) {
+			rval = appMan.getResourceManagement().createResource(name, type);
+		}
+		return rval;
 	}
 
 	@Override

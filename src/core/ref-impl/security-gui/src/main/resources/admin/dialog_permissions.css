@@ -8,11 +8,11 @@ div.headLine {
 	border-style: none;
 	margin: 5px 5px 0;
 	padding: 5px;
-	background: #124791;
+	background: #39C;
 	border-radius: 5px 5px 0 0;
 	color: white;
+	overflow: auto;
 }
-
 div.allPermHeadLine {
 	border-style: none;
 	margin: 5px 5px 20px;
@@ -28,6 +28,7 @@ div.bodyOfPerm {
 	border: 1px solid grey;
 	border-radius: 0 0 5px 5px;
 	color: black;
+	background: #E9E9E9;
 }
 
 /* For the Add Permission Button */
@@ -44,7 +45,7 @@ div.bodyOfPerm input[type=text] {
 	width: 250px;
 	padding: 2px;
 	margin-bottom: 10px !important;
-	background: none;
+	background: transparent;
 }
 
 div.headLine input[type=text] {
@@ -77,4 +78,43 @@ div.bodyOfPerm input.m {
 /* When label clicked, checkbox gets checked, so label gets thick */
 :checked+.lb {
 	font-weight: bold;
+}
+input[name=chkAll]{
+	margin-left: 19px;
+}
+input.resCheck{
+	float: left;
+	margin-top: 6px;
+}
+label.resCheck{
+	float: left;
+	margin-top: 9px;
+}
+#granted, #demanded{
+	padding: 15px;
+}
+#filtered{
+	padding: 15px;
+	background: red;
+}
+.permsDialog{
+	display: none;
+}
+.ui-dialog-buttonpane{
+	background: #F5F5F5;
+}
+.ui-dialog{
+	background: #F5F5F5;
+}
+.ui-button, .cancelButton, .installButton{
+	background: #E9E9E9 !important;
+}
+#dialogBundleName{
+	color: #39C;
+	font-weight: bold;
+}
+.ui-dialog{
+	border: 1px solid #E3E3E3 !important;
+	box-shadow: 3px 3px 5px 0px rgba(0, 0, 0, 0.35);
+
 }

@@ -15,6 +15,7 @@
  */
 package org.ogema.impl.security;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -25,6 +26,7 @@ import org.ogema.core.application.AppID;
 public class RedirectionURLConnection extends URLConnection {
 
 	enum Snippet {
+
 		SNIPPET0, USERNAME, SNIPPET2, PASSWORD, SNIPPET4, NATIVERESOURCE, SNIPPET6, EOF
 	};
 
@@ -52,6 +54,7 @@ public class RedirectionURLConnection extends URLConnection {
 	protected String name;
 	private InputStream nativeStream;
 	private int available;
+	private final AppID app;
 
 	protected RedirectionURLConnection(URL url, String name, AppID app, String pw) {
 		super(url); // call constructor from super class URLConnection
@@ -60,33 +63,40 @@ public class RedirectionURLConnection extends URLConnection {
 		this.username = app.getIDString().getBytes();
 		len1 = username.length;
 		len3 = otp.length;
-		try {
-			this.nativeStream = app.getApplication().getClass().getResource(name).openConnection().getInputStream();
-			len5 = nativeStream.available();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		this.is = new RedirectStream();
-		try {
-			connect();
-		} catch (IOException e) {
-		}
+		this.app = app;
 	}
 
+	@Override
 	public void connect() throws IOException {
+		if (is != null) {
+			return;
+		}
+		URL url = app.getApplication().getClass().getResource(name);
+		if (url == null) {
+			throw new FileNotFoundException(name);
+		}
+		this.nativeStream = url.openConnection().getInputStream();
+		len5 = nativeStream.available();
+		this.is = new RedirectStream();
 		currentPart = Snippet.SNIPPET0;
 		readPtr = 0;
 		available = len0 + len1 + len2 + len3 + len4 + len5 + len6;
 	}
 
+	@Override
 	public InputStream getInputStream() throws IOException {
+		if (is == null) {
+			connect();
+		}
 		return is;
 	}
 
+	@Override
 	public int getContentLength() {
 		return available;
 	}
 
+	@Override
 	public long getContentLengthLong() {
 		return available;
 	}
@@ -112,8 +122,9 @@ public class RedirectionURLConnection extends URLConnection {
 					System.arraycopy(currentArr, readPtr, ba, read, toRead);
 					readPtr += toRead;
 					read += toRead;
-					if (readPtr == len0)
+					if (readPtr == len0) {
 						readPtr = 0;
+					}
 					available -= toRead;
 					return read - doff;
 				}
@@ -124,8 +135,9 @@ public class RedirectionURLConnection extends URLConnection {
 					read += currentBytes;
 					currentPart = Snippet.USERNAME;
 					available -= currentBytes;
-					if ((toRead <= 0))
+					if ((toRead <= 0)) {
 						return read - doff;
+					}
 				}
 			case USERNAME:
 				currentArr = username;
@@ -139,8 +151,9 @@ public class RedirectionURLConnection extends URLConnection {
 					read += currentBytes;
 					currentPart = Snippet.SNIPPET2;
 					available -= currentBytes;
-					if ((toRead <= 0))
+					if ((toRead <= 0)) {
 						return read - doff;
+					}
 				}
 			case SNIPPET2:
 				currentArr = snippet2;
@@ -149,8 +162,9 @@ public class RedirectionURLConnection extends URLConnection {
 					System.arraycopy(currentArr, readPtr, ba, read, toRead);
 					readPtr += toRead;
 					read += toRead;
-					if (readPtr == len2)
+					if (readPtr == len2) {
 						readPtr = 0;
+					}
 					available -= toRead;
 					return read - doff;
 				}
@@ -161,8 +175,9 @@ public class RedirectionURLConnection extends URLConnection {
 					read += currentBytes;
 					currentPart = Snippet.PASSWORD;
 					available -= currentBytes;
-					if ((toRead <= 0))
+					if ((toRead <= 0)) {
 						return read - doff;
+					}
 				}
 			case PASSWORD:
 				currentArr = otp;
@@ -176,8 +191,9 @@ public class RedirectionURLConnection extends URLConnection {
 					read += currentBytes;
 					currentPart = Snippet.SNIPPET4;
 					available -= currentBytes;
-					if ((toRead <= 0))
+					if ((toRead <= 0)) {
 						return read - doff;
+					}
 				}
 			case SNIPPET4:
 				currentArr = snippet4;
@@ -186,8 +202,9 @@ public class RedirectionURLConnection extends URLConnection {
 					System.arraycopy(currentArr, readPtr, ba, read, toRead);
 					readPtr += toRead;
 					read += toRead;
-					if (readPtr == len4)
+					if (readPtr == len4) {
 						readPtr = 0;
+					}
 					available -= toRead;
 					return read - doff;
 				}
@@ -198,8 +215,9 @@ public class RedirectionURLConnection extends URLConnection {
 					read += currentBytes;
 					currentPart = Snippet.NATIVERESOURCE;
 					available -= currentBytes;
-					if ((toRead <= 0))
+					if ((toRead <= 0)) {
 						return read - doff;
+					}
 				}
 			case NATIVERESOURCE:
 				int nativeRead = 0;
@@ -219,8 +237,9 @@ public class RedirectionURLConnection extends URLConnection {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				if ((toRead <= 0))
+				if ((toRead <= 0)) {
 					return read - doff;
+				}
 			case SNIPPET6:
 				currentArr = snippet6;
 				currentBytes = currentArr.length - readPtr;
@@ -228,8 +247,9 @@ public class RedirectionURLConnection extends URLConnection {
 					System.arraycopy(currentArr, readPtr, ba, read, toRead);
 					readPtr += toRead;
 					read += toRead;
-					if (readPtr == len6)
+					if (readPtr == len6) {
 						readPtr = 0;
+					}
 					available -= toRead;
 					return read - doff;
 				}

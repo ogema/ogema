@@ -339,12 +339,15 @@ public class ResourceListenerTest extends OsgiTestBase {
 
 		final CountDownLatch cdl = new CountDownLatch(1);
 		final Resource[] res = new Resource[1];
+		final Object lock = new Object();
 		org.ogema.core.resourcemanager.ResourceListener l = new org.ogema.core.resourcemanager.ResourceListener() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
+				synchronized (lock) {
+					res[0] = resource;
+				}
 				cdl.countDown();
-				res[0] = resource;
 			}
 		};
 
@@ -355,8 +358,9 @@ public class ResourceListenerTest extends OsgiTestBase {
 		sw1.location().geographicLocation().longitudeArcMinutes().setValue(47.11f);
 
 		assertTrue(cdl.await(10, TimeUnit.SECONDS));
-
-		assertTrue(res[0].getPath("/").contains(sw2.getName()));
+		synchronized (lock) {
+			assertTrue(res[0].getPath("/").contains(sw2.getName()));
+		}
 	}
 
 	@Test

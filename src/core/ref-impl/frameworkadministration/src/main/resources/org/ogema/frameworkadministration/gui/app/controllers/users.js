@@ -114,7 +114,8 @@ ngOGFrAdminApp.controller('getUserListCtrl', ['$scope', 'ogemaGateway', '$rootSc
             $scope.addNewPolicy = function (obj) {
            //     console.log("addNewPolicy", obj);
                 $scope.userPolicies.resourcePermissions.push(obj);
-                $scope.newpolicy = {"accessDecision": "allow", "permissionName":"org.ogema.accesscontrol.ResourcePermission","uniqueName":null, "permissionPath": "path=*", "resourceType": null, "permissionActions": ["read", "write"]};
+ //               $scope.newpolicy = {"accessDecision": "allow", "permissionName":"org.ogema.accesscontrol.ResourcePermission","uniqueName":null, "permissionPath": "path=*", "resourceType": null, "permissionActions": ["read", "write"]};
+            	            $scope.newpolicy = {"accessDecision": "allow", "permissionName":"org.ogema.accesscontrol.ResourcePermission","uniqueName":null, "resourceType": null, "permissionActions": ["read", "write"]};
             };
 
             $scope.deletePolicy = function (item) {
@@ -131,6 +132,9 @@ ngOGFrAdminApp.controller('getUserListCtrl', ['$scope', 'ogemaGateway', '$rootSc
              //   console.log("toggleAppPermission", app);
                 app.permitted = !app.permitted;
                 $scope.userPermittedApps.role = null;
+                $scope.userPermittedApps.apps = [app];
+                
+                
 
                 ogemaGateway.postData("/apps/ogema/frameworkadminuser/setPermittedApps", $scope.userPermittedApps).then(function (result) {
                     ogemaGateway.getJSON(path, {"action": "getUserPermittedApps", "user": $rootScope.editUsername}).then(function (result) {

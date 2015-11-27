@@ -27,6 +27,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.ogema.core.application.Application;
@@ -48,12 +49,13 @@ import org.osgi.framework.BundleContext;
 import org.osgi.service.condpermadmin.ConditionalPermissionAdmin;
 
 /**
- * Integration tests for OGEMA resource security.
- * Note that the application registered by the super class runs with the
- * permissions of the ogema-exam-base bundle, while the application registered
- * by this class has the permissions of this bundle (bundle location is 'local').
+ * Integration tests for OGEMA resource security. Note that the application registered by the super class runs with the
+ * permissions of the ogema-exam-base bundle, while the application registered by this class has the permissions of this
+ * bundle (bundle location is 'local').
+ * 
  * @author jlapp
  */
+//@Ignore
 @RunWith(PaxExam.class)
 //@ExamReactorStrategy(PerClass.class)
 @ExamReactorStrategy(PerMethod.class)
@@ -77,24 +79,27 @@ public class SecurityTest extends OsgiAppTestBase implements Application {
 	}
 
 	@Configuration
-    @Override
-    public Option[] config() {
-        String ogemaVersion = MavenUtils.asInProject().getVersion("org.ogema.core", "api");
-        List<Option> options = new ArrayList<>();
-        // java policy has to be set on the command line (surefire plugin <argLine>)
-        //options.add(CoreOptions.systemProperty("java.security.policy").value("all.policy"));
-        options.add(CoreOptions.systemProperty("org.osgi.framework.security").value("osgi"));
-        options.add(CoreOptions.systemProperty("osgi.policy").value("config/ogema.policy"));
-        options.addAll(Arrays.asList(super.config()));
-        options.add(CoreOptions.systemProperty("org.ogema.security").value("on"));
-        options.add(CoreOptions.systemProperty("osgi.console").value(""));
-        return options.toArray(new Option[0]);
-    }
+	@Override
+	public Option[] config() {
+		String ogemaVersion = MavenUtils.asInProject().getVersion("org.ogema.core", "api");
+		List<Option> options = new ArrayList<>();
+		// java policy has to be set on the command line (surefire plugin <argLine>)
+		options.add(CoreOptions.systemProperty("java.security.policy").value("all.policy"));
+		options.add(CoreOptions.systemProperty("org.osgi.framework.security").value("osgi"));
+        options.add(CoreOptions.frameworkProperty("org.osgi.framework.security").value("osgi"));
+        //options.add(CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.framework.security", "2.4.0").startLevel(1));
+		// options.add(CoreOptions.systemProperty("osgi.policy").value("config/ogema.policy"));
+		options.addAll(Arrays.asList(super.config()));
+		options.add(CoreOptions.systemProperty("org.ogema.security").value("on"));
+		options.add(CoreOptions.systemProperty("osgi.console").value(""));
+		return options.toArray(new Option[0]);
+	}
 
 	@Test
 	public void securityIsEnabled() {
 		assertEquals("osgi", ctx.getProperty("org.osgi.framework.security"));
-		assertNotNull("no security!", System.getSecurityManager());
+		SecurityManager sm = System.getSecurityManager();
+		assertNotNull("no security!", sm);
 		assertNotNull("no conditional permission admin", cpa);
 		assertFalse("no permissions in system", cpa.newConditionalPermissionUpdate().getConditionalPermissionInfos()
 				.isEmpty());
@@ -128,7 +133,7 @@ public class SecurityTest extends OsgiAppTestBase implements Application {
 			unrestrictedApp.getResourceAccess().<Room> getResource("/ExamProbe").co2Sensor().setAsReference(
 					rNoAccess.co2Sensor());
 
-			//assertTrue(r.co2Sensor().equalsLocation(rNoAccess.co2Sensor()));
+			// assertTrue(r.co2Sensor().equalsLocation(rNoAccess.co2Sensor()));
 		} catch (SecurityException se) {
 			Assert.fail("SecurityException at wrong point: " + se);
 		}
@@ -136,8 +141,10 @@ public class SecurityTest extends OsgiAppTestBase implements Application {
 		assertTrue(r.co2Sensor().exists());
 	}
 
-	/* when an app holds a virtual resource and that resource is realized as a
-	reference to an unreadable resource, subsequend reads on that resource must fail. */
+	/*
+	 * when an app holds a virtual resource and that resource is realized as a reference to an unreadable resource,
+	 * subsequend reads on that resource must fail.
+	 */
 	@Test(expected = SecurityException.class)
 	public void readOfUnreadableLinkedResourceFailsForPreexistingVirtualResource() {
 		Room r = null;

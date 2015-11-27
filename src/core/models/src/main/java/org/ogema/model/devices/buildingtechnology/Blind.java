@@ -25,8 +25,9 @@ import org.ogema.model.sensors.GeographicDirectionSensor;
 public interface Blind extends PhysicalElement {
 
 	/**
-	 * Specifies the current state of the blind ({@link org.ogema.core.model.commonactors.GenericMultiSwitch.stateFB
-	 * setting.stateFB}: 0: open, 1: fully closed), as well as a setpoint
+	 * Specifies the current state of the blind (
+	 * {@link org.ogema.model.actors.MultiSwitch#stateFeedback() setting.stateFeedback}
+	 * : 0: open, 1: fully closed), as well as a setpoint
 	 * if automatic control is possible.
 	 */
 	MultiSwitch setting();

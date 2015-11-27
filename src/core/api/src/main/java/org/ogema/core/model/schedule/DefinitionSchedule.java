@@ -18,6 +18,8 @@ package org.ogema.core.model.schedule;
 /**
  * Schedule giving a definition of future, current and past values of the resource to which it is attached (e.g. a price
  * profile, which is defined by a source outside of the OGEMA gateway).
+ * @deprecated use {@link AbsoluteSchedule} instead
  */
+@Deprecated
 public interface DefinitionSchedule extends Schedule {
 }

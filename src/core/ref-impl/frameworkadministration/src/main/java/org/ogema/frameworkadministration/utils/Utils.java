@@ -39,7 +39,7 @@ public class Utils {
 	public static final String[] FILTERED_USERAPPS = { "URP@" };
 
 	public static final String USER_CONDITIONINFOTYPE = "org.osgi.service.condpermadmin.BundleLocationCondition";
-	public static final String USER_PRECONDITIONFILE = "file:./ogema/users/";
+	public static final String USER_PRECONDITIONFILE = "urp:";
 	public static final String USER_SUFCONDITIONFILE = "/*";
 	public static final String USER_PERMISSIONAME = "org.ogema.accesscontrol.ResourcePermission";
 

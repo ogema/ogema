@@ -72,6 +72,9 @@ public class MemoryTreeElement implements TreeElement {
     
     @SuppressWarnings("unchecked")
 	protected final Class<? extends Resource> findElementTypeOnParent() {
+        if (parent == null) {
+            return null;
+        }
 		Class<? extends Resource> pType = parent.getType();
 		for (Method m : pType.getMethods()) {
 			if (m.getName().equals(getName()) && Resource.class.isAssignableFrom(m.getReturnType())) {

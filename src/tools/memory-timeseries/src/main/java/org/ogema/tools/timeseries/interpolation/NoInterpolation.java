@@ -17,12 +17,15 @@ package org.ogema.tools.timeseries.interpolation;
 
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.tools.timeseries.api.InterpolationFunction;
+import org.ogema.tools.timeseries.api.TimeInterval;
 
 /**
- * Interpolation modes that performs no interpolation at all. Returns Quality.BAD
- * if requested time for interpolation does not equal one of the two support values.
+ * Interpolation modes that performs no interpolation at all. Returns
+ * Quality.BAD if requested time for interpolation does not equal one of the two
+ * support values.
  */
 public class NoInterpolation implements InterpolationFunction {
 
@@ -31,10 +34,12 @@ public class NoInterpolation implements InterpolationFunction {
 		if (x0 == null && x1 == null) {
 			throw new IllegalArgumentException("Cannot interpolate between two null pointers (x0==null, x1==null).");
 		}
-		if (x0 != null && x0.getTimestamp() == t)
+		if (x0 != null && x0.getTimestamp() == t) {
 			return new SampledValue(x0);
-		if (x1 != null && x1.getTimestamp() == t)
+		}
+		if (x1 != null && x1.getTimestamp() == t) {
 			return new SampledValue(x1);
+		}
 
 		return (x0 != null) ? new SampledValue(x0.getValue(), t, Quality.BAD) : new SampledValue(x1.getValue(), t,
 				Quality.BAD);
@@ -45,8 +50,19 @@ public class NoInterpolation implements InterpolationFunction {
 		throw new UnsupportedOperationException("Interpolation mode NONE does not allow integration of functions.");
 	}
 
-	//    @Override
-	//    public Value integrateAbsolute(SampledValue x0, SampledValue x1, Class<? extends Value> valueType) {
-	//        throw new UnsupportedOperationException("Interpolation mode NONE does not allow integration of functions.");
-	//    }
+	@Override
+	public TimeInterval getPositiveInterval(SampledValue x0, SampledValue x1, Class<? extends Value> valueType) {
+		if (StringValue.class.isAssignableFrom(valueType)) {
+			throw new RuntimeException("Cannot define positive values for StringValues");
+		}
+		if (x0 == null || x0.getQuality() == Quality.BAD) {
+			return new TimeInterval(0, 0);
+		}
+		final float value = x0.getValue().getFloatValue();
+		if (value <= 0.) {
+			return new TimeInterval(0, 0);
+		}
+		final long t = x0.getTimestamp();
+		return new TimeInterval(t, t + 1);
+	}
 }

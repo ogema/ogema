@@ -27,6 +27,7 @@ import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.ResourceGraphException;
+import org.ogema.exam.ResourceAssertions;
 import org.ogema.model.locations.Room;
 import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.devices.generators.ElectricHeater;
@@ -69,6 +70,57 @@ public class ReferenceTest extends OsgiTestBase {
 		sw1.heatCapacity().setAsReference(sw2.heatCapacity());
 
 		assertEquals(3.f, sw1.heatCapacity().getValue(), 0.f);
+	}
+
+	/*
+	 * test 'transitive' references i.e. A references (B references C) looks like A=C
+	 */
+	@Test
+	public void transitiveReferencesWork2() {
+		OnOffSwitch sw1 = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
+		sw1.settings().setpoint().create();
+		OnOffSwitch sw2 = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
+		sw2.settings().setpoint().create();
+		OnOffSwitch sw3 = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
+		sw1.settings().setAsReference(sw2.settings());
+		assertEquals(sw1.settings().setpoint().getLocation(), sw2.settings().setpoint().getLocation());
+		sw3.settings().setpoint().create();
+		sw2.settings().setAsReference(sw3.settings());
+		System.out.println("  A " + sw1.settings().setpoint().getLocation() + ", " + sw1.settings().getLocation());
+		System.out.println("  B " + sw2.settings().setpoint().getLocation() + ", " + sw2.settings().getLocation());
+		System.out.println("  C " + sw3.settings().setpoint().getLocation() + ", " + sw3.settings().getLocation());
+		assert (sw1.settings().setpoint().equalsLocation(sw3.settings().setpoint())) : "Rereference forwarding failed";
+		assert (sw1.settings().equalsLocation(sw3.settings())) : "Rereference forwarding failed";
+		sw1.delete();
+		sw2.delete();
+		sw3.delete();
+	}
+
+	@Test
+	public void referenceForwardingWorks() {
+		OnOffSwitch sw1 = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
+		OnOffSwitch sw2 = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
+		OnOffSwitch sw3 = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
+		sw1.stateFeedback().create();
+		sw1.stateFeedback().setValue(false);
+		sw2.stateFeedback().setAsReference(sw1.stateFeedback());
+		sw3.stateFeedback().create();
+		sw1.stateFeedback().setAsReference(sw3.stateFeedback());
+		sw3.stateFeedback().setValue(true);
+		System.out.printf("  sw1 (%s) stateFeedback = %s%n", sw1.getName(), sw1.stateFeedback().getLocation());
+		System.out.printf("  sw2 (%s) stateFeedback = %s%n", sw2.getName(), sw2.stateFeedback().getLocation());
+		System.out.printf("  sw3 (%s) stateFeedback = %s%n", sw3.getName(), sw3.stateFeedback().getLocation());
+
+		assertTrue(sw1.stateFeedback().equalsLocation(sw2.stateFeedback()));
+		assertTrue(sw1.stateFeedback().isReference(false));
+		assertTrue(sw2.stateFeedback().isReference(false));
+
+		assertEquals("Rereference forwarding failed", sw2.stateFeedback().getValue(), sw3.stateFeedback().getValue());
+		assertEquals("Rereference forwarding failed", sw2.stateFeedback().getLocation(), sw3.stateFeedback()
+				.getLocation());
+		sw1.delete();
+		sw2.delete();
+		sw3.delete();
 	}
 
 	@Test
@@ -342,4 +394,38 @@ public class ReferenceTest extends OsgiTestBase {
 		sw1.stateControl().setAsReference(reference);
 	}
 
+	@Test
+	public void deletingReferencesWorks() {
+		Room room = resMan.createResource(RESNAME + counter++, Room.class);
+		room.create().activate(false);
+		StringResource name = resMan.createResource(RESNAME + counter++, StringResource.class);
+		name.create().activate(false);
+		room.name().setAsReference(name);
+		assertTrue(room.name().exists());
+		assertTrue(room.name().isActive());
+		room.name().delete();
+		assertTrue(name.exists());
+		assertTrue(name.isActive());
+		assertFalse(room.name().exists());
+		assertFalse(room.name().isActive());
+	}
+
+	@Test
+	public void multipleReferencesFromSameParentCanBeDeleted() {
+		Room room = resMan.createResource(newResourceName(), Room.class);
+		room.create().activate(false);
+		StringResource name = resMan.createResource(newResourceName(), StringResource.class);
+		name.create().activate(false);
+
+		room.addDecorator("x1", name);
+		room.addDecorator("x2", name);
+		ResourceAssertions.assertExists(room.getSubResource("x1", StringResource.class));
+		ResourceAssertions.assertExists(room.getSubResource("x2", StringResource.class));
+
+		name.delete();
+
+		ResourceAssertions.assertDeleted(room.getSubResource("x1", StringResource.class));
+		ResourceAssertions.assertDeleted(room.getSubResource("x2", StringResource.class));
+
+	}
 }

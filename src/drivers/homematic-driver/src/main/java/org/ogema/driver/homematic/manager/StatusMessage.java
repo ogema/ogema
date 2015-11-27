@@ -37,7 +37,7 @@ public class StatusMessage {
 	public long rssi = 0;
 
 	public long msg_len = 0;
-	public long msg_num = 0;
+	public int msg_num = 0;
 	public byte msg_flag = 0;
 	public byte msg_type = 0;
 	public byte[] msg_data = null;
@@ -50,6 +50,9 @@ public class StatusMessage {
 	StatusMessage() {
 		isEmpty = true;
 	}
+
+	// E-Message: [0x45 SourceAddr(1.-3.) Cond(4.) Status(5.) Uptime(6.-9.) AES-Key(10.) RSSI(11.-12.) lenght(13.)
+	// MsgNumber(14.) Flag(15.) MsgType(16.) SourceAddr(17.-19.) DestinationAddr(20.-22.) Data(23.-(len+13).)
 
 	StatusMessage(byte[] data) {
 
@@ -75,7 +78,7 @@ public class StatusMessage {
 		rssi = Converter.toLong(data, 11 + i_type, 2) - 65536;
 
 		msg_len = Converter.toLong(data[13 + i_type]);
-		msg_num = Converter.toLong(data[14 + i_type]);
+		msg_num = Converter.toInt(data[14 + i_type]);
 		msg_flag = data[15 + i_type];
 		msg_type = data[16 + i_type];
 		if (this.msg_len > 9)

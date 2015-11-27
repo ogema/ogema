@@ -70,7 +70,7 @@ public interface ThermalBridge extends Connection {
 
 	/**
 	 * "Output" temperature.
-	 * @see #inputTemperature.
+	 * @see #inputTemperature()
 	 */
 	TemperatureSensor outputTemperature();
 

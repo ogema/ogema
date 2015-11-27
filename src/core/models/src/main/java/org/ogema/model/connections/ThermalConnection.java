@@ -31,6 +31,9 @@ import org.ogema.model.sensors.ThermalPowerSensor;
  */
 public interface ThermalConnection extends CircuitConnection {
 
+	@Override
+	ThermalCircuit input();
+
 	/**
 	 * The thermal power transferred by diffusion as well as possible transport
 	 * of a fluid. Positive values related to thermal energy being transported
@@ -69,7 +72,7 @@ public interface ThermalConnection extends CircuitConnection {
 
 	/**
 	 * "Output" temperature.
-	 * @see #inputTemperature.
+	 * @see ThermalConnection#inputTemperature()
 	 */
 	TemperatureSensor outputTemperature();
 

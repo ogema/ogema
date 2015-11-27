@@ -15,6 +15,7 @@
  */
 package org.ogema.driver.xbee.serialconnection;
 
+import org.ogema.driver.xbee.manager.InputHandler;
 import org.slf4j.Logger;
 
 import jssc.SerialPort;
@@ -26,19 +27,19 @@ import jssc.SerialPortException;
  * @author puschas
  * 
  */
-public class SerialConnection implements ISerialConnection {
+public class SerialConnection {
 	private SerialPort serialPort;
-	private AbstractSerialPortReader serialPortReader;
+	private SerialPortReaderAp1 serialPortReader;
 	private SerialPortWriter serialPortWriter;
-	private Thread serialPortWriterThread;
 	private int baudrate = SerialPort.BAUDRATE_9600;
 	private int databits = SerialPort.DATABITS_8;
 	private int stopbits = SerialPort.STOPBITS_1;
 	private int parity = SerialPort.PARITY_NONE;
+	private boolean running;
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("xbee-driver");
 
-	public SerialConnection(String port) throws SerialPortException {
+	public SerialConnection(String port, InputHandler ih) throws SerialPortException {
 		this.serialPort = new SerialPort(port);
 
 		try {
@@ -46,55 +47,49 @@ public class SerialConnection implements ISerialConnection {
 			this.serialPort.setParams(baudrate, databits, stopbits, parity);
 		} catch (SerialPortException e) {
 			logger.error(String.format("Failed to open serial port %s \n %s", port, e.getMessage()));
+			return;
+		} catch (Throwable e) {
+			e.printStackTrace();
+			return;
 		}
 		serialPortWriter = new SerialPortWriter(this.serialPort);
-		serialPortWriterThread = new Thread(serialPortWriter);
-		serialPortWriterThread.setName("xbee-driver-serialPortWriter");
-		serialPortWriterThread.start();
-		serialPortReader = new SerialPortReaderAp1(this.serialPort);
-		serialPort.addEventListener(serialPortReader);
-	}
+		serialPortReader = new SerialPortReaderAp1(this.serialPort, ih);
+		running = true;
+		Thread srt = new Thread(new Runnable() {
 
-	/**
-	 * This lock object will receive a notification once new frames have been read and put into the FiFo.
-	 */
-	@Override
-	public Object getInputEventLock() {
-		return serialPortReader.getInputEventLock();
-	}
-
-	/**
-	 * @return the oldest frame in the FiFo as a byte array and NULL if empty
-	 */
-	@Override
-	public byte[] getReceivedFrame() {
-		return serialPortReader.getInputFifo().get();
-	}
-
-	/**
-	 * @returns true if the FiFo contains frames
-	 */
-	@Override
-	public boolean hasFrames() {
-		return serialPortReader.getInputFifo().count > 0 ? true : false;
+			@Override
+			public void run() {
+				while (running) {
+					try {
+						((SerialPortReaderAp1) serialPortReader).serialRead();
+						Thread.sleep(10);
+					} catch (Throwable e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		});
+		srt.setName("xbee serial reader");
+		srt.start();
 	}
 
 	/**
 	 * @param a
 	 *            complete frame (including start delimiter and checksum)
 	 */
-	@Override
 	public void sendFrame(byte[] frame) {
-		// TODO Auto-generated method stub
 		serialPortWriter.sendData(frame);
 	}
 
 	/**
 	 * Closes the jSSC connection and stops the serialPortWriter Thread
 	 */
-	@Override
 	public void closeConnection() throws SerialPortException {
-		serialPortWriter.stop();
 		serialPort.closePort();
+		stop();
+	}
+
+	void stop() {
+		running = false;
 	}
 }

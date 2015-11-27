@@ -21,12 +21,14 @@ import java.util.List;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
+import org.ogema.core.rads.tools.ContainerTool;
 import org.ogema.core.rads.tools.RadFactory;
 import org.ogema.core.rads.tools.ResourceFieldInfo;
-import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.resourcemanager.pattern.PatternListener;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.CreateMode;
+import org.ogema.core.resourcemanager.pattern.ContextSensitivePattern;
+import org.slf4j.LoggerFactory;
 
 /**
  * Takes a RAD with a matched primary demand and checks if all required fields are set.
@@ -53,6 +55,7 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 	// !m_completed => !init_satisfied
 	private boolean m_completed = false;	
 	private boolean init_satisfied = false;
+	private final Object m_container;
 
 	/*
 	 * Gets all the fields annotated in the RAD, irrespective of their existence requirements.
@@ -64,11 +67,16 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 		// result.addAll(m_create);
 		return result;
 	}
-
+	
 	public CompletionListener(ApplicationManager appMan, P rad, final List<ResourceFieldInfo> fields) {
+		this(appMan, rad, fields, null);
+	}
+
+	public CompletionListener(ApplicationManager appMan, P rad, final List<ResourceFieldInfo> fields, Object container) {
 		m_appMan = appMan;
 		m_logger = appMan.getLogger();
 		m_rad = rad;
+		m_container = container;
 		for (ResourceFieldInfo info : fields) {
 			final Resource resource = RadFactory.getResource(info.getField(), rad);
 			final CreateMode mode = info.getCreateMode();
@@ -76,10 +84,10 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 				continue;   // ignore uninitialized resources
 			}
 			if (mode == CreateMode.MUST_EXIST) {
-				m_required.add(new ConnectedResource(resource, info, this));
+				m_required.add(new ConnectedResource(resource, info, this, m_logger));
 			}
 			else if (mode == CreateMode.OPTIONAL) {
-				m_optional.add(new ConnectedResource(resource, info, this));
+				m_optional.add(new ConnectedResource(resource, info, this, m_logger));
 			}
 			else {
 				throw new RuntimeException("Unsupported create mode " + mode);
@@ -91,6 +99,9 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 		m_listener = completionListener;
 		for (ConnectedResource conRes : getAllConnectedResources()) {
 			conRes.start();
+		}
+		if (getAllConnectedResources().isEmpty()) {
+			checkInitRequirement();
 		}
 	}
 
@@ -160,7 +171,16 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 		checkInitRequirement();
 	}
 	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void checkInitRequirement() {
+		if (m_container != null && m_rad instanceof ContextSensitivePattern) {
+			try {
+				ContainerTool.setContainer((ContextSensitivePattern) m_rad, m_container);
+			} catch (NoSuchFieldException | IllegalAccessException | RuntimeException e) {
+				LoggerFactory.getLogger(getClass()).error("Internal error: could not set pattern container: " + e);
+			}
+//			((ResourcePatternExtended) m_rad).setContainer(m_container);
+		}
 		if (m_rad.accept()) {
 			if (init_satisfied) return;
 			init_satisfied = true;

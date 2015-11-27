@@ -46,9 +46,9 @@ public interface GenericMeter extends PhysicalElement {
 	 * 1: two-way meter without nonreturn<br>
 	 * 2: consumption meter<br>
 	 * 3: generation meter<br>
-	 * >=10000: range left open for user-defined values.<br>
+	 * greater/equal 10000: range left open for user-defined values.<br>
 	 * Specialized meters deriving from this class can define additional types
-	 * in the range <10000.
+	 * in the range smaller 10000.
 	 */
 	IntegerResource type();
 

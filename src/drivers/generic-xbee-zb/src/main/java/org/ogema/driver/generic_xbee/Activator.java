@@ -61,7 +61,7 @@ public class Activator implements BundleActivator {
 						shell.deviceScan(null);
 						logger.debug(".. device scan finished.");
 					} catch (Throwable e) {
-						e.printStackTrace();
+						logger.debug("", e);
 					}
 				}
 			}

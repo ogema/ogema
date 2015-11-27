@@ -40,14 +40,27 @@ function createActionsdialog() {
  */
 function boxCheck(num) {
 	var identifyCheck = "input#c" + num;
+	var show; 
 	var container = $(identifyCheck).parent().parent();
+	var locationSearch = window.location.search.substring(1);
 	// if current box is checked
+	var resCheck = "resCheck" + num;
+	var resChecked = document.getElementById(resCheck);
+	if (resChecked != null){
+		show = resChecked.checked;
+	}else{
+		show = false;
+	}
+		
+	
 	if ($(identifyCheck).prop("checked")) {
 
 		// check sub boxes
 		checkSubBoxes(container);
-		// show the resources
-		showRessources(num, true);
+		// show the resources	
+		if(!show){
+			showRessources(num, true);
+		}
 		container.find("div:last-child").css("background", "#89A5CC");
 		container.find("div:last-child").find("input[type='text']").addClass("highlightInputText");
 	} else {
@@ -55,7 +68,7 @@ function boxCheck(num) {
 
 		// $("#conArgs" + num).parent().next().hide("fast");
 		uncheckSubBoxes(container);
-		container.find("div:last-child").css("background", "white");
+		container.find("div:last-child").css("background", "#E9E9E9");
 		container.find("div:last-child").find("input[type='text']").removeClass("highlightInputText");
 	}
 }
@@ -63,9 +76,23 @@ function boxCheck(num) {
 function customizePermission(num, permContainer) {
 	// var identifyCheck = '#' + buttonID;
 	// check sub boxes
+	var resCheck = "resCheck" + num;
+	var resChecked = document.getElementById(resCheck);
+	if (!(typeof resChecked === undefined) && resChecked!=null){
+		show = resChecked.checked;
+	}else{
+		show = false;
+	}
 	checkSubBoxes(permContainer);
 	// show the resources
-	showRessources(num, true);
+	if(!show){
+		showRessources(num, true);
+	}
+	// create input for new Filter if it does not already exist
+	if($("#newFilter"+num).length==0){
+		appendNewFilter(num);
+	}
+	$("#Filter"+num).attr("readonly", "readonly");
 	permContainer.find("div:last-child").css("background", "#89A5CC");
 	permContainer.find("div:last-child").find("input[type='text']").addClass("highlightInputText");
 
@@ -83,6 +110,19 @@ function checkSubBoxes(parent) {
 	parent.find("div:last-child>input[type='checkbox'].m").prop('checked', true);
 	parent.find("div>input[type='text']").addClass("highlight");
 	parent.find("div:last-child").find("label.lb").addClass("highlight");
+}
+function displayRessources(num){	
+	var locationSearch = window.location.search.substring(1);
+	if (locationSearch.indexOf("newperms")!=-1 && !document.getElementById("c"+num).checked){
+		return;
+	}else if (locationSearch.indexOf("defaultpolicy")!=-1){
+		if(typeof num == "number" && num>-2){
+			num = num+1+"-1";
+		}
+	}
+		
+	var checked = !document.getElementById("resCheck"+num).checked
+	showRessources(num, checked);	
 }
 
 /**
@@ -122,17 +162,31 @@ function singleHighlight(num) {
 function showRessources(num, check) {
 	var display = $("#conArgs" + num).parent().next().css("display");
 	if (check) {
-		writeResourceInDia(num);
+		writeResourceInDia(num, false);
+		$("#testTree"+num).show();
 	} else {
+		$("#testTree"+num).hide();
 		$("#conArgs" + num).parent().next().hide();
 		$("#conArgs" + num).parent().next().next().hide();
 		$("#conArgs" + num).parent().next().next().find("input:checkbox").prop("checked", false);
 	}
 }
 
-function writeResourceInDia(num) {
+function writeResourceInDia(num, newFilter) {
 	// GET to server, for initializing the resource-transmission
-	var filter = $("label[for='c" + num + "']").parent().next().find("input[type='text']").val();
+	var filter;
+	if ($("label[for='c" + num + "']").parent().next().find("input.newFilterInput[type='text']").length == 0){
+		filter = $("label[for='c" + num + "']").parent().next().find("input.FilterInput[type='text']").val();;
+	}else{
+		if ($("label[for='c" + num + "']").parent().next().find("input.newFilterInput[type='text']").val().length == 0){
+			filter = $("label[for='c" + num + "']").parent().next().find("input.FilterInput[type='text']").val();
+		}else{
+			filter = $("label[for='c" + num + "']").parent().next().find("input.newFilterInput[type='text']").val();
+		}
+	}
+	if (newFilter){
+		$.jstree.destroy();
+	}
 	var actions = "";
 
 	var preActions = $("label[for='c" + num + "']").parent().next().find("input:checkbox:checked").map(function() {
@@ -352,8 +406,17 @@ function additionalPrepareBoxCheck() {
 	if (!mode)
 		modename = "deny";
 	removeAdditionalMask();
-	writeInDia(permName, filter, actions, "" + numberOfPermEntry++ + curAppId, formOfDialog, modename);
+	writeInDia(permName, filter, actions, numberOfPermEntry + "" + curAppId, formOfDialog, modename);
+	var checkID = "c" + numberOfPermEntry++ + "" + curAppId;
+	var cb = document.getElementById(checkID); 
+	cb.checked=true;
+	cb.onchange();
 	$(formOfDialog).append(additionalPermButton);
+	$("button#additionalPermButton").button({
+		icons : {
+			primary : "ui-icon-plus"
+		}
+	});
 }
 
 function RELOADselectMethodsForThis(currentMethod) {

@@ -68,7 +68,7 @@ public class LocalDevice {
 				fileStorage = new FileStorage(loc);
 			}
 		};
-		loadDevicesThread.setName("homematic-lld-loadDevices");
+		loadDevicesThread.setName("homematic-ll-loadDevices");
 		loadDevicesThread.start();
 	}
 
@@ -131,6 +131,11 @@ public class LocalDevice {
 		messageHandler.sendMessage(cmdMessage);
 	}
 
+	public void sendCmdMessage(RemoteDevice rd, byte flag, byte type, byte[] data) {
+		CmdMessage cmdMessage = new CmdMessage(this, rd, flag, type, data);
+		messageHandler.sendMessage(cmdMessage);
+	}
+
 	public MessageHandler getMessageHandler() {
 		return messageHandler;
 	}
@@ -159,6 +164,10 @@ public class LocalDevice {
 		return deviceDescriptor;
 	}
 
+	/**
+	 * enable pairing with a specific device. 
+	 * @param val serial number of the device as 5 Bytes Hex 
+	 */
 	public void setPairing(String val) {
 		this.pairing = val;
 	}
@@ -180,5 +189,9 @@ public class LocalDevice {
 
 	public void isReady(boolean val) {
 		isReady = val;
+	}
+
+	public void restart() {
+
 	}
 }

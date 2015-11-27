@@ -59,13 +59,13 @@ public class SessionAuth implements HttpSessionBindingListener {
 	@Override
 	public void valueBound(HttpSessionBindingEvent arg0) {
 		String id = ses.getId();
-		logger.info("Session binding event: bound " + id);
+		//		logger.info("Session binding event: bound " + id);
 	}
 
 	@Override
 	public void valueUnbound(HttpSessionBindingEvent arg0) {
 		String id = ses.getId();
-		logger.info("Session binding event: unbound " + id);
+		//		logger.info("Session binding event: unbound " + id);
 	}
 
 	public String registerAppOtp(AppID app) {

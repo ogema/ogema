@@ -17,6 +17,7 @@ package org.ogema.recordeddata.slotsdb;
 
 import java.util.List;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -29,14 +30,26 @@ import org.ogema.core.recordeddata.ReductionMode;
 import org.ogema.recordeddata.DataRecorderException;
 import org.ogema.recordeddata.RecordedDataStorage;
 
-public class MultiplePartlyIntervalsTest {
+/**
+ * Interval: All data of a interval are aggregated to a new value
+ * Tests of this class only perform aggregation on more than one interval. from, to is covers more than one interval
+ */
+public class MultiplePartlyIntervalsTest extends SlotsDbTest {
 
 	private static final String STORAGE_NAME = "testMultiplePartlyIntervals";
 
 	private static RecordedDataStorage rds;
 
+	@AfterClass
+	public static void tearDown() {
+		deleteTestFiles();
+	}
+
 	@BeforeClass
 	public static void onlyOnce() throws DataRecorderException {
+
+		deleteTestFiles();
+
 		SlotsDb sdb = new SlotsDb();
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
@@ -204,69 +217,5 @@ public class MultiplePartlyIntervalsTest {
 		Assert.assertTrue("Expeced timestamp " + expectedTime3 + " but got " + time3, expectedTime3 == time3);
 		Assert.assertTrue("Expeced value " + expectedQuality3 + " but got " + quality3, expectedQuality3 == quality3);
 	}
-
-	// private void testReductionModeMultiplePartlyIntervalMin(RecordedDataStorage rds) {
-	// List<SampledValue> recordedData = rds.getValues(1000, 5001, 5000, ReductionMode.MINIMUM_VALUE);
-	//
-	// Assert.assertTrue("Expected size = 1 but got " + recordedData.size(), recordedData.size() == 1);
-	//
-	// long expectedTimestamp = 1000;
-	// double expectedValue = 1.0;
-	//
-	// long timestamp = recordedData.get(0).getTimestamp();
-	// double value = recordedData.get(0).getValue().getDoubleValue();
-	//
-	// Assert.assertTrue("Expeced timestamp " + expectedTimestamp + " but got " + timestamp,
-	// timestamp == expectedTimestamp);
-	// Assert.assertTrue("Expeced value " + expectedValue + " but got " + value, value == expectedValue);
-	// }
-	//
-	// private void testReductionModeMultiplePartlyIntervalMax(RecordedDataStorage rds) {
-	// List<SampledValue> recordedData = rds.getValues(1000, 5001, 5000, ReductionMode.MAXIMUM_VALUE);
-	//
-	// Assert.assertTrue("Expected size = 1 but got " + recordedData.size(), recordedData.size() == 1);
-	//
-	// long expectedTimestamp = 1000;
-	// double expectedValue = 5.0;
-	//
-	// long timestamp = recordedData.get(0).getTimestamp();
-	// double value = recordedData.get(0).getValue().getDoubleValue();
-	//
-	// Assert.assertTrue("Expeced timestamp " + expectedTimestamp + " but got " + timestamp,
-	// timestamp == expectedTimestamp);
-	// Assert.assertTrue("Expeced value " + expectedValue + " but got " + value, value == expectedValue);
-	// }
-	//
-	// private void testReductionModeMultiplePartlyIntervalMinMax(RecordedDataStorage rds) {
-	// List<SampledValue> recordedData = rds.getValues(1000, 5001, 5000, ReductionMode.MIN_MAX_VALUE);
-	//
-	// Assert.assertTrue("Expected size = 2 but got " + recordedData.size(), recordedData.size() == 2);
-	//
-	// long expectedTimestamp = 1000;
-	// double expectedMinValue = 1.0;
-	// double expectedMaxValue = 5.0;
-	//
-	// long timestamp = recordedData.get(0).getTimestamp();
-	// double minValue = recordedData.get(0).getValue().getDoubleValue();
-	// double maxValue = recordedData.get(1).getValue().getDoubleValue();
-	//
-	// Assert.assertTrue("Expeced timestamp " + expectedTimestamp + " but got " + timestamp,
-	// timestamp == expectedTimestamp);
-	// Assert.assertTrue("Expeced value " + expectedMinValue + " but got " + minValue, minValue == expectedMinValue);
-	// Assert.assertTrue("Expeced value " + expectedMaxValue + " but got " + maxValue, maxValue == expectedMaxValue);
-	// }
-	//
-	// private void testReductionModeMultiplePartlyIntervalNone(RecordedDataStorage rds) {
-	// List<SampledValue> recordedData = rds.getValues(1000, 5001);
-	// Assert.assertTrue("Expected size = 5 but got " + recordedData.size(), recordedData.size() == 5);
-	//
-	// // read back the values
-	// for (int i = 0; i < 5; i++) {
-	// // System.out.println("time : " + recordedData.get(i).getTimestamp());
-	// // System.out.println("value: " + recordedData.get(i).getValue().getDoubleValue());
-	// Assert.assertTrue(recordedData.get(i).getTimestamp() == ((i + 1) * 1000));
-	// Assert.assertTrue(recordedData.get(i).getValue().getDoubleValue() == i + 1);
-	// }
-	// }
 
 }

@@ -35,8 +35,7 @@ import org.apache.wicket.markup.repeater.data.ListDataProvider;
 import org.apache.wicket.model.LoadableDetachableModel;
 import org.apache.wicket.model.Model;
 import org.ogema.app.resource.management.tablegui.util.Util;
-import org.ogema.service.webresourcemanager.ApplicationPanel;
-import org.ogema.service.webresourcemanager.JSWidget;
+import org.ogema.apps.wicket.ApplicationPanel;
 
 /**
  * 
@@ -845,11 +844,6 @@ public class SchedulesTablePanel extends ApplicationPanel {
 
 	public String getTitle() {
 		return "Schedules Table Viewer";
-	}
-
-	@Override
-	public Map<String, JSWidget> getWidgets() {
-		return null;
 	}
 
 	public String getAppName() {

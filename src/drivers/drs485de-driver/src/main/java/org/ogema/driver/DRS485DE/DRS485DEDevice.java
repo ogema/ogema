@@ -21,6 +21,7 @@ import java.util.List;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.ChannelAccessException;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.ChannelConfigurationException;
 import org.ogema.core.channelmanager.ChannelEventListener;
 import org.ogema.core.channelmanager.EventType;
@@ -88,7 +89,9 @@ public class DRS485DEDevice implements ChannelEventListener, ResourceListener {
 
 		// create channel
 		try {
-			channelAccess.addChannel(channelAccess.getChannelConfiguration(channelLocator));
+			ChannelConfiguration chConf = channelAccess.getChannelConfiguration(channelLocator);
+			chConf.setSamplingPeriod(150);
+			channelAccess.addChannel(chConf);
 			channelAccess.registerUpdateListener(list, this);
 		} catch (ChannelConfigurationException e) {
 			logger.error(null, e);

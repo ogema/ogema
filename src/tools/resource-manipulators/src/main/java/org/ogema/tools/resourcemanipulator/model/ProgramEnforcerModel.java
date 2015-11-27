@@ -48,4 +48,17 @@ public interface ProgramEnforcerModel extends ResourceManipulatorModel {
 	 * Update interval. Set to <=0 for "on schedule update".
 	 */
 	TimeResource updateInterval();
+
+	/**
+	 * Optional element. If set, only schedule values within the specified target range shall be written to 
+	 * the target resource. The subresource {@link RangeFilter#mode()} specifies what to do in case of values 
+	 * that violate the target range.
+	 */
+	RangeFilter range();
+
+	/**
+	 * If true, target resource will be deactivated when no valid schedule value is available, otherwise last
+	 * deactivation status is retained.
+	 */
+	BooleanResource deactivateIfValueMissing();
 }

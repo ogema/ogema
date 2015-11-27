@@ -42,6 +42,7 @@ public class SumController implements Controller, ResourceStructureListener,
 	private final SumModel m_config;
 	private final CountDownTimer m_timer;
 	private final OgemaLogger m_logger;
+	private volatile boolean active = false;
 
 	public SumController(ApplicationManager appMan, SumModel configuration) {
 		m_config = configuration;
@@ -55,11 +56,14 @@ public class SumController implements Controller, ResourceStructureListener,
 			input.addStructureListener(this);
 			input.addValueListener(this);
 		}
+		active = true;
 		evaluate();
 	}
 
 	@Override
 	public void stop() {
+		active = false;
+		m_timer.stop();
 		for (SingleValueResource input : m_config.inputs().getAllElements()) {
 			input.removeStructureListener(this);
 			input.removeValueListener(this);
@@ -197,6 +201,8 @@ public class SumController implements Controller, ResourceStructureListener,
 
 	@Override
 	public void timerElapsed(Timer timer) {
+		if (!active)
+			return;
 		evaluate();
 	}
 

@@ -25,9 +25,11 @@ import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
 import org.ogema.core.channelmanager.driverspi.ChannelUpdateListener;
+import org.ogema.core.channelmanager.driverspi.DeviceListener;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
-import org.ogema.core.channelmanager.driverspi.ExceptionListener;
+import org.ogema.core.channelmanager.driverspi.NoSuchChannelException;
+import org.ogema.core.channelmanager.driverspi.NoSuchDeviceException;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.driverspi.ValueContainer;
@@ -204,7 +206,7 @@ public class TestDrv implements ChannelDriver {
 
 		for (SampledValueContainer container : channels) {
 
-			//			System.out.print("\tR " + (container.getChannelLocator()).getChannelAddress());
+			// System.out.print("\tR " + (container.getChannelLocator()).getChannelAddress());
 
 			Value value = null;
 
@@ -294,7 +296,7 @@ public class TestDrv implements ChannelDriver {
 	}
 
 	@Override
-	public void reset() {
+	public void shutdown() {
 		resetCalled++;
 	}
 
@@ -315,21 +317,32 @@ public class TestDrv implements ChannelDriver {
 	}
 
 	@Override
-	public void readChannels(List<SampledValueContainer> channels, ChannelUpdateListener listener)
-			throws UnsupportedOperationException {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public void writeChannels(List<ValueContainer> channels, ExceptionListener listener)
-			throws UnsupportedOperationException {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
 	public List<ChannelLocator> getChannelList(DeviceLocator device) throws UnsupportedOperationException {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public void addDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void removeDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void writeChannel(ChannelLocator channelLocator, Value value) throws UnsupportedOperationException,
+			IOException, NoSuchDeviceException, NoSuchChannelException {
+		System.out.println("DRIVER-WRITE_CHANNELS");
+
+		System.out.println("WRITE VALUE " + channelLocator);
+		channelValues.put(channelLocator, value);
+
+		writeChannelsCalled++;
 	}
 
 }

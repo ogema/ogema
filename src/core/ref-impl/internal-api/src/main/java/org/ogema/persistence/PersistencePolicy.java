@@ -75,4 +75,11 @@ public interface PersistencePolicy {
 	 * dynamic data are ignored.
 	 */
 	public void stopStorage();
+
+	/**
+	 * Gets a lock object which is used to synchronize the storage thread with the resource data base.
+	 * 
+	 * @return The lock object
+	 */
+	public Object getStorageLock();
 }

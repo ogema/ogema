@@ -18,12 +18,16 @@ package org.ogema.core.rads.creation;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
+import org.ogema.core.rads.tools.ContainerTool;
 import org.ogema.core.rads.tools.ResourceFieldInfo;
 import org.ogema.core.rads.tools.RadFactory;
 import org.ogema.core.resourcemanager.AccessPriority;
+import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.CreateMode;
+import org.ogema.core.resourcemanager.pattern.ContextSensitivePattern;
+import org.slf4j.LoggerFactory;
 
 /**
  * Creates an object according to a RAD and returns an instance of the completed
@@ -40,13 +44,17 @@ public class RadCreator<T extends Resource, P extends ResourcePattern<T>> {
 	final OgemaLogger m_logger;
 	final ResourceManagement m_resMan;
 	final RadFactory<T, P> m_factory;
+	private final Object container;
+	private final Class<P> type;
 	P m_result;
 
-	public RadCreator(ApplicationManager appMan, Class<P> type) {
+	public RadCreator(ApplicationManager appMan, Class<P> type, PatternFactory<P> factory, Object container) {
 		m_appMan = appMan;
 		m_logger = appMan.getLogger();
 		m_resMan = appMan.getResourceManagement();
-		m_factory = new RadFactory<>(type, AccessPriority.PRIO_LOWEST);
+		m_factory = new RadFactory<>(type, AccessPriority.PRIO_LOWEST, factory);
+		this.container = container;
+		this.type = type;
 	}
 
 	/**
@@ -54,15 +62,38 @@ public class RadCreator<T extends Resource, P extends ResourcePattern<T>> {
 	 */
 	public void create(String name) {
 		final Class<T> model = m_factory.getDemandedModel();
-		final T seed;
+		T seed;
 		try {
-			seed = m_resMan.createResource(name, model);
+			try {
+				seed = m_resMan.createResource(name, model);
+			} catch (ResourceAlreadyExistsException e) {
+				seed = m_appMan.getResourceAccess().getResource(name);
+			}
 		} catch (Exception e) {
 			m_logger.error("Error creating ResourceAccessDeclaration: Could not create demanded model with name "
 					+ name + " and type " + model.getCanonicalName() + "\n\t Reason: " + e.getMessage());
 			return;
 		}
 		createSubresources(seed);
+		setContainer();
+	}
+
+	public void addDecorator(Resource parent, String name) {
+		final Class<T> model = m_factory.getDemandedModel();
+		T seed;
+		try {
+			try {
+				seed = parent.addDecorator(name, model);
+			} catch (ResourceAlreadyExistsException e) {
+				seed = parent.getSubResource(name);
+			}
+		} catch (Exception e) {
+			m_logger.error("Error creating ResourceAccessDeclaration: Could not create demanded model with name "
+					+ name + " and type " + model.getCanonicalName() + "\n\t Reason: " + e.getMessage());
+			return;
+		}
+		createSubresources(seed);
+		setContainer();
 	}
 
 	/**
@@ -72,6 +103,21 @@ public class RadCreator<T extends Resource, P extends ResourcePattern<T>> {
 		if (!seed.exists())
 			seed.create();
 		createSubresources(seed);
+		setContainer();
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private void setContainer() {
+		if (container != null && ContextSensitivePattern.class.isAssignableFrom(type) && m_result != null) {
+			ContextSensitivePattern pattern = (ContextSensitivePattern) m_result;
+//			pattern.setContainer(container);
+			try {
+				ContainerTool.setContainer(pattern, container);
+			} catch (NoSuchFieldException | IllegalAccessException | RuntimeException e) {
+				LoggerFactory.getLogger(getClass()).error("Internal error: could not set pattern container: " + e);
+			}
+			pattern.init();
+		}
 	}
 
 	private void createSubresources(T seed) {

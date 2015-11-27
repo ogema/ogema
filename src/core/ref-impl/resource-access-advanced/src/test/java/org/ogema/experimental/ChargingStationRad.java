@@ -18,15 +18,15 @@ package org.ogema.experimental;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
+import org.ogema.model.devices.storage.ChargingPoint;
 import org.ogema.model.devices.storage.ElectricityChargingStation;
-import org.ogema.model.smartgriddata.ElectricEnergyRequest;
 
 /**
  * Test-RAD used in the tests in this.
  */
 public class ChargingStationRad extends ResourcePattern<ElectricityChargingStation> {
 
-	ResourceList<ElectricEnergyRequest> requests = model.energyRequests();
+	ResourceList<ChargingPoint> cps = model.chargingPoints();
 
 	public ChargingStationRad(Resource match) {
 		super(match);

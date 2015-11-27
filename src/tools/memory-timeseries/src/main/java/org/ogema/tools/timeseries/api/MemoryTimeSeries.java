@@ -38,6 +38,16 @@ public interface MemoryTimeSeries extends TimeSeries, Cloneable {
 	Class<? extends Value> getValueType();
 
 	/**
+	 * Gets the value at time t. If the time series is not defined at the given
+	 * point, including the case that t is outside of the range of defined values,
+	 * this returns a result with bad quality (in contrast to {@link #getValue(long)},
+	 * which can return null).
+	 * @param t Timestamp for which the value is requested.
+	 * @return Value at the time t with good quality, or a result with bad quality if the time series is not defined at t.
+	 */
+	SampledValue getValueSecure(long t);
+
+	/**
 	 * Write this to another time series. Overwrites all previous content in the
 	 * schedule.
 	 */

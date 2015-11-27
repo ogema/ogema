@@ -19,8 +19,8 @@
  * defined in this package can be physical devices by themselves, but often are 
  * control switches that are part of another device. For actual devices, using the
  * models in {@link org.ogema.model.devices.sensoractordevices} is recommended.<br>
- * While {@link Sensor}s only
- * have a single {@link Sensor#reading()} entry, actors have two equivalent fields:
+ * While {@link org.ogema.model.sensors.Sensor}s only
+ * have a single {@link org.ogema.model.sensors.Sensor#reading()} entry, actors have two equivalent fields:
  * the {@link Actor#stateControl()} setting is used by the application to send their
  * required actor states. The {@link Actor#stateFeedback} holds the actual actor
  * setting as reported by the device (which may ignore the request for some reason).

@@ -9,13 +9,14 @@ var currentTreeID;
 $(function() {
 	if (window.location.href.indexOf('apps') != -1) {
 		// sets heading for current store
-		setHeading();
-		$("#toMainPage").button({
+		$("div#buttonSet > button").button();
+		$("button#install").button({
 			icons : {
-				primary : "ui-icon-home"
+				primary : "ui-icon-arrowthickstop-1-s"
 			}
 		});
-
+		
+		$("#market").html("Bundles in the Marketplace "+curStore);
 		/**
 		 * get json data (apps for the current store) and put them in dialog
 		 * 
@@ -26,37 +27,52 @@ $(function() {
 				"/security/config/apps?name=" + curStore,
 				function(json) {
 
-					// insert table of apps - only when there are
-					// apps
-					$("div#tableWrap").append("<table id='tab1'><thead><tr><th class='select'></th><th>Name</th></tr></thead><tbody></tbody></table>");
-
-					// for each app
-					for (var i = 0; i < json.apps.length; i++) {
-
-						// insert app name
-						// die hier erstellten id's
-						// existieren
-						// nur in dieser Funktion!!
-						var id = "sel" + i + 1;
-						$("tbody").append(
-								"<tr id='" + id + "'><td class = 'select'><input name = 'act' type='radio' id='app" + (i + 1) + "'></td><td class='appName'>"
-										+ json.apps[i] + "</td></tr>");
-					//	var name = json.apps[i];
-						document.getElementById(id).addEventListener("click", function() {
-							var name = jQuery(this).find('.appName').text();
-							openDia(curStore, name);
-						});
-
-						// insert dialog for this app
-						$("body").append(
-								"<div class='dia' title='Permissions for " + json.apps[i] + "' id='dialog" + (i + 1)
-										+ "'><form name='permForm' id='permissionForm'> </form></div>");
-
+					for (var v = 0; v < json.apps.length; v++) {
+						$("div#sortableNewApps").append(
+								"<div class='column'> <div class='portlet'> <div class='portlet-header' id='" + v + "'>" +
+									"<img class='portlet-images' src='/security/config/getappstoreicon?loc="+json.apps[v+1]+"' ></div>" +
+									" <div class='portlet-content'>" + json.apps[v] + "</div> </div></div>");
+						v++;
 					}
+					$(".column").sortable({
+						connectWith : ".column",
+						handle : ".portlet-header",
+						cancel : ".portlet-toggle",
+						placeholder : "portlet-placeholder ui-corner-all"
+					});
+					$(".portlet").addClass("ui-widget ui-widget-content ui-helper-clearfix ui-corner-all").find(".portlet-header").addClass(
+							"ui-widget-header ui-corner-all").prepend("<span class='ui-icon ui-icon-minusthick portlet-toggle'></span>");
+					$(".portlet-toggle").click(function() {
+						var icon = $(this);
+						icon.toggleClass("ui-icon-minusthick ui-icon-plusthick");
+						icon.closest(".portlet").find(".portlet-content").toggle();
+					});
+
+					$("div.portlet-header>span").removeClass("ui-icon");
+
+					// Select an appPortlet, when
+					// dblClick
+					$("div.portlet-header").dblclick(function() {
+						$("div.portlet-header").removeClass("selectedPortlet");
+						$(this).addClass("selectedPortlet");
+
+						$(".ui-dialog-content").dialog("close");
+						selectedApp = $(this).parent().find(".portlet-content").text();
+					});
+
+					// Clicking anywhere in
+					// sortableAppsWrapper causes
+					// deselection
+					$("#sortableNewApps").click(function() {
+						$("div.portlet-header").removeClass("selectedPortlet");
+						selectedApp = "";
+					});
+
+					
 				})
 		// if there are no apps, so no ajax possible
 		.fail(function() {
-			$("div#wrapper").append("Sorry. No apps found in this marketplace. <br> <a href='../admin/mainpage.html'> Zur&uuml;ck </a>");
+			$("#market").html("Sorry. No apps found in this marketplace. <br> <a href='../security-gui/index.html'> Zur&uuml;ck </a>");
 		});
 
 		// }
@@ -68,21 +84,6 @@ $(function() {
 
 function emptyDia(obj) {
 	$(obj).find("form").empty();
-}
-
-// set heading for current store
-function setHeading() {
-	if (curStore == "localAppDirectory" || curStore == "remoteFHGAppStore") {
-
-		$("h1#appstore").addClass("highlightHeading");
-		var welcome = "<strong style='font-size: 1.4em;'> Marketplace </strong> <br> <em>" + curStore + "</em>";
-
-		document.getElementById("appstore").innerHTML = welcome;
-		$("div#vorwort").css("display", "inline");
-
-	} else {
-		document.getElementById("noAppstore").innerHTML = "Sorry. Unknown appstore.";
-	}
 }
 
 /**
@@ -193,6 +194,15 @@ function getPermMethod(permStr) {
 	} else {
 		var nothing = "";
 		return nothing;
+	}
+}
+function install(){
+	if ($(".selectedPortlet")[0]) {		
+		var portlet = $(".selectedPortlet")[0];
+		var portletName =$(portlet).next().html();
+		openDia(curStore, portletName);
+	} else {
+		alert("Wählen Sie ein Bundle!");
 	}
 }
 

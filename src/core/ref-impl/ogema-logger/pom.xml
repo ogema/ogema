@@ -4,7 +4,7 @@
     <parent>
         <artifactId>ref-impl</artifactId>
         <groupId>org.ogema.ref-impl</groupId>
-        <version>2.0.3</version>
+        <version>2.0.4</version>
     </parent>
 
     <artifactId>ogema-logger</artifactId>
@@ -30,7 +30,6 @@
                 <extensions>true</extensions>
                 <configuration>
                     <instructions>
-                        <Embed-Dependency>logback-*;inline=true</Embed-Dependency>
                         <Import-Package>
                             javax.jms;resolution:=optional,
                             javax.mail;resolution:=optional,
@@ -40,12 +39,23 @@
                             org.ogema.accesscontrol;resolution:=optional,
                             sun.reflect;resolution:=optional,
                             groovy.lang;resolution:=optional,
-                            org.codehaus.*;resolution:=optional,
+                            org.codehaus.groovy.*;resolution:=optional,
                             *
                         </Import-Package>
                         <Export-Package>
                             org.slf4j.impl;-split-package:=first
                         </Export-Package>
+                        <!-- note: defining the logback packages as private-package
+                        causes the packages to be included in the jar -
+                        embed-dependency should do roughly the same but causes the build
+                        to break by selecting the wrong org.slf4j.impl package
+                        depending on which version of the maven-scr-plugin is used (joy! X.x)
+                         ... the private-package solution looks cleaner anyway
+                        -->
+                        <Private-Package>
+                            org.ogema.impl.logging,
+                            ch.qos.*;-split-package:=first
+                        </Private-Package>
                     </instructions>
                     <unpackBundle>true</unpackBundle>
                 </configuration>
@@ -58,7 +68,7 @@
             <dependency>
                 <groupId>org.ogema.ref-impl</groupId>
                 <artifactId>ogema-logger</artifactId>
-                <version>2.0.3</version>
+                <version>2.0.4</version>
                 <exclusions>
                     <exclusion>
                         <groupId>ch.qos.logback</groupId>

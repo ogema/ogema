@@ -25,8 +25,10 @@ import org.ogema.core.model.Resource;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.persistence.ResourceDB;
+import org.ogema.persistence.impl.mem.DefaultSimpleResourceData;
 import org.ogema.persistence.impl.mem.MemoryResourceDB;
 import org.ogema.persistence.impl.mem.MemoryTreeElement;
+import org.ogema.resourcetree.SimpleResourceData;
 import org.ogema.resourcetree.TreeElement;
 
 /**
@@ -109,9 +111,19 @@ public class DefaultVirtualResourceDB implements VirtualResourceDB {
             TreeElement realParent = realElement.getParent();
             Object oldResRef = realElement.getResRef();
             TreeElement newElementParent = realParent != null ? getElement(realParent) : null;
-            MemoryTreeElement replacement = org.ogema.core.model.SimpleResource.class.isAssignableFrom(elem.getType())
-                    ? new MemoryTreeElement(elem.getName(), elem.getType(), newElementParent, elem.isDecorator(), elem.getData())
-                    : new MemoryTreeElement(elem.getName(), elem.getType(), newElementParent, elem.isDecorator());
+            MemoryTreeElement replacement;
+            if (org.ogema.core.model.SimpleResource.class.isAssignableFrom(elem.getType())){
+                SimpleResourceData data;
+                if (elem.isReference()){
+                    data = new DefaultSimpleResourceData();
+                } else {
+                    data = elem.getData();
+                }
+                replacement = new MemoryTreeElement(elem.getName(), elem.getType(), newElementParent, elem.isDecorator(), data);
+            } else {
+                replacement = new MemoryTreeElement(elem.getName(), elem.getType(), newElementParent, elem.isDecorator());
+            }
+                    
             if (oldResRef != null) {
                 replacement.setResRef(oldResRef);
             }

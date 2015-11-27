@@ -65,7 +65,7 @@ public class DefaultRecordedData implements RecordedData {
 
 	protected RecordedDataStorage data = new EmptyRecordedData();
 	protected RecordedDataConfiguration config = null;
-	protected Updater<?> updater;
+	protected transient Updater<?> updater;
 	private Timer timer;
 
 	public DefaultRecordedData(DataRecorder dataAccess, TimerScheduler scheduler, Executor exec, TreeElement el) {
@@ -258,7 +258,8 @@ public class DefaultRecordedData implements RecordedData {
 
 	@Override
 	public List<SampledValue> getValues(long startTime) {
-		return data.getValues(startTime, Long.MAX_VALUE);
+		return SECURITY_ENABLED ? getValuesPrivileged(startTime, Long.MAX_VALUE) : data.getValues(startTime,
+				Long.MAX_VALUE);
 	}
 
 	@Override

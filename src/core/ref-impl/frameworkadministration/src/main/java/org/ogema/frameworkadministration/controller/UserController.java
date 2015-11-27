@@ -29,6 +29,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.AppPermissionFilter;
 import org.ogema.accesscontrol.PermissionManager;
+import org.ogema.accesscontrol.ResourcePermission;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.AppID;
@@ -142,17 +143,17 @@ public class UserController {
 		// if (appList != null && appList.contains("ALL APPS")) {
 		// //first criteria met
 		//
-		// String allPerms = Utils.USER_ALLPERMISSION;
-		// AppPermission appPermission = accessManager.getPolicies(user);
-		// Map<String, ConditionalPermissionInfo> grantedPerms = appPermission.getGrantedPerms();
-		// for (ConditionalPermissionInfo cpi : grantedPerms.values()) {
-		// PermissionInfo[] permInfo = cpi.getPermissionInfos();
-		// for (PermissionInfo pi : permInfo) {
-		// if (allPerms.equals(pi.getType())) {
-		// isAdmin = true;
-		// }
-		// }
-		// }
+		String allPerms = Utils.USER_ALLPERMISSION;
+		AppPermission appPermission = accessManager.getPolicies(user);
+		Map<String, ConditionalPermissionInfo> grantedPerms = appPermission.getGrantedPerms();
+		for (ConditionalPermissionInfo cpi : grantedPerms.values()) {
+			PermissionInfo[] permInfo = cpi.getPermissionInfos();
+			for (PermissionInfo pi : permInfo) {
+				if (allPerms.equals(pi.getType())) {
+					isAdmin = true;
+				}
+			}
+		}
 		// }
 
 		return isAdmin;
@@ -184,8 +185,9 @@ public class UserController {
 		appPermission.addPermission(permName, null, null);
 		permissionManager.installPerms(appPermission);
 
+		// There is no need to any addition to AllPermission, because AllPermission implies any WebAccessPermission
 		// accessManager.addPermission(user, "ALL APPS");
-		accessManager.addPermission(user, AppPermissionFilter.ALLAPPSPERMISSION);
+		// accessManager.addPermission(user, AppPermissionFilter.ALLAPPSPERMISSION);
 
 		return true;
 	}
@@ -327,9 +329,9 @@ public class UserController {
 	 * 
 	 * @param user
 	 *            the name of the user as string
-	 * @return A list in json format of all natural apps. See {@see
-	 *         org.ogema.frameworkadministration.json.UserJsonAppIdList} for message format. Returns an error message if
-	 *         user is not a natural user
+	 * @return A list in json format of all natural apps. See
+	 *         {@see org.ogema.frameworkadministration.json.UserJsonAppIdList} for message format. Returns an error
+	 *         message if user is not a natural user
 	 */
 	public String getAppsNaturalUser(String user) {
 
@@ -376,8 +378,9 @@ public class UserController {
 				continue;
 			}
 
+			@SuppressWarnings("deprecation")
 			Map<String, String> registeredResources = appManager.getWebAccessManager().getRegisteredResources(appID);
-			if (registeredResources == null || registeredResources.isEmpty()) {
+			if (registeredResources == null || registeredResources.isEmpty()) { // TODO handle apps that register their start page as a servlet 
 				continue;
 			}
 
@@ -418,9 +421,9 @@ public class UserController {
 	 * 
 	 * @param user
 	 *            the name of the user as string
-	 * @return A list in json format of all resource policies. See {@see
-	 *         org.ogema.frameworkadministration.json.UserJsonResourcePolicyList} for message format. Returns an error
-	 *         message if the user is not a machine user except administrators.
+	 * @return A list in json format of all resource policies. See
+	 *         {@see org.ogema.frameworkadministration.json.UserJsonResourcePolicyList} for message format. Returns an
+	 *         error message if the user is not a machine user except administrators.
 	 */
 	public String getPoliciesMachineUser(String user) {
 
@@ -445,8 +448,10 @@ public class UserController {
 
 			for (PermissionInfo pi : permissionInfoArray) {
 
-				String uniqueName = cond.getName();
 				String permissionName = pi.getType(); // org.ogema.accesscontrol.ResourcePermission
+				if (!permissionName.equals(ResourcePermission.class.getName()))
+					continue;
+				String uniqueName = cond.getName();
 				String resourcePathType = pi.getName(); // path=...,type=...
 
 				String resourcePath = null;
@@ -510,8 +515,8 @@ public class UserController {
 	 * machine or natural user.
 	 * 
 	 * @param jsonMessage
-	 *            Resource Policies for an user in json format. See {@see
-	 *            org.ogema.frameworkadministration.json.UserJsonResourcePolicyList} for message format.
+	 *            Resource Policies for an user in json format. See
+	 *            {@see org.ogema.frameworkadministration.json.UserJsonResourcePolicyList} for message format.
 	 * @return true on success, otherwise false
 	 */
 	public boolean setPoliciesMachineUser(String jsonMessage) {
@@ -567,7 +572,7 @@ public class UserController {
 			String actions = policy.getPermissionActions();
 
 			String conditionType = Utils.USER_CONDITIONINFOTYPE;
-			String[] args = { (Utils.USER_PRECONDITIONFILE + user + Utils.USER_SUFCONDITIONFILE) };
+			String[] args = { (Utils.USER_PRECONDITIONFILE + user) };
 			ConditionInfo conditionInfo = new ConditionInfo(conditionType, args);
 
 			// String permName = Utils.USER_PERMISSIONTYPE;
@@ -962,8 +967,8 @@ public class UserController {
 	}
 
 	/**
-	 * Generates a list of all user in a json format. See {@see
-	 * org.ogema.frameworkadministration.json.get.UserJsonGetList} for message format.
+	 * Generates a list of all user in a json format. See
+	 * {@see org.ogema.frameworkadministration.json.get.UserJsonGetList} for message format.
 	 * 
 	 * @return a list of all users in json.
 	 */

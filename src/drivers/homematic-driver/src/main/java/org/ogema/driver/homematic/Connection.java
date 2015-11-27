@@ -18,7 +18,6 @@ package org.ogema.driver.homematic;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.driver.homematic.manager.LocalDevice;
 import org.ogema.driver.homematic.usbconnection.UsbConnection;
@@ -29,7 +28,6 @@ public class Connection {
 	private final String parameterString;
 	private final Map<String, Device> devices;
 	protected LocalDevice localDevice;
-	ApplicationManager applicationManager;
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("homematic-driver");
 	private boolean hasConnection = false;
 	private final Object connectionLock;
@@ -59,6 +57,7 @@ public class Connection {
 				}
 			}
 		};
+		connectUsb.setName("homematic-ll-connectUSB");
 		connectUsb.start();
 		devices = new HashMap<>();
 	}
@@ -90,5 +89,9 @@ public class Connection {
 
 	public boolean hasConnection() {
 		return hasConnection;
+	}
+
+	public static String getPortName() {
+		return "USB";
 	}
 }

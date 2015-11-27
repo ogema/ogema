@@ -82,7 +82,7 @@ public class AccessModeRequest implements Comparable<AccessModeRequest>, Registe
 		if (cmpPrio == 0) {
 			if (requestedMode == EXCLUSIVE) {
 				if (o.requestedMode == EXCLUSIVE) {
-					return (int) Math.signum(instanceNumber - o.instanceNumber);
+					return Long.compare(instanceNumber, o.instanceNumber);
 				}
 				else {
 					return -1;

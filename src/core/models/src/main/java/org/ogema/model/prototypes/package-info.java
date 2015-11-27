@@ -20,13 +20,13 @@
  * are three prototypes that are defined: <br>
  * {@link PhysicalElement} is the prototype
  * for anything that is, or could sensibly be, a physical object. Most notably this
- * includes devices and {@link Sensor}s.<br>
+ * includes devices and {@link org.ogema.model.sensors.Sensor}s.<br>
  * A {@link Connection}
  * connects two physical objects with a third physical object, usually a device
  * related to energy management, possibly operating on the connection. In the easiest
  * case they are just informal relations between objects, but connections with actual
  * relevant properties of themselves have also been defined. An example
- * is a {@link ThermalConnection} between the outside of a building and a heating circuit, 
+ * is a {@link org.ogema.model.connections.ThermalConnection} between the outside of a building and a heating circuit, 
  * where a heat pump is the device that operates on this connection by actively
  * transporting heat through it.<br>
  * {@link Data} is a generic prototype for any type of information that is not, 

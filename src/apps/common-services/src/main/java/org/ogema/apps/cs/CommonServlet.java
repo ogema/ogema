@@ -17,7 +17,6 @@ package org.ogema.apps.cs;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -47,7 +46,6 @@ import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceNotFoundException;
-import org.ogema.core.security.WebAccessManager;
 import org.ogema.persistence.DBConstants;
 import org.ogema.persistence.ResourceDB;
 import org.ogema.resourcetree.SimpleResourceData;
@@ -69,8 +67,7 @@ public class CommonServlet extends HttpServlet {
 
 	private ResourceAccess resMngr;
 
-	CommonServlet(WebAccessManager wam, ResourceDB db, ResourceAccess resAcc) {
-		wam.registerWebResource("/service", this);
+	CommonServlet(ResourceDB db, ResourceAccess resAcc) {
 		this.db = db;
 		this.resMngr = resAcc;
 	}
@@ -225,6 +222,8 @@ public class CommonServlet extends HttpServlet {
 			// If the node is a reference extend the name string with the path of the referee
 			if (te.isReference())
 				text = text + "->" + te.getLocation();
+			else
+				text = te.getLocation();
 			if (index++ != 0)
 				sb.append(',');
 			sb.append("{\"text\":\"");
@@ -280,7 +279,6 @@ public class CommonServlet extends HttpServlet {
 			sb.append("toplevel");
 		else {
 			try {
-				SimpleResourceData srd = te.getData();
 				sb.append("leaf");
 			} catch (ResourceNotFoundException e) {
 			} catch (UnsupportedOperationException e) {

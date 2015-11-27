@@ -17,7 +17,7 @@ package org.ogema.tools.resourcemanipulator.test.rad;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
-import org.ogema.core.model.schedule.ForecastSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.model.connections.ElectricityConnection;
@@ -85,7 +85,7 @@ public class BuildingPattern extends ResourcePattern<Building> {
 	/**
 	 * Expected future occupancy that can be used for device scheduling.
 	 */
-	public final ForecastSchedule futureOccupancy = occupancy.forecast();
+	public final AbsoluteSchedule futureOccupancy = occupancy.forecast();
 
 	/**
 	 * Constructor inherited from the OGEMA resource pattern mechanism. Do not

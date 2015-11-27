@@ -16,6 +16,6 @@
 package org.ogema.impl.security;
 
 public class Configuration {
-	static boolean suppress /*$SUPPRESS$*/;
+	static boolean suppress = false;/* $SUPPRESS$ */;
 	static final boolean DEBUG = !suppress;
 }

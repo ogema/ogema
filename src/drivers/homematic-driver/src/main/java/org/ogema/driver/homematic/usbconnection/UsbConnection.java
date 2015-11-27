@@ -127,6 +127,10 @@ public class UsbConnection implements IUsbConnection {
 		}
 		logger.debug("Sending to USB: ");
 		logger.debug(Converter.dumpHexString(data));
+
+		// long timeStamp = System.currentTimeMillis();
+		// System.out.print("send: ");
+		// System.out.println(timeStamp);
 	}
 
 	private void initiate() {
@@ -177,6 +181,8 @@ public class UsbConnection implements IUsbConnection {
 
 	@Override
 	public void closeConnection() {
+		keepAliveThread.interrupt();
+		keepAlive.stop();
 		if (usbThread.isAlive()) {
 			usbThread.abort();
 			try {
@@ -192,7 +198,6 @@ public class UsbConnection implements IUsbConnection {
 		}
 		LibUsb.close(handle);
 		LibUsb.exit(context);
-		keepAlive.stop();
 	}
 
 	@Override
@@ -224,7 +229,7 @@ public class UsbConnection implements IUsbConnection {
 		@Override
 		public void run() {
 			while (!this.abort && Activator.bundleIsRunning) {
-				int result = LibUsb.handleEventsTimeout(null, 250000);
+				int result = LibUsb.handleEventsTimeout(null, 250000000);
 				if (result != LibUsb.SUCCESS)
 					logger.error("Unable to handle events %d", result);
 			}

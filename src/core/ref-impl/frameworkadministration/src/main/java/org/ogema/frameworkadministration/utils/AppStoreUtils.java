@@ -31,4 +31,7 @@ public class AppStoreUtils {
 	//	public static final String PERMS_ENTRY_NAME = "OSGI-INF/permissions.perm";
 	public static final String[] FILTERED_APPS = { "org.ogema.ref-impl" };
 
+	public static final String[] FILTER_EXCEPTIONS = { "org.ogema.ref-impl.framework-gui",
+			"org.ogema.ref-impl.security-gui", "org.ogema.ref-impl.rest" }; // "framework-administration"?
+
 }

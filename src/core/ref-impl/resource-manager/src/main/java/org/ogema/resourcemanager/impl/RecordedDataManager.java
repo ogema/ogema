@@ -37,7 +37,7 @@ public class RecordedDataManager {
 	protected final DataRecorder rda;
 	protected final TimerScheduler scheduler;
 
-	private final Map<TreeElement, DefaultRecordedData> recordedData = new HashMap<>();
+	private final Map<String, DefaultRecordedData> recordedData = new HashMap<>();
 
 	public RecordedDataManager(ResourceDBManager dbman, DataRecorder rda, TimerScheduler scheduler) {
 		ThreadFactory tfac = new ThreadFactory() {
@@ -55,12 +55,12 @@ public class RecordedDataManager {
 		this.scheduler = scheduler;
 	}
 
-	public DefaultRecordedData getRecordedData(TreeElement el) {
+	public DefaultRecordedData getRecordedData(TreeElement el, boolean create) {
 		synchronized (recordedData) {
-			DefaultRecordedData d = recordedData.get(el);
-			if (d == null) {
+			DefaultRecordedData d = recordedData.get(el.getLocation());
+			if (d == null && create) {
 				d = new DefaultRecordedData(rda, scheduler, executor, el);
-				recordedData.put(el, d);
+				recordedData.put(el.getLocation(), d);
 			}
 			return d;
 		}
@@ -68,7 +68,7 @@ public class RecordedDataManager {
 
 	public void close() {
 		synchronized (recordedData) {
-			for (Map.Entry<TreeElement, DefaultRecordedData> e : recordedData.entrySet()) {
+			for (Map.Entry<String, DefaultRecordedData> e : recordedData.entrySet()) {
 				e.getValue().close();
 			}
 		}

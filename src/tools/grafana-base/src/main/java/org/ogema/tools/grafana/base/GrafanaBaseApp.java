@@ -27,14 +27,17 @@ public class GrafanaBaseApp implements Application {
 
 	public static String WEB_RES_PATH;
 	private ApplicationManager am;
+	public static long APP_STARTTIME;
 
 	@Override
 	public void start(ApplicationManager am) {
 		this.am = am;
 		String packagePath = "org/ogema/tools/grafana/base/grafana-1.9.1";
 		WEB_RES_PATH = am.getWebAccessManager().registerWebResourcePath("", packagePath);
+		APP_STARTTIME = am.getFrameworkTime();
 		//    	WEB_RES_PATH = am.getWebAccessManager().registerWebResource("/org/ogema/tools/grafana-base" , packagePath);      
-		// System.out.println("  Grafana base resources registered under " + WEB_RES_PATH);
+		am.getLogger().debug("Grafana base resources registered under " + WEB_RES_PATH);
+		am.getWebAccessManager().registerStartUrl(null); // remove app from framework GUI
 	}
 
 	@Override

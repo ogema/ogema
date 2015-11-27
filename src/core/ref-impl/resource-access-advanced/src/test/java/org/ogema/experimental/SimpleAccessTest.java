@@ -20,8 +20,8 @@ import static org.junit.Assert.assertNotNull;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
 import static org.junit.Assert.assertTrue;
-import org.junit.Ignore;
 
 import org.junit.Test;
 import org.ogema.core.administration.AdminApplication;
@@ -84,11 +84,43 @@ public class SimpleAccessTest extends OsgiTestBase {
 		}
 	};
 
+	class SimplisticPatternListener implements PatternListener<SimplisticPattern> {
+
+		public CountDownLatch foundLatch = new CountDownLatch(1);
+		public CountDownLatch lostLatch = new CountDownLatch(1);
+		public SimplisticPattern lastAvailable = null;
+
+		@Override
+		public void patternAvailable(SimplisticPattern pattern) {
+			lastAvailable = pattern;
+			foundLatch.countDown();
+		}
+
+		@Override
+		public void patternUnavailable(SimplisticPattern pattern) {
+			lostLatch.countDown();
+		}
+	};
+
 	@Test
 	public void findRADwithUninitializedField() throws InterruptedException {
 		UninitListener listener = new UninitListener();
 		advAcc.addPatternDemand(UninitializedRad.class, listener, AccessPriority.PRIO_LOWEST);
 		UninitializedRad rad = advAcc.createResource("HPName1", UninitializedRad.class);
+		rad.model.activate(true);
+		listener.foundLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.foundLatch.getCount());
+		assertNotNull(listener.lastAvailable);
+		listener.lastAvailable.model.delete();
+		listener.lostLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.lostLatch.getCount());
+	}
+
+	@Test
+	public void findSimplisticPattern() throws InterruptedException {
+		SimplisticPatternListener listener = new SimplisticPatternListener();
+		advAcc.addPatternDemand(SimplisticPattern.class, listener, AccessPriority.PRIO_LOWEST);
+		SimplisticPattern rad = advAcc.createResource("SimplePatternTest", SimplisticPattern.class);
 		rad.model.activate(true);
 		listener.foundLatch.await(5, TimeUnit.SECONDS);
 		assertEquals(0, listener.foundLatch.getCount());

@@ -2,15 +2,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-    <artifactId>ref-impl</artifactId>
-    <groupId>org.ogema.ref-impl</groupId>
-    <version>2.0.3</version>
-  </parent>
+        <artifactId>ref-impl</artifactId>
+        <groupId>org.ogema.ref-impl</groupId>
+        <version>2.0.4</version>
+    </parent>
     
-    <groupId>org.ogema.ref-impl</groupId>
     <artifactId>framework-administration</artifactId>
-    <name>OGEMA ref-impl :: framework-administration</name>
-    <version>2.0.3</version>
+    <name>OGEMA framework administration</name>
+	<description>Manage applications, users and resources</description>    
 
     <packaging>bundle</packaging>
 	
@@ -28,6 +27,13 @@
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
             </plugin>
+            <!--
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>yuicompressor-maven-plugin</artifactId>
+                <version>1.5.1</version>
+            </plugin>
+            -->
         </plugins>
     </build>
 
@@ -90,12 +96,12 @@
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.4</version>
-    </dependency>
-    <dependency>
-	<groupId>commons-codec</groupId>
-	<artifactId>commons-codec</artifactId>
-	<version>1.9</version>
-</dependency>
+        </dependency>
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>1.9</version>
+        </dependency>
 
     </dependencies>
 

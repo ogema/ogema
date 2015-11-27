@@ -89,8 +89,8 @@ public class Resource {
 	@XmlElement(required = true)
 	protected String type;
 	protected String path;
-	protected Boolean decorating = Boolean.FALSE;
-	protected Boolean active = Boolean.FALSE;
+	protected Boolean decorating;
+	protected Boolean active;
 	@XmlSchemaType(name = "anyURI")
 	protected String referencing;
 	@XmlElements( { @XmlElement(name = "resource", type = Resource.class),

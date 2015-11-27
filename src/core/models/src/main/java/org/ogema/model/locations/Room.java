@@ -48,7 +48,7 @@ public interface Room extends PhysicalElement {
 	 * 200: Commercial kitchen<br>
 	 * 210: Commercial public dining room<br>
 	 * ...<br>
-	 * >=10.000: custom values
+	 * greater/equal 10.000: custom values
 	 */
 	IntegerResource type();
 

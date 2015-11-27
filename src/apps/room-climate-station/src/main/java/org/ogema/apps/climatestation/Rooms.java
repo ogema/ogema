@@ -20,15 +20,15 @@ import java.util.List;
 import java.util.Vector;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
-import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.BooleanResource;
+import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.StringResource;
+import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceAccess;
@@ -44,30 +44,28 @@ import org.ogema.model.sensors.TemperatureSensor;
 
 public class Rooms {
 
-	private static final String LIGHT_DECORATOR_NAME = "lightControl";
-	private static final String WATER_DECORATOR_NAME = "waterDetector";
-	private static final String SMOKE_DECORATOR_NAME = "smokeDetector";
-	private static final String SWITCH_BOX_1_DECORATOR_NAME = "switchBox1";
-	private static final String SWITCH_BOX_2_DECORATOR_NAME = "switchBox2";
 	private static final Object OUTSIDE_ROOM_NAME = "OUTSIDE";
-	private static final String LIGHT_DIMMER_SOURCE_NAME = "dimmerSourceSwitch";
 
 	private ResourceAccess resAcc;
 	private OgemaLogger logger;
 
 	private ResourceManagement resMan;
 	ResourceList<Room> roomsList;
-	HashMap<String, Room> roomsMap;
+	HashMap<String, HomeRoom> roomsMap;
 	HashMap<String, List<String>> typeSensors;
 
-	private Room outside;
+	static TemperatureResource outsideTemp;
+
+	static FloatResource outsideHumidity;
+
+	static Room outside;
 
 	@SuppressWarnings("unchecked")
 	public Rooms(ApplicationManager appman) {
 		this.resMan = appman.getResourceManagement();
 		this.resAcc = appman.getResourceAccess();
 		this.logger = appman.getLogger();
-		roomsMap = new HashMap<String, Room>();
+		roomsMap = new HashMap<String, HomeRoom>();
 		roomsList = resAcc.getResource("MyHome");
 		if (roomsList == null) {
 			roomsList = resMan.createResource("MyHome", ResourceList.class);
@@ -80,27 +78,19 @@ public class Rooms {
 			List<Room> allRooms = roomsList.getAllElements();
 			for (Room room : allRooms) {
 				String name = room.name().getValue();
-				roomsMap.put(name, room);
+				HomeRoom hr = new HomeRoom(resAcc, logger, room);
+				hr.theRoom = room;
+				hr.roomId = name;
+				roomsMap.put(name, hr);
 				if (name.equals(OUTSIDE_ROOM_NAME)) {
 					outside = room;
 				}
-				// Check if a DimmerAction is to be created
-				StringResource dimmerSourcePath = room.getSubResource(LIGHT_DIMMER_SOURCE_NAME);
-				if (dimmerSourcePath != null) {
-					BooleanResource res = resAcc.getResource(dimmerSourcePath.getValue());
-					if (res == null || !(res instanceof BooleanResource)) {
-						logger.error("Dimmer switch resource could not be found!");
-					}
-					BooleanResource dimmer = (BooleanResource) res;
-					// Check if the room is already decorated with an ElectricLight
-					ElectricDimmer el = room.getSubResource(LIGHT_DECORATOR_NAME);
-					if (el != null) {
-						DimmerAction da = new DimmerAction();
-						da.setSource(dimmer);
-						da.setTarget(el);
-					}
-				}
+				hr.createDimmerAction();
 			}
+		}
+		if (outside != null) {
+			outsideTemp = outside.temperatureSensor().reading();
+			outsideHumidity = outside.humiditySensor().reading();
 		}
 		initTypeSensorsMap();
 	}
@@ -167,197 +157,56 @@ public class Rooms {
 		typeSensors.put(type, sensors);
 	}
 
+	static final JSONObject empty = new JSONObject();
+
 	public JSONObject getRoomData(String roomId) {
-		JSONObject roomData = new JSONObject();
-		int messageID;
-		Room room = roomsMap.get(roomId);
-		float tempInside = Float.NaN, rhInside = Float.NaN, ahInside = Float.NaN;
-		float tempOutside = Float.NaN, rhOutside = Float.NaN, ah_outside = Float.NaN;
-		if (room != null) {
-			/*
-			 * temperature inside
-			 */
-			try {
-				TemperatureSensor tsin = room.temperatureSensor();
-				if (tsin != null && tsin.isActive()) {
-					tempInside = tsin.reading().getValue();
-					if (tempInside == 0) {
-						tempInside = Float.NaN;
-						roomData.put(Constants.JSON_TEMPIN_NAME, "NaN");
-					}
-					else {
-						tempInside = tempInside - 273.15f;
-						roomData.put(Constants.JSON_TEMPIN_NAME, tempInside);
-					}
-				}
-
-			} catch (JSONException | NullPointerException e) {
-			}
-			/*
-			 * humiditiy inside
-			 */
-			try {
-				HumiditySensor rhsin = room.humiditySensor();
-				if (rhsin != null && rhsin.isActive()) {
-					rhInside = rhsin.reading().getValue();
-					if (rhInside == 0) {
-						rhInside = Float.NaN;
-						roomData.put(Constants.JSON_RHIN_NAME, "NaN");
-					}
-					else {
-						roomData.put(Constants.JSON_RHIN_NAME, rhInside);
-					}
-					ahInside = rhInside * Constants.RH2AH_FACTOR;
-				}
-
-			} catch (JSONException e) {
-			}
-			/*
-			 * Motion sensor inside
-			 */
-			try {
-				MotionSensor motion = room.motionSensor();
-				if (motion != null && motion.isActive()) {
-					boolean motionInside = motion.reading().getValue();
-					roomData.put(Constants.JSON_MOTIONIN_NAME, motionInside);
-				}
-			} catch (JSONException e) {
-			}
-
-			/*
-			 * Mains power outlet (Switchbox 2)
-			 */
-			try {
-				SingleSwitchBox swBox = room.getSubResource(SWITCH_BOX_2_DECORATOR_NAME);
-				if (swBox != null) {
-					boolean lightSwitchState = swBox.onOffSwitch().stateFeedback().getValue();
-					roomData.put(Constants.JSON_LIGHT2_NAME, lightSwitchState);
-				}
-			} catch (JSONException e) {
-			}
-
-			/*
-			 * Light
-			 */
-			try {
-				// Check if the room is already decorated with an ElectricLight
-				ElectricDimmer el = room.getSubResource(LIGHT_DECORATOR_NAME);
-				if (el != null) {
-					boolean lightSwitchState = el.onOffSwitch().stateFeedback().getValue();
-					roomData.put(Constants.JSON_LIGHT_NAME, lightSwitchState);
-				}
-			} catch (JSONException e) {
-			}
-			/*
-			 * Smoke detector
-			 */
-			try {
-				SmokeDetector smoke = room.getSubResource(SMOKE_DECORATOR_NAME);
-				if (smoke != null) {
-					boolean alert = smoke.smokeAlert().getValue();
-					roomData.put(Constants.JSON_SMOKE_NAME, alert);
-				}
-			} catch (JSONException e) {
-			}
-
-			/*
-			 * air condition (Switch box 1)
-			 */
-			try {
-				SingleSwitchBox swBox = room.getSubResource(SWITCH_BOX_1_DECORATOR_NAME);
-				if (swBox != null) {
-					boolean airSwitch = swBox.onOffSwitch().stateFeedback().getValue();
-					roomData.put(Constants.JSON_AIR_NAME, airSwitch);
-				}
-			} catch (JSONException e) {
-			}
-
-			/*
-			 * Water detector
-			 */
-			try {
-				WaterDetector water = room.getSubResource(WATER_DECORATOR_NAME);
-				if (water != null) {
-					String highWater = water.highWater().getValue();
-					if (highWater.equals("wet"))
-						roomData.put(Constants.JSON_WATER_NAME, true);
-					else
-						roomData.put(Constants.JSON_WATER_NAME, false);
-				}
-			} catch (JSONException e) {
-			}
-
-			/*
-			 * temperature outside
-			 */
-			try {
-				TemperatureSensor tsout = outside.temperatureSensor();
-				if (tsout != null && tsout.isActive()) {
-					tempOutside = tsout.reading().getValue();
-					if (tempOutside == 0) {
-						tempOutside = Float.NaN;
-						roomData.put(Constants.JSON_TEMPOUT_NAME, "NaN");
-					}
-					else {
-						tempOutside = tempOutside - 273.15f;
-						roomData.put(Constants.JSON_TEMPOUT_NAME, tempOutside);
-					}
-				}
-			} catch (JSONException | NullPointerException e) {
-			}
-
-			/*
-			 * humidity outside
-			 */
-			try {
-				HumiditySensor rhsout = outside.humiditySensor();
-				if (rhsout != null && rhsout.isActive()) {
-					rhOutside = rhsout.reading().getValue();
-					if (rhOutside == 0) {
-						rhOutside = Float.NaN;
-						roomData.put(Constants.JSON_RHOUT_NAME, "NaN");
-					}
-					else {
-						roomData.put(Constants.JSON_RHOUT_NAME, rhOutside);
-					}
-					ah_outside = rhOutside * Constants.RH2AH_FACTOR;
-				}
-			} catch (JSONException | NullPointerException e) {
-			}
-		}
-		else {
-			logger.debug("request for room " + roomId + " which is not available");
-			try {
-				roomData.put(Constants.JSON_MESSAGEID_NAME, Constants.DEFAULT_MESSAGEID);
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
-
-		}
-		messageID = determineMessageID(tempInside, rhInside, ahInside, tempOutside, rhOutside, ah_outside);
-
-		/*
-		 * action message and priority
-		 */
-		try {
-			if (messageID != -1) {
-				String message = determineMessage(messageID);
-				int prio = determinePriority(messageID);
-				roomData.put(Constants.JSON_MESSAGEID_NAME, messageID);
-				roomData.put(Constants.JSON_MESSAGE_NAME, message);
-				roomData.put(Constants.JSON_PRIORITY_NAME, prio);
-			}
-			else {
-				roomData.put(Constants.JSON_MESSAGEID_NAME, Constants.DEFAULT_MESSAGEID);
-				roomData.put(Constants.JSON_MESSAGE_NAME, Constants.messages[Constants.DEFAULT_MESSAGEID]);
-				roomData.put(Constants.JSON_PRIORITY_NAME, Constants.Priority_1);
-			}
-		} catch (JSONException | NullPointerException e) {
-		}
-		return roomData;
+		HomeRoom room = roomsMap.get(roomId);
+		if (room == null)
+			return empty;
+		else
+			return room.getRoomData();
 	}
 
-	private int determinePriority(int messageID) {
+	public String setResource4Sensor(String roomId, String resourcePath, String sensor) {
+		HomeRoom hr = getRoom(roomId);
+		Room room;
+		int type = 1;
+		if (hr == null) {
+			if (roomsList.getElementType() == null)
+				roomsList.setElementType(Room.class);
+			room = roomsList.add();
+			hr = new HomeRoom(resAcc, logger, room);
+			room.activate(false);
+			StringResource name = room.name();
+			name.create().activate(false);
+			name.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_LOWEST);
+			room.name().setValue(roomId);
+
+			IntegerResource typeRes = room.type();
+			typeRes.create().activate(false);
+			name.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_LOWEST);
+			room.type().setValue(type);
+			hr.theRoom = room;
+			hr.roomId = roomId;
+			roomsMap.put(roomId, hr);
+		}
+		else
+			room = hr.theRoom;
+		String result = hr.setResource4Sensor(resourcePath, sensor);
+		if (roomId.equals(OUTSIDE_ROOM_NAME)) {
+			outside = room;
+			type = 0;
+			outsideTemp = room.temperatureSensor().reading();
+			outsideHumidity = room.humiditySensor().reading();
+		}
+		return result;
+	}
+
+	private HomeRoom getRoom(String roomId) {
+		return roomsMap.get(roomId);
+	}
+
+	static int determinePriority(int messageID) {
 		switch (messageID) {
 		case 1:
 		case 7:
@@ -388,7 +237,7 @@ public class Rooms {
 		return 0;
 	}
 
-	private String determineMessage(int messageID) {
+	static String determineMessage(int messageID) {
 		try {
 			return Constants.messages[messageID];
 		} catch (ArrayIndexOutOfBoundsException e) {
@@ -396,235 +245,7 @@ public class Rooms {
 		}
 	}
 
-	public String setResource4Sensor(String roomId, String resourcePath, String sensor) {
-		String result = null;
-		Room room = getRoom(roomId);
-		Resource res = null;
-		int type = 1;
-		if (room == null) {
-			if (roomsList.getElementType() == null)
-				roomsList.setElementType(Room.class);
-			room = roomsList.add();
-			room.activate(false);
-			if (roomId.equals(OUTSIDE_ROOM_NAME)) {
-				outside = room;
-				type = 0;
-			}
-			StringResource name = room.name();
-			name.create().activate(false);
-			name.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_LOWEST);
-			room.name().setValue(roomId);
-
-			IntegerResource typeRes = room.type();
-			typeRes.create().activate(false);
-			name.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_LOWEST);
-			room.type().setValue(type);
-			roomsMap.put(roomId, room);
-		}
-
-		int errorCode = 0;
-		switch (sensor) {
-		// if the resource is already configured, delete it before
-		case SENSOR_NAME_TEMPERATURE:
-			res = resAcc.getResource(resourcePath);
-			if (res == null || !(res instanceof TemperatureSensor)) {
-				errorCode = 1;
-				break;
-			}
-			TemperatureSensor tsens = (TemperatureSensor) res;
-			if (room.temperatureSensor() != null) {
-				room.temperatureSensor().delete();
-			}
-			room.temperatureSensor().setAsReference(tsens);
-			break;
-		case SENSOR_NAME_HUMIDITY:
-			res = resAcc.getResource(resourcePath);
-			if (res == null || !(res instanceof HumiditySensor)) {
-				errorCode = 1;
-				break;
-			}
-			HumiditySensor rhsens = (HumiditySensor) res;
-			if (room.humiditySensor() != null) {
-				room.humiditySensor().delete();
-			}
-			room.humiditySensor().setAsReference(rhsens);
-			break;
-		case SENSOR_NAME_LIGHT_SWICHT:
-			res = resAcc.getResource(resourcePath);
-			if (res == null || !(res instanceof BooleanResource)) {
-				errorCode = 1;
-				break;
-			}
-			BooleanResource swtch = (BooleanResource) res;
-			// Check if the room is already decorated with an ElectricLight
-			ElectricDimmer el = room.getSubResource(LIGHT_DECORATOR_NAME);
-			if (el != null) {
-				el.onOffSwitch().stateControl().delete();
-				el.onOffSwitch().stateControl().setAsReference(swtch);
-			}
-			else
-				throw new IllegalStateException("Room not yet decorated with ElectricDimmer.");
-			break;
-		case SENSOR_NAME_LIGHT_DIMMER:
-			res = resAcc.getResource(resourcePath);
-			if (res == null || !(res instanceof BooleanResource)) {
-				errorCode = 1;
-				break;
-			}
-			BooleanResource dimmer = (BooleanResource) res;
-			// Check if the room is already decorated with an ElectricLight
-			el = room.getSubResource(LIGHT_DECORATOR_NAME);
-			if (el != null) {
-				DimmerAction da = new DimmerAction();
-				da.setSource(dimmer);
-				da.setTarget(el);
-
-				// store the path persistently to remade the connection over DimmerAction after restart
-				StringResource dimmerSourcePath = room.addDecorator(LIGHT_DIMMER_SOURCE_NAME, StringResource.class);
-				dimmerSourcePath.setValue(resourcePath);
-			}
-			else
-				throw new IllegalStateException("Room not yet decorated with ElectricDimmer.");
-			break;
-		case SENSOR_NAME_LIGHT:
-			res = resAcc.getResource(resourcePath);
-			if (res == null || !(res instanceof ElectricDimmer)) {
-				errorCode = 1;
-				break;
-			}
-			ElectricDimmer dimmerRes = (ElectricDimmer) res;
-			// Check if the room is already decorated with an ElectricLight
-			el = room.getSubResource(LIGHT_DECORATOR_NAME);
-			if (el == null) {
-				room.addDecorator(LIGHT_DECORATOR_NAME, dimmerRes);
-			}
-			break;
-		case SENSOR_NAME_SWBOX1:
-			res = resAcc.getResource(resourcePath);
-			if (res == null || !(res instanceof SingleSwitchBox)) {
-				errorCode = 1;
-				break;
-			}
-			SingleSwitchBox swBoxRes = (SingleSwitchBox) res;
-			// Check if the room is already decorated with the switch box 1
-			SingleSwitchBox swBox = room.getSubResource(SWITCH_BOX_1_DECORATOR_NAME);
-			if (swBox == null) {
-				room.addDecorator(SWITCH_BOX_1_DECORATOR_NAME, swBoxRes);
-			}
-			break;
-		case SENSOR_NAME_SWBOX_SWITCH1:
-			res = resAcc.getResource(resourcePath);
-			if (res == null || !(res instanceof BooleanResource)) {
-				errorCode = 1;
-				break;
-			}
-			swtch = (BooleanResource) res;
-			// Check if the room is already decorated with the switch box 1
-			swBox = room.getSubResource(SWITCH_BOX_1_DECORATOR_NAME);
-			if (swBox != null) {
-				swBox.onOffSwitch().stateControl().delete();
-				swBox.onOffSwitch().stateControl().setAsReference(swtch);
-			}
-			else
-				throw new IllegalStateException("Room not yet decorated with SingleSwitchBox.");
-			break;
-		case SENSOR_NAME_SWBOX2:
-			res = resAcc.getResource(resourcePath);
-			if (res == null || !(res instanceof SingleSwitchBox)) {
-				errorCode = 1;
-				break;
-			}
-			swBoxRes = (SingleSwitchBox) res;
-			// Check if the room is already decorated with the switch box 2
-			swBox = room.getSubResource(SWITCH_BOX_2_DECORATOR_NAME);
-			if (swBox == null) {
-				room.addDecorator(SWITCH_BOX_2_DECORATOR_NAME, swBoxRes);
-			}
-			break;
-		case SENSOR_NAME_SWBOX_SWITCH2:
-			res = resAcc.getResource(resourcePath);
-			if (res == null || !(res instanceof BooleanResource)) {
-				errorCode = 1;
-				break;
-			}
-			swtch = (BooleanResource) res;
-			// Check if the room is already decorated with the switch box 2
-			swBox = room.getSubResource(SWITCH_BOX_2_DECORATOR_NAME);
-			if (swBox != null) {
-				swBox.onOffSwitch().stateControl().delete();
-				swBox.onOffSwitch().stateControl().setAsReference(swtch);
-			}
-			else
-				throw new IllegalStateException("Room not yet decorated with SingleSwitchBox.");
-			break;
-		case SENSOR_NAME_MOTION:
-			res = resAcc.getResource(resourcePath);
-			if (res == null || !(res instanceof MotionSensor)) {
-				errorCode = 1;
-				break;
-			}
-			MotionSensor motion = (MotionSensor) res;
-			if (room.motionSensor() != null) {
-				room.motionSensor().delete();
-			}
-			room.motionSensor().setAsReference(motion);
-			break;
-		case SENSOR_NAME_WATER:
-			res = resAcc.getResource(resourcePath);
-			if (res == null || !(res instanceof WaterDetector)) {
-				errorCode = 1;
-				break;
-			}
-			WaterDetector waterRes = (WaterDetector) res;
-			// Check if the room is already decorated with a waterDetector
-			WaterDetector water = room.getSubResource(WATER_DECORATOR_NAME);
-			if (water == null) {
-				room.addDecorator(WATER_DECORATOR_NAME, waterRes);
-			}
-			break;
-		case SENSOR_NAME_SMOKE:
-			res = resAcc.getResource(resourcePath);
-			if (res == null || !(res instanceof SmokeDetector)) {
-				errorCode = 1;
-				break;
-			}
-			SmokeDetector smokeRes = (SmokeDetector) res;
-			// Check if the room is already decorated with a waterDetector
-			SmokeDetector smoke = room.getSubResource(SMOKE_DECORATOR_NAME);
-			if (smoke == null) {
-				room.addDecorator(SMOKE_DECORATOR_NAME, smokeRes);
-			}
-			break;
-		default:
-			if (sensor == null)
-				errorCode = 1;
-			else
-				errorCode = 2;
-			break;
-		}
-
-		switch (errorCode) {
-		case 0:
-			result = roomId + " wurde erfolgreich mit der Ressource ausgestattet: " + resourcePath;
-			break;
-		case 1:
-			result = "Die Ressource " + resourcePath + " kann nicht als Raumsensor konfiguriert werden!";
-			break;
-		case 2:
-			result = sensor + " ist nicht für die Konfiguration vorgesehen!";
-			break;
-		default:
-			break;
-		}
-
-		return result;
-	}
-
-	private Room getRoom(String roomId) {
-		return roomsMap.get(roomId);
-	}
-
-	public int determineMessageID(float t_in, float rh_in, float ah_in, float t_out, float rh_out, float ah_out) {
+	public static int determineMessageID(float t_in, float rh_in, float ah_in, float t_out, float rh_out, float ah_out) {
 		// check conditions for ID_1
 		// check conditions for ID_2
 		// check conditions for ID_3
@@ -660,7 +281,7 @@ public class Rooms {
 		}
 
 		// check conditions for ID_6
-		if (t_in > 24 && t_out < 25) {
+		if (t_in > 24 && t_out > 25) {
 			return 6;
 		}
 
@@ -714,6 +335,18 @@ public class Rooms {
 		return Constants.DEFAULT_MESSAGEID;
 	}
 
+	public String resetRoomSensors(String roomId) {
+		String result = "Alle Sensoren des Raumes " + roomId + " wurden freigegeben!";
+		Room room = getRoom(roomId).theRoom;
+		if (room != null) {
+			roomsList.remove(room);
+			room.delete();
+		}
+		else
+			result = "Der Raum " + roomId + " wurde noch nicht angelegt!";
+		return result;
+	}
+
 	public JSONArray getMatchingSensors(String type) {
 		JSONArray sensors = new JSONArray();
 		List<String> list = typeSensors.get(type);
@@ -722,17 +355,5 @@ public class Rooms {
 				sensors.put(str);
 			}
 		return sensors;
-	}
-
-	public String resetRoomSensors(String roomId) {
-		String result = "Alle Sensoren des Raumes " + roomId + " wurden freigegeben!";
-		Room room = getRoom(roomId);
-		if (room != null) {
-			roomsList.remove(room);
-			room.delete();
-		}
-		else
-			result = "Der Raum " + roomId + " wurde noch nicht angelegt!";
-		return result;
 	}
 }

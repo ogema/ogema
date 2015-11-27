@@ -254,18 +254,24 @@ public class LeafValue implements SimpleResourceData {
 		switch (typeKey) {
 		case DBConstants.TYPE_KEY_OPAQUE:
 			res = aB == null ? 0 : aB.length;
+			break;
 		case DBConstants.TYPE_KEY_INT_ARR:
 			res = aI == null ? 0 : aI.length;
+			break;
 		case DBConstants.TYPE_KEY_FLOAT_ARR:
 			res = aF == null ? 0 : aF.length;
+			break;
 		case DBConstants.TYPE_KEY_BOOLEAN_ARR:
 			res = aZ == null ? 0 : aZ.length;
+			break;
 		case DBConstants.TYPE_KEY_STRING_ARR:
 			res = aS == null ? 0 : aS.length;
+			break;
 		case DBConstants.TYPE_KEY_LONG_ARR:
 			res = aJ == null ? 0 : aJ.length;
-		case DBConstants.TYPE_KEY_COMPLEX_ARR:
 			break;
+		//		case DBConstants.TYPE_KEY_COMPLEX_ARR:
+		//			break;
 		default:
 			throw new UnsupportedOperationException();
 		}

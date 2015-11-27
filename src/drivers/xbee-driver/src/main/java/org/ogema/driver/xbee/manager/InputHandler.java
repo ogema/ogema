@@ -35,18 +35,15 @@ import org.slf4j.Logger;
  * @author puschas
  * 
  */
-public class InputHandler implements Runnable {
+public class InputHandler {
 	public enum ResponseType {
 		ACTIVE_ENDPOINT_RESPONSE, SIMPLE_DESCRIPTOR_RESPONSE, NODE_DESCRIPTOR_RESPONSE, IEEE_ADDR_RESPONSE, READ_ATTRIBUTES_RESPONSE, TRANSMIT_STATUS, WRITE_ATTRIBUTES_RESPONSE, REMOTE_NI_COMMAND, COMPLEX_DESCRIPTOR_RESPONSE, USER_DESCRIPTOR_RESPONSE, NETWORK_ADDRESS_RESPONSE
 	};
 
-	private volatile boolean running;
-	private final Object inputEventLock;
 	private final Object deviceHandlerLock;
 	private DeviceHandler deviceHandler;
 	private MessageHandler messageHandler;
 	private ByteBuffer byteBuffer;
-	private byte[] tempArray;
 	private SimpleDescriptorRequest simpleDescriptorRequest = new SimpleDescriptorRequest();
 	private long address64Bit;
 	private short address16Bit;
@@ -62,45 +59,14 @@ public class InputHandler implements Runnable {
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("xbee-driver");
 
 	public InputHandler(LocalDevice localDevice) {
-		inputEventLock = localDevice.getInputEventLock();
 		deviceHandlerLock = localDevice.getDeviceHandlerLock();
 		deviceHandler = localDevice.getDeviceHandler();
 		messageHandler = localDevice.getMessageHandler();
-		running = true;
 		this.localDevice = localDevice;
 	}
 
-	/**
-	 * 
-	 * @param running
-	 *            Stops the loop in run().
-	 */
-	public void stop() {
-		this.running = false;
-	}
-
-	@Override
-	public void run() {
-		while (running) {
-			synchronized (inputEventLock) {
-				while (!localDevice.connectionHasFrames()) {
-					try {
-						inputEventLock.wait();
-					} catch (InterruptedException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					}
-				}
-				tempArray = localDevice.getReceivedFrame();
-			}
-			if (Configuration.DEBUG)
-				logger.debug("New input in handler: " + Constants.bytesToHex(tempArray));
-			handleMessage();
-		}
-	}
-
-	private void handleMessage() {
-		byteBuffer = ByteBuffer.wrap(tempArray);
+	public void handleMessage(ByteBuffer bb) {
+		byteBuffer = bb;
 		switch (byteBuffer.get()) { // Check frameType
 		case Constants.EXPLICIT_RX_INDICATOR:
 			handleExplicitRxIndicator();
@@ -141,9 +107,6 @@ public class InputHandler implements Runnable {
 			return;
 		}
 		XBeeDevice xBeeDevice = (XBeeDevice) localDevice.getRemoteDevice(sourceAddress64Bit);
-		byte temp[] = new byte[byteBuffer.limit() - byteBuffer.position()];
-		byteBuffer.get(temp, 0, byteBuffer.limit() - byteBuffer.position());
-		byteBuffer = ByteBuffer.wrap(temp);
 
 		xBeeDevice.parseNodeIdentifier(byteBuffer);
 
@@ -251,6 +214,7 @@ public class InputHandler implements Runnable {
 				case ("ZBS-110V2"):
 				case ("ZBS-122"):
 				case ("HA Sensorknoten"):
+					// the new byte[] is here necessary because the currently measured value of the channel is stored.
 					byte[] tempArray = new byte[byteBuffer.limit() - byteBuffer.position()];
 					byteBuffer.get(tempArray, 0, byteBuffer.limit() - byteBuffer.position());
 					xbeeDevice.setValue(new ByteArrayValue(tempArray));
@@ -271,10 +235,8 @@ public class InputHandler implements Runnable {
 					return;
 				}
 			}
-			byte[] payload = new byte[byteBuffer.limit() - byteBuffer.position()];
-			byteBuffer.get(payload, 0, byteBuffer.limit() - byteBuffer.position());
 			messageHandler.messageReceived(localDevice.getRemoteDevice(sourceAddress64Bit).getEndpoints().get(
-					sourceEndpoint), destinationEndpoint, clusterId, payload);
+					sourceEndpoint), destinationEndpoint, clusterId, byteBuffer/* payload */);
 		}
 	}
 
@@ -482,7 +444,8 @@ public class InputHandler implements Runnable {
 		byteBuffer.get(); // Omit frame control byte
 		if (Constants.STATUS_SUCCESS != byteBuffer.get())
 			return; // No success
-		nwkAddrOfInterest = Short.reverseBytes(byteBuffer.getShort()); // Network
+		nwkAddrOfInterest = Short.reverseBytes(byteBuffer.getShort());
+		// Network
 		// address
 		// of
 		// interest
@@ -542,6 +505,8 @@ public class InputHandler implements Runnable {
 		// of
 		// interest
 
+		// This copy in new byte[] is ok, the node descriptor is created one time and is hold permanently by
+		// NodeDescriptor
 		byte[] rawNodeDescriptor = new byte[byteBuffer.limit() - byteBuffer.position()];
 		byteBuffer.get(rawNodeDescriptor);
 		NodeDescriptor nodeDescriptor = new NodeDescriptor();
@@ -587,6 +552,9 @@ public class InputHandler implements Runnable {
 		// address
 		// of
 		// interest
+
+		// This copy in new byte[] is ok, the simple node descriptor is created one time and is hold permanently by
+		// NodeDescriptor
 		byte[] rawSimpleDescriptor = new byte[byteBuffer.limit() - byteBuffer.position()];
 		byteBuffer.get(rawSimpleDescriptor);
 		SimpleDescriptor simpleDescriptor = new SimpleDescriptor();
@@ -641,7 +609,6 @@ public class InputHandler implements Runnable {
 				localDevice.sendFrame(XBeeFrameFactory.composeMessageToFrame(simpleDescriptorRequest.getUnicastMessage(
 						localDevice.getRemoteDevice(nwkAddrOfInterest).getAddress64Bit(), nwkAddrOfInterest)));
 			} catch (WrongFormatException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}

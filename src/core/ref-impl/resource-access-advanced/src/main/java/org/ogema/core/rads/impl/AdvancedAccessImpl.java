@@ -16,15 +16,21 @@
 package org.ogema.core.rads.impl;
 
 import java.util.ArrayList;
+
 import org.ogema.core.rads.listening.RadAssembler;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
+import org.ogema.core.rads.creation.DefaultPatternFactory;
+import org.ogema.core.rads.creation.PatternFactory;
 import org.ogema.core.rads.creation.RadCreator;
+import org.ogema.core.rads.tools.PatternFinder;
 import org.ogema.core.rads.tools.RadFactory;
 import org.ogema.core.rads.tools.ResourceFieldInfo;
 import org.ogema.core.resourcemanager.AccessPriority;
@@ -33,6 +39,7 @@ import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.pattern.ResourcePatternAccess;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.core.resourcemanager.pattern.PatternListener;
+import org.ogema.core.resourcemanager.pattern.ContextSensitivePattern;
 
 /**
  * @author Timo Fischer, Fraunhofer IWES
@@ -54,16 +61,33 @@ public class AdvancedAccessImpl implements ResourcePatternAccess {
 
     @Override
     public <P extends ResourcePattern<?>> void addPatternDemand(Class<P> clazz, PatternListener<P> listener, AccessPriority prio) {
+    	addPatternDemand(clazz, listener, prio, new DefaultPatternFactory<P>(clazz));
+    }
+    
+	public <P extends ResourcePattern<?>> void addPatternDemand(Class<P> clazz, PatternListener<P> listener, AccessPriority prio, PatternFactory<P> factory) {
         final RequestedDemand demand = new RequestedDemand(clazz, listener);
         if (m_assemblers.containsKey(demand)) {
             m_logger.warn("Resource demand for class " + clazz.getCanonicalName() + " and listener " + listener.toString() + " has been requested, but the same demand already been registered previously. Will ignore the request.");
             return;
         }
         @SuppressWarnings({"rawtypes", "unchecked"})
-        final RadAssembler assembler = new RadAssembler(m_appMan, clazz, prio, listener);
+        final RadAssembler assembler = new RadAssembler(m_appMan, clazz, prio, listener, factory, null);
         assembler.start();
-        m_assemblers.put(demand, assembler);
-    }
+        m_assemblers.put(demand, assembler);		
+	}
+	
+	@Override
+	public <P extends ContextSensitivePattern<?, C>, C> void addPatternDemand(Class<P> clazz, PatternListener<P> listener, AccessPriority prio, C container) {
+		final RequestedDemand demand = new RequestedDemand(clazz, listener);
+        if (m_assemblers.containsKey(demand)) {
+            m_logger.warn("Resource demand for class " + clazz.getCanonicalName() + " and listener " + listener.toString() + " has been requested, but the same demand already been registered previously. Will ignore the request.");
+            return;
+        }
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        final RadAssembler assembler = new RadAssembler(m_appMan, clazz, prio, listener, new DefaultPatternFactory<P>(clazz),container);
+        assembler.start();
+        m_assemblers.put(demand, assembler);		
+	}
 
     private void removeAllDemandsForPattern(Class<? extends ResourcePattern<?>> pattern) {
         // find all fitting demands
@@ -98,16 +122,54 @@ public class AdvancedAccessImpl implements ResourcePatternAccess {
         assert assembler != null;
         assembler.stop();
     }
-
+    
     @Override
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public <PATTERN extends ResourcePattern<?>> PATTERN createResource(String name, Class<PATTERN> radtype) {
-        final RadCreator creator = new RadCreator(m_appMan, (Class<? extends ResourcePattern<?>>) radtype);
-        creator.create(name);
-        return (PATTERN) creator.getRad();
+    public <PATTERN extends ResourcePattern<?>> PATTERN addDecorator(Resource parent, String name, Class<PATTERN> radtype) {
+        return addDecorator(parent, name, radtype, new DefaultPatternFactory<PATTERN>(radtype));
     }
+    
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+	public <P extends ResourcePattern<?>> P addDecorator(Resource parent, String name, Class<P> radtype, PatternFactory<P> factory) {
+        final RadCreator creator = new RadCreator(m_appMan, (Class<? extends ResourcePattern<?>>) radtype, factory, null);
+        creator.addDecorator(parent, name);
+        return (P) creator.getRad();
+	}
+	
+
+	@Override
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public <P extends ContextSensitivePattern<?, C>, C> P addDecorator(Resource parent, String name, Class<P> radtype, C container) {
+		final RadCreator creator = new RadCreator(m_appMan, (Class<? extends ResourcePattern<?>>) radtype, new DefaultPatternFactory<P>(radtype), container);
+        creator.addDecorator(parent, name);
+        return (P) creator.getRad();
+	}
+
 
     @Override
+    public <PATTERN extends ResourcePattern<?>> PATTERN createResource(String name, Class<PATTERN> radtype) {
+    	return createResource(name, radtype, new DefaultPatternFactory<PATTERN>(radtype));
+    }
+    
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+	public <P extends ResourcePattern<?>> P createResource(String name,	Class<P> radtype, PatternFactory<P> factory) {
+		final RadCreator creator = new RadCreator(m_appMan, (Class<? extends ResourcePattern<?>>) radtype, factory,null);
+        creator.create(name);
+        return (P) creator.getRad();
+	}
+	
+
+	@Override
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public <P extends ContextSensitivePattern<?, C>, C> P createResource(String name, Class<P> radtype, C container) {
+		final RadCreator creator = new RadCreator(m_appMan, (Class<? extends ResourcePattern<?>>) radtype, new DefaultPatternFactory<P>(radtype), container);
+        creator.create(name);
+        return (P) creator.getRad();
+	}
+
+    @SuppressWarnings("rawtypes")
+	@Override
     public void activatePattern(ResourcePattern<?> pattern) {
         Objects.requireNonNull(pattern, "Access declaration to activate must not be null.");
         @SuppressWarnings("unchecked")
@@ -122,7 +184,8 @@ public class AdvancedAccessImpl implements ResourcePatternAccess {
         
     }
 
-    @Override
+    @SuppressWarnings("rawtypes")
+	@Override
     public void deactivatePattern(ResourcePattern<?> pattern) {
         Objects.requireNonNull(pattern, "Access declaration to de-activate must not be null.");
         @SuppressWarnings("unchecked")
@@ -135,4 +198,23 @@ public class AdvancedAccessImpl implements ResourcePatternAccess {
         }
         pattern.model.deactivate(false);
     }
+
+	@Override
+	public <P extends ResourcePattern<?>> List<P> getPatterns(Class<P> type, AccessPriority writePriority) {
+		return getPatterns(type, writePriority, new DefaultPatternFactory<P>(type));
+	}
+
+	public <P extends ResourcePattern<?>> List<P> getPatterns(Class<P> type, AccessPriority writePriority, PatternFactory<P> factory) {
+		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, type, factory, writePriority);
+		return finder.getAllPatterns();
+	}
+	
+
+	@Override
+	public <P extends ContextSensitivePattern<?, C>, C> List<P> getPatterns(Class<P> type, AccessPriority writePriority, C container) {
+		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, type, new DefaultPatternFactory<P>(type), writePriority, container);
+		return finder.getAllPatterns();
+	}
+
+
 }

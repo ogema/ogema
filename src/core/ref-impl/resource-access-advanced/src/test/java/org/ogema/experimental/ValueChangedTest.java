@@ -15,8 +15,12 @@
  */
 package org.ogema.experimental;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 import org.ogema.core.resourcemanager.AccessPriority;
@@ -37,8 +41,11 @@ public class ValueChangedTest extends OsgiTestBase {
 	public class TempListener implements PatternListener<TempSensPattern> {
 
 		public boolean available;
+		public CountDownLatch foundLatch;
+		public CountDownLatch lostLatch;
 
 		public TempListener() {
+			reset();
 			available = false;
 		}
 
@@ -46,12 +53,19 @@ public class ValueChangedTest extends OsgiTestBase {
 		public void patternAvailable(TempSensPattern pattern) {
 			// System.out.println("Available callback");
 			available = true;
+			foundLatch.countDown();
 		}
 
 		@Override
 		public void patternUnavailable(TempSensPattern pattern) {
 			// System.out.println("Unavailable callback");
 			available = false;
+			lostLatch.countDown();
+		}
+
+		public void reset() {
+			foundLatch = new CountDownLatch(1);
+			lostLatch = new CountDownLatch(1);
 		}
 
 	}
@@ -68,23 +82,24 @@ public class ValueChangedTest extends OsgiTestBase {
 		tempSens.ratedValues().upperLimit().create();
 		tempSens.ratedValues().upperLimit().setCelsius(25);
 		tempSens.activate(true);
-		Thread.sleep(300);
-		assertTrue(listener.available);
+		listener.foundLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.foundLatch.getCount());
 		tempSens.reading().setCelsius(27);
-		Thread.sleep(300);
-		assertFalse(listener.available);
+		assertTrue("should loose pattern now", listener.lostLatch.await(5, TimeUnit.SECONDS));
+		listener.reset();
 		tempSens.ratedValues().upperLimit().deactivate(false);
-		Thread.sleep(300);
-		assertTrue(listener.available);
+		listener.foundLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.foundLatch.getCount());
 		tempSens.reading().setCelsius(19);
-		Thread.sleep(300);
-		assertFalse(listener.available);
+		listener.lostLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.lostLatch.getCount());
+		listener.reset();
 		tempSens.reading().setCelsius(27);
-		Thread.sleep(300);
-		assertTrue(listener.available);
+		listener.foundLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.foundLatch.getCount());
 		tempSens.reading().deactivate(false);
-		Thread.sleep(300);
-		assertFalse(listener.available);
+		listener.lostLatch.await(5, TimeUnit.SECONDS);
+		assertEquals(0, listener.lostLatch.getCount());
 	}
 
 }

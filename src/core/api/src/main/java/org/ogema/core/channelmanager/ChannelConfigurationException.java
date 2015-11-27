@@ -21,13 +21,20 @@ package org.ogema.core.channelmanager;
 
 public class ChannelConfigurationException extends Exception {
 
-	/**
-	 * Parent Excepiton relay
-	 * 
-	 * @param string
-	 */
+	public ChannelConfigurationException() {
+		super();
+	}
+
 	public ChannelConfigurationException(String string) {
 		super(string);
+	}
+
+	public ChannelConfigurationException(Throwable cause) {
+		super(cause);
+	}
+
+	public ChannelConfigurationException(String s, Throwable cause) {
+		super(s, cause);
 	}
 
 	private static final long serialVersionUID = 7104419955942749127L;

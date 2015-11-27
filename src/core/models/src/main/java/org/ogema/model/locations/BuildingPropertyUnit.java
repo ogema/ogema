@@ -45,7 +45,7 @@ public interface BuildingPropertyUnit extends PhysicalElement {
 	 * 2: office space<br>
 	 * 3: salesroom / shopping store (might include workshop/production space)<br>
 	 * 4: pure workshop / production space<br>
-	 * 9999: other >=10.000: custom values
+	 * 9999: other; greater/equal 10.000: custom values
 	 */
 	IntegerResource type();
 

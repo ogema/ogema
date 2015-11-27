@@ -33,7 +33,7 @@ import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.AccessMode;
 
@@ -238,7 +238,7 @@ public class AccessModeTest extends OsgiTestBase {
 		OnOffSwitch sw = getApplicationManager().getResourceManagement().createResource(newResourceName(),
 				OnOffSwitch.class);
 		final FloatResource value = sw.heatCapacity().create();
-		final DefinitionSchedule schedule = value.addDecorator("definition", DefinitionSchedule.class);
+		final Schedule schedule = value.addDecorator("definition", Schedule.class);
 		schedule.addValue(100, new FloatValue(10.f));
 		schedule.setInterpolationMode(InterpolationMode.STEPS);
 		sw.activate(true);
@@ -249,8 +249,7 @@ public class AccessModeTest extends OsgiTestBase {
 
 		// Test: Another app gets exclusive write, original application goes back to read-only.
 		assertNotNull(appMan2); // check that 2nd application exists.
-		final DefinitionSchedule schedule2 = (DefinitionSchedule) appMan2.getResourceAccess().getResource(
-				schedule.getPath());
+		final Schedule schedule2 = (Schedule) appMan2.getResourceAccess().getResource(schedule.getPath());
 		schedule2.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		assertEquals(AccessPriority.PRIO_HIGHEST, schedule2.getAccessPriority());

@@ -1,0 +1,46 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+﻿<div id="log"></div>
+﻿
+<SCRIPT type="application/javascript">
+function actualize() {
+	if(((get.readyState >= 4)||(get.readyState == 0))){
+		get.open("GET", "/rest/resources"+"?user="+otusr+"&pw="+otpwd,true);
+		get.onreadystatechange = process;
+		get.send();
+		}
+}
+
+function process(){
+	if ( get.readyState == 4) {
+		data = get.responseText;
+		if (window.console && console.log) {
+    		console.log(data); //for firebug
+  		}
+	}
+}
+
+var get;
+var myTimer;
+init();
+
+function init(){
+	get= new XMLHttpRequest();
+	myTimer = setInterval(actualize, 1000);	
+}
+</SCRIPT>

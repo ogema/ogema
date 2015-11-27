@@ -19,7 +19,7 @@ import org.ogema.driver.homematic.manager.RemoteDevice;
 
 public abstract class Message {
 
-	protected long num = 1;
+	protected int num = 1;
 	protected String dest;
 	protected long token;
 	protected long timestampInSeconds;
@@ -67,7 +67,7 @@ public abstract class Message {
 		return frame;
 	}
 
-	public byte[] getFrame(long num) {
+	public byte[] getFrame(int num) {
 		return frame;
 	}
 
@@ -75,7 +75,7 @@ public abstract class Message {
 		return rdevice;
 	}
 
-	public void refreshMsg_num() {
-		this.num = rdevice.getMsg_num();
+	public int refreshMsg_num() {
+		return this.num = rdevice.getMsgNum();
 	}
 }

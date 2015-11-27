@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -71,10 +72,12 @@ public class ResourceDBManager {
 	/**
 	 * Global lock for read- and write-operations.
 	 */
-	private final ReadWriteLock commitLock = new ReentrantReadWriteLock();
+	private final ReentrantReadWriteLock commitLock = new ReentrantReadWriteLock();
 	/** global lock guarding structural changes */
-	private final ReadWriteLock structureLock = new ReentrantReadWriteLock();
+	private final ReentrantReadWriteLock structureLock = new ReentrantReadWriteLock();
 	protected RecordedDataManager recordedDataManager;
+    
+    private final Collection<StructureListenerRegistration> structureListeners = new ConcurrentLinkedQueue<>();
 
 	public ResourceDBManager(ResourceDB resdb, DataRecorder recordedDataAccess, TimerScheduler scheduler,
 			AccessManager access) {
@@ -127,14 +130,74 @@ public class ResourceDBManager {
 				recordedDataAccess.deleteRecordedDataStorage(id);
 			}
 			else {
-				DefaultRecordedData d = recordedDataManager.getRecordedData(el);
+				DefaultRecordedData d = recordedDataManager.getRecordedData(el, true);
 				logger.debug("initialized recorded data: {}", d);
 			}
 		}
 	}
+    
+    public void addStructureListener(StructureListenerRegistration slr) {
+        structureListeners.add(slr);
+    }
+    
+    public void removeStructureListener(StructureListenerRegistration slr) {
+        structureListeners.remove(slr);
+    }
+    
+    /*
+     * for all registered structure listeners check if their path is now newly available
+     */
+    //FIXME: probably too expensive, need to restrict updates somehow (by affected top level resource? consider only listeners sitting on a virtual path?)
+    public void updateStructureListenerRegistrations() {
+        for (StructureListenerRegistration slr: structureListeners) {
+            if (logger.isTraceEnabled()){
+                logger.trace("checking listener registration for {}", slr.resource.getPath());
+            }
 
+            String path = slr.resource.getPath();
+            String[] a = path.split("/");
+            VirtualTreeElement e = resdb.getToplevelResource(a[0]);
+            if (e == null) {
+                //XXX remove registration?
+                continue;
+            }
+            int i = 1;
+            for (; i < a.length && e != null; i++){
+                e = e.getChild(a[i]);
+            }
+            if (e == null) {
+                //FIXME: may happen for decorator paths? needs a test
+                //logger.error("path element {} is null for path {}", a[i], slr.getResource().getPath());
+                continue;
+            }
+            
+            ElementInfo info = getElementInfo(e);
+            boolean isAlreadyRegistered = false;
+            for (StructureListenerRegistration x: info.getStructureListeners()) {
+                if (slr.equals(x)) {
+                    isAlreadyRegistered = true;
+                }
+            }
+            
+            if (!isAlreadyRegistered && !e.isVirtual()) {
+                info.addStructureListener(slr.resource, slr.listener, slr.appman);
+                info.fireResourceCreated(path);
+            }
+        }
+    }
+    
+    /*
+    * If a RecordedData object exists for the TreeElement return it, otherwise null.
+    */
+    public DefaultRecordedData getExistingRecordedData(TreeElement e){
+        return recordedDataManager.getRecordedData(e, false);
+    }
+
+    /*
+     * return a RecordedData object for the TreeElement
+     */
     public DefaultRecordedData getRecordedData(TreeElement e){
-        return recordedDataManager.getRecordedData(e);
+        return recordedDataManager.getRecordedData(e, true);
     }
 
 	public synchronized String getUniqueResourceName(String name, Application app) {
@@ -458,12 +521,21 @@ public class ResourceDBManager {
 		return recordedDataAccess;
 	}
 
-	/**
-	 * Returns the locking handle for structural changes.
-	 */
-	ReadWriteLock getStructureLock() {
-		return structureLock;
-	}
+    public void lockStructureRead() {
+        structureLock.readLock().lock();
+    }
+    
+    public void unlockStructureRead() {
+        structureLock.readLock().unlock();
+    }
+    
+    public void lockStructureWrite() {
+        structureLock.writeLock().lock();
+    }
+    
+    public void unlockStructureWrite() {
+        structureLock.writeLock().unlock();
+    }
 
 	/**
 	 * Lock for reading.

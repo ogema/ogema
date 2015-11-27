@@ -18,11 +18,13 @@ package org.ogema.driver.homematic.manager.devices;
 import org.ogema.core.channelmanager.measurements.BooleanValue;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.Value;
+import org.ogema.driver.homematic.HMDriver;
 import org.ogema.driver.homematic.manager.DeviceAttribute;
 import org.ogema.driver.homematic.manager.DeviceCommand;
 import org.ogema.driver.homematic.manager.RemoteDevice;
 import org.ogema.driver.homematic.manager.StatusMessage;
 import org.ogema.driver.homematic.manager.SubDevice;
+import org.ogema.driver.homematic.manager.messages.CmdMessage;
 import org.ogema.driver.homematic.tools.Converter;
 
 public class PowerMeter extends SubDevice {
@@ -72,8 +74,8 @@ public class PowerMeter extends SubDevice {
 			long err = Converter.toLong(msg.msg_data[3]);
 			timedon = ((err & 0x40) > 0) ? "running" : "off";
 
-			System.out.println("State: " + state_str);
-			System.out.println("Timed-on: " + timedon);
+			HMDriver.logger.debug("State: " + state_str);
+			HMDriver.logger.debug("Timed-on: " + timedon);
 		}
 		else if (msg.msg_type == 0x5E || msg.msg_type == 0x5F) {
 			// The Metering Story
@@ -84,17 +86,17 @@ public class PowerMeter extends SubDevice {
 			float frequence = ((float) Converter.toLong(msg.msg_data[10])) / 100 + 50;
 			boolean boot = (Converter.toLong(msg.msg_data, 0, 3) & 0x800000) > 0;
 
-			System.out.println("Energy Counter: " + eCnt + " Wh");
+			HMDriver.logger.debug("Energy Counter: " + eCnt + " Wh");
 			deviceAttributes.get((short) 0x0006).setValue(new FloatValue(eCnt));
-			System.out.println("Power: " + power + " W");
+			HMDriver.logger.debug("Power: " + power + " W");
 			deviceAttributes.get((short) 0x0004).setValue(new FloatValue(power));
-			System.out.println("Current: " + current + " mA");
+			HMDriver.logger.debug("Current: " + current + " mA");
 			deviceAttributes.get((short) 0x0002).setValue(new FloatValue(current));
-			System.out.println("Voltage: " + voltage + " V");
+			HMDriver.logger.debug("Voltage: " + voltage + " V");
 			deviceAttributes.get((short) 0x0003).setValue(new FloatValue(voltage));
-			System.out.println("Frequence: " + frequence + " Hz");
+			HMDriver.logger.debug("Frequence: " + frequence + " Hz");
 			deviceAttributes.get((short) 0x0005).setValue(new FloatValue(frequence));
-			System.out.println("Boot: " + boot);
+			HMDriver.logger.debug("Boot: " + boot);
 		}
 	}
 
@@ -106,6 +108,20 @@ public class PowerMeter extends SubDevice {
 					+ Converter.toHexString(random++));
 			// Get state
 			this.remoteDevice.pushCommand((byte) 0xA0, (byte) 0x01, "010E");
+		}
+	}
+
+	@Override
+	public void parseMessage(StatusMessage msg, CmdMessage cmd) {
+		byte msgType = msg.msg_type;
+		byte contentType = msg.msg_data[0];
+
+		if ((msgType == 0x10 && (contentType == 0x02) || (contentType == 0x03))) {
+			// Configuration response Message
+			parseConfig(msg, cmd);
+		}
+		else {
+			parseValue(msg);
 		}
 	}
 }

@@ -67,6 +67,7 @@ import org.ogema.resourcemanager.impl.model.array.DefaultIntegerArrayResource;
 import org.ogema.resourcemanager.impl.model.array.DefaultStringArrayResource;
 import org.ogema.resourcemanager.impl.model.array.DefaultTimeArrayResource;
 import org.ogema.resourcemanager.impl.model.schedule.DefaultSchedule;
+import org.ogema.resourcemanager.impl.model.schedule.HistoricalSchedule;
 import org.ogema.resourcemanager.impl.model.simple.DefaultBooleanResource;
 import org.ogema.resourcemanager.impl.model.simple.DefaultFloatResource;
 import org.ogema.resourcemanager.impl.model.simple.DefaultIntegerResource;
@@ -94,6 +95,7 @@ import org.ogema.resourcemanager.impl.model.units.DefaultVelocityResource;
 import org.ogema.resourcemanager.impl.model.units.DefaultVoltageResource;
 import org.ogema.resourcemanager.impl.model.units.DefaultVolumeResource;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
+import org.ogema.resourcetree.TreeElement;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.FrameworkUtil;
 
@@ -116,7 +118,7 @@ public class ResourceFactory {
 
 	static {
 		boolean byteCodeGen = Boolean.getBoolean(USEBYTECODEGENERATION);
-		Bundle b = FrameworkUtil.getBundle(ApplicationResourceManager.class);
+		Bundle b = FrameworkUtil.getBundle(ApplicationManager.class); // FIXME was: ApplicationResourceManager.class -> BundleContext null
 		if (b != null) {
 			String v = b.getBundleContext().getProperty(USEBYTECODEGENERATION);
 			if (v != null) {
@@ -288,7 +290,16 @@ public class ResourceFactory {
 				info.setSchedule(el);
 				scheduleElement = info.getSchedule();
 			}
-			return (T) new DefaultSchedule(el, scheduleElement, path, m_resMan, m_appMan);
+			TreeElement locEl = el;
+			while (locEl.isReference()) {
+				locEl = locEl.getReference();
+			}
+			String loc = locEl.getName();
+			if (loc.equals(HistoricalSchedule.PATH_IDENTIFIER)) {	
+				return (T) new HistoricalSchedule(el, scheduleElement, path, m_resMan, m_appMan);
+			}
+			else 
+				return (T) new DefaultSchedule(el, scheduleElement, path, m_resMan, m_appMan);
 		}
 
 		// default case.

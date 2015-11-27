@@ -20,6 +20,7 @@ import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
+import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.driver.hmhl.Constants;
@@ -31,6 +32,7 @@ import org.ogema.model.devices.storage.ElectricityStorage;
 import org.ogema.model.sensors.GenericFloatSensor;
 import org.ogema.model.sensors.MotionSensor;
 import org.ogema.model.sensors.StateOfChargeSensor;
+import org.ogema.tools.resource.util.ResourceUtils;
 
 public class MotionDetector extends HM_hlDevice {
 
@@ -52,12 +54,15 @@ public class MotionDetector extends HM_hlDevice {
 		switch (channelAddress) {
 		case "ATTRIBUTE:0001":
 			motion.setValue(value.getBooleanValue());
+			motion.activate(true);
 			break;
 		case "ATTRIBUTE:0002":
 			brightness.setValue(value.getFloatValue());
+			brightness.activate(true);
 			break;
 		case "ATTRIBUTE:0003":
 			batteryStatus.setValue(value.getFloatValue());
+			batteryStatus.activate(true);
 			break;
 		}
 	}
@@ -91,9 +96,9 @@ public class MotionDetector extends HM_hlDevice {
 		attributeConfig.chLocator = addChannel(attributeConfig);
 
 		SensorDevice motionDetector = resourceManager.createResource(hm_hlConfig.resourceName, SensorDevice.class);
-
 		motionDetector.sensors().create();
-		motionDetector.sensors().activate(true);
+		;
+		// motionDetector.sensors().activate(true);
 
 		MotionSensor motionSensor = motionDetector.sensors().addDecorator("motion", MotionSensor.class);
 		// TODO: can this be replaced with LightSensor (brightness in Lux)?
@@ -102,28 +107,36 @@ public class MotionDetector extends HM_hlDevice {
 
 		motion = motionSensor.reading().create();
 		motion.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
-		motion.activate(true);
-		motionSensor.activate(true);
+		// motion.activate(true);
+		// motionSensor.activate(true);
 
 		brightness = (FloatResource) brightnessSensor.reading().create();
 		brightness.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 		// brightness.setValue(0);
-		brightness.activate(true);
-		brightnessSensor.activate(true);
+		// brightness.activate(true);
+		// brightnessSensor.activate(true);
 
 		ElectricityStorage battery = motionDetector.electricityStorage().create();
-		battery.type().setValue(1); // magic number: generic battery
-		battery.activate(false);
+		battery.type().<IntegerResource> create().setValue(1); // magic number: generic battery
+		battery.type().activate(false);
+		// battery.activate(false);
 		StateOfChargeSensor eSens = battery.chargeSensor().create();
 		batteryStatus = eSens.reading().create();
-		batteryStatus.activate(true);
-		batteryStatus.setValue(95);
+		// batteryStatus.activate(true);
+		//		batteryStatus.setValue(95);
 		batteryStatus.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
-		eSens.activate(true);
+		// do not activate value resources, since they do not contain sensible values yet
+		ResourceUtils.activateComplexResources(motionDetector, true, appManager.getResourceAccess());
+		// eSens.activate(true);
 	}
 
 	@Override
 	protected void unifyResourceName(HM_hlConfig config) {
 		config.resourceName += Constants.HM_MOTION_RES_NAME + config.deviceAddress.replace(':', '_');
+	}
+
+	@Override
+	protected void terminate() {
+		removeChannels();
 	}
 }

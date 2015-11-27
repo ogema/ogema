@@ -20,40 +20,37 @@ import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
-import org.ogema.core.resourcemanager.ResourceAccess;
 
 /**
- * Application that writes out the current state of the resource graph on
- * request.
+ * Application that writes out the current state of the resource graph on request.
  *
  * @author Timo Fischer, Fraunhofer IWES
  */
-@Component(specVersion = "1.1", immediate = true)
+@Component(specVersion = "1.2", immediate = true)
 @Service(Application.class)
 public class GeneratorApplication implements Application {
 
+	private static final String MAINPAGE_ALIAS = "/ogema/graphgenerator";
+	private static final String SERVLET_ALIAS = "/apps/ogema/graphgenerator";
 	private OgemaLogger logger;
 	private ApplicationManager appMan;
-	private ResourceAccess resAcc;
 	private GraphGenServlet servlet;
 
 	@Override
 	public void start(ApplicationManager appManager) {
 		this.appMan = appManager;
 		this.logger = appManager.getLogger();
-		this.resAcc = appManager.getResourceAccess();
-		this.servlet = new GraphGenServlet(resAcc, appMan.getSerializationManager(), logger);
+		this.servlet = new GraphGenServlet(appManager);
 		logger.debug("{} started", getClass().getName());
 
-		appManager.getWebAccessManager().registerWebResource("/ogema/graphgenerator",
-				"org/ogema/app/graphgenerator/gui");
-		appManager.getWebAccessManager().registerWebResource("/apps/ogema/graphgenerator", servlet);
+		appManager.getWebAccessManager().registerWebResource(MAINPAGE_ALIAS, "org/ogema/app/graphgenerator/gui");
+		appManager.getWebAccessManager().registerWebResource(SERVLET_ALIAS, servlet);
 	}
 
 	@Override
 	public void stop(AppStopReason reason) {
-		appMan.getWebAccessManager().unregisterWebResource("/ogema/graphwizzgenerator");
-		appMan.getWebAccessManager().unregisterWebResource("/apps/ogema/graphwizzgenerator");
+		appMan.getWebAccessManager().unregisterWebResource(MAINPAGE_ALIAS);
+		appMan.getWebAccessManager().unregisterWebResource(SERVLET_ALIAS);
 
 		logger.debug("{} stopped", getClass().getName());
 	}

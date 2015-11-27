@@ -82,6 +82,9 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
             final String name = resMan.getUniqueResourceName(targetName);
             commonConfigurationNode = resMan.createResource(name, CommonConfigurationNode.class);
             commonConfigurationNode.thresholds().create();
+            commonConfigurationNode.programEnforcers().create();
+            commonConfigurationNode.scheduleSums().create();
+            commonConfigurationNode.sums().create();
             commonConfigurationNode.activate(true);
         } else if (existingNodes.size() == 1) {
             commonConfigurationNode = existingNodes.get(0);
@@ -102,6 +105,18 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
     @Override
     public void stop() {
         resAcc.removeResourceDemand(ResourceManipulatorModel.class, this);
+//        Iterator<Controller> it = controllerMap.values().iterator();
+//        while (it.hasNext()) {
+//        	Controller ct = it.next();
+//        	ct.stop();
+//        }
+        try {
+			Thread.sleep(2000);				// there may be multiple callbacks pending from controller.delete(), 
+											// which lead to unexpected behaviour if we immediately clear the controllers map
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         controllerMap.clear();
     }
 
@@ -212,7 +227,7 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
      * Creates an empty configuration of the given type and sets the APP-ID
      *
      * @param <T>
-     * @param type Resuorce type of the new resource to create.
+     * @param type Resource type of the new resource to create.
      * @return Newly-created resource instance of the given type. The field {@link ResourceManipulatorConfiguration#application()
      * } is already created and set correctly, but no other sub-resources are
      * created.
@@ -253,16 +268,19 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
             return;
         }
 
-        // sanity check: There should be no controller for this
         final Controller existingController = controllerMap.get(configuration);
-        if (existingController != null) {
+        // originally, there should not have been an existing controller. With deactivation and reactivation possible,
+        // a controller may already exist.
+     /*   if (existingController != null) {
             logger.error("Caught a resource availabe callback for configuration at " + configuration.getLocation() + " but controller already exists. Will ignore the callback. Ignoring the callback. Expect that something went really wrong.");
             return;
-        }
+        } */
 
         // Create a suitable controller instance.
         final Controller controller;
-        if (configuration instanceof ThresholdModel) {
+        if (existingController != null) 
+        	controller = existingController;
+        else if (configuration instanceof ThresholdModel) {
             controller = new ThresholdController(appMan, (ThresholdModel) configuration);
         } else if (configuration instanceof ProgramEnforcerModel) {
             controller = new ProgramEnforcerController(appMan, (ProgramEnforcerModel) configuration);
@@ -282,17 +300,17 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
 
     @Override
     public void resourceUnavailable(ResourceManipulatorModel configuration) {
-        final String id = configuration.application().getValue();
-        if (!appId.equals(id)) {// belongs to a different application.
+    	
+      /*  final String id = configuration.application().getValue();  // null
+        if (!appId.equals(id)) {// belongs to a different application. 
             return;
-        }
-
+        }*/
         final Controller existingController = controllerMap.remove(configuration);
         if (existingController != null) {
             existingController.stop();
             logger.debug("Stopped enforcing a manipulator rule of type " + configuration.getResourceType().getCanonicalName());
         } else {
-            logger.error("Caught a resource unavailabe callback for configuration at " + configuration.getLocation() + " but no controller was assigned to this. Ignoring the callback. Expect that something went really wrong.");
+//            logger.error("Caught a resource unavailabe callback for configuration at " + configuration.getLocation() + " but no controller was assigned to this. Ignoring the callback. Expect that something went really wrong.");
         }
     }
 

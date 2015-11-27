@@ -47,7 +47,8 @@ public interface GenericEnergyRequest extends Data {
 
 	/**
 	 * Maximum and minimum power settings that may be used to satisfy the request.
-	 * If the limits depend on time, their {@link org.ogema.schedule.DefinitionSchedule DefinitionSchedule}
+	 * If the limits depend on time, their 
+	 * {@link org.ogema.core.model.simple.FloatResource#program() powerLimits.lower/upperLimit.program}
 	 * sub-resources shall be used to model this.
 	 */
 	PowerRange powerLimits();

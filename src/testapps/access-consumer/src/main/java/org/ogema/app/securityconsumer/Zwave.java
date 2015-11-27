@@ -42,7 +42,7 @@ public class Zwave implements Runnable, ResourceValueListener<BooleanResource> {
 	private static final String IP_PORT = "localhost:8083";
 	private static final String STATUS_REQUEST = "http://" + IP_PORT + "/ZAutomation/api/v1/devices?since=";
 	private static final String COMMAND = "http://" + IP_PORT
-			+ "/ZAutomation/api/v1/devices/ZWayVDev_zway_2-0-37/command/";
+			+ "/ZAutomation/api/v1/devices/ZWayVDev_zway_4-0-37/command/";
 
 	public Zwave(ApplicationManager driver) {
 
@@ -83,9 +83,9 @@ public class Zwave implements Runnable, ResourceValueListener<BooleanResource> {
 			}
 			rd.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			return null;
 		} catch (Exception e) {
-			e.printStackTrace();
+			return null;
 		}
 		return result;
 	}
@@ -106,7 +106,7 @@ public class Zwave implements Runnable, ResourceValueListener<BooleanResource> {
 
 	@Override
 	public void run() {
-		String answer;
+		String answer = null;
 		while (true && Activator.bundleIsRunning) {
 			try {
 				Thread.sleep(1000);
@@ -114,6 +114,8 @@ public class Zwave implements Runnable, ResourceValueListener<BooleanResource> {
 				e.printStackTrace();
 			}
 			answer = doGET(STATUS_REQUEST + String.valueOf(timestamp));
+			if (answer == null)
+				continue;
 			parseJSON(answer);
 			if (level.equals("on"))
 				isOn.setValue(true);

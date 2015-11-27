@@ -92,11 +92,11 @@ public class ResourceDemandListenerRegistration implements RegisteredResourceDem
                      * @Security: Access rights injection is already done in findResource
                      */
                     //XXX holding lock during callback...
-                    resman.getDatabaseManager().getStructureLock().writeLock().lock();
+                    //resman.getDatabaseManager().lockStructureWrite();
                     try{
                         listener.resourceUnavailable(resource);
                     } finally {
-                        resman.getDatabaseManager().getStructureLock().writeLock().unlock();
+                        //resman.getDatabaseManager().unlockStructureWrite();
                     }
                 } catch (Throwable t) {
                     throw t;

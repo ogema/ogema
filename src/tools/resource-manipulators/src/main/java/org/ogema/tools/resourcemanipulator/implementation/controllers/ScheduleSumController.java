@@ -21,7 +21,7 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.application.Timer;
 import org.ogema.core.application.TimerListener;
 import org.ogema.core.logging.OgemaLogger;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
@@ -46,7 +46,11 @@ public class ScheduleSumController implements Controller, ResourceStructureListe
 
 	public ScheduleSumController(ApplicationManager appMan, ScheduleSumModel configuration) {
 		m_config = configuration;
-		m_timer = new CountDownTimer(appMan, configuration.delay().getValue(), this);
+		long delay = configuration.delay().getValue();
+		if (delay <= 0) {
+			delay = 1;
+		}
+		m_timer = new CountDownTimer(appMan, delay, this);
 		m_logger = appMan.getLogger();
 	}
 
@@ -73,7 +77,7 @@ public class ScheduleSumController implements Controller, ResourceStructureListe
 	final void evaluate() {
 
 		List<Schedule> inputs = m_config.inputs().getAllElements();
-		DefinitionSchedule output = m_config.resultBase().program();
+		AbsoluteSchedule output = m_config.resultBase().program();
 		for (Schedule schedule : inputs) {
 			if (schedule.getLocation().equals(output.getLocation())) {
 				String msg = this.getClass().getSimpleName() + ": input schedule "
@@ -100,16 +104,28 @@ public class ScheduleSumController implements Controller, ResourceStructureListe
 			}
 		}
 
-		// capture special case of empty sum.
-		if (sum == null) {
-			sum = new FloatTreeTimeSeries();
-			if (m_config.deactivateEmptySum().getValue()) {
+		final boolean emptySum = (sum == null);
+
+		// special treatment for deprecated deactivateEmptySum handle.
+		if (m_config.deactivateEmptySum().getValue()) {
+			if (emptySum) {
 				output.deactivate(false);
 			}
 		}
 
-		// store result back to schedule.
+		if (emptySum) {
+			sum = new FloatTreeTimeSeries();
+		}
 		sum.write(output);
+
+		if (m_config.activationControl().getValue()) {
+			if (emptySum) {
+				output.deactivate(false);
+			}
+			else {
+				output.activate(false);
+			}
+		}
 	}
 
 	@Override

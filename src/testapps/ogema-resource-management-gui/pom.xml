@@ -4,7 +4,7 @@
     <parent>
         <artifactId>ogema-tests</artifactId>
         <groupId>org.ogema.tests</groupId>
-        <version>2.0.3</version>
+        <version>2.0.4</version>
     </parent>
 
     <artifactId>ogema-resource-management-gui</artifactId>
@@ -67,11 +67,11 @@
             <groupId>org.ogema.core</groupId>
             <artifactId>models</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.ogema.tools</groupId>
-            <artifactId>ogema-gui</artifactId>
-            <version>2.0.0</version>
-        </dependency>
+		<dependency>
+			<groupId>org.ogema.apps</groupId>
+			<artifactId>wicket-gui</artifactId>
+			<version>2.0.4</version>
+		</dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
@@ -96,4 +96,17 @@
 
 
     </dependencies>
+    	<!-- Closed Source -->
+	<distributionManagement>
+		<repository>
+			<id>ogema-releases-closed-source</id>
+			<name>Internal Releases - Closed Source</name>
+			<url>https://www.ogema-source.net/artifactory/libs-release-local-closed</url>
+		</repository>
+		<snapshotRepository>
+			<id>ogema-snapshots-closed-source</id>
+			<name>Internal Snapshots - Closed Source</name>
+			<url>https://www.ogema-source.net/artifactory/libs-snapshot-local-closed</url>
+		</snapshotRepository>
+	</distributionManagement>
 </project>

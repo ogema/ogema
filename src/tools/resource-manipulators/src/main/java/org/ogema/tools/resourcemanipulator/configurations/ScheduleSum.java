@@ -13,11 +13,6 @@
  * You should have received a copy of the GNU General Public License
  * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.ogema.tools.resourcemanipulator.configurations;
 
 import java.util.Collection;
@@ -65,14 +60,36 @@ public interface ScheduleSum extends ManipulatorConfiguration {
 	 * empty schedule being created (default) or the target to become inactive. 
 	 * @param emptySumDisables New treatment for empty sums, i.e. sums in which
 	 * no active addend exists.
+	 * @deprecated Definition of this was inconsistent, since inactive resources would not be re-activated. Use {@link #setActivationControl(boolean)}, instead.
 	 */
+	@Deprecated
 	void setDisableEmptySum(boolean emptySumDisables);
 
 	/**
 	 * @return configured handling of empty sums. 
 	 * @see #setDisableEmptySum(boolean) 
+	 * @deprecated Definition of DisableEmtpySum was incomplete. Use the setting defined by {@link #setActivationControl(boolean)} and {@link #getActivationControl()}, instead.
 	 */
+	@Deprecated
 	boolean getDisableEmptySum();
+
+	/**
+	 * Sets the behavior of the manipulator rule with respect to activating
+	 * and de-activating the result schedule. If set to true, the
+	 * rule will activate the result schedule if one or more valid addends
+	 * went into the calculation. If the sum was empty, the result is set
+	 * inactive. If this option is set to false (default), the rule will leave the
+	 * activation status of the target resource unchanged.
+	 * @param controlSetting New setting for result activation/de-activation.
+	 */
+	void setActivationControl(boolean controlSetting);
+
+	/**
+	 * Gets the current setting for automatic activation/de-activation of the
+	 * result schedule. See {@link #setActivationControl(boolean)}
+	 * @return Setting that is currently active.
+	 */
+	boolean getActivationControl();
 
 	/**
 	 * Gets the target resource in which the result is being written.

@@ -35,47 +35,29 @@ public class Activator {
 	private HardwareManager hardwareManager;
 	@Reference(bind = "setChannelAccess")
 	protected ChannelAccess channelAccess;
-	private final Object connectionLock = new Object();
-	public static boolean bundleIsRunning = true;
+	public static boolean bundleIsRunning;
 
 	@Activate
 	public void activate(final BundleContext context, Map<String, Object> config) throws Exception {
-
+		bundleIsRunning = true;
 		driver = new HMDriver(channelAccess);
+		driver.establishConnection();
 		registration = context.registerService(ChannelDriver.class, driver, null);
 
-		Thread connectThread = new Thread() {
-			@Override
-			public void run() {
-
-				Connection con = new Connection(connectionLock, "USB", "HMUSB");
-				synchronized (connectionLock) {
-					while (!con.hasConnection() && bundleIsRunning) {
-						try {
-							connectionLock.wait();
-						} catch (InterruptedException ex) {
-							ex.printStackTrace();
-						}
-					}
-				}
-
-				driver.addConnection(con);
-
-				new ShellCommands(driver, context);
-
-				driver.enablePairing("USB");
-
-			}
-		};
-		connectThread.start();
+		new ShellCommands(driver, context);
 	}
 
 	@Deactivate
 	public void deactivate(Map<String, Object> config) throws Exception {
+		bundleIsRunning = false;
 		hardwareManager.removeListener(driver);
+
+		for (Map.Entry<String, Connection> entry : driver.getConnections().entrySet()) {
+			entry.getValue().close();
+		}
+
 		if (registration != null)
 			registration.unregister();
-		bundleIsRunning = false;
 	}
 
 	protected void setChannelAccess(ChannelAccess ca) {

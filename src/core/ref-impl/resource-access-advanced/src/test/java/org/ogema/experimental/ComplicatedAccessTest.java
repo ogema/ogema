@@ -178,9 +178,9 @@ public class ComplicatedAccessTest extends OsgiTestBase {
 		final ChargingStationRad rad = advAcc.createResource(RADNAME, ChargingStationRad.class);
 
 		assertNotNull(rad);
-		assertNotNull(rad.requests);
-		assertTrue(rad.requests.exists());
-		assertFalse(rad.requests.isActive());
-		assertTrue(rad.requests.getAllElements().isEmpty());
+		assertNotNull(rad.cps);
+		assertTrue(rad.cps.exists());
+		assertFalse(rad.cps.isActive());
+		assertTrue(rad.cps.getAllElements().isEmpty());
 	}
 }

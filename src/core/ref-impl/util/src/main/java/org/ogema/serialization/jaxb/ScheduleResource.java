@@ -54,17 +54,43 @@ import javax.xml.bind.annotation.XmlType;
  * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "ScheduleResource", propOrder = { "lastUpdateTime", "lastCalculationTime", "start", "end", "entry" })
+@XmlType(name = "ScheduleResource", propOrder = { "interpolationMode", "lastUpdateTime", "lastCalculationTime",
+		"start", "end", "entry" })
 @XmlSeeAlso( { StringSchedule.class, BooleanSchedule.class, IntegerSchedule.class, OpaqueSchedule.class,
 		TimeSchedule.class, FloatSchedule.class })
 public abstract class ScheduleResource extends Resource {
 
+	protected String interpolationMode;
 	protected Long lastUpdateTime;
 	protected Long lastCalculationTime;
 	protected Long start;
 	protected Long end;
 	@XmlElement(required = true)
 	protected List<SampledValue> entry;
+
+	/**
+	 * Ruft den Wert der interpolationMode-Eigenschaft ab.
+	 * 
+	 * @return
+	 *     possible object is
+	 *     {@link String }
+	 *     
+	 */
+	public String getInterpolationMode() {
+		return interpolationMode;
+	}
+
+	/**
+	 * Legt den Wert der interpolationMode-Eigenschaft fest.
+	 * 
+	 * @param value
+	 *     allowed object is
+	 *     {@link String }
+	 *     
+	 */
+	public void setInterpolationMode(String value) {
+		this.interpolationMode = value;
+	}
 
 	/**
 	 * Gets the value of the lastUpdateTime property.

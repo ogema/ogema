@@ -19,11 +19,15 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.felix.service.command.Descriptor;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.ogema.driver.homematic.config.HMList;
+import org.ogema.driver.homematic.config.HMLookups;
+import org.ogema.driver.homematic.config.ListEntry;
 import org.ogema.driver.homematic.manager.DeviceAttribute;
 import org.ogema.driver.homematic.manager.DeviceCommand;
 import org.ogema.driver.homematic.manager.RemoteDevice;
@@ -39,7 +43,8 @@ public class ShellCommands implements LLDriverInterface {
 		props.put("osgi.command.scope", "hmll");
 		props.put("osgi.command.function", new String[] { "showNetwork", "showAllCreatedChannels",
 				"showClusterDetails", "showDeviceDetails", "addConnection", "showHardware", "addConnectionViaPort",
-				"enablePairing", "sendFrame", "cacheDevices", "showDeviceConfig" });
+				"enablePairing", "sendFrame", "cacheDevices", "alldevconfigs", "setdevconfig", "supportedsonfigs",
+				"cfglookup", "getdevconfig" });
 		this.driver = driver;
 		connection = driver.findConnection("USB");
 		context.registerService(this.getClass().getName(), this, props);
@@ -59,6 +64,7 @@ public class ShellCommands implements LLDriverInterface {
 	@Descriptor("Show details related to the coordinator hardware.")
 	public JSONObject showHardware() {
 		JSONObject obj = new JSONObject();
+		connection = driver.findConnection("USB");
 		// static for now
 		try {
 			obj.put("Interface", "USB");
@@ -83,7 +89,7 @@ public class ShellCommands implements LLDriverInterface {
 			while (connectionsIt.hasNext()) {
 				Map.Entry<String, Connection> connectionsEntry = connectionsIt.next();
 				// System.out.println("### Interface: " + connectionsEntry.getKey());
-				// System.out.println("    # Devices: ");
+				// System.out.println(" # Devices: ");
 
 				Iterator<Entry<String, RemoteDevice>> devicesIt = connectionsEntry.getValue().localDevice.getDevices()
 						.entrySet().iterator();
@@ -100,7 +106,7 @@ public class ShellCommands implements LLDriverInterface {
 						name = "unknown";
 					dev.put("deviceName", name);
 					dev.put("manufacturerId", "ELV");
-					// System.out.print("    #ID: " + devicesEntry.getKey() + " - Serial: " + remoteDevice.getSerial());
+					// System.out.print(" #ID: " + devicesEntry.getKey() + " - Serial: " + remoteDevice.getSerial());
 					if (remoteDevice.getInitState().equals(RemoteDevice.InitStates.PAIRED)) {
 						dev.put("initialized", true);
 					}
@@ -123,6 +129,7 @@ public class ShellCommands implements LLDriverInterface {
 	@Descriptor("Shows Details of a Device.")
 	public JSONObject showDeviceDetails(String address) {
 		JSONObject obj = new JSONObject();
+		connection = driver.findConnection("USB");
 		RemoteDevice remoteDevice = connection.getLocalDevice().getDevices().get(address);
 		try {
 			obj.put("device", remoteDevice.getAddress());
@@ -168,12 +175,93 @@ public class ShellCommands implements LLDriverInterface {
 		return obj;
 	}
 
-	@Descriptor("Shows the configuration option of the device with the specified hardware address.")
-	public JSONObject showDeviceConfig(String address) {
-		JSONObject obj = new JSONObject();
+	@Descriptor("Start a process to read the configuration options of the device with the specified hardware address.")
+	public String alldevconfigs(String address) {
+		connection = driver.findConnection("USB");
 		RemoteDevice remoteDevice = connection.getLocalDevice().getDevices().get(address);
-		remoteDevice.getConfig();
-		return obj;
+		String result = "";
+		try {
+			remoteDevice.getAllConfigs();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
+
+	@Descriptor("Start a process to read the configuration options of the device with the specified hardware address.")
+	public String getdevconfig(String address, String cfgname) {
+		connection = driver.findConnection("USB");
+		RemoteDevice remoteDevice = connection.getLocalDevice().getDevices().get(address);
+		String result = "";
+		try {
+			result = remoteDevice.readConfigKey(cfgname) + "\t" + remoteDevice.readConfigValue(cfgname);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
+
+	@Descriptor("Sets a device configuration specified by its id with the specified hardware address.")
+	public String setdevconfig(String address, String configName, String value) {
+		connection = driver.findConnection("USB");
+		RemoteDevice remoteDevice = connection.getLocalDevice().getDevices().get(address);
+		try {
+			remoteDevice.writeConfig(configName, value);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	@Descriptor("Sets a device configuration specified by its id with the specified hardware address.")
+	public String cfglookup(String configName) {
+		ListEntry entry = HMList.getEntryByName(configName);
+		if (entry == null) {
+			System.out.println("unknown configuration " + configName);
+			return "";
+		}
+		System.out.println("Configuration:\n Name: " + configName + "\nDescription: " + entry.help);
+		Object lookup = HMLookups.getLookup(entry.conversion);
+
+		if (lookup == null)
+			System.out
+					.println("No specific look up used for this configuration. Set the needed value as config setting. Unit: "
+							+ entry.unit + ", Min: " + entry.min + ", Max: " + entry.max);
+		else if (lookup instanceof String[]) {
+			System.out.println("To set a specific value use the corresponding key as config setting.\nKey\tValue("
+					+ entry.unit + ")\n__________________");
+			String[] lookupArr = (String[]) lookup;
+			int key = 0;
+			for (String s : lookupArr) {
+				System.out.println(key++ + "\t" + s);
+			}
+		}
+		else {
+			System.out.println("To set a specific value use the corresponding key as config setting.\nKey\tValue("
+					+ entry.unit + ")\n__________________");
+			Map<Integer, String> lookupMap = (Map<Integer, String>) lookup;
+			Set<Entry<Integer, String>> lookupSet = lookupMap.entrySet();
+			for (Entry<Integer, String> e : lookupSet) {
+				int key = e.getKey();
+				String val = e.getValue();
+				System.out.println(key + "\t" + val);
+			}
+		}
+
+		return "";
+	}
+
+	@Descriptor("List all configuration options supported by the device that is specified by its hardware address.")
+	public String supportedsonfigs(String address) {
+		connection = driver.findConnection("USB");
+		RemoteDevice remoteDevice = connection.getLocalDevice().getDevices().get(address);
+		String result = null;
+		try {
+			result = remoteDevice.listSupportedConfigs();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return result;
 	}
 
 	@Descriptor("Returns all created channel Strings.")
@@ -206,17 +294,6 @@ public class ShellCommands implements LLDriverInterface {
 		return result;
 	}
 
-	@Descriptor("Manually send a command to a Device.")
-	public void sendFrame(String device, String channel, String list, String command) {
-		if ((connection.localDevice.getDevices().get(device)) != null) {
-			RemoteDevice rd = connection.localDevice.getDevices().get(device);
-			rd.pushConfig(channel, list, command);
-		}
-		else {
-			System.out.println("Device not found");
-		}
-	}
-
 	@Descriptor("Cache all devices paired up to now, so they want to be paired again after restart unless a clean start is performaed.")
 	public void cacheDevices(@Descriptor("The port name.") String ifid) {
 		try {
@@ -228,7 +305,7 @@ public class ShellCommands implements LLDriverInterface {
 	}
 
 	public JSONObject cacheDevices() {
-
+		connection = driver.findConnection("USB");
 		Iterator<Connection> iterator = driver.getConnections().values().iterator();
 		JSONObject obj = new JSONObject();
 

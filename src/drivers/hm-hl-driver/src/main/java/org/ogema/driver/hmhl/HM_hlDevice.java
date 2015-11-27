@@ -19,6 +19,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.Map.Entry;
 
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccess;
@@ -60,7 +62,7 @@ public abstract class HM_hlDevice {
 	protected final String type;
 
 	protected final Map<String, ChannelLocator> attributeChannel; // <channelAddress, ChannelLocator>
-	protected final List<ChannelLocator> ChannelLocatorList;
+	protected final List<ChannelLocator> channelList;
 	protected final Map<String, ChannelLocator> commandChannel; // <channelAddress, ChannelLocator>
 
 	protected ChannelEventListener channelEventListener;
@@ -75,7 +77,7 @@ public abstract class HM_hlDevice {
 
 	public HM_hlDevice(HM_hlDriver driver, ApplicationManager appManager, HM_hlConfig config) {
 		attributeChannel = new HashMap<String, ChannelLocator>();
-		ChannelLocatorList = new ArrayList<ChannelLocator>(); // UpdateListenerList
+		channelList = new ArrayList<ChannelLocator>(); // UpdateListenerList
 		commandChannel = new HashMap<String, ChannelLocator>();
 		channelAccess = appManager.getChannelAccess();
 		resourceManager = appManager.getResourceManagement();
@@ -92,12 +94,12 @@ public abstract class HM_hlDevice {
 
 			@Override
 			public void channelEvent(EventType type, List<SampledValueContainer> channels) {
-				//				System.out.print("ChannelEvent --> ");
+				// System.out.print("ChannelEvent --> ");
 				for (SampledValueContainer c : channels) {
 					try {
 						updateChannelValue(c.getChannelLocator().getChannelAddress(), c.getSampledValue().getValue());
 					} catch (IllegalConversionException e) {
-						System.out.println("Changed channel value could not be read");
+						logger.debug("Changed channel value could not be read");
 					}
 				}
 			}
@@ -114,7 +116,7 @@ public abstract class HM_hlDevice {
 		this.appManager = appManager;
 		channelAccess = appManager.getChannelAccess();
 		attributeChannel = new HashMap<String, ChannelLocator>();
-		ChannelLocatorList = new ArrayList<ChannelLocator>();
+		channelList = new ArrayList<ChannelLocator>();
 		commandChannel = new HashMap<String, ChannelLocator>();
 		resourceManager = appManager.getResourceManagement();
 		logger = appManager.getLogger();
@@ -134,12 +136,12 @@ public abstract class HM_hlDevice {
 
 			@Override
 			public void channelEvent(EventType type, List<SampledValueContainer> channels) {
-				//				System.out.print("ChannelEvent --> ");
+				// System.out.print("ChannelEvent --> ");
 				for (SampledValueContainer c : channels) {
 					try {
 						updateChannelValue(c.getChannelLocator().getChannelAddress(), c.getSampledValue().getValue());
 					} catch (IllegalConversionException e) {
-						System.out.println("Changed channel value could not be read");
+						logger.debug("Changed channel value could not be read");
 					}
 				}
 			}
@@ -159,7 +161,7 @@ public abstract class HM_hlDevice {
 	}
 
 	public void close() {
-		// TODO
+		terminate();
 	}
 
 	public ChannelLocator addChannel(HM_hlConfig config) {
@@ -170,7 +172,8 @@ public abstract class HM_hlDevice {
 		switch (splitAddress[0]) {
 		case "COMMAND":
 			commandChannel.put(config.channelAddress, channelLocator);
-			channelConfig.setSamplingPeriod(0);
+			timeout = -1;
+			channelConfig.setSamplingPeriod(timeout);
 			try {
 				channelAccess.addChannel(channelConfig);
 			} catch (ChannelConfigurationException e) {
@@ -184,7 +187,7 @@ public abstract class HM_hlDevice {
 			channelConfig.setSamplingPeriod(timeout);
 			dataResourceId = config.resourceName;
 
-			System.out.println("channel access addchannel");
+			logger.debug("channel access addchannel");
 			try {
 				channelAccess.addChannel(channelConfig);
 			} catch (ChannelConfigurationException e) {
@@ -201,76 +204,39 @@ public abstract class HM_hlDevice {
 	}
 
 	public void writeToChannel(ChannelLocator channelLocator, Value value) {
-		// Value value = null;
-		// while (writeValue.length() % 2 != 0) {
-		// // value is uneven but it needs to be even to be parsed to a byte
-		// // array. Possible cases are uneven length and/or length of zero
-		// writeValue = "0" + writeValue;
-		// }
-		// value = new ByteArrayValue(DatatypeConverter.parseHexBinary(writeValue));
-
 		try {
 			channelAccess.setChannelValue(channelLocator, value);
 		} catch (ChannelAccessException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
-	public void deleteChannel(HM_hlConfig config) {
-		ChannelLocator locator = null;
-		if (attributeChannel.containsKey(config.channelAddress)) {
-			locator = attributeChannel.get(config.channelAddress);
-			attributeChannel.remove(config.channelAddress);
-		}
-		else if (commandChannel.containsKey(config.channelAddress)) {
-			locator = commandChannel.get(config.channelAddress);
-			commandChannel.remove(config.channelAddress);
-		}
-		else {
-			return;
-		}
-
-		removeFromUpdateListener(locator);
-
-		try {
-			channelAccess.deleteChannel(locator);
-		} catch (ChannelConfigurationException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 
 	protected void addToUpdateListener(ChannelLocator channelLocator) {
-		ChannelLocatorList.add(channelLocator);
-		channelAccess.registerUpdateListener(ChannelLocatorList, channelEventListener);
-	}
-
-	private void removeFromUpdateListener(ChannelLocator channelLocator) {
-		ChannelLocatorList.remove(channelLocator);
-		channelAccess.registerUpdateListener(ChannelLocatorList, channelEventListener);
+		channelList.add(channelLocator);
+		channelAccess.registerUpdateListener(channelList, channelEventListener);
+		channelList.clear();
 	}
 
 	public void printValue(Value value, String channelAddress) {
-		System.out.print("New value: ");
+		logger.debug("New value: ");
 		String[] splitChannelAddress = channelAddress.split(":");
 		if (value instanceof StringValue) {
-			System.out.println(value.getStringValue());
+			logger.debug(value.getStringValue());
 		}
 		else if (value instanceof IntegerValue) {
-			System.out.println(Integer.toString(value.getIntegerValue()));
+			logger.debug(Integer.toString(value.getIntegerValue()));
 		}
 		else if (value instanceof FloatValue) {
-			System.out.println(Float.toString(value.getFloatValue()));
+			logger.debug(Float.toString(value.getFloatValue()));
 		}
 		else if (value instanceof DoubleValue) {
-			System.out.println(Double.toString(value.getDoubleValue()));
+			logger.debug(Double.toString(value.getDoubleValue()));
 		}
 		else if (value instanceof ByteArrayValue) {
-			System.out.println(Converter.toHexString(value.getByteArrayValue()));
+			logger.debug(Converter.toHexString(value.getByteArrayValue()));
 		}
 		else if (value instanceof BooleanValue) {
-			System.out.println(Boolean.toString(value.getBooleanValue()));
+			logger.debug(Boolean.toString(value.getBooleanValue()));
 		}
 		else if (value instanceof ObjectValue) {
 			Object objectValue = value.getObjectValue();
@@ -289,7 +255,6 @@ public abstract class HM_hlDevice {
 		try {
 			sampledValue = channelAccess.getChannelValue(attributeChannel.get(channel));
 		} catch (ChannelAccessException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -298,7 +263,6 @@ public abstract class HM_hlDevice {
 	}
 
 	public void readValue(String channelAddress) {
-		// TODO Auto-generated method stub
 
 	}
 
@@ -306,5 +270,29 @@ public abstract class HM_hlDevice {
 		return resourceNameCounter++;
 	}
 
+	protected void removeChannels() {
+		Set<Entry<String, ChannelLocator>> set = attributeChannel.entrySet();
+		for (Entry<String, ChannelLocator> e : set) {
+			try {
+				ChannelLocator chLoc = e.getValue();
+				channelAccess.deleteChannel(chLoc);
+			} catch (ChannelConfigurationException ex) {
+				ex.printStackTrace();
+			}
+		}
+
+		set = commandChannel.entrySet();
+		for (Entry<String, ChannelLocator> e : set) {
+			try {
+				ChannelLocator chLoc = e.getValue();
+				channelAccess.deleteChannel(chLoc);
+			} catch (ChannelConfigurationException ex) {
+				ex.printStackTrace();
+			}
+		}
+	}
+
 	protected abstract void unifyResourceName(HM_hlConfig config);
+
+	protected abstract void terminate();
 }

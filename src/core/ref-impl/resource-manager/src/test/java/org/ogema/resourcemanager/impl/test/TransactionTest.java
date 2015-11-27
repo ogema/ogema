@@ -30,7 +30,7 @@ import org.ogema.core.model.array.FloatArrayResource;
 import org.ogema.core.model.array.IntegerArrayResource;
 import org.ogema.core.model.array.StringArrayResource;
 import org.ogema.core.model.array.TimeArrayResource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
@@ -43,6 +43,7 @@ import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 import org.ogema.model.metering.ElectricityMeter;
+import org.ogema.model.sensors.TemperatureSensor;
 import org.ogema.tools.timeseries.api.MemoryTimeSeries;
 import org.ogema.tools.timeseries.implementations.TreeTimeSeries;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
@@ -432,7 +433,7 @@ public class TransactionTest extends OsgiTestBase {
 	@Test
 	public void transactionWritesSchedules() {
 		final TimeResource resource = resMan.createResource("ta1scheduleAdded", TimeResource.class);
-		final Schedule schedule = resource.addDecorator("schedule", DefinitionSchedule.class);
+		final Schedule schedule = resource.addDecorator("schedule", Schedule.class);
 		final Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(schedule);
 		assertNull(transaction.getSchedule(schedule));
@@ -486,4 +487,22 @@ public class TransactionTest extends OsgiTestBase {
 		assertTrue(exceptionOccurred);
 	}
 
+	@Test
+	public void activationWithComplexResources() {
+		final TemperatureSensor tempSens = resMan.createResource("TransactionTestTempSens", TemperatureSensor.class);
+		tempSens.reading().create();
+		final Transaction transaction = resAcc.createTransaction();
+
+		transaction.addTree(tempSens, false);
+		assertTrue(transaction.getResources().contains(tempSens));
+		assertTrue(transaction.getResources().contains(tempSens.reading()));
+
+		transaction.activate();
+		assertTrue(tempSens.isActive());
+		assertTrue(tempSens.reading().isActive());
+
+		transaction.deactivate();
+		assertFalse(tempSens.isActive());
+		assertFalse(tempSens.reading().isActive());
+	}
 }

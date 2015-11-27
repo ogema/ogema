@@ -15,9 +15,7 @@
  */
 package org.ogema.core.rads.tools;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.security.AccessControlContext;
@@ -27,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.ogema.core.model.Resource;
+import org.ogema.core.rads.creation.PatternFactory;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 
@@ -41,20 +40,22 @@ import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 public class RadFactory<T extends Resource, P extends ResourcePattern<T>> {
 
 	final Class<P> m_type;
-	final Constructor<P> m_constructor;
+	//	final Constructor<P> m_constructor;
 	final Class<T> m_demandedModel;
 	private final List<ResourceFieldInfo> m_requiredFields; // = new ArrayList<>();
+	private final PatternFactory<P> m_factory;
 
-	public RadFactory(Class<P> type, AccessPriority priority) {
-        m_type = type;
-        try {
-            m_constructor = type.getConstructor(Resource.class);
-        } catch (NoSuchMethodException | SecurityException ex) {
-            throw new RuntimeException("Could not find default constructor on RAD of type " + type.getCanonicalName() + ". Ensure that the RAD has a public constructur RAD(Resource resource). Otherwise, it cannot be used with the OGEMA advanced access.", ex);
-        }
-        m_demandedModel = getDemandedModel(type);
-        m_requiredFields = getResourceInfoRecursively(type, priority);
-    }
+	public RadFactory(Class<P> type, AccessPriority priority, PatternFactory<P> factory) {
+		m_type = type;
+		m_factory = factory;
+		//        try {
+		//            m_constructor = type.getConstructor(Resource.class);
+		//        } catch (NoSuchMethodException | SecurityException ex) {
+		//            throw new RuntimeException("Could not find default constructor on RAD of type " + type.getCanonicalName() + ". Ensure that the RAD has a public constructur RAD(Resource resource). Otherwise, it cannot be used with the OGEMA advanced access.", ex);
+		//        }
+		m_demandedModel = getDemandedModel(type);
+		m_requiredFields = getResourceInfoRecursively(type, priority);
+	}
 
 	public Class<? extends ResourcePattern<?>> getRadType() {
 		return m_type;
@@ -69,14 +70,19 @@ public class RadFactory<T extends Resource, P extends ResourcePattern<T>> {
 	}
 
 	public P create(T demandMatch) {
-        final P result;
-        try {
-            result = m_constructor.newInstance(demandMatch);
-        } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-            throw new RuntimeException("could not create a RAD object", ex);
-        }
-        return result;
-    }
+		final P result;
+		//        try {
+		//            result = m_constructor.newInstance(demandMatch);
+		//        } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+		//            throw new RuntimeException("could not create a RAD object", ex);
+		//        }
+		try {
+			result = m_factory.createNewPattern(demandMatch);
+		} catch (Exception ex) {
+			throw new RuntimeException("could not create a RAD object", ex);
+		}
+		return result;
+	}
 
 	@SuppressWarnings("unchecked")
 	public static <M extends Resource> Class<M> getDemandedModel(Class<? extends ResourcePattern<M>> radClass) {

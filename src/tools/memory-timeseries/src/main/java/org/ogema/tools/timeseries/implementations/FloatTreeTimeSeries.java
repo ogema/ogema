@@ -16,8 +16,10 @@
 package org.ogema.tools.timeseries.implementations;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.SortedSet;
+import java.util.TreeSet;
 
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.Quality;
@@ -33,6 +35,7 @@ import org.ogema.tools.timeseries.api.FloatTimeSeries;
 import org.ogema.tools.timeseries.api.InterpolationFunction;
 import org.ogema.tools.timeseries.api.LinearSampledValueOperator;
 import org.ogema.tools.memoryschedules.tools.TimeSeriesMerger;
+import org.ogema.tools.timeseries.api.TimeInterval;
 
 /**
  * Implementation for the FloatTimeSeries internally using a tree structure for
@@ -76,8 +79,8 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
         // calculate the new values for this.
         final List<SampledValue> newValues = new ArrayList<>(merger.getTimestamps().size());
         for (Long t : merger.getTimestamps()) {
-            final SampledValue v1 = this.getValue(t);
-            final SampledValue v2 = factors.getValue(t);
+            final SampledValue v1 = this.getValueSecure(t);
+            final SampledValue v2 = factors.getValueSecure(t);
             final SampledValue newValue = operator.apply(v1, v2);
             newValues.add(newValue);
         }
@@ -170,20 +173,23 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 	public synchronized float integrate(long t0, long t1) {
 
 		// react to zero range or t1<t0.
-		if (t1 == t0)
+		if (t1 == t0) {
 			return 0.f;
-		if (t1 < t0)
+		}
+		if (t1 < t0) {
 			return -integrate(t1, t0);
+		}
 
 		final InterpolationFunction function = getInterpolationFunction();
 
 		double result = 0;
-		SampledValue left = getValue(t0);
+		SampledValue left = getValueSecure(t0);
 		for (SampledValue right : getSubset(t0, t1)) {
 			result += function.integrate(left, right, getValueType()).getDoubleValue();
 			left = right;
 		}
-		result += function.integrate(left, getValue(t1), getValueType()).getDoubleValue();
+		SampledValue right = getValueSecure(t1);
+		result += function.integrate(left, right, getValueType()).getDoubleValue();
 
 		return (float) result;
 	}
@@ -191,13 +197,15 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 	@Override
 	public synchronized SampledValue getMax(long t0, long t1) {
 		final long dt = t1 - t0;
-		if (dt <= 0)
+		if (dt <= 0) {
 			return new SampledValue(new FloatValue(0.f), t0, Quality.BAD);
+		}
 
 		final List<SampledValue> values = getValues(t0, t1);
 		values.add(getValue(t0));
-		if (dt > 1)
+		if (dt > 1) {
 			values.add(getValue(t1 - 1));
+		}
 
 		if (getInterpolationMode() == InterpolationMode.NEAREST) {
 			// Problem: would have to set the timestamp between the support points
@@ -210,8 +218,9 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 		Quality q = Quality.BAD;
 
 		for (SampledValue value : values) {
-			if (value.getQuality() == Quality.BAD)
+			if (value == null || value.getQuality() == Quality.BAD) {
 				continue;
+			}
 			final float x = value.getValue().getFloatValue();
 			if (x > max) {
 				max = x;
@@ -258,11 +267,12 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 				final Quality qMid = (q == Quality.GOOD && qLast == Quality.GOOD) ? Quality.GOOD : Quality.BAD;
 
 				final float slope = (x - xLast) / (float) (t - tLast);
-				// xLast + slope*delta = 0 => delta = xLast/slope
-				final float delta = xLast / slope;
+				// xLast + slope*delta = 0 => delta = -xLast/slope
+				final float delta = -xLast / slope;
 				final long tMid = tLast + (long) delta;
-				if (tMid != tLast && tMid != t)
+				if (tMid != tLast && tMid != t) {
 					result.addValue(new SampledValue(new FloatValue(0.f), tMid, qMid));
+				}
 			}
 
 			// add the absolute of the current value
@@ -277,8 +287,9 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 	public FloatTimeSeries getAbsolute() {
 		final FloatTimeSeries result = new FloatTreeTimeSeries();
 		result.setInterpolationMode(getInterpolationMode());
-		if (getValues().isEmpty())
+		if (getValues().isEmpty()) {
 			return result;
+		}
 
 		if (getInterpolationMode() == InterpolationMode.LINEAR) {
 			return getAbsoluteLinear(result);
@@ -302,6 +313,31 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 	}
 
 	@Override
+	public float integratePositive(TimeInterval interval) {
+		List<TimeInterval> positiveDomains = getPositiveDomain(interval);
+		float result = 0.f;
+		for (TimeInterval subDomain : positiveDomains) {
+			result += integrate(subDomain);
+		}
+		return result;
+	}
+
+	@Override
+	public float integrate(TimeInterval interval) {
+		return (interval.exists()) ? integrate(interval.getStart(), interval.getEnd()) : 0.f;
+	}
+
+	@Override
+	public float integrateAbsolute(TimeInterval interval) {
+		return (interval.exists()) ? integrate(interval.getStart(), interval.getEnd()) : 0.f;
+	}
+
+	@Override
+	public float integratePositive(long t0, long t1) {
+		return (t0 < t1) ? integratePositive(new TimeInterval(t0, t1)) : -integratePositive(new TimeInterval(t1, t0));
+	}
+
+	@Override
 	public final void setConstant(float value) {
 		deleteValues();
 		setInterpolationMode(InterpolationMode.STEPS);
@@ -309,8 +345,69 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 		addValue(0, new FloatValue(value));
 	}
 
+	/**
+	 * Constrains a collection of intervals to a given domain and then joins
+	 * adjacent intervals. Empty intervals are discarded.
+	 *
+	 * @return list of constrained and joined intervals
+	 */
+	private List<TimeInterval> cleanupIntervalList(Collection<TimeInterval> candidates, TimeInterval searchInterval) {
+        final List<TimeInterval> result = new ArrayList<>();
+        TimeInterval currentInterval = new TimeInterval(Long.MIN_VALUE, Long.MIN_VALUE);
+        for (TimeInterval candidate : candidates) {
+            if (currentInterval.getEnd() == candidate.getStart()) {
+                currentInterval = new TimeInterval(currentInterval.getStart(), candidate.getEnd());
+            } else {
+                final TimeInterval combinedInterval = currentInterval.intersect(searchInterval);
+                if (combinedInterval.exists()) {
+                    result.add(combinedInterval);
+                }
+                currentInterval = candidate;
+            }
+        }
+        final TimeInterval combinedInterval = currentInterval.intersect(searchInterval);
+        if (combinedInterval.exists()) {
+            result.add(combinedInterval);
+        }
+        return result;
+    }
+
+	@Override
+    public List<TimeInterval> getPositiveDomain(TimeInterval searchInterval) {
+
+        if (getInterpolationMode() == InterpolationMode.NEAREST) {
+            throw new UnsupportedOperationException("Method not implemented for interpolation mode NEAREST, yet.");
+        }
+        
+        final InterpolationFunction interpolation = getInterpolationFunction();
+        // get pairs or co-joint intervals (SampledValue1, Sampledvalue2) and create initial list of intervals
+        SortedSet<TimeInterval> candidates = new TreeSet<>();
+        SampledValue lastValue = getValueSecure(searchInterval.getStart());
+        // TODO interpolation mode NEAREST would require checking an initial dummy against the first entry - and check that values are not empty        
+        for (SampledValue value : getValues()) {
+            TimeInterval candidate = interpolation.getPositiveInterval(lastValue, value, getValueType());
+            if (!candidate.isEmpty()) {
+                candidates.add(candidate);
+            }
+            lastValue = value;
+        }
+        
+//        // need to explicitly check last entry for interpolation modes other than linear
+//        if (getInterpolationMode() != InterpolationMode.LINEAR) {
+//            // type does not matter: implementation does not use value of 2nd type.
+            SampledValue lastDummy = getValueSecure(searchInterval.getEnd());
+            TimeInterval candidate = interpolation.getPositiveInterval(lastValue, lastDummy, getValueType());
+            if (!candidate.isEmpty()) {
+                candidates.add(candidate);
+            }            
+//        }
+
+        // clean up the result and return it
+        return cleanupIntervalList(candidates, searchInterval);
+    }
+
 	@Override
 	public void optimizeRepresentation() {
-
 	}
+
 }

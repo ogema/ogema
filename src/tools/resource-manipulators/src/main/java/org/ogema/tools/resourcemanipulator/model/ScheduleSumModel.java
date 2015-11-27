@@ -48,4 +48,9 @@ public interface ScheduleSumModel extends ResourceManipulatorModel {
 	 * Flag defining how to handle empty sums.
 	 */
 	BooleanResource deactivateEmptySum();
+
+	/**
+	 * Flag defining if automatic activation/deactivation is turned on or off.
+	 */
+	BooleanResource activationControl();
 }

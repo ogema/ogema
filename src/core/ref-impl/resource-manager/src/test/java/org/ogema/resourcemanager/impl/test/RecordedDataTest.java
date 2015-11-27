@@ -15,11 +15,18 @@
  */
 package org.ogema.resourcemanager.impl.test;
 
+import java.io.IOException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.math.BigInteger;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -28,12 +35,15 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.FloatValue;
@@ -72,9 +82,33 @@ public class RecordedDataTest extends OsgiAppTestBase {
 	@Inject
 	DataRecorder rda;
 
+	public static void removeData() throws IOException {
+		Path slotsDbData = Paths.get("data", "slotsdb");
+		Files.walkFileTree(slotsDbData, new SimpleFileVisitor<Path>() {
+			@Override
+			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+				Files.delete(file);
+				return FileVisitResult.CONTINUE;
+			}
+
+			@Override
+			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+				Files.delete(dir);
+				return FileVisitResult.CONTINUE;
+			}
+
+		});
+		Files.createDirectory(slotsDbData);
+	}
+
 	@Override
 	@Configuration
 	public Option[] config() {
+		try {
+			removeData();
+		} catch (IOException ex) {
+			Logger.getLogger(RecordedDataTest.class.getName()).log(Level.SEVERE, null, ex);
+		}
 		return new Option[] {
 				// CoreOptions.systemProperty("org.ogema.persistence").value("active"),
 				CoreOptions.mavenBundle("org.apache.commons", "commons-math3", "3.3").start(),
@@ -88,8 +122,7 @@ public class RecordedDataTest extends OsgiAppTestBase {
 	@Test
 	public void onUpdateWorks() throws Exception {
 		ResourceManagement resman = getApplicationManager().getResourceManagement();
-		SolarIrradiationSensor sens = resman.createResource("RecordedDataTest_onUpdate_" + System.currentTimeMillis(),
-				SolarIrradiationSensor.class);
+		SolarIrradiationSensor sens = resman.createResource(newResourceName(), SolarIrradiationSensor.class);
 		sens.reading().create();
 		RecordedData rd = sens.reading().getHistoricalData();
 		RecordedDataConfiguration conf = rd.getConfiguration();
@@ -129,7 +162,7 @@ public class RecordedDataTest extends OsgiAppTestBase {
 	@Test
 	public void loggingBooleansWorks() throws Exception {
 		final BooleanResource resource = getApplicationManager().getResourceManagement().createResource(
-				"recordedTestBoolean" + System.currentTimeMillis(), BooleanResource.class);
+				newResourceName(), BooleanResource.class);
 		resource.activate(true);
 		final RecordedData data = resource.getHistoricalData();
 		RecordedDataConfiguration config = data.getConfiguration();
@@ -154,7 +187,7 @@ public class RecordedDataTest extends OsgiAppTestBase {
 	@Test
 	public void loggingIntegersWorks() throws Exception {
 		final IntegerResource resource = getApplicationManager().getResourceManagement().createResource(
-				"recordedTestInteger" + System.currentTimeMillis(), IntegerResource.class);
+				newResourceName(), IntegerResource.class);
 		resource.activate(true);
 		final RecordedData data = resource.getHistoricalData();
 		RecordedDataConfiguration config = data.getConfiguration();
@@ -178,8 +211,8 @@ public class RecordedDataTest extends OsgiAppTestBase {
 
 	@Test
 	public void loggingTimeValuesWorks() throws Exception {
-		final TimeResource resource = getApplicationManager().getResourceManagement().createResource(
-				"recordedTestLong" + System.currentTimeMillis(), TimeResource.class);
+		final TimeResource resource = getApplicationManager().getResourceManagement().createResource(newResourceName(),
+				TimeResource.class);
 		resource.activate(true);
 		final RecordedData data = resource.getHistoricalData();
 		RecordedDataConfiguration config = data.getConfiguration();
@@ -204,8 +237,7 @@ public class RecordedDataTest extends OsgiAppTestBase {
 	@Test
 	public void fixedIntervalUpdatesWork() throws Exception {
 		ResourceManagement resman = getApplicationManager().getResourceManagement();
-		SolarIrradiationSensor sens = resman.createResource("RecordedDataTest_fixed_" + System.currentTimeMillis(),
-				SolarIrradiationSensor.class);
+		SolarIrradiationSensor sens = resman.createResource(newResourceName(), SolarIrradiationSensor.class);
 		sens.reading().create();
 		sens.reading().setValue(47.11f);
 		sens.deactivate(true);
@@ -334,41 +366,41 @@ public class RecordedDataTest extends OsgiAppTestBase {
         // test for average ...
         List<SampledValue> values = rds.getValues(1, endTime, intervalSize, ReductionMode.AVERAGE);
         Assert.assertTrue(String.format(sizeCmpMsg, "mean", values.size(), nmbOfIntervals, seed),
-                          values.size() == nmbOfIntervals);
+                values.size() == nmbOfIntervals);
         for (int i = 0; i < nmbOfIntervals; ++i) {
             double result = values.get(i).getValue().getDoubleValue();
             // Double.compare(result, ss.getMean()) == 0  not appropriate here ... due to rounding errors
             Assert.assertTrue("Mean: expected " + ss.get(i).getMean() + " but got " + result + " - seed: " + seed,
-                              nearlyEqual(result, ss.get(i).getMean(), 1E-6));
+                    nearlyEqual(result, ss.get(i).getMean(), 1E-6));
             assertTrue("Mean: expected Quality.GOOD", values.get(i).getQuality() == Quality.GOOD);
         }
 
         // test for max ...
         values = rds.getValues(1, endTime, intervalSize, ReductionMode.MAXIMUM_VALUE);
         Assert.assertTrue(String.format(sizeCmpMsg, "max", values.size(), nmbOfIntervals, seed),
-                          values.size() == nmbOfIntervals);
+                values.size() == nmbOfIntervals);
         for (int i = 0; i < nmbOfIntervals; ++i) {
             double result = values.get(i).getValue().getDoubleValue();
             Assert.assertTrue("Max: expected " + ss.get(i).getMax() + " but got " + result + " - seed: " + seed, Double
-                              .compare(result, ss.get(i).getMax()) == 0);
+                    .compare(result, ss.get(i).getMax()) == 0);
             assertTrue("Mean: expected Quality.GOOD", values.get(i).getQuality() == Quality.GOOD);
         }
 
         // test for min ...
         values = rds.getValues(1, endTime, intervalSize, ReductionMode.MINIMUM_VALUE);
         Assert.assertTrue(String.format(sizeCmpMsg, "min", values.size(), nmbOfIntervals, seed),
-                          values.size() == nmbOfIntervals);
+                values.size() == nmbOfIntervals);
         for (int i = 0; i < nmbOfIntervals; ++i) {
             double result = values.get(i).getValue().getDoubleValue();
             Assert.assertTrue("Min: expected " + ss.get(i).getMin() + " but got " + result + " - seed: " + seed, Double
-                              .compare(result, ss.get(i).getMin()) == 0);
+                    .compare(result, ss.get(i).getMin()) == 0);
             assertTrue("Min: expected Quality.GOOD", values.get(i).getQuality() == Quality.GOOD);
         }
 
         // test for min/max ...
         values = rds.getValues(1, endTime, intervalSize, ReductionMode.MIN_MAX_VALUE);
         Assert.assertTrue(String.format(sizeCmpMsg, "min/max", values.size(), nmbOfIntervals, seed),
-                          values.size() == nmbOfIntervals * 2);
+                values.size() == nmbOfIntervals * 2);
         for (int i = 0, j = 0; i < nmbOfIntervals; ++i) {
             // min is in first and max in second idx ...
             SampledValue min = values.get(j++);
@@ -421,41 +453,41 @@ public class RecordedDataTest extends OsgiAppTestBase {
         // test for average ...
         List<SampledValue> values = rds.getValues(1, endTime, intervalSize, ReductionMode.AVERAGE);
         Assert.assertTrue(String.format(sizeCmpMsg, "mean", values.size(), nmbOfIntervals, seed),
-                          values.size() == nmbOfIntervals);
+                values.size() == nmbOfIntervals);
         for (int i = 0; i < nmbOfIntervals; ++i) {
             double result = values.get(i).getValue().getDoubleValue();
             // Double.compare(result, ss.getMean()) == 0  not appropriate here ... due to rounding errors
             assertTrue("Mean: expected " + ss.get(i).getMean() + " but got " + result + " - seed: " + seed,
-                       nearlyEqual(result, ss.get(i).getMean(), 1E-6));
+                    nearlyEqual(result, ss.get(i).getMean(), 1E-6));
             assertTrue("Mean: expected Quality.BAD", values.get(i).getQuality() == Quality.BAD);
         }
 
         // test for max ...
         values = rds.getValues(1, endTime, intervalSize, ReductionMode.MAXIMUM_VALUE);
         Assert.assertTrue(String.format(sizeCmpMsg, "max", values.size(), nmbOfIntervals, seed),
-                          values.size() == nmbOfIntervals);
+                values.size() == nmbOfIntervals);
         for (int i = 0; i < nmbOfIntervals; ++i) {
             double result = values.get(i).getValue().getDoubleValue();
             assertTrue("Max: expected " + ss.get(i).getMax() + " but got " + result + " - seed: " + seed, Double
-                       .compare(result, ss.get(i).getMax()) == 0);
+                    .compare(result, ss.get(i).getMax()) == 0);
             assertTrue("Max: expected Quality.BAD", values.get(i).getQuality() == Quality.BAD);
         }
 
         // test for min ...
         values = rds.getValues(1, endTime, intervalSize, ReductionMode.MINIMUM_VALUE);
         Assert.assertTrue(String.format(sizeCmpMsg, "min", values.size(), nmbOfIntervals, seed),
-                          values.size() == nmbOfIntervals);
+                values.size() == nmbOfIntervals);
         for (int i = 0; i < nmbOfIntervals; ++i) {
             double result = values.get(i).getValue().getDoubleValue();
             assertTrue("Min: expected " + ss.get(i).getMin() + " but got " + result + " - seed: " + seed, Double
-                       .compare(result, ss.get(i).getMin()) == 0);
+                    .compare(result, ss.get(i).getMin()) == 0);
             assertTrue("Min: expected Quality.BAD", values.get(i).getQuality() == Quality.BAD);
         }
 
         // test for min/max ...
         values = rds.getValues(1, endTime, intervalSize, ReductionMode.MIN_MAX_VALUE);
         Assert.assertTrue(String.format(sizeCmpMsg, "min/max", values.size(), nmbOfIntervals, seed),
-                          values.size() == nmbOfIntervals * 2);
+                values.size() == nmbOfIntervals * 2);
         for (int i = 0, j = 0; i < nmbOfIntervals; ++i) {
             // min is in first and max in second idx ...
             double min = values.get(j++).getValue().getDoubleValue();
@@ -495,7 +527,7 @@ public class RecordedDataTest extends OsgiAppTestBase {
             ss.add(new SummaryStatistics());
         }
 
-		// this list will contain the expected quality of the result from RecordedDataStorage
+        // this list will contain the expected quality of the result from RecordedDataStorage
         // for the interval i at index i in this list
         List<Quality> expectedQuality = new ArrayList<>();
         RecordedDataStorage rds = initReductionModeTest(MAX_FOR_REDUCTION_MODE_TEST, ss, rnd, nmbOfValues, nmbOfIntervals, true, Quality.GOOD, expectedQuality);
@@ -509,41 +541,41 @@ public class RecordedDataTest extends OsgiAppTestBase {
         // test for average ...
         List<SampledValue> values = rds.getValues(1, endTime, intervalSize, ReductionMode.AVERAGE);
         Assert.assertTrue(String.format(sizeCmpMsg, "mean", values.size(), nmbOfIntervals, seed),
-                          values.size() == nmbOfIntervals);
+                values.size() == nmbOfIntervals);
         for (int i = 0; i < nmbOfIntervals; ++i) {
             double result = values.get(i).getValue().getDoubleValue();
             // Double.compare(result, ss.getMean()) == 0  not appropriate here ... due to rounding errors
             assertTrue("Mean: expected " + ss.get(i).getMean() + " but got " + result + " - seed: " + seed,
-                       nearlyEqual(result, ss.get(i).getMean(), 1E-6));
+                    nearlyEqual(result, ss.get(i).getMean(), 1E-6));
             assertTrue("Mean: expected " + expectedQuality.get(i).toString(), values.get(i).getQuality() == expectedQuality.get(i));
         }
 
         // test for max ...
         values = rds.getValues(1, endTime, intervalSize, ReductionMode.MAXIMUM_VALUE);
         Assert.assertTrue(String.format(sizeCmpMsg, "max", values.size(), nmbOfIntervals, seed),
-                          values.size() == nmbOfIntervals);
+                values.size() == nmbOfIntervals);
         for (int i = 0; i < nmbOfIntervals; ++i) {
             double result = values.get(i).getValue().getDoubleValue();
             assertTrue("Max: expected " + ss.get(i).getMax() + " but got " + result + " - seed: " + seed, Double
-                       .compare(result, ss.get(i).getMax()) == 0);
+                    .compare(result, ss.get(i).getMax()) == 0);
             assertTrue("Max: expected " + expectedQuality.get(i).toString(), values.get(i).getQuality() == expectedQuality.get(i));
         }
 
         // test for min ...
         values = rds.getValues(1, endTime, intervalSize, ReductionMode.MINIMUM_VALUE);
         Assert.assertTrue(String.format(sizeCmpMsg, "min", values.size(), nmbOfIntervals, seed),
-                          values.size() == nmbOfIntervals);
+                values.size() == nmbOfIntervals);
         for (int i = 0; i < nmbOfIntervals; ++i) {
             double result = values.get(i).getValue().getDoubleValue();
             assertTrue("Min: expected " + ss.get(i).getMin() + " but got " + result + " - seed: " + seed, Double
-                       .compare(result, ss.get(i).getMin()) == 0);
+                    .compare(result, ss.get(i).getMin()) == 0);
             assertTrue("Min: expected " + expectedQuality.get(i).toString(), values.get(i).getQuality() == expectedQuality.get(i));
         }
 
         // test for min/max ...
         values = rds.getValues(1, endTime, intervalSize, ReductionMode.MIN_MAX_VALUE);
         Assert.assertTrue(String.format(sizeCmpMsg, "min/max", values.size(), nmbOfIntervals, seed),
-                          values.size() == nmbOfIntervals * 2);
+                values.size() == nmbOfIntervals * 2);
         for (int i = 0, j = 0; i < nmbOfIntervals; ++i) {
             // min is in first and max in second idx ...
             SampledValue min = values.get(j++);
@@ -565,7 +597,7 @@ public class RecordedDataTest extends OsgiAppTestBase {
         Random rnd = new Random(seed);
         int nmbOfValues = rnd.nextInt(MAX_FOR_REDUCTION_MODE_TEST) + 2; // at least two values
         List<DoubleValue> randomValues = generateRandomValues(-MAX_FOR_REDUCTION_MODE_TEST,
-                                                              MAX_FOR_REDUCTION_MODE_TEST, nmbOfValues, rnd);
+                MAX_FOR_REDUCTION_MODE_TEST, nmbOfValues, rnd);
         RecordedDataStorage rds = createRecordedDataStorage();
         List<SummaryStatistics> ss = new ArrayList<>();
 
@@ -580,7 +612,7 @@ public class RecordedDataTest extends OsgiAppTestBase {
         }
 
         ss.add(new SummaryStatistics());
-		// if nmbOfValues odd - subtract one because the last value won't be in our interval
+        // if nmbOfValues odd - subtract one because the last value won't be in our interval
         // and should be excluded from SummaryStatistics
         int end = nmbOfValues - nmbOfValues % 2;
         for (int i = nmbOfValues / 2; i < end; ++i) {
@@ -595,7 +627,7 @@ public class RecordedDataTest extends OsgiAppTestBase {
             endTime = nmbOfValues + nmbOfValues / 2;
             // insert last value as well:
             rds.insertValue(new SampledValue(randomValues.get(nmbOfValues - 1), nmbOfValues - 1 + nmbOfValues / 2,
-                                             Quality.GOOD));
+                    Quality.GOOD));
         }
 
         // mean
@@ -604,10 +636,10 @@ public class RecordedDataTest extends OsgiAppTestBase {
 
         Value val = values.get(0).getValue();
         assertTrue("Mean: expected " + ss.get(0).getMean() + " but got " + val.getDoubleValue(), nearlyEqual(val
-                   .getDoubleValue(), ss.get(0).getMean(), 1E-6));
+                .getDoubleValue(), ss.get(0).getMean(), 1E-6));
         val = values.get(2).getValue();
         assertTrue("Mean: expected " + ss.get(1).getMean() + " but got " + val.getDoubleValue(), nearlyEqual(val
-                   .getDoubleValue(), ss.get(1).getMean(), 1E-6));
+                .getDoubleValue(), ss.get(1).getMean(), 1E-6));
 
         assertTrue("Reduction of empty interval should return Quality.BAD!", values.get(1).getQuality() == Quality.BAD);
 
@@ -617,10 +649,10 @@ public class RecordedDataTest extends OsgiAppTestBase {
 
         val = values.get(0).getValue();
         assertTrue("Max: expected " + ss.get(0).getMax() + " but got " + val.getDoubleValue(), Double.compare(val
-                   .getDoubleValue(), ss.get(0).getMax()) == 0);
+                .getDoubleValue(), ss.get(0).getMax()) == 0);
         val = values.get(2).getValue();
         assertTrue("Max: expected " + ss.get(1).getMax() + " but got " + val.getDoubleValue(), Double.compare(val
-                   .getDoubleValue(), ss.get(1).getMax()) == 0);
+                .getDoubleValue(), ss.get(1).getMax()) == 0);
 
         assertTrue("Reduction of empty interval should return Quality.BAD!", values.get(1).getQuality() == Quality.BAD);
 
@@ -630,10 +662,10 @@ public class RecordedDataTest extends OsgiAppTestBase {
 
         val = values.get(0).getValue();
         assertTrue("Min: expected " + ss.get(0).getMin() + " but got " + val.getDoubleValue(), Double.compare(val
-                   .getDoubleValue(), ss.get(0).getMin()) == 0);
+                .getDoubleValue(), ss.get(0).getMin()) == 0);
         val = values.get(2).getValue();
         assertTrue("Min: expected " + ss.get(1).getMin() + " but got " + val.getDoubleValue(), Double.compare(val
-                   .getDoubleValue(), ss.get(1).getMin()) == 0);
+                .getDoubleValue(), ss.get(1).getMin()) == 0);
 
         assertTrue("Reduction of empty interval should return Quality.BAD!", values.get(1).getQuality() == Quality.BAD);
 
@@ -643,16 +675,16 @@ public class RecordedDataTest extends OsgiAppTestBase {
 
         val = values.get(0).getValue();
         assertTrue("Min/Max: expected " + ss.get(0).getMin() + " but got " + val.getDoubleValue(), Double.compare(val
-                   .getDoubleValue(), ss.get(0).getMin()) == 0);
+                .getDoubleValue(), ss.get(0).getMin()) == 0);
         val = values.get(1).getValue();
         assertTrue("Min/Max: expected " + ss.get(0).getMax() + " but got " + val.getDoubleValue(), Double.compare(val
-                   .getDoubleValue(), ss.get(0).getMax()) == 0);
+                .getDoubleValue(), ss.get(0).getMax()) == 0);
         val = values.get(4).getValue();
         assertTrue("Min/Max: expected " + ss.get(1).getMin() + " but got " + val.getDoubleValue(), Double.compare(val
-                   .getDoubleValue(), ss.get(1).getMin()) == 0);
+                .getDoubleValue(), ss.get(1).getMin()) == 0);
         val = values.get(5).getValue();
         assertTrue("Min/Max: expected " + ss.get(1).getMax() + " but got " + val.getDoubleValue(), Double.compare(val
-                   .getDoubleValue(), ss.get(1).getMax()) == 0);
+                .getDoubleValue(), ss.get(1).getMax()) == 0);
 
         assertTrue("Reduction of empty interval should return Quality.BAD!", values.get(2).getQuality() == Quality.BAD);
         assertTrue("Reduction of empty interval should return Quality.BAD!", values.get(3).getQuality() == Quality.BAD);
@@ -836,7 +868,7 @@ public class RecordedDataTest extends OsgiAppTestBase {
 
         Quality q = defQuality;
         for (int i = 0; i < nmbOfIntervals; ++i) {
-			// while reducing data bad quality entries will be ignored ... they will be considered
+            // while reducing data bad quality entries will be ignored ... they will be considered
             // if we have only bad quality entries ... so add bad quality values only to summary
             // statistic objects if all added values have Quality.BAD
             boolean addedEntryWithQualityBad = false;
@@ -847,7 +879,7 @@ public class RecordedDataTest extends OsgiAppTestBase {
                 }
 
                 SampledValue value = new SampledValue(randomValues.get(j + (i * intervalSize)),
-                                                      (j + 1) + (i * intervalSize), q);
+                        (j + 1) + (i * intervalSize), q);
                 list.add(value);
 
                 rds.insertValue(value);
@@ -897,7 +929,7 @@ public class RecordedDataTest extends OsgiAppTestBase {
     }
 
 	private RecordedDataStorage createRecordedDataStorage() throws DataRecorderException {
-		String id = "ts" + System.currentTimeMillis();
+		String id = newResourceName();
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setStorageType(RecordedDataConfiguration.StorageType.ON_VALUE_UPDATE);
 		conf.setFixedInterval(-1);

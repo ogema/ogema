@@ -23,6 +23,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.ResourceList;
+import org.ogema.core.model.simple.StringResource;
 import static org.ogema.exam.ResourceAssertions.assertDeleted;
 import static org.ogema.exam.ResourceAssertions.assertDirectSubresource;
 import static org.ogema.exam.ResourceAssertions.assertExists;
@@ -80,6 +82,20 @@ public class DeleteTest extends OsgiTestBase {
 		pe.delete();
 		assertNull(resAcc.getResource("/" + name));
 		assertDeleted(pe);
+	}
+
+	@Test
+	public void deleteWorksOnTopLevelResourceList() {
+		String name = newResourceName();
+		@SuppressWarnings("unchecked")
+		ResourceList<Resource> l = resMan.createResource(name, ResourceList.class);
+		l.setElementType(Resource.class);
+		l.add(resMan.createResource(newResourceName(), StringResource.class));
+		assertNotNull(resAcc.getResource("/" + name));
+
+		l.delete();
+		assertNull(resAcc.getResource("/" + name));
+		assertDeleted(l);
 	}
 
 	@Test

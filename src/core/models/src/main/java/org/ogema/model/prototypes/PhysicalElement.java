@@ -16,8 +16,10 @@
 package org.ogema.model.prototypes;
 
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.units.ThermalEnergyCapacityResource;
+import org.ogema.model.devices.profiles.ProgramInformation;
 import org.ogema.model.locations.PhysicalDimensions;
 import org.ogema.model.locations.Location;
 
@@ -45,6 +47,11 @@ public interface PhysicalElement extends Resource {
 	 * Information on the physical dimensions.
 	 */
 	PhysicalDimensions physDim();
+
+	/**
+	 * Information on available programs, including operating cycles and typical consumption patterns.
+	 */
+	ResourceList<ProgramInformation> programs();
 
 	/**
 	 * Human-readable name.

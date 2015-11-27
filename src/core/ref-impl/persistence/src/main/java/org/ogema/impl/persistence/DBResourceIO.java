@@ -33,6 +33,7 @@ import org.ogema.core.model.Resource;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
 import org.ogema.impl.persistence.TimedPersistence.Change;
 import org.ogema.persistence.DBConstants;
+import org.ogema.persistence.PersistencePolicy.ChangeInfo;
 import org.slf4j.Logger;
 
 public class DBResourceIO {
@@ -59,6 +60,7 @@ public class DBResourceIO {
 
 	ConcurrentHashMap<Integer, TreeElementImpl> unsortedParents;
 	ConcurrentHashMap<Integer, TreeElementImpl> unsortedRefs;
+	ConcurrentHashMap<Integer, TreeElementImpl> unreachableCusomTypes;
 
 	private ResourceDBImpl database;
 
@@ -108,6 +110,8 @@ public class DBResourceIO {
 	DBResourceIO(ResourceDBImpl db) {
 		unsortedParents = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
 		unsortedRefs = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
+		unreachableCusomTypes = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
+
 		offsetByID = new ConcurrentHashMap<Integer, Integer>();
 		sorter = new MapValueSorter(offsetByID);
 		this.database = db;
@@ -331,7 +335,7 @@ public class DBResourceIO {
 		// node.footprint = 0;
 
 		if (Configuration.LOGGING)
-			System.out.println("Store Resource " + node.path);
+			logger.debug("Store Resource " + node.path);
 		/*
 		 * Determine the offset of the resource data in the archive and put it in the map of offsets.
 		 */
@@ -377,56 +381,62 @@ public class DBResourceIO {
 			// set Primitive array resource values
 			case DBConstants.TYPE_KEY_BOOLEAN_ARR:
 				boolean zArr[] = value.aZ;
-				length = zArr.length;
+				length = value.getArrayLength();
 				setIValue(length);
-				for (boolean b : zArr) {
-					setBValue(b);
-				}
+				if (zArr != null)
+					for (boolean b : zArr) {
+						setBValue(b);
+					}
 				node.footprint += value.footprint;
 				break;
 			case DBConstants.TYPE_KEY_FLOAT_ARR:
 				float fArr[] = value.aF;
-				length = fArr.length;
+				length = value.getArrayLength();
 				setIValue(length);
-				for (float f : fArr) {
-					setFValue(f);
-				}
+				if (fArr != null)
+					for (float f : fArr) {
+						setFValue(f);
+					}
 				node.footprint += value.footprint;
 				break;
 			case DBConstants.TYPE_KEY_INT_ARR:
 				int iArr[] = value.aI;
-				length = iArr.length;
+				length = value.getArrayLength();
 				setIValue(length);
-				for (int I : iArr) {
-					setIValue(I);
-				}
+				if (iArr != null)
+					for (int I : iArr) {
+						setIValue(I);
+					}
 				node.footprint += value.footprint;
 				break;
 			case DBConstants.TYPE_KEY_LONG_ARR:
 				long jArr[] = value.aJ;
-				length = jArr.length;
+				length = value.getArrayLength();
 				setIValue(length);
-				for (long l : jArr) {
-					setJValue(l);
-				}
+				if (jArr != null)
+					for (long l : jArr) {
+						setJValue(l);
+					}
 				node.footprint += value.footprint;
 				break;
 			case DBConstants.TYPE_KEY_STRING_ARR:
 				String sArr[] = value.aS;
-				length = sArr.length;
+				length = value.getArrayLength();
 				setIValue(length);
-				for (String s : sArr) {
-					setUTF8(s);
-				}
+				if (sArr != null)
+					for (String s : sArr) {
+						setUTF8(s);
+					}
 				node.footprint += value.footprint;
 				break;
 			case DBConstants.TYPE_KEY_OPAQUE:
 				byte bArr[] = value.aB;
-				length = bArr.length;
+				length = value.getArrayLength();
 				setIValue(length);
-				for (byte b : bArr) {
-					setByte(b);
-				}
+				if (bArr != null)
+					for (byte b : bArr) {
+						setByte(b);
+					}
 				node.footprint += value.footprint;
 				break;
 			// set complex childs
@@ -449,7 +459,7 @@ public class DBResourceIO {
 		 * First read the directory structure
 		 */
 		if (Configuration.LOGGING)
-			System.out.println("Parse Resources...");
+			logger.debug("Parse Resources...");
 		resDataFiles.updateCurrentIn();
 		if (resDataFiles.in == null) {
 			resDataFiles.updateCurrentOut();
@@ -511,34 +521,53 @@ public class DBResourceIO {
 		database.nextresourceID = maxID + 1;
 
 		/*
+		 * Remove sub resources of deleted custom model resources from the unhandled list.
+		 */
+		handleRemoved(unsortedParents);
+		handleRemoved(unsortedRefs);
+		/*
 		 * Place the unsorted node in the tree.
 		 */
 		handleUnsorted(unsortedParents);
 		handleUnsorted(unsortedRefs);
 		if (Configuration.LOGGING)
-			System.out.println("...Resources parsed");
+			logger.debug("...Resources parsed");
 		try {
 
 			/*
 			 * Check if a compaction of the data is required. The policy here is that at least 90% of the data file
 			 * consists of garbage.
 			 */
-			int len = (int) dataRaf.length();
 			dataRaf.close();
-			if ((garbage) > len * 0.9f) {
-				resDataFiles.updateNextOut();
-				assert resDataFiles.out.size() == 0;
-				currentDataFileName = resDataFiles.fileNew.getName();
-				dbFileInitialOffset = 0;
-				compact();
-			}
-			else {
-				resDataFiles.in = null;
-				resDataFiles.updateCurrentOut();
-				currentDataFileName = resDataFiles.fileNew.getName();
-			}
+			resDataFiles.in = null;
+			resDataFiles.updateCurrentOut();
+			currentDataFileName = resDataFiles.fileNew.getName();
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Remove all unsorted sub resources that are unreachable because their top level resource is removed due to failed
+	 * load of the model class.
+	 * 
+	 * @param map
+	 */
+	private void handleRemoved(Map<Integer, TreeElementImpl> map) {
+		Set<Entry<Integer, TreeElementImpl>> unreachables = unreachableCusomTypes.entrySet();
+		for (Map.Entry<Integer, TreeElementImpl> entry1 : unreachables) {
+			TreeElementImpl e1 = entry1.getValue();
+			if (database.activatePersistence)
+				database.persistence.store(e1.resID, ChangeInfo.DELETED);
+			Set<Entry<Integer, TreeElementImpl>> unsorteds = map.entrySet();
+			for (Map.Entry<Integer, TreeElementImpl> entry2 : unsorteds) {
+				TreeElementImpl e2 = entry2.getValue();
+				if (e2.path.startsWith(e1.path)) {
+					map.remove(e2.resID);
+					if (database.activatePersistence)
+						database.persistence.store(e2.resID, ChangeInfo.DELETED);
+				}
+			}
 		}
 	}
 
@@ -606,6 +635,7 @@ public class DBResourceIO {
 	 * @return
 	 */
 	void readEntry() throws IOException, EOFException {
+		boolean clsLoaded = true;
 		boolean isSimple = false;
 		// 1. read header of the entry
 		TreeElementImpl node = new TreeElementImpl(database);
@@ -679,6 +709,8 @@ public class DBResourceIO {
 				isSimple = true;
 				break;
 			case DBConstants.TYPE_KEY_COMPLEX_ARR:
+				node.type = DBConstants.CLASS_COMPLEX_ARR_TYPE;
+				clsLoaded = true;
 				break;
 			case DBConstants.TYPE_KEY_BOOLEAN_ARR:
 				node.initDataContainer();
@@ -695,7 +727,7 @@ public class DBResourceIO {
 			case DBConstants.TYPE_KEY_COMPLEX:
 				// create complex resource
 				// first register the type of the resource
-				setTypeFromName(node);
+				clsLoaded = setTypeFromName(node);
 				break;
 			default:
 				break;
@@ -707,33 +739,55 @@ public class DBResourceIO {
 		if (node.type != null) {
 			String clsName = node.type.getName();
 			if (isSimple && !node.typeName.equals(clsName)) {
-				setTypeFromName(node);
+				try {
+					clsLoaded = setTypeFromName(node);
+				} catch (Exception e) {
+					clsLoaded = false;
+				}
 			}
 		}
-		// register node
-		putResource(node);
+		// register node only if its data model was found. If the data model couldn't be loaded, the resource is removed
+		// from persistent data storage.
+		if (clsLoaded)
+			putResource(node);
+		else {
+			unreachableCusomTypes.put(node.resID, node);
+			logger.debug("Type couldn't be loaded: " + node.typeName);
+		}
 	}
 
-	private void setTypeFromName(TreeElementImpl node) {
+	@SuppressWarnings("unchecked")
+	private boolean setTypeFromName(TreeElementImpl node) {
+		boolean result = false;
+		String typeName = node.typeName;
 		try {
-			Class<?> type = database.getResourceType(node.typeName);
-			if (type == null) {
-				try {
-					type = Class.forName(node.typeName).asSubclass(Resource.class);
-				} catch (ClassNotFoundException e) {
+			if (typeName != null) {
+				Class<?> type = database.getResourceType(typeName);
+				if (type == null) {
+					try {
+						type = Class.forName(node.typeName).asSubclass(Resource.class);
+					} catch (ClassNotFoundException e) {
+					}
+					if (type != null) {
+						type = database.addOrUpdateResourceType((Class<? extends Resource>) type);
+						result = true;
+					}
+					else { // potentially this happens if a custom data model can no longer be loaded, because the
+						// exporter
+						// bundle is not at least installed.
+						logger.warn(String.format("Resouce class %s to the persistent data couldn't be loaded!",
+								node.typeName));
+					}
 				}
 				if (type != null) {
-					type = database.addOrUpdateResourceType((Class<? extends Resource>) type);
-
+					result = true;
+					node.type = type;
 				}
-				else
-					logger.warn(String.format("Resouce class %s to the persistent data couldn't be loaded!",
-							node.typeName));
 			}
-			node.type = type;
 		} catch (InvalidResourceTypeException e) {
 			e.printStackTrace();
 		}
+		return result;
 	}
 
 	/*
@@ -917,7 +971,7 @@ public class DBResourceIO {
 			e.topLevelParent = parent.topLevelParent;
 			// Check if the parent is a ResourceList. In this case, this is the right moment to set the resource type
 			// info.
-			if (parent.typeKey == DBConstants.TYPE_KEY_COMPLEX_ARR && parent.type == null
+			if (parent.typeKey == DBConstants.TYPE_KEY_COMPLEX_ARR && parent.type == DBConstants.CLASS_COMPLEX_ARR_TYPE
 					&& !e.name.equals("@elements"))
 				parent.type = e.type;
 		}
@@ -971,13 +1025,13 @@ public class DBResourceIO {
 		// 4. setFlags
 		entry.setFlags(raf.read());
 		if (Configuration.LOGGING && entry.complexArray)
-			System.out.println("ResourceList name:" + entry.typeName);
+			logger.debug("ResourceList name: " + entry.typeName);
 		// 5. setTypeKey
 		entry.typeKey = raf.read();
 		// 6. set name and path strings
 		String path = raf.readUTF();
 		if (Configuration.LOGGING)
-			System.out.println(path);
+			logger.debug("Resourcepath " + path);
 		entry.path = path;
 		// separate the name from path if its a sub resource
 		int index = path.lastIndexOf(DBConstants.RESOURCE_PATH_DELIMITER);
@@ -1043,7 +1097,7 @@ public class DBResourceIO {
 			return result;
 		result = dbFileInitialOffset + resDataFiles.out.size();
 		if (Configuration.LOGGING)
-			System.out.println("Current file offset: " + result);
+			logger.debug("Current file offset: " + result);
 		return result;
 	}
 

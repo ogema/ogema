@@ -30,7 +30,6 @@ import org.ogema.core.application.AppID;
 import org.ogema.core.installationmanager.ApplicationSource;
 import org.ogema.core.installationmanager.InstallableApplication;
 import org.ogema.core.installationmanager.InstallationManagement;
-import org.ogema.core.security.AppPermission;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
@@ -49,7 +48,7 @@ public class InstallManagerImpl implements InstallationManagement {
 	static final String LOCAL_APPSTORE_LOCATION = "./appstore/";
 	static final String PROP_NAME_LOCAL_APPSTORE_LOCATION = "org.ogema.local.appstore";
 
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+	private final Logger logger = org.slf4j.LoggerFactory.getLogger("ogema.administration");
 
 	private PermissionManager pMan;
 
@@ -61,16 +60,16 @@ public class InstallManagerImpl implements InstallationManagement {
 
 	String localAppStore;
 
-	AppStore tmpFileUpload;
+	public InstallManagerImpl() {
+		localAppStore = System.getProperty(PROP_NAME_LOCAL_APPSTORE_LOCATION, LOCAL_APPSTORE_LOCATION);
+		appStores = new HashMap<>();
+		appStores.put("localAppDirectory", new AppStore("localAppDirectory", localAppStore, true));
+	}
 
 	public void start(BundleContext bc, PermissionManager pm) {
 		this.pMan = pm;
 		this.admin = pm.getAdminManager();
 		this.osgi = bc;
-
-		localAppStore = System.getProperty(PROP_NAME_LOCAL_APPSTORE_LOCATION, LOCAL_APPSTORE_LOCATION);
-		tmpFileUpload = new AppStore("localTempDirectory", "./temp/", true);
-		initAppStores();
 
 		ServiceTrackerCustomizer<ApplicationSource, ApplicationSource> trackerCustomizer = new ServiceTrackerCustomizer<ApplicationSource, ApplicationSource>() {
 
@@ -99,13 +98,6 @@ public class InstallManagerImpl implements InstallationManagement {
 		tracker.open();
 	}
 
-	private void initAppStores() {
-		appStores = new HashMap<>();
-		appStores.put("localAppDirectory", new AppStore("localAppDirectory", localAppStore, true));
-		// appStores.put("remoteFHGAppStore", new AppStore("IIS_EXT_FTP", "ftp://ftpext:1234@ftp.iis.fraunhofer.de/",
-		// false));
-	}
-
 	@Override
 	public void install(final InstallableApplication iapp) {
 		if (!pMan.handleSecurity(new AdminPermission(AdminPermission.APP)))
@@ -114,11 +106,13 @@ public class InstallManagerImpl implements InstallationManagement {
 		boolean res = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
 			public Boolean run() {
 				Bundle b = osgi.getBundle(iapp.getLocation());
-				if (b == null)
-					return install0(iapp);
-				else
+				if (b == null) {
+					return install0(iapp, false);
+				}
+				else {
+					iapp.setBundle(b);
 					return update0(iapp);
-
+				}
 			}
 		});
 
@@ -138,41 +132,12 @@ public class InstallManagerImpl implements InstallationManagement {
 		}
 		iapp.setState(InstallableApplication.InstallState.BUNDLE_INSTALLED);
 		iapp.setBundle(b);
-		logger.info("Bundle installed from " + b.getLocation());
-
-		try {
-			iapp.getBundle().start();
-		} catch (BundleException e1) {
-			logger.info("Bundle start failed!" + b.getLocation());
-			e1.printStackTrace();
-			return false;
-		}
-		// Wait until the Application service is reachable
-		int tries = 20;
-		AppID appid = null;
-		while (appid == null && tries-- > 0) {
-			appid = admin.getAppByBundle(iapp.getBundle());
-			if (appid == null)
-				try {
-					Thread.sleep(100);
-				} catch (InterruptedException e) {
-				}
-		}
-		if (appid != null) {
-			iapp.setAppid(appid);
-		}
-		else {
-			iapp.setState(InstallableApplication.InstallState.ABORTED);
-			logger.info("App installation failed! Installed bundle is probably not an Application: " + b.getLocation());
-			return false;
-		}
+		logger.info("Bundle updated from " + b.getLocation());
 		return true;
 	}
 
-	private boolean install0(InstallableApplication iapp) {
+	private boolean install0(InstallableApplication iapp, boolean start) {
 		Bundle b = null;
-		AppPermission appPerm = iapp.getGrantedPermissions();
-		pMan.installPerms(appPerm);
 		{
 			iapp.setState(InstallableApplication.InstallState.BUNDLE_INSTALLING);
 			try {
@@ -190,38 +155,42 @@ public class InstallManagerImpl implements InstallationManagement {
 				return false;
 			}
 		}
-
-		try {
-			iapp.getBundle().start();
-		} catch (BundleException e1) {
-			logger.info("Bundle start failed!" + b.getLocation());
-			e1.printStackTrace();
-			return false;
-		}
-		// Wait until the Application service is reachable
-		int tries = 20;
-		AppID appid = null;
-		while (appid == null && tries-- > 0) {
-			appid = admin.getAppByBundle(iapp.getBundle());
-			if (appid == null)
-				try {
-					Thread.sleep(100);
-				} catch (InterruptedException e) {
-				}
-		}
-		if (appid != null) {
-			iapp.setAppid(appid);
-		}
-		else {
-			iapp.setState(InstallableApplication.InstallState.ABORTED);
-			logger.info("App installation failed! Installed bundle is probably not an Application: " + b.getLocation());
-			return false;
+		if (start) {
+			try {
+				iapp.getBundle().start();
+			} catch (BundleException e1) {
+				logger.info("Bundle start failed!" + b.getLocation());
+				e1.printStackTrace();
+				return false;
+			}
+			// Wait until the Application service is reachable
+			int tries = 20;
+			AppID appid = null;
+			while (appid == null && tries-- > 0) {
+				appid = admin.getAppByBundle(iapp.getBundle());
+				if (appid == null)
+					try {
+						Thread.sleep(100);
+					} catch (InterruptedException e) {
+					}
+			}
+			if (appid != null) {
+				iapp.setAppid(appid);
+			}
+			else {
+				iapp.setState(InstallableApplication.InstallState.ABORTED);
+				logger.info("App installation failed! Installed bundle is probably not an Application: "
+						+ b.getLocation());
+				return false;
+			}
 		}
 		return true;
 	}
 
 	@Override
 	public ApplicationSource connectAppSource(String address) {
+		if (!pMan.handleSecurity(new AdminPermission(AdminPermission.APP)))
+			throw new SecurityException("Permission to connect to marketplace is denied: " + address);
 		ApplicationSource src = appStores.get(address);
 		if (src != null)
 			src.connect();
@@ -230,6 +199,8 @@ public class InstallManagerImpl implements InstallationManagement {
 
 	@Override
 	public void disconnectAppSource(String address) {
+		if (!pMan.handleSecurity(new AdminPermission(AdminPermission.APP)))
+			throw new SecurityException("Permission to disconnect from marketplace is denied: " + address);
 		ApplicationSource src = appStores.get(address);
 		if (src != null)
 			src.disconnect();

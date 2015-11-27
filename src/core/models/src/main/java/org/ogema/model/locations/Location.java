@@ -26,7 +26,7 @@ public interface Location extends Data {
 	/**
 	 * Reference to the device that this object is attached to. Note that although rooms are also PhysicalElements, 
 	 * the element "room" should be used if this information is given. If a hierarchy of objects exists that all
-	 * would be suitable (room->workplace->device on workplace) this should reference the smallest unit in the
+	 * would be suitable (room-workplace-device on workplace) this should reference the smallest unit in the
 	 * hierarchy (in the example: the device on the workplace).
 	 */
 	PhysicalElement device();

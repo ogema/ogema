@@ -30,8 +30,7 @@ import org.apache.wicket.request.resource.CssResourceReference;
 import org.apache.wicket.request.resource.JavaScriptResourceReference;
 import org.ogema.app.resource.management.gui.util.Util;
 import org.ogema.app.resource.management.gui.ResManagementGuiActivator;
-import org.ogema.service.webresourcemanager.ApplicationPanel;
-import org.ogema.service.webresourcemanager.JSWidget;
+import org.ogema.apps.wicket.ApplicationPanel;
 
 public class ResourceTypeContentPanel extends ApplicationPanel {
 
@@ -89,16 +88,6 @@ public class ResourceTypeContentPanel extends ApplicationPanel {
 		String allResoureJson = util.getAllResoureJson();
 		response.render(OnDomReadyHeaderItem.forScript("first(" + allResoureJson + ");"));
 
-	}
-
-	// @Override
-	// public OgemaWidgetProvider getJSWidgets() {
-	// // TODO Auto-generated method stub
-	// return null;
-	// }
-
-	public Map<String, JSWidget> getWidgets() {
-		return null;
 	}
 
 	@Override

@@ -23,6 +23,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -39,6 +40,8 @@ import org.slf4j.LoggerFactory;
 @Component(immediate = true)
 @Service(DataRecorder.class)
 public class SlotsDb implements DataRecorder {
+
+	private final static Logger logger = LoggerFactory.getLogger(SlotsDb.class);
 
 	/*
 	 * File extension for SlotsDB files. Only these Files will be loaded.
@@ -62,11 +65,11 @@ public class SlotsDb implements DataRecorder {
 	public static String DB_TEST_ROOT_FOLDER = "testdata/";
 
 	public static String SLOTS_DB_STORAGE_ID_PATH = DEFAULT_DB_ROOT_FOLDER + "slotsDbStorageIDs.ser";
-	public static String CONFIGURATION_PATH = DEFAULT_DB_ROOT_FOLDER + "configurations.ser";
+	//public static String CONFIGURATION_PATH = DEFAULT_DB_ROOT_FOLDER + "configurations.ser";
 
 	/*
 	 * limit open files in Hashmap
-	 * 
+	 * MultiplePartlyIntervalsTest
 	 * Default Linux Configuration: (should be below)
 	 * 
 	 * host:/#> ulimit -aH [...] open files (-n) 1024 [...]
@@ -112,7 +115,7 @@ public class SlotsDb implements DataRecorder {
 	public static int DATA_EXPIRATION_CHECK_INTERVAL = 5000;
 
 	final FileObjectProxy proxy;
-	private final Map<String, SlotsDbStorage> storagesMap = new HashMap<String, SlotsDbStorage>();
+	private Map<String, SlotsDbStorage> slotsDbStorages = new HashMap<String, SlotsDbStorage>();
 
 	public SlotsDb() {
 		if (DB_ROOT_FOLDER == null) {
@@ -121,66 +124,60 @@ public class SlotsDb implements DataRecorder {
 		else {
 			proxy = new FileObjectProxy(DB_ROOT_FOLDER);
 		}
+
+		readPersistedSlotsDbStorages();
 	}
 
-	@Override
-	public RecordedDataStorage createRecordedDataStorage(String id, RecordedDataConfiguration configuration)
-			throws DataRecorderException {
-		List<String> persistentSlotsDbStorageIDs = new ArrayList<String>();
-		Map<String, RecordedDataConfiguration> persistentConfigurations = new HashMap<String, RecordedDataConfiguration>();
+	/**
+	 * Persist the all SlotsDbStorage objects
+	 */
+	public void persistSlotsDbStorages() {
 
-		if (storagesMap.containsKey(id)) {
-			throw new DataRecorderException("Storage with given ID exists already");
-		}
-		SlotsDbStorage storage = new SlotsDbStorage(id, configuration, this);
-		storagesMap.put(id, storage);
-		File configFile = new File(CONFIGURATION_PATH);
+		Map<String, RecordedDataConfiguration> configurations = new HashMap<String, RecordedDataConfiguration>();
 
-		persistentSlotsDbStorageIDs = this.getAllRecordedDataStorageIDs();
-
-		if (configFile.exists()) {
-			persistentConfigurations = storage.getPersistenConfigurationMap();
+		for (Iterator<String> iterator = slotsDbStorages.keySet().iterator(); iterator.hasNext();) {
+			String id = iterator.next();
+			configurations.put(id, slotsDbStorages.get(id).getConfiguration());
 		}
 
-		if (!persistentSlotsDbStorageIDs.contains(id)) {
-			persistentSlotsDbStorageIDs.add(id);
-			this.setPersistentIdMap(persistentSlotsDbStorageIDs);
-		}
+		ObjectOutputStream oos = null;
 
-		persistentConfigurations.put(id, configuration);
-		this.setPersistentConfigurationMap(persistentConfigurations);
-
-		return storage;
-	}
-
-	@Override
-	public RecordedDataStorage getRecordedDataStorage(String recDataID) {
-		return storagesMap.get(recDataID);
-	}
-
-	@Override
-	public boolean deleteRecordedDataStorage(String id) {
-		// TODO close storage?
-		if (storagesMap.remove(id) == null) {
-			return false;
-		}
-		else {
-			return true;
+		try {
+			oos = new ObjectOutputStream(new FileOutputStream(SLOTS_DB_STORAGE_ID_PATH));
+			oos.writeObject(configurations);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (oos != null) {
+				try {
+					oos.close();
+				} catch (IOException e) {
+				}
+			}
 		}
 	}
 
+	/**
+	 * Read back previously persisted SlotsDbStorage objects
+	 */
 	@SuppressWarnings("unchecked")
-	@Override
-	public List<String> getAllRecordedDataStorageIDs() {
+	private void readPersistedSlotsDbStorages() {
 
-		List<String> persistentRecordedDataStorageIDs = new ArrayList<String>();
 		ObjectInputStream ois = null;
 		File file = new File(SLOTS_DB_STORAGE_ID_PATH);
+
+		Map<String, RecordedDataConfiguration> configurations = new HashMap<String, RecordedDataConfiguration>();
 
 		if (file.exists()) {
 			try {
 				ois = new ObjectInputStream(new FileInputStream(SLOTS_DB_STORAGE_ID_PATH));
-				persistentRecordedDataStorageIDs = (ArrayList<String>) ois.readObject();
+
+				configurations = (Map<String, RecordedDataConfiguration>) ois.readObject();
+				for (Iterator<String> iterator = configurations.keySet().iterator(); iterator.hasNext();) {
+					String id = iterator.next();
+					slotsDbStorages.put(id, new SlotsDbStorage(id, configurations.get(id), this));
+				}
+
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {
@@ -192,41 +189,47 @@ public class SlotsDb implements DataRecorder {
 				}
 			}
 		}
-		return persistentRecordedDataStorageIDs;
-
 	}
 
-	private void setPersistentConfigurationMap(Map<String, RecordedDataConfiguration> persistentConfigurations) {
-		ObjectOutputStream oosConfig = null;
-		try {
-			oosConfig = new ObjectOutputStream(new FileOutputStream(CONFIGURATION_PATH));
-			oosConfig.writeObject(persistentConfigurations);
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			if (oosConfig != null) {
-				try {
-					oosConfig.close();
-				} catch (IOException e) {
-				}
-			}
+	@Override
+	public RecordedDataStorage createRecordedDataStorage(String id, RecordedDataConfiguration configuration)
+			throws DataRecorderException {
+
+		if (slotsDbStorages.containsKey(id)) {
+			throw new DataRecorderException("Storage with given ID exists already");
+		}
+
+		SlotsDbStorage storage = new SlotsDbStorage(id, configuration, this);
+		slotsDbStorages.put(id, storage);
+		persistSlotsDbStorages();
+
+		return storage;
+	}
+
+	@Override
+	public RecordedDataStorage getRecordedDataStorage(String recDataID) {
+		return slotsDbStorages.get(recDataID);
+	}
+
+	@Override
+	public boolean deleteRecordedDataStorage(String id) {
+
+		if (slotsDbStorages.remove(id) == null) {
+			return false;
+		}
+		else {
+			persistSlotsDbStorages();
+			return true;
 		}
 	}
 
-	private void setPersistentIdMap(List<String> persistentSlotsDbStorageIDs) {
-		ObjectOutputStream oosConfig = null;
-		try {
-			oosConfig = new ObjectOutputStream(new FileOutputStream(SLOTS_DB_STORAGE_ID_PATH));
-			oosConfig.writeObject(persistentSlotsDbStorageIDs);
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			if (oosConfig != null) {
-				try {
-					oosConfig.close();
-				} catch (IOException e) {
-				}
-			}
+	@Override
+	public List<String> getAllRecordedDataStorageIDs() {
+		List<String> ids = new ArrayList<String>();
+		for (Iterator<String> iterator = slotsDbStorages.keySet().iterator(); iterator.hasNext();) {
+			ids.add(iterator.next());
 		}
+		return ids;
 	}
+
 }

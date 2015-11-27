@@ -25,6 +25,50 @@ return function(callback) {
 	
 	var dashboard;
 
+        var dropdown = document.getElementById("grafanaDropdown");
+        var csvButton = document.getElementById("grafanaButton");          
+            
+        csvButton.onclick = function() {
+            
+            var resource = dropdown.options[dropdown.selectedIndex].value;
+            
+            var p = "p=admin"
+            var q = "q=select undefined(value) from \"" + resource + "\" where time > now() and time < 365d group by time(1m) order asc";
+            var u = "u=admin";
+            var query = p + "&" + q + "&" + u;
+    
+            $.ajax({
+                method:         'GET',
+                url:            SERVLET_ADDRESS + '/series?' + query,  
+                contentType:    'application/json'
+            }).done(function(result) {
+                
+                            
+                var resultJSON = JSON.parse(result);
+                var data = resultJSON[0].points;
+                
+                var dataString;
+                var csvContent = "data:text/csv;charset=utf-8,";
+                data.forEach(function(infoArray, index){
+
+                    dataString = infoArray.join(";");
+                    csvContent += index < data.length ? dataString+ "\n" : dataString;
+                    
+                });
+                //download(csvContent, 'download.csv', 'text/csv');
+                var encodedUri = encodeURI(csvContent);
+                var fileName = resource.replace(/\//g, '_');
+                var link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", fileName + ".csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        
+        };
+           
+
 
 	//define pulldowns
 	var pulldowns = [
@@ -116,8 +160,9 @@ return function(callback) {
 				    contentType: 'application/json'
 			  })
 			  .done(function(result) {
-				 var resources = JSON.parse(result)[0].loggedResources;
-		//		 console.log("New resources",resources);
+			     var jsonResult = JSON.parse(result)[0];
+				 var resources = jsonResult.loggedResources;
+				// console.log("New resources, query parameter",result,queryParam);
 				 var targets = [];
 				 for (var i=0;i<resources.length;i++) {
 					 var trgt =  {
@@ -132,6 +177,14 @@ return function(callback) {
 					 counter[rowName] = counter[rowName] + 1;
 					 return;
 				 }
+				 var steps = false;	// default setting if no interpolation mode provided
+				 var lines = true;
+        		 if (jsonResult.hasOwnProperty("interpolationMode")) {
+        		 	var mode = jsonResult.interpolationMode;
+        		 	if (mode === "STEPS") steps = true;
+        		 	else if (mode === "NONE") lines = false; // TODO NEAREST; default: linear
+        		 }
+				 
 				 var panel =    
 				      {
 					        id: panelId,
@@ -146,9 +199,11 @@ return function(callback) {
 					          "short"
 					        ],
 					        points: true,
-					        pointradius: 5,
+					        pointradius: 3,
 					        linewidth: 2,
+					        lines: lines,
 					        targets: targets,
+					        steppedLine: steps,
 					        datasource: "influxdb",
 					        tooltip: {
 					          shared: false
@@ -180,6 +235,17 @@ return function(callback) {
   			  }
   		//		console.log("new row added to dashboard",newRow);
   				dashboard.rows.push(newRow);
+                                
+                                for(var i = 0; i < newRow.panels[0].targets.length; i++) {
+                                    
+                                    var target = newRow.panels[0].targets[i];
+                                    
+                                    var opt = document.createElement("option");
+                                    opt.text = target.series;
+                                    opt.value = target.series;
+                                    dropdown.options.add(opt);
+                                    
+                                }
   			}
   			else if (waitCounter < 100) {
   		//		console.log("row not yet finished... waiting another 100ms");

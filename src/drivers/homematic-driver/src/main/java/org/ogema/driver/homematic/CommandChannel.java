@@ -69,12 +69,12 @@ public class CommandChannel extends Channel {
 	@Override
 	public void setEventListener(SampledValueContainer container, ChannelUpdateListener listener) throws IOException,
 			UnsupportedOperationException {
-		throw new UnsupportedOperationException();
+		// throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public void removeUpdateListener() throws IOException, UnsupportedOperationException {
-		throw new UnsupportedOperationException();
+		// throw new UnsupportedOperationException();
 	}
 
 }

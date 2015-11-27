@@ -49,6 +49,7 @@ public class ConstantIntervalFileObject extends FileObject {
 	protected void readHeader(DataInputStream dis) throws IOException {
 		startTimeStamp = dis.readLong();
 		storagePeriod = dis.readLong();
+		startTimeStamp = FileObjectProxy.getRoundedTimestamp(startTimeStamp, storagePeriod);
 	}
 
 	@Override
@@ -132,8 +133,8 @@ public class ConstantIntervalFileObject extends FileObject {
 			return (long) (pos * 9 + 16);
 		}
 		else {
-			// not in file! should never happen...
-			return -1;
+			throw new IllegalArgumentException("Requested timestamp is not in file: timestamp: " + timestamp
+					+ "; startTimeStamp: " + startTimeStamp);
 		}
 	}
 
@@ -201,7 +202,6 @@ public class ConstantIntervalFileObject extends FileObject {
 			if (!canRead) {
 				enableInput();
 			}
-
 			long timestampcounter = start;
 			long startPos = getBytePosition(start);
 			long endPos = getBytePosition(endRounded);

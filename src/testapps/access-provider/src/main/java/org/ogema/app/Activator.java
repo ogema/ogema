@@ -59,6 +59,8 @@ public class Activator implements BundleActivator, Access, Application {
 	Access acc;
 	RestrictedAccess rAcc;
 
+	BundleContext bc;
+
 	private PermissionManager pMan;
 	LogService log;
 	private WebAccessManager web;
@@ -67,70 +69,9 @@ public class Activator implements BundleActivator, Access, Application {
 		/*
 		 * Register a service to be user by a restricted app
 		 */
+		this.bc = bc;
 		bc.registerService(Access.class.getName(), this, null);
 		bc.registerService(Application.class, this, null);
-
-		/*
-		 * Get PermissionManager to delegate the permission checks
-		 */
-		pMan = (PermissionManager) bc.getService(bc.getServiceReference(PermissionManager.class.getName()));
-		this.web = pMan.getWebAccess();
-		/*
-		 * Log service
-		 */
-		ServiceReference<?> sRef = bc.getServiceReference(LogService.class.getName());
-		log = (LogService) bc.getService(sRef);
-
-		admin = (AdministrationManager) bc.getService(bc.getServiceReference(AdministrationManager.class.getName()));
-		acc = (Access) bc.getService(bc.getServiceReference(Access.class.getName()));
-		rAcc = (RestrictedAccess) bc.getService(bc.getServiceReference(RestrictedAccess.class.getName()));
-		/*
-		 * Wait until the app is registered in the app manager. Some tries are made
-		 */
-		int tries = 100;
-		try {
-			AppPermission ap = null;
-			while (tries-- >= 0) {
-				ap = getOwnAppPermission();
-				if (ap == null) {
-					if (tries == 0) {
-						logger.info("Something goes wrong with the activation of the app.");
-						break;
-					}
-					Thread.sleep(50);
-				}
-				else
-					break;
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		/*
-		 * For test web access via guest user
-		 */
-		AccessManager acc = pMan.getAccessManager();
-
-		AppPermissionFilter filter = new AppPermissionFilter(testAppID.getBundle().getSymbolicName(), testAppID
-				.getOwnerGroup(), testAppID.getOwnerUser(), testAppID.getVersion());
-		acc.addPermission("guest", filter);
-		List<String> allusers = acc.getAllUsers();
-		System.out.print("Allusers: ");
-		for (String str : allusers) {
-			System.out.print(str);
-			System.out.print(",\t");
-		}
-		System.out.println();
-
-		List<AppID> apps = acc.getAppsPermitted("guest");
-		System.out.print("guest is permitted for apps: ");
-		for (AppID id : apps) {
-			System.out.print(id.getIDString());
-			System.out.print(",\t");
-		}
-		System.out.println();
-
-		// Start tests
-		testSuit();
 	}
 
 	public void stop(BundleContext context) {
@@ -738,7 +679,7 @@ public class Activator implements BundleActivator, Access, Application {
 		// Now add the Exception
 		Map<String, ConditionalPermissionInfo> defaults = pMan.getDefaultPolicies().getGrantedPerms();
 
-		pMan.setDefaultPolicies(ap);
+		pMan.setDefaultPolicies();
 		pMan.installPerms(ap);
 		ap = getOwnAppPermission();
 		printGrantedPerms(ap);
@@ -772,7 +713,68 @@ public class Activator implements BundleActivator, Access, Application {
 
 	@Override
 	public void start(ApplicationManager appManager) {
-		// TODO Auto-generated method stub
+		web = appManager.getWebAccessManager();
+
+		/*
+		 * Get PermissionManager to delegate the permission checks
+		 */
+		pMan = (PermissionManager) bc.getService(bc.getServiceReference(PermissionManager.class.getName()));
+		/*
+		 * Log service
+		 */
+		ServiceReference<?> sRef = bc.getServiceReference(LogService.class.getName());
+		log = (LogService) bc.getService(sRef);
+
+		admin = (AdministrationManager) bc.getService(bc.getServiceReference(AdministrationManager.class.getName()));
+		acc = (Access) bc.getService(bc.getServiceReference(Access.class.getName()));
+		rAcc = (RestrictedAccess) bc.getService(bc.getServiceReference(RestrictedAccess.class.getName()));
+		/*
+		 * Wait until the app is registered in the app manager. Some tries are made
+		 */
+		int tries = 100;
+		try {
+			AppPermission ap = null;
+			while (tries-- >= 0) {
+				ap = getOwnAppPermission();
+				if (ap == null) {
+					if (tries == 0) {
+						logger.info("Something goes wrong with the activation of the app.");
+						break;
+					}
+					Thread.sleep(50);
+				}
+				else
+					break;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		/*
+		 * For test web access via guest user
+		 */
+		AccessManager acc = pMan.getAccessManager();
+
+		AppPermissionFilter filter = new AppPermissionFilter(testAppID.getBundle().getSymbolicName(), testAppID
+				.getOwnerGroup(), testAppID.getOwnerUser(), testAppID.getVersion());
+		acc.addPermission("guest", filter);
+		List<String> allusers = acc.getAllUsers();
+		System.out.print("Allusers: ");
+		for (String str : allusers) {
+			System.out.print(str);
+			System.out.print(",\t");
+		}
+		System.out.println();
+
+		List<AppID> apps = acc.getAppsPermitted("guest");
+		System.out.print("guest is permitted for apps: ");
+		for (AppID id : apps) {
+			System.out.print(id.getIDString());
+			System.out.print(",\t");
+		}
+		System.out.println();
+
+		// Start tests
+		testSuit();
 
 	}
 

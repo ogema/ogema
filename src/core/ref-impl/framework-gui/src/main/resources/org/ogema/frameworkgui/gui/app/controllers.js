@@ -55,13 +55,15 @@ ngOGFrGui.controller('NavigationCtrl', [ '$scope', '$location', '$rootScope',
 				modalInstance.result.then(function(action) {
 					// console.log('SHOW LOGOUT Bundle dismissed at: ', action);
 					//$(location).attr('href', "/apps/ogema/framework/gui?action=logout");
-					window.location.replace("/apps/ogema/framework/gui?action=logout");
-					//ogemaGateway.getJSON("/apps/ogema/framework/gui", {
-					//	"action" : "logout"
-					//}).then(function(result) {
-						//console.log('SHOW LOGOUT Modal success');
-						//$window.location.href = "/ogema/index.html";
-					//}, failCb);
+					
+                    //window.location.replace("/apps/ogema/framework/gui?action=logout");
+                    //
+					ogemaGateway.getJSON("/apps/ogema/framework/gui", {
+						"action" : "logout"
+					}).then(function(result) {
+                        console.log('SHOW LOGOUT Modal success');
+						$window.location.href = "/ogema/index.html";
+					}, failCb);
 				}, function() {
 					// console.log('SHOW LOGOUT Modal dismissed at: ' + new
 					// Date());

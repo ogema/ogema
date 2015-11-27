@@ -18,10 +18,8 @@ package org.ogema.impl.security;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
 
 import javax.servlet.ServletException;
-import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -34,18 +32,25 @@ import org.osgi.service.useradmin.User;
 import org.osgi.service.useradmin.UserAdmin;
 import org.slf4j.Logger;
 
-import static org.ogema.impl.security.WebAccessManagerImpl.OLDREQ_ATTR_NAME;
-
 public class LoginServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 1l;
 
 	protected static final String LOGIN_PATH = "/web/login.html";
 	protected static final String LOGIN_SERVLET_PATH = "/ogema/login";
+	protected static final String OLDREQ_ATTR_NAME = "requestBeforeLogin";
+
+	private static final String LOGIN_FAILED_MSG = "Login failed: Username and/or Password wrong";
+	private static final String MAX_LOGIN_TRIES_EXCEEDED_MSG = "Max number of tries for login exceeded."
+			+ " Login is blocked for %s.";
 
 	private Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 	private PermissionManager permissionManager;
 	private UserAdmin ua;
+
+	// used to prevent brute force attacks by blocking IPs if more than a predefined number of logins
+	// failed. 
+	private LoginFailureInspector failureInspector = new LoginFailureInspector();
 
 	public LoginServlet(PermissionManager permissionManager, UserAdmin ua) {
 		this.permissionManager = permissionManager;
@@ -54,10 +59,13 @@ public class LoginServlet extends HttpServlet {
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		if (req.getSession().getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME) != null) {
+		failureInspector.cleanUp();
+		HttpSession session = req.getSession();
+		if (session.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME) != null) {
 			resp.sendRedirect("/ogema/index.html");
 			return;
 		}
+
 		InputStream is;
 		OutputStream bout;
 		int len = 0;
@@ -97,49 +105,66 @@ public class LoginServlet extends HttpServlet {
 	 */
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		failureInspector.cleanUp();
+		String remoteAddress = req.getRemoteAddr();
+		if (failureInspector.isUserBlocked(remoteAddress)) {
+			resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+			resp.getWriter().write(
+					String.format(MAX_LOGIN_TRIES_EXCEEDED_MSG, failureInspector.getRemainingBlockTime(remoteAddress)));
+			return;
+		}
+
 		logger.info(req.toString());
 		String usr = req.getParameter("usr");
 		String pwd = req.getParameter("pwd");
 		if (Configuration.DEBUG) {
-			logger.info("Login request for: usr");
-			logger.info(usr);
+			logger.info("Login request for user: " + usr);
 		}
 		if (usr == null || usr.isEmpty() || pwd == null || pwd.isEmpty()) {
 			logger.info("Invalid user or password");
-			resp.getWriter().write("");
+			resp.getWriter().write(LOGIN_FAILED_MSG);
 			resp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
 			return;
 		}
 		// Check if the user authentication is valid
 		boolean auth = permissionManager.getAccessManager().authenticate(usr, pwd, true);
-		HttpSession ses = req.getSession();
 		if (auth) {
 			User user = (User) ua.getRole(usr);
 			Authorization author = ua.getAuthorization(user);
-			SessionAuth sauth = new SessionAuth(author, user, ses);
+			HttpSession session = req.getSession();
+			SessionAuth sauth = new SessionAuth(author, user, session);
 			// check if we had an old req to redirect to the originally requested URL before invalidating
 			String newLocation = "/ogema/index.html";
-			if (ses.getAttribute(OLDREQ_ATTR_NAME) != null) {
-				newLocation = ses.getAttribute(OLDREQ_ATTR_NAME).toString();
+			if (session.getAttribute(OLDREQ_ATTR_NAME) != null) {
+				newLocation = session.getAttribute(OLDREQ_ATTR_NAME).toString();
 			}
 
 			// invalidate old session to prevent session hijacking:
 			req.getSession(false).invalidate();
-			ses = req.getSession(true);
-			ses.setAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME, sauth);
+			session = req.getSession(true);
+			session.setAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME, sauth);
 
 			/*
 			 * Handle Request which is received before login was sent. This request is responded with the login page,
 			 * therefore the login request is responded with the stalled request received before.
 			 */
-			resp.setContentType("text/html");
 			resp.setStatus(HttpServletResponse.SC_OK);
 			resp.getWriter().write(newLocation);
 		}
 		else {
+			failureInspector.loginFailed(remoteAddress);
 			resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-			resp.getWriter().write("");
-			resp.flushBuffer();
+
+			if (failureInspector.isUserBlocked(remoteAddress)) {
+				resp.getWriter().write(
+						String.format(MAX_LOGIN_TRIES_EXCEEDED_MSG, failureInspector
+								.getRemainingBlockTime(remoteAddress)));
+			}
+			else {
+				resp.getWriter().write(LOGIN_FAILED_MSG);
+			}
 		}
+		resp.setContentType("text/html");
+		resp.flushBuffer();
 	}
 }

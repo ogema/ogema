@@ -189,7 +189,12 @@ public abstract class FileObject {
 			}
 			// bytes)
 			dataFile.createNewFile();
+
+			//OLD 
+			//this.startTimeStamp = FileObjectProxy.getRoundedTimestamp(startTimeStamp, stepIntervall);
+
 			this.startTimeStamp = startTimeStamp;
+
 			this.storagePeriod = stepIntervall;
 
 			/*
@@ -198,7 +203,7 @@ public abstract class FileObject {
 			fos = new FileOutputStream(dataFile);
 			bos = new BufferedOutputStream(fos);
 			dos = new DataOutputStream(bos);
-			dos.writeLong(startTimeStamp);
+			dos.writeLong(this.startTimeStamp);
 			dos.writeLong(stepIntervall);
 			dos.flush();
 			length += 16; /* wrote 2*8 Bytes */

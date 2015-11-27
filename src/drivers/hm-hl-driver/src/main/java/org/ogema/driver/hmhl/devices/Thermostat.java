@@ -28,6 +28,7 @@ import org.ogema.driver.hmhl.HM_hlConfig;
 import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
 import org.ogema.driver.hmhl.pattern.ThermostatPattern;
+import org.ogema.tools.resource.util.ResourceUtils;
 
 public class Thermostat extends HM_hlDevice implements ResourceValueListener<TemperatureResource> {
 
@@ -39,7 +40,7 @@ public class Thermostat extends HM_hlDevice implements ResourceValueListener<Tem
 		patAcc = appManager.getResourcePatternAccess();
 		device = patAcc.createResource(appManager.getResourceManagement().getUniqueResourceName(
 				hm_hlConfig.resourceName), ThermostatPattern.class);
-		device.model.activate(true);
+		activate(device); // does not activate value resources
 	}
 
 	public Thermostat(HM_hlDriver driver, ApplicationManager appManager, DeviceLocator deviceLocator) {
@@ -47,26 +48,39 @@ public class Thermostat extends HM_hlDevice implements ResourceValueListener<Tem
 		patAcc = appManager.getResourcePatternAccess();
 		device = patAcc.createResource(appManager.getResourceManagement().getUniqueResourceName(
 				hm_hlConfig.resourceName), ThermostatPattern.class);
-		device.model.activate(true);
+		activate(device);// does not activate value resources
+		// device.model.activate(true);
 		addMandatoryChannels();
 	}
 
+	// charge sensor missing?
 	@Override
 	protected void parseValue(Value value, String channelAddress) {
 		switch (channelAddress) {
 		case "ATTRIBUTE:0001":
 			device.remoteDesiredTemperature.setCelsius(value.getFloatValue());
+			device.remoteDesiredTemperature.activate(true);
 			break;
 		case "ATTRIBUTE:0002":
 			device.currentTemperature.setCelsius(value.getFloatValue());
+			device.currentTemperature.activate(true);
 			break;
 		case "ATTRIBUTE:0003":
 			device.valvePosition.setValue(value.getFloatValue());
+			device.valvePosition.activate(true);
 			break;
 		case "ATTRIBUTE:0004":
 			device.batteryVoltage.setValue(value.getFloatValue());
+			device.batteryVoltage.activate(true);
 			break;
 		}
+	}
+
+	private void activate(ThermostatPattern device) {
+		// do not activate value resources, since they do not contain sensible values yet
+		ResourceUtils.activateComplexResources(device, true, appManager.getResourceAccess());
+		device.model.valve().setting().controllable().setValue(false); // valve is not directly controllable, only via temp setting
+		device.model.valve().setting().controllable().activate(false);
 	}
 
 	private void addMandatoryChannels() {
@@ -110,6 +124,7 @@ public class Thermostat extends HM_hlDevice implements ResourceValueListener<Tem
 		commandConfig.driverId = hm_hlConfig.driverId;
 		commandConfig.interfaceId = hm_hlConfig.interfaceId;
 		commandConfig.channelAddress = "COMMAND:01";
+		commandConfig.timeout = -1;
 		commandConfig.resourceName = hm_hlConfig.resourceName + "_DesiredTemp";
 		commandConfig.chLocator = addChannel(commandConfig);
 
@@ -129,5 +144,10 @@ public class Thermostat extends HM_hlDevice implements ResourceValueListener<Tem
 		float localDesiredTemp = res.getCelsius();
 		ChannelLocator locator = this.commandChannel.get("COMMAND:01");
 		writeToChannel(locator, new FloatValue(localDesiredTemp));
+	}
+
+	@Override
+	protected void terminate() {
+		removeChannels();
 	}
 }

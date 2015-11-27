@@ -45,10 +45,8 @@ public interface DataRecorder {
 	 * 
 	 * This will permanently remove the stored time series data and the associated configuration.
 	 * 
-	 * @param recordedDataID
+	 * @param id
 	 *            unique ID of the time series
-	 * @throws DataRecorderException
-	 *             if the time series does not exist
 	 */
 	boolean deleteRecordedDataStorage(String id);
 

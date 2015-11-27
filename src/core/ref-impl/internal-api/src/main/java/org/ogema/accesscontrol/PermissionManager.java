@@ -18,6 +18,7 @@ package org.ogema.accesscontrol;
 import java.io.PrintStream;
 import java.security.AccessControlContext;
 import java.security.Permission;
+import java.util.ArrayList;
 import java.util.Map;
 
 import org.ogema.core.administration.AdministrationManager;
@@ -77,7 +78,7 @@ public interface PermissionManager {
 	 *            exact format definition of the permission info string see OSGi Service Platform Core Specification,
 	 *            The OSGi Alliance, Release 4, Version 4.2
 	 */
-	public void setDefaultPolicies(AppPermission pInfos);
+	public AppPermission setDefaultPolicies();
 
 	/**
 	 * Checks if the current access context contains the permission that implies the given permission. The check policy
@@ -103,11 +104,21 @@ public interface PermissionManager {
 	boolean handleSecurity(Permission perm, AccessControlContext acc);
 
 	/**
-	 * Gets the reference to the {@link WebAccessManager} instance.
+	 * Gets the reference to a global {@link WebAccessManager} instance which can be used get registration information
+	 * and for authentication purposes but not to register web resources.
 	 * 
 	 * @return WebAccessManager reference.
 	 */
 	public WebAccessManager getWebAccess();
+
+	/**
+	 * Return the application specific WebAccessManager for the given app.
+	 * 
+	 * @param app
+	 *            Application for which to return the WebAccessManager.
+	 * @return WebAccessManager for that AppID
+	 */
+	public WebAccessManager getWebAccess(AppID app);
 
 	/**
 	 * Gets the implementation dependent object that support the injection of permissions and the manipulation of the
@@ -193,9 +204,10 @@ public interface PermissionManager {
 	public void printPolicies(PrintStream os);
 
 	/**
-	 * Checks the Permission to create a channel to a low level driver via the {@link ChannelManager}. The application
-	 * the permission is granted to is determined as the latest calling application in the call stack. {@see
-	 * PermissionManager#handleSecurity(Permission)}.
+	 * Checks the Permission to create a channel to a low level driver via the Channel Manager. The application the
+	 * permission is granted to is determined as the latest calling application in the call stack.
+	 * 
+	 * @see PermissionManager#handleSecurity PermissionManager.handleSecurity
 	 * 
 	 * @param configuration
 	 *            The description object of the channel to be created.
@@ -207,8 +219,9 @@ public interface PermissionManager {
 
 	/**
 	 * Checks the Permission to delete a channel that is created before. The application the permission is granted to is
-	 * determined as the latest calling application in the call stack. {@see
-	 * PermissionManager#handleSecurity(Permission)}.
+	 * determined as the latest calling application in the call stack.
+	 * 
+	 * @see PermissionManager#handleSecurity PermissionManager.handleSecurity
 	 * 
 	 * @param configuration
 	 *            The description object of the channel to be deleted.
@@ -260,7 +273,28 @@ public interface PermissionManager {
 	 */
 	public void resetAccessContext();
 
-	public Map<String, ConditionalPermissionInfo> getGrantedPerms(Bundle b);
+	/**
+	 * Provides a map of policies applied to the bundle of the specified location.
+	 * 
+	 * @param bLoc
+	 *            The location string as it returned by Bundle.getLocation().
+	 * @return A map where the keys are the unique names of the policies and the values the policy itself coded as a
+	 *         ConditionalPermissionInfo object.
+	 */
+	public Map<String, ConditionalPermissionInfo> getGrantedPerms(String bLoc);
 
-	public boolean isDefaultPolicy(String permtype, String permname, String actions);
+	/**
+	 * Checks if a policy specified with its permission type, permission filter and actions, is applied to all bundles.
+	 * 
+	 * @param permType
+	 *            Fully qualified name of the permission class.
+	 * @param filter
+	 *            The permission name string, that is used as filter by the permission class.
+	 * @param actions
+	 *            Comma separated list of the actions as they are defined by the permission class.
+	 * @return
+	 */
+	public boolean isDefaultPolicy(String permType, String filter, String actions);
+
+	public boolean isSecure();
 }

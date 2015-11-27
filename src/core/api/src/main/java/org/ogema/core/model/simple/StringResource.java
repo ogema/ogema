@@ -15,8 +15,7 @@
  */
 package org.ogema.core.model.simple;
 
-import org.ogema.core.model.schedule.DefinitionSchedule;
-import org.ogema.core.model.schedule.ForecastSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 
 /**
  * Resource containing a single string entry.
@@ -42,7 +41,7 @@ public interface StringResource extends SingleValueResource {
 	 * (either the best individual forecast or the best combined forecast). The
 	 * other forecasts can be added as decorators.
 	 */
-	ForecastSchedule forecast();
+	AbsoluteSchedule forecast();
 
 	/**
 	 * Future behavior of this value that shall be reached through management
@@ -50,6 +49,6 @@ public interface StringResource extends SingleValueResource {
 	 * The data type, unit and interpretation of
 	 * the values in the schedule are the same as the value in this.
 	 */
-	DefinitionSchedule program();
+	AbsoluteSchedule program();
 
 }

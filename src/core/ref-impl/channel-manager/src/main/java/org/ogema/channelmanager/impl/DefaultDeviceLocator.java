@@ -71,6 +71,10 @@ public class DefaultDeviceLocator implements DeviceLocator {
 			if (!otherLocator.getDeviceAddress().equals(this.deviceAddress)) {
 				return false;
 			}
+			if (otherLocator.getParameters() != null && this.parameters != null
+					&& !otherLocator.getParameters().equals(this.parameters)) {
+				return false;
+			}
 
 			return true;
 		}

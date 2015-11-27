@@ -46,7 +46,6 @@ import org.osgi.framework.ServiceRegistration;
  */
 @RunWith(PaxExam.class)
 public abstract class OsgiAppTestBase {
-
 	@Inject
 	protected BundleContext ctx;
 	private CountDownLatch startLatch = new CountDownLatch(1);
@@ -81,16 +80,16 @@ public abstract class OsgiAppTestBase {
 				CoreOptions.frameworkProperty("osgi.console.enable.builtin").value("true"),
 				CoreOptions.frameworkProperty("org.osgi.service.http.port").value(Integer.toString(HTTP_PORT)),
 				CoreOptions.frameworkProperty("org.osgi.framework.bsnversion").value("multiple"),
-				CoreOptions.systemProperty("org.ogema.security").value("off"),
+				CoreOptions.systemProperty("org.ogema.security").value("on"),
 				CoreOptions.junitBundles(),
 				// load the bundle of the extending class directly from maven build dir:
 				CoreOptions.when(includeTestBundle).useOptions(
 						CoreOptions.bundle("reference:file:target/classes/").start()),
 				CoreOptions.composite(frameworkBundles()),
-		//ogemaWebFrontentOption(),
-		//wicketGuiOption(),
-		//webConsoleOption(),
-		//felixGogoShellOption(),
+		// ogemaWebFrontentOption(),
+		// wicketGuiOption(),
+		// webConsoleOption(),
+		// felixGogoShellOption(),
 		};
 	}
 
@@ -100,20 +99,20 @@ public abstract class OsgiAppTestBase {
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "permission-admin").version(ogemaVersion).startLevel(1)
 						.start(),
 
-				CoreOptions.mavenBundle("org.ops4j.pax.exam", "pax-exam-junit4", "3.5.0").start(),
+				CoreOptions.mavenBundle("org.ops4j.pax.exam", "pax-exam-junit4", "4.6.0").start(),
 
 				CoreOptions.mavenBundle("org.ow2.asm", "asm-all", "5.0.3").start(),
 
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.scr", "1.6.2").start(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.eventadmin", "1.3.2").start(),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin.filestore", "1.0.2")
-						.startLevel(2).start(),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin", "1.0.3").startLevel(3)
-						.start(),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin.filestore", "1.0.2").start(),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin", "1.0.3").start(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.configadmin", "1.6.0").start(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.api", "2.3.0").start(),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.jetty", "2.3.0").start(),
-				CoreOptions.mavenBundle("javax.servlet", "javax.servlet-api", "3.0.1"),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.jetty", "3.0.2").start(),
+				CoreOptions.mavenBundle("javax.servlet", "javax.servlet-api", "3.1.0"),
+				CoreOptions.mavenBundle("org.eclipse.jetty", "jetty-servlets", "9.2.11.v20150529"),
+
 				CoreOptions.mavenBundle("org.slf4j", "slf4j-api", "1.7.2"),
 				CoreOptions.mavenBundle("joda-time", "joda-time", "2.2"),
 

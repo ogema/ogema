@@ -25,12 +25,15 @@ import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
 import org.ogema.core.channelmanager.driverspi.ChannelUpdateListener;
+import org.ogema.core.channelmanager.driverspi.DeviceListener;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
-import org.ogema.core.channelmanager.driverspi.ExceptionListener;
+import org.ogema.core.channelmanager.driverspi.NoSuchChannelException;
+import org.ogema.core.channelmanager.driverspi.NoSuchDeviceException;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.driverspi.ValueContainer;
+import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.driver.modbustcp.ModbusChannel.EAccess;
 import org.ogema.driver.modbustcp.enums.EDatatype;
 
@@ -153,7 +156,7 @@ public class ModbusDriver implements ChannelDriver {
 	 * Frees all channels, devices and interfaces
 	 */
 	@Override
-	public void reset() {
+	public void shutdown() {
 		for (Connection con : connectionList) {
 			removeConnection(con);
 			con.close();
@@ -277,24 +280,6 @@ public class ModbusDriver implements ChannelDriver {
 	}
 
 	/**
-	 * Asynchronous read channel method - not mandatory
-	 */
-	@Override
-	public void readChannels(List<SampledValueContainer> channels, ChannelUpdateListener listener)
-			throws UnsupportedOperationException {
-		throw new UnsupportedOperationException();
-	}
-
-	/**
-	 * Asynchronous write channel method - not mandatory
-	 */
-	@Override
-	public void writeChannels(List<ValueContainer> channels, ExceptionListener listener)
-			throws UnsupportedOperationException {
-		throw new UnsupportedOperationException();
-	}
-
-	/**
 	 * Returns the right value of the register
 	 */
 	public Object getDataTypeValue(SampledValueContainer container) {
@@ -369,6 +354,7 @@ public class ModbusDriver implements ChannelDriver {
 	 * @param channel
 	 * @param container
 	 */
+	@SuppressWarnings("unused")
 	private void print(Channel channel, SampledValueContainer container) {
 
 		String addressParams[] = container.getChannelLocator().getChannelAddress().split(":");
@@ -408,6 +394,37 @@ public class ModbusDriver implements ChannelDriver {
 
 		}
 
+	}
+
+	@Override
+	public void addDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void removeDeviceListener(DeviceListener listener) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void writeChannel(ChannelLocator channelLocator, Value value) throws UnsupportedOperationException,
+			IOException, NoSuchDeviceException, NoSuchChannelException {
+		try {
+			Connection con = findConnection(channelLocator.getDeviceLocator().getDeviceAddress());
+			Device dev = con.findDevice(channelLocator.getDeviceLocator());
+			Channel channel = dev.findChannel(channelLocator);
+
+			// set access flag
+			channel.update(EAccess.WRITE);
+
+			// write data
+			channel.writeValue(con, value);
+
+		} catch (NullPointerException e) {
+			throw new IOException("Unknown channel: " + channelLocator, e);
+		}
 	}
 
 }

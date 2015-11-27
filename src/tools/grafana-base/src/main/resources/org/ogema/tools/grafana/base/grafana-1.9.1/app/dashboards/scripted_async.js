@@ -51,10 +51,7 @@ return function(callback) {
 	dashboard.editable = true;
 	dashboard.pulldowns = pulldowns;
 	//dashboard.refresh = "5s";  // set below
-	dashboard.time = {
-	  from: "now-5m",
-	  to: "now"
-	};
+
 	var refreshBak;
 	
 	$.ajax({
@@ -66,7 +63,13 @@ return function(callback) {
 	   console.log("Parameter callback received ", paramsResult);
 	   var params = JSON.parse(paramsResult)[0].parameters;
 	   var refr = params.updateInterval;
-	   dashboard.refresh = "1s";	   
+	   dashboard.refresh = "1s";
+           
+           dashboard.time = {
+            from: params.frameworktimeStart,
+            to: params.frameworktimeEnd
+           };
+           
 	   if (refr > 0) {
 		  // dashboard.refresh = String(refr/1000) + "s";
 		  refreshBak = String(refr/1000) + "s";
@@ -117,7 +120,8 @@ return function(callback) {
 				    contentType: 'application/json'
 			  })
 			  .done(function(result) {
-				 var resources = JSON.parse(result)[0].loggedResources;
+				 var jsonResult = JSON.parse(result)[0];
+				 var resources = jsonResult.loggedResources;
 		//		 console.log("New resources",resources);
 				 var targets = [];
 				 for (var i=0;i<resources.length;i++) {
@@ -133,6 +137,14 @@ return function(callback) {
 					 counter[rowName] = counter[rowName] + 1;
 					 return;
 				 }
+				 var steps = false;	// default setting if no interpolation mode provided
+				 var lines = true;
+        		 if (jsonResult.hasOwnProperty("interpolationMode")) {
+        		 	var mode = jsonResult.interpolationMode;
+        		 	if (mode === "STEPS") steps = true;
+        		 	else if (mode === "NONE") lines = false; // TODO NEAREST; default: linear
+        		 }
+        		 
 				 var panel =    
 				      {
 					        id: panelId,
@@ -149,7 +161,9 @@ return function(callback) {
 					        points: true,
 					        pointradius: 5,
 					        linewidth: 2,
+					        lines: lines,
 					        targets: targets,
+					        steppedLine: steps,
 					        datasource: "influxdb",
 					        tooltip: {
 					          shared: false

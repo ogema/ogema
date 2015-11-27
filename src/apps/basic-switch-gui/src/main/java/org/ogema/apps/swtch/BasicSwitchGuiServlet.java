@@ -39,6 +39,7 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
+import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.pattern.PatternListener;
 import org.ogema.model.actors.MultiSwitch;
 import org.ogema.model.actors.OnOffSwitch;
@@ -176,9 +177,11 @@ public class BasicSwitchGuiServlet extends HttpServlet {
 				String swtch = jo.get("thermo").getTextValue();
 				Thermostat res = appMan.getResourceAccess().getResource(swtch);
 				float value = (float) jo.get("value").asDouble();
-				res.temperatureSensor().settings().setpoint().setCelsius(value);
+				TemperatureResource tr = res.temperatureSensor().settings().setpoint().create();
+				tr.setCelsius(value);
+				tr.activate(false);
 			}
-			Thread.sleep(100); // do this in order to allow drivers to transfer stateControl value to stateFeedback
+			Thread.sleep(400); // do this in order to allow drivers to transfer stateControl value to stateFeedback
 		} catch (Exception e) {
 			appMan.getLogger().warn("Error in POST method ", e);
 		}

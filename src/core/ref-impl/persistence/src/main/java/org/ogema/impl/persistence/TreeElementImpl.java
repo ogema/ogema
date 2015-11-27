@@ -508,7 +508,7 @@ public class TreeElementImpl implements TreeElement {
 		 * If a complexArray is to be added as element operation is unsupported.
 		 */
 		if (chType == DBConstants.CLASS_COMPLEX_ARR_TYPE) {
-			throw new UnsupportedOperationException("Adding of a child to a ComplexResourceArray with a wrong tpye: "
+			throw new UnsupportedOperationException("Adding of a child to a ComplexResourceArray with a wrong type: "
 					+ chType.getName());
 		}
 		TreeElementImpl result = new TreeElementImpl(db);
@@ -523,7 +523,7 @@ public class TreeElementImpl implements TreeElement {
 			}
 			else if (chType != this.type) {
 				throw new UnsupportedOperationException(
-						"Adding of a child to a ComplexResourceArray with a wrong tpye: " + chType.getName());
+						"Adding of a child to a ComplexResourceArray with a wrong type: " + chType.getName());
 			}
 			else {
 				result.type = chType;
@@ -561,13 +561,6 @@ public class TreeElementImpl implements TreeElement {
 
 	public TreeElement addCompArrRef(TreeElement ref, String refName, boolean decorating) {
 		TreeElementImpl refimpl = (TreeElementImpl) ref;
-		/*
-		 * If a complexArray is to be added as element operation is unsupported.
-		 */
-		if (refimpl.complexArray) {
-			throw new UnsupportedOperationException(
-					"Adding of a referencewith a wrong tpye to a ComplexResourceArray : " + refimpl.typeName);
-		}
 
 		// check if the reference to be added has the right type
 		if (!decorating) {
@@ -657,7 +650,7 @@ public class TreeElementImpl implements TreeElement {
 	public TreeElement getChild(String name) {
 		// check if the resource exists
 		if (!db.hasResource0(this))
-			throw new ResourceNotFoundException(this.toString());
+			throw new ResourceNotFoundException(this.toString() + ", subresource: " + name);
 		// if this is a reference than addChild to the reference
 		TreeElementImpl node = this;
 		if (reference)
@@ -789,6 +782,8 @@ public class TreeElementImpl implements TreeElement {
 			}
 			Class<?> cls = node.type;
 			if (cls != null) {
+				if (cls == DBConstants.CLASS_COMPLEX_ARR_TYPE)
+					return null;
 				return cls.asSubclass(Resource.class);
 			}
 			else {
@@ -802,7 +797,7 @@ public class TreeElementImpl implements TreeElement {
 	@Override
 	public void setResourceListType(Class<? extends Resource> cls) {
 		if (complexArray) {
-			if (type != null && type != cls)
+			if (type != null && type != DBConstants.CLASS_COMPLEX_ARR_TYPE && type != cls)
 				throw new InvalidResourceTypeException("ResourceList type already set to " + type.getName());
 			else
 				type = cls;

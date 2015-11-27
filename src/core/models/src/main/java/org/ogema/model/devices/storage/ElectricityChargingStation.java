@@ -16,7 +16,6 @@
 package org.ogema.model.devices.storage;
 
 import org.ogema.core.model.ResourceList;
-import org.ogema.model.actors.MultiSwitch;
 import org.ogema.model.connections.ElectricityConnection;
 import org.ogema.model.prototypes.PhysicalElement;
 import org.ogema.model.ranges.PowerRange;
@@ -29,30 +28,28 @@ import org.ogema.model.smartgriddata.ElectricEnergyRequest;
 public interface ElectricityChargingStation extends PhysicalElement {
 
 	/**
-	 * Actor controlling the charging.
-	 */
-	MultiSwitch setting();
-
-	/**
-	 * Electrical connection of the charging station to the vicinity. The
+	 * Electrical connection of the charging station to the grid. The
 	 * electrical connections to the connected batteries are modeled by the
 	 * electrical connections in the batteries.
 	 */
 	ElectricityConnection electricityConnection();
 
 	/**
-	 * Rated powers of the charging station.
+	 * Total rated power of the charging station. Individual charging points 
+	 * have individual rated powers, see {@link ChargingPoint#ratedPower()}.
 	 */
 	PowerRange ratedPower();
 
 	/**
-	 * The batteries that are currently connected to this charging station. Will
-	 * often be references to the devices.
+	 * Actual charging points of this charging station. 
 	 */
-	ResourceList<ElectricityStorage> batteries();
+	ResourceList<ChargingPoint> chargingPoints();
 
 	/**
-	 * Energy requests for the charging station.
+	 * External energy requests, for instance from the grid operator, the balancing group manager,
+	 * etc. This does not include the requests from the connected vehicles, which are modeled in 
+	 * {@link ChargingPoint#energyRequest() chargingPoints.get(X).energyRequest}.
 	 */
 	ResourceList<ElectricEnergyRequest> energyRequests();
+
 }

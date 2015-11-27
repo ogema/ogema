@@ -46,9 +46,8 @@ public interface EnergyStorage extends PhysicalElement {
 
 	/**
 	 * State of charge sensor and storage information. <br>
-	 * Also contains information on alarm limits, like a minimum storage reserve for batteries, in {@link
-	 * org.ogema.core.model.prototypes.Sensor.#alarmLimits() chargeSensor.alarmLimits.lowerLimit}, and control limits, in
-	 * {@link org.ogema.core.model.prototypes.Sensor.#controlLimits() chargeSensor.controlLimits}.
+	 * Also contains information on alarm limits, like a minimum storage reserve for batteries, in 
+	 * {@link org.ogema.model.sensors.Sensor#settings()}.
 	 */
 	StateOfChargeSensor chargeSensor();
 

@@ -13,23 +13,9 @@
  * You should have received a copy of the GNU General Public License
  * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
-/**
- * This file is part of OGEMA.
- *
- * OGEMA is free software: you can redistribute it and/or modify it under the
- * terms of the GNU General Public License as published by the Free Software
- * Foundation, either version 3 of the License, or (at your option) any later
- * version.
- *
- * OGEMA is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
- * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * OGEMA. If not, see <http://www.gnu.org/licenses/>.
- */
 package org.ogema.core.rads.listening;
 
+import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
 import org.ogema.core.rads.tools.ResourceFieldInfo;
 import org.ogema.core.resourcemanager.AccessMode;
@@ -47,25 +33,35 @@ import org.ogema.core.resourcemanager.pattern.ResourcePattern.CreateMode;
 @SuppressWarnings("rawtypes")
 class ConnectedResource {
 
-	private final Resource m_resource;
+	protected final Resource m_resource;
 	private final CompletionListener m_listener;
 	private final ResourceFieldInfo m_info;
 	private final ResourceValueListener<Resource> initValueListener;
+	private final OgemaLogger logger;
 	private boolean equalsAnnotation = false;
 	private boolean listenValue = false;
 	private boolean valueListenerActive = false;
 
 	private boolean m_complete = false;
 
-	public ConnectedResource(Resource resource, ResourceFieldInfo info, final CompletionListener listener) {
+	private boolean structureListenerActive = false;
+	private boolean accessModeListenerActive = false;
+
+	public ConnectedResource(Resource resource, ResourceFieldInfo info, final CompletionListener listener,
+			final OgemaLogger logger) {
 		m_resource = resource;
 		m_info = info;
 		m_listener = listener;
+		this.logger = logger;
 		// this listener is used to check both @Equals and @ValueChangedListener annotations
 		initValueListener = new ResourceValueListener<Resource>() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
+				if (!valueListenerActive) {
+					logger.warn("Value changed callback although listener has been deregistered");
+					return;
+				}
 				boolean complete_bak = m_complete;
 				if (equalsAnnotation) {
 					ConnectedResource.this.recheckCompletion();
@@ -84,7 +80,9 @@ class ConnectedResource {
 	}
 
 	public void start() {
+		structureListenerActive = true;
 		m_resource.addStructureListener(structureListener);
+		accessModeListenerActive = true;
 		m_resource.addAccessModeListener(accessListener);
 		if (m_info.isEqualityRequired()) {
 			equalsAnnotation = true;
@@ -105,7 +103,9 @@ class ConnectedResource {
 
 	public void stop() {
 		m_complete = false;
+		structureListenerActive = false;
 		m_resource.removeStructureListener(structureListener);
+		accessModeListenerActive = false;
 		m_resource.removeAccessModeListener(accessListener);
 		if (m_info.isEqualityRequired()) {
 			//System.out.println("   Removing value listener " + m_resource.getLocation());
@@ -153,13 +153,12 @@ class ConnectedResource {
 
 		@Override
 		public void accessModeChanged(Resource resource) {
-			//System.out.println(" Access mode changed " + resource.getLocation() + ", " + resource.getAccessMode().name());
+			if (!accessModeListenerActive) {
+				logger.warn("AccessMode callback although listener has been deregistered");
+				return;
+			}
 			if (!resource.equalsPath(m_resource)) { // sanity check.
 				if (resource.equalsLocation(m_resource)) {
-					//					System.err.println("Got an accessModeChanged callback on correct resource location="
-					//							+ resource.getLocation() + " but incorrect path=" + resource.getPath()
-					//							+ " (should be path=" + m_resource.getPath()
-					//							+ "): This should probably not happen. Continue and hope for the best.");
 					throw new RuntimeException("Got an accessModeChanged callback on correct resource location="
 							+ resource.getLocation() + " but incorrect path=" + resource.getPath()
 							+ " (should be path=" + m_resource.getPath() + "): This should probably not happen.");
@@ -181,22 +180,6 @@ class ConnectedResource {
 	};
 
 	/**
-	 * Listener in the resource values in case that an @Equals annotation had
-	 * been issued in the RAD.
-	 */
-	/*	private final ResourceValueListener valueListener = new ResourceValueListener() {
-
-	 @Override
-	 public void resourceChanged(Resource resource) {
-	 boolean complete_bak = m_complete;
-	 ConnectedResource.this.recheckCompletion();
-	 if (complete_bak == m_complete) return;
-	 else if (m_complete) m_listener.resourceAvailable(ConnectedResource.this);
-	 else m_listener.resourceUnavailable(ConnectedResource.this, !m_resource.exists());
-	 }
-	 }; */
-
-	/**
 	 * Listener to changes of the resource (activation, deactivation, deletion,
 	 * creation)
 	 */
@@ -204,24 +187,25 @@ class ConnectedResource {
 
 		@Override
 		public void resourceStructureChanged(ResourceStructureEvent event) {
-			//System.out.println("Structure change: " + event.getChangedResource().getLocation() + ": "+ event.getType().name());
+			if (!structureListenerActive) {
+				logger.warn("Structure callback received although listener has been deregistered");
+				return;
+			}
+
 			final EventType eventType = event.getType();
-			//			System.out.printf("ConnectedResource(complete=%b)-- %s %s %s%n", m_complete, event.getSource().getPath(),
-			//					event.getType(), event.getChangedResource());
 			if (eventType == EventType.SUBRESOURCE_ADDED || eventType == EventType.SUBRESOURCE_REMOVED) {
 				return;
 			}
+
 			ConnectedResource.this.recheckCompletion();
 			if (eventType == EventType.RESOURCE_DELETED || eventType == EventType.RESOURCE_DEACTIVATED) {
 				m_listener.resourceUnavailable(ConnectedResource.this, !m_resource.exists());
 			}
-			// FIXME: the latter condition can occur if a resource is added as a reference... this is a bit strange
+			// FIXME: the latter condition can occur if a resource is added as a reference... 
 			else if (eventType == EventType.RESOURCE_ACTIVATED
 					|| (m_resource.isActive() && (eventType == EventType.REFERENCE_ADDED || eventType == EventType.RESOURCE_CREATED))) {
 				m_listener.resourceAvailable(ConnectedResource.this);
 			}
-
-			//			System.out.printf("complete: %b%n", m_complete);
 		}
 	};
 

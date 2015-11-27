@@ -47,9 +47,11 @@ public class XBeeDevice extends RemoteDevice {
 	}
 
 	public void setValue(Value value) {
-		this.value = value;
-		if (hasListener) {
-			xBeeChannel.updateListener();
+		if (value != null) {
+			this.value = value;
+			if (hasListener) {
+				xBeeChannel.updateListener();
+			}
 		}
 	}
 

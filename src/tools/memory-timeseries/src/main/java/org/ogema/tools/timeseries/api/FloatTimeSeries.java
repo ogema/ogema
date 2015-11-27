@@ -15,13 +15,16 @@
  */
 package org.ogema.tools.timeseries.api;
 
+import java.util.List;
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.core.timeseries.InterpolationMode;
 
 /**
- * Definition of a float-valued time series that is interpreted as a function f : Z->R.<br>
- * 
- * Please note that this class is experimental and may be subject to change.
- * If you need stable code, then use the base interface MemoryTimeSeries, instead.
+ * Definition of a float-valued time series that is interpreted as a function f
+ * : Z->R.<br>
+ *
+ * Please note that this class is experimental and may be subject to change. If
+ * you need stable code, then use the base interface MemoryTimeSeries, instead.
  */
 public interface FloatTimeSeries extends MemoryTimeSeries {
 
@@ -36,7 +39,8 @@ public interface FloatTimeSeries extends MemoryTimeSeries {
 	void multiplyBy(final FloatTimeSeries factor);
 
 	/**
-	 * Return a time series that is a copy of this multiplied by the given factor.
+	 * Return a time series that is a copy of this multiplied by the given
+	 * factor.
 	 */
 	FloatTimeSeries times(float factor);
 
@@ -57,8 +61,8 @@ public interface FloatTimeSeries extends MemoryTimeSeries {
 	void add(FloatTimeSeries other);
 
 	/**
-	 * Returns a new time series that equals this plus an addend added to all
-	 * of this' entries.
+	 * Returns a new time series that equals this plus an addend added to all of
+	 * this' entries.
 	 */
 	FloatTimeSeries plus(float addend);
 
@@ -71,40 +75,70 @@ public interface FloatTimeSeries extends MemoryTimeSeries {
 
 	/**
 	 * Integrate the function over the domain [t0;t1). If t1 is smaller than t0,
-	 * return the negative the integration over [t1;t0), instead. The open interval
-	 * on the integer range is to be understood as the equivalent to the open 
-	 * interval over the reals. I.e., the interval [0;1) has size one, despite
-	 * containing only a single point.
+	 * return the negative the integration over [t1;t0), instead. The open
+	 * interval on the integer range is to be understood as the equivalent to
+	 * the open interval over the reals. I.e., the interval [0;1) has size one,
+	 * despite containing only a single point.
+	 *
 	 * @return returns the result of integration as average value in interval
 	 * times interval size. Interval size is in ms, not in s.
 	 */
 	float integrate(long t0, long t1);
 
 	/**
-	 * Integrate the point-wise absolute of this function over the domain [t0;t1). 
-	 * The result can be negative if t1 is smaller than t0.
+	 * Integration over a time interval. Returns zero for non-existing time intervals.
+	 * If an integration with reverse time order is required, use {@link #integrate(long, long)}, instead.
+	 * 
+	 * @see {@link #integrate(long, long)}.
+	 */
+	float integrate(TimeInterval interval);
+
+	/**
+	 * Integrate the point-wise absolute of this function over the domain
+	 * [t0;t1). The result can be negative if t1 is smaller than t0.
+	 *
 	 * @see {@link #integrate(long, long)}.
 	 */
 	float integrateAbsolute(long t0, long t1);
 
 	/**
+	 * Returns zero for non-existing time intervals.
+	 * If an integration with reverse time order is required, use {@link #integrateAbsolute(long, long)}, instead.
+	 * @see #integrateAbsolute(long, long) 
+	 */
+	float integrateAbsolute(TimeInterval interval);
+
+	/**
+	 * Integrate the positive range of the function over the given domain
+	 * @param interval domain to integrate over.
+	 * @return returns the result of integration as average positive value in interval
+	 * times interval size. Interval size is in ms, not in s. For non-existing time intervals, this returns zero.
+	 */
+	float integratePositive(TimeInterval interval);
+
+	/**
+	 * @see #integratePositive(org.ogema.tools.timeseries.api.TimeInterval) 
+	 */
+	float integratePositive(long t0, long t1);
+
+	/**
 	 * Gets the maximum value in the interval [t0;t1) for which the quality is
-	 * good. The result's time stamp equals to the timestamp of the first maximum.
-	 * If no maximum with a good value exists in the interval, or if the interval
-	 * is not properly defined, the result's quality is BAD.
+	 * good. The result's time stamp equals to the timestamp of the first
+	 * maximum. If no maximum with a good value exists in the interval, or if
+	 * the interval is not properly defined, the result's quality is BAD.
 	 */
 	SampledValue getMax(long t0, long t1);
 
 	/**
 	 * Gets the minimum value in the interval [t0;t1) for which the quality is
-	 * good. The result's time stamp equals to the timestamp of the first minimum.
-	 * If no minimum with a good value exists in the interval, or if the interval
-	 * is not properly defined, the result's quality is BAD.
+	 * good. The result's time stamp equals to the timestamp of the first
+	 * minimum. If no minimum with a good value exists in the interval, or if
+	 * the interval is not properly defined, the result's quality is BAD.
 	 */
 	SampledValue getMin(long t0, long t1);
 
 	/**
-	 * Gets function that equals a point-wise absolute value of this. 
+	 * Gets function that equals a point-wise absolute value of this.
 	 */
 	FloatTimeSeries getAbsolute();
 
@@ -114,13 +148,29 @@ public interface FloatTimeSeries extends MemoryTimeSeries {
 	void setConstant(float value);
 
 	/**
-	 * Try to optimize this representation of a function while leaving the function
-	 * that is represented unchanged. Examples can be removing leading and trailing
-	 * entries with bad quality that leave the definition range unchanged or removing
-	 * intermediate support points that would equal the interpolated value, anyways. The 
-	 * intended use is calling this after a calculation before the result is
-	 * written back to a schedule to minimize the overhead that latter applications 
-	 * have with this time series.
+	 * Gets an ordered list of intervals on which the time series is defined an
+	 * positive over a given search interval. The function may be zero for the
+	 * starting times of the intervals and at individual timestamps within the
+	 * interval (i.e. a linear zig-zag between zero and one would be a single interval).
+	 * 
+	 * FIXME currently this is implemented for {@link InterpolationMode} LINEAR, only.
+	 *
+	 * @param searchInterval Definition of the interval over which to search for
+	 * positive values.
+	 * @return A list of all intervals where the time series is positive,
+	 * intersected by the search interval (to constrain possible infinities
+	 * caused by {@link InterpolationMode}s STEPS and NEAREST.
+	 */
+	public List<TimeInterval> getPositiveDomain(TimeInterval searchInterval);
+
+	/**
+	 * Try to optimize this representation of a function while leaving the
+	 * function that is represented unchanged. Examples can be removing leading
+	 * and trailing entries with bad quality that leave the definition range
+	 * unchanged or removing intermediate support points that would equal the
+	 * interpolated value, anyways. The intended use is calling this after a
+	 * calculation before the result is written back to a schedule to minimize
+	 * the overhead that latter applications have with this time series.
 	 */
 	void optimizeRepresentation();
 }

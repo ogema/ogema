@@ -16,7 +16,7 @@
 package org.ogema.tools.resourcemanipulator.test.rad;
 
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.ForecastSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.units.PowerResource;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.model.actors.OnOffSwitch;
@@ -65,7 +65,7 @@ public class ElectricHeaterPattern extends ResourcePattern<ElectricHeater> {
 	private final PowerResource curElectricPower = electricPowerSensor.reading();
 	private final PowerResource minElectricPower = electricPowerSensor.ratedValues().lowerLimit();
 	private final PowerResource maxElectricPower = electricPowerSensor.ratedValues().upperLimit();
-	private final ForecastSchedule electricPowerForecast = curElectricPower.forecast();
+	private final AbsoluteSchedule electricPowerForecast = curElectricPower.forecast();
 
 	public ElectricHeaterPattern(Resource res) {
 		super(res);

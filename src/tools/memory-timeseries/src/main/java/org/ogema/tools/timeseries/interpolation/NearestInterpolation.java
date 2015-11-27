@@ -18,6 +18,7 @@ package org.ogema.tools.timeseries.interpolation;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.tools.timeseries.api.InterpolationFunction;
+import org.ogema.tools.timeseries.api.TimeInterval;
 
 /**
  * Intepolation mode: Return the data point that is closest in time. If both are
@@ -53,4 +54,9 @@ public class NearestInterpolation implements InterpolationFunction {
 	//    public Value integrateAbsolute(SampledValue x0, SampledValue x1, Class<? extends Value> valueType) {
 	//        throw new UnsupportedOperationException("Not supported yet.");
 	//    }
+
+	@Override
+	public TimeInterval getPositiveInterval(SampledValue x0, SampledValue x1, Class<? extends Value> valueType) {
+		throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+	}
 }

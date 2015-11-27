@@ -29,10 +29,9 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.junit.Before;
 import org.junit.Test;
-import org.ogema.core.application.ExceptionListener;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.SampledValue;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.ResourceManagement;
@@ -79,12 +78,12 @@ public class ScheduleSumTest extends OsgiAppTestBase {
 		List<Schedule> schedules = new ArrayList<>();
 		int nmbOfSchedules = rdn.nextInt(MAX_NMB_OF_SCHEDULES) + 1;
 		for(int i = 0; i < nmbOfSchedules; ++i) {
-			DefinitionSchedule floatSchedule = createAndActivateFloatSchedule();
+			AbsoluteSchedule floatSchedule = createAndActivateFloatSchedule();
 			assertTrue(floatSchedule.isActive());
 			schedules.add(floatSchedule);
 		}
 		
-		DefinitionSchedule sumSchedule = createAndActivateFloatSchedule();
+		AbsoluteSchedule sumSchedule = createAndActivateFloatSchedule();
 		assertTrue(sumSchedule.isActive());
 		SumValueListener sumValueListener = new SumValueListener();
 		sumSchedule.addValueListener(sumValueListener);
@@ -158,7 +157,7 @@ public class ScheduleSumTest extends OsgiAppTestBase {
 		
 		List<Schedule> inputs = new ArrayList<>();
 		for(int i = 0; i < 3; ++i) {
-			DefinitionSchedule floatSchedule = createAndActivateFloatSchedule();
+			AbsoluteSchedule floatSchedule = createAndActivateFloatSchedule();
 			assertTrue(floatSchedule.isActive());
 			inputs.add(floatSchedule);
 		}
@@ -177,7 +176,7 @@ public class ScheduleSumTest extends OsgiAppTestBase {
 
 	private int scheduleCounter = 0;
 
-	private DefinitionSchedule createAndActivateFloatSchedule() {
+	private AbsoluteSchedule createAndActivateFloatSchedule() {
 		String name = "testfloat" + scheduleCounter++;
 		final FloatResource result = resman.createResource(name, FloatResource.class);
 		result.program().create();
@@ -185,7 +184,7 @@ public class ScheduleSumTest extends OsgiAppTestBase {
 		return result.program();
 	}
 
-	private DefinitionSchedule createScheduleAsReference(Schedule ref) {
+	private AbsoluteSchedule createScheduleAsReference(Schedule ref) {
 		String name = "testfloat" + scheduleCounter++;
 		final FloatResource result = resman.createResource(name, FloatResource.class);
 		result.program().setAsReference(ref);

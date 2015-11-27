@@ -28,7 +28,7 @@ import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.ResourceValueListener;
@@ -54,7 +54,7 @@ public class ValueListenerScheduleTest extends OsgiTestBase {
 			return _schedules.get(primitiveClass);
 		}
 		final Resource simple = resMan.createResource(newResourceName(), primitiveClass);
-		final Schedule schedule = simple.addDecorator("schedule", DefinitionSchedule.class);
+		final Schedule schedule = simple.addDecorator("schedule", Schedule.class);
 		_schedules.put(primitiveClass, schedule);
 		return schedule;
 	}

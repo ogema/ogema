@@ -1,3 +1,5 @@
+var tmpData = null;
+
 function checkingInput(obj) {
 
 	var boxChecked;
@@ -100,12 +102,54 @@ function checkingRessourceInput(obj) {
  * @param {String}
  *            permContentForApp Completed JSON-PermissionString for the server.
  */
-function sendPermsToServer(appid, permContentForApp) {
-
+function sendPermsToServer(appid, permContentForApp, parentOfDialog, formOfDialog) {
+	sendPermsToServerWithRedirect(appid, permContentForApp, parentOfDialog, formOfDialog);
+}
+function sendPermsToServerWithRedirect(appid, permContentForApp, parentOfDialog, formOfDialog, url) {
+	if(appid==-1 && permContentForApp.indexOf("java.security.AllPermission") != -1){ 
+		if (permContentForApp.indexOf("deny")!=-1){
+			var tmppCFA = permContentForApp.substring(0, permContentForApp.indexOf("java.security.AllPermission"));
+			tmppCFA = tmppCFA.substr(tmppCFA.lastIndexOf("{"));
+			if(tmppCFA.indexOf("deny")!=-1){
+				alert("java.security.AllPermission can not be denied in the default Policy");
+				return;
+			}
+		}
+		if (permContentForApp.indexOf("java.security.AllPermission")<permContentForApp.indexOf("oldpermissions")){
+			var conf = confirm("Are you sure you want to add java.security.AllPermission to the Default Policy?")
+			if (conf!=true)
+				return;
+		}
+	}
+	tmpData = null;
 	$.post("/security/config/permissions?id=" + appid, {
 		permission : permContentForApp
 	}, function(data, status) { // if successfull
-		alert("Data send to server for appID: " + appid + "\nResponse: " + data + "\nStatus: " + status);
+		alert("Data send to server for appID: " + appid + "\nResponse: Policies commited successfully! \nStatus: " + status);
+		if (data!="Policies commited successfully!"){			
+			tmpData = data;	
+		}
+		if (appid != -1){
+			getGrantedPerms(appid, parentOfDialog, formOfDialog, tmpData);
+		}else{
+			getDefaultPerms(appid, parentOfDialog, formOfDialog, tmpData);
+		}
+		
+		if(typeof url !== "undefined") {
+			$.post(url, {}, function(data, status) { // if successfull
+				alert("App started: " + appid + "\nResponse: " + data + "\nStatus: " + status);
+			}).success(function (data) {
+				window.close();
+			})
+			.fail(function(xhr, textStatus, errorThrown) {
+				// if http-post fails
+				if (textStatus != "" && errorThrown != "") {
+					alert("Problem when starting app: " + textStatus + "\nError: " + errorThrown);
+				} else {
+					alert("Error when starting app.");
+				}
+			});
+		}
 	}).fail(function(xhr, textStatus, errorThrown) {
 		// if http-post fails
 		if (textStatus != "" && errorThrown != "") {
@@ -114,6 +158,14 @@ function sendPermsToServer(appid, permContentForApp) {
 			alert("Error.");
 		}
 	});
+}
+
+function checkFiltered(){
+	if (tmpData != null){
+		return tmpData;
+	}else{
+		return;
+	}
 }
 
 /**
@@ -132,21 +184,23 @@ function getGrantedBack(obj) {
 	var pMethod;
 	var pCondition;
 	var pCondArgs;
-	var countChecked = $("form > div div:first-child input:first-child:checked").length;
-	var arrayOfChecked = $("form > div div:first-child input:first-child:checked");
+	var pOldMethod
+	var countChecked = $("form > div div:first-child input.p:first-child:checked").length;
+	var arrayOfChecked = $("form > div div:first-child input.p:first-child:checked");
 	var permStringArray = [];
-
+	var oldActionArray = [];
+	
 	for (var x = 0; x < countChecked; x++) {
 		pName = "";
 		pRessource = "";
 		pMethod = "";
 		pCondition = "";
 		pCondArgs = "";
-		if ($("form > div obj div:first-child input").prop("checked", true)) {
+		if ($("form > div obj div:first-child input.p").prop("checked", true)) {
 			var eachId = arrayOfChecked[x].id;
 			var selector = "input#" + eachId;
 			var thisNext = $(selector).next();
-			var parentLabel = $(selector).parent().find("label");
+			var parentLabel = $(selector).parent().find("label.lb");
 			var parentInputText = $(selector).parent().find("input[type='text']");
 			var divLastChild = $(selector).parent().parent().find("div:last-child");
 			var parentNextDivConds = $(selector).parent().next().find("div.conditions");
@@ -169,14 +223,33 @@ function getGrantedBack(obj) {
 				// grant or deny checked
 				pName = $(selector).parent().find("input:checkbox:checked").next("label").text();
 				// get name of text-input
-				pName = pName + parentInputText.val();
+				if (parentInputText.val()!==undefined){
+					pName = pName + parentInputText.val();
+				}
 			}
-			pRessource = divLastChild.find("input[type='text']").val();
+			var newInput = divLastChild.find("input.newFilterInput[type='text']");
+			
+			if ($(newInput).length == 0){
+				pRessource = divLastChild.find("input.FilterInput[type='text']").val();
+			}else{
+				if ($(newInput).val().length == 0){
+					pRessource = divLastChild.find("input.FilterInput[type='text']").val();
+				}else{
+					pRessource = $(newInput).val();
+				}
+			}
+			pOldRessource = divLastChild.find("input[type='text']").val();
 			if (divLastChild.find("input[type='checkbox']").length > 0) {
 				pMethod = divLastChild.find("input:checkbox:checked").map(function() {
 					return $(this).next("label").text().split(' ');
 				});
+				pOldMethod = divLastChild.find("input:checkbox").map(function() {					
+					if ($(this).next("label").context.id.indexOf('m') == 0){
+					return $(this).next("label").text().split(' ');
+					}
+				});
 			} else {
+				
 				pMethod = divLastChild.find("input[type='text']").next().next().next().val();
 			}
 			if (parentNextDivConds.length == 1) {
@@ -189,17 +262,27 @@ function getGrantedBack(obj) {
 				var policy = transformWithResources(pName, pMethod, pCondition, pCondArgs, "#testTree" + treeId, modename);
 				if (policy != "") {
 					permStringArray[x] = policy;
+					oldActionArray[x] = transformInput(pName, pOldRessource, pOldMethod, pCondition, pCondArgs, modename);
 				} else {
 					permStringArray[x] = transformInput(pName, pRessource, pMethod, pCondition, pCondArgs, modename);
+					oldActionArray[x] = transformInput(pName, pOldRessource, pOldMethod, pCondition, pCondArgs, modename);
 				}
 			} else {
 				permStringArray[x] = transformInput(pName, pRessource, pMethod, pCondition, pCondArgs, modename);
+				oldActionArray[x] = transformInput(pName, pOldRessource, pOldMethod, pCondition, pCondArgs, modename);
 			}
 		}
 	}
-
+	
 	// create JSON-form
-	return '{"permissions":[' + permStringArray + ']}';
+	var jsonReturn = '{"permissions":[' + permStringArray + ']';
+	
+	//only return the oldpermissions if the Permissions are edited
+	if($("#dialogBundleName").text().indexOf("Permissions demanded")!=-1){
+		return jsonReturn +'}';
+	}else{
+		return jsonReturn +',"oldpermissions":['+ oldActionArray +']}';
+	}
 }
 
 var resourcePerm = function() {
@@ -241,6 +324,10 @@ function transformWithResources(name, methods, condition, conditionArgs, selecto
 			resourceName = resourceName.substring(linkindex + 2);
 		if (props.wc)
 			resourceName += "/*";
+		var ind = props.actions.indexOf("Check,All");
+		if (ind != -1){
+			props.actions = props.actions.substring(10);
+		}
 		resourceActions = props.actions; // node.original.method;
 		var transformed = transformInput(name, "path=" + resourceName, resourceActions, condition, conditionArgs, mode);
 		pre += transformed;
@@ -305,7 +392,7 @@ function isWildcard(value, selector) {
  * @param {String}
  *            name Permission name.
  * @param {String}
- *            ressource Permission filter.
+ *            resource Permission filter.
  * @param {String}
  *            methods Permission action.
  * @param {String}
@@ -314,7 +401,7 @@ function isWildcard(value, selector) {
  *            conditionArgs Arguments
  * @return {String} permString Permission-String (One permission)
  */
-function transformInput(name, ressource, methods, condition, conditionArgs, mode) {
+function transformInput(name, resource, methods, condition, conditionArgs, mode) {
 	var methodString = "";
 	// count of methods
 	if (methods != null || methods != "") {
@@ -331,7 +418,7 @@ function transformInput(name, ressource, methods, condition, conditionArgs, mode
 			methodString = methods;
 		}
 	}
-
+	
 	// count of arguments
 	var argsMore;
 	var argArray;
@@ -372,17 +459,35 @@ function transformInput(name, ressource, methods, condition, conditionArgs, mode
 
 	var permString;
 
-	permString = '{"mode":"' + mode + '","name":"' + name + '","filter":"' + ressource + '","action":"' + methodString + '","condition":"' + condition
-			+ '","conditionArgs":' + argString + '}';
+	permString = '{"mode":"' + mode + '","name":"' + name+'"';
+	
+	if(resource!=undefined)
+		permString+= ',"filter":"' + resource + '"';
+	if(methodString!=undefined)
+		permString+= ',"action":"' + methodString + '"';
+
+	permString+=  '}';
 	// final permission-string for sending to the server
 	return permString;
 }
-
-// validate input - at least one checkbox, text-input must be filled
-/**
- * Check input, Validation. Executed when SAVE-button is clicked.
- * 
- * @param {Object}
- *            obj Current dialog.
- * @return {boolean} True: okay, False: something is wrong.
- */
+function transformOldPerms(oldPerms){
+	var oldPermString = '{"action":"';
+	
+	if (oldPerms != null || oldPerms != "") {
+		if (typeof (oldPerms) == 'object') {
+			for (var v = 0; v < oldPerms.length; v++) {
+				oldPermString = oldPermString + oldPerms[v];
+				if (v != oldPerms.length - 1) {
+					oldPermString = oldPermString + ",";
+				} else {
+					oldPermString = oldPermString + '"';
+				}
+			}
+		} else {
+			oldPermString = oldPerms;
+		}
+	}
+	oldPermString += '}';
+	return oldPermString
+	
+}

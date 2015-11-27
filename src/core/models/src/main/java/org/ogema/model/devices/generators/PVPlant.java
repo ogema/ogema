@@ -48,8 +48,7 @@ public interface PVPlant extends ElectricityGenerator {
 	/**
 	 * Change in panel output power per temperature unit. Unit = 1/K. <br>
 	 * Note that this quantity is normally given in %/K instead of 1/K (factor 100 difference!). <br>
-	 * In practice, this value is temperature dependent. The dependence can be modeled using a
-	 * {@link org.ogema.core.model.commondata.RelationCurve RelationCurve} decorator.
+	 * In practice, this value is temperature dependent. TODO
 	 * */
 	FloatResource temperatureCoefficient();
 

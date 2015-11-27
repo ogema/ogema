@@ -175,7 +175,8 @@ public class LoggingAppServlet extends HttpServlet {
 		if (resource instanceof SimpleResource) {
 			String[] valueLog = getSimpleResString2(resource);
 			result = result + ",\"value\":\"" + valueLog[0] + "\"";
-			boolean logg = Boolean.parseBoolean(valueLog[3]);
+			//boolean logg = Boolean.parseBoolean(valueLog[3]);
+			boolean logg = !(valueLog[1].equals(""));
 			result = result + ",\"logging\":\"" + String.valueOf(logg) + "\"";
 			if (logg) {
 				result = result + ",\"log interval/s\":\"" + valueLog[2] + "\"";
@@ -224,8 +225,14 @@ public class LoggingAppServlet extends HttpServlet {
 			try {
 				loggingType = config.getStorageType().name();
 				loggingDur = String.valueOf(config.getFixedInterval() / 1000);
-				if (config.getFixedInterval() > 0)
+				if (config.getStorageType().equals(StorageType.FIXED_INTERVAL)) {
+					if (config.getFixedInterval() > 0) {
+						logging = true;
+					}
+				}
+				else {
 					logging = true;
+				}
 			} catch (Exception e) {
 			}
 		} catch (Exception e) {

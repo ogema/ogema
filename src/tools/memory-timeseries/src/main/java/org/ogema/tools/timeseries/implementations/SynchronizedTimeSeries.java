@@ -195,4 +195,9 @@ public class SynchronizedTimeSeries implements MemoryTimeSeries {
 		//		return m_schedule.addValueSchedule(startTime, stepSize, values, timeOfCalculation);
 	}
 
+	@Override
+	public SampledValue getValueSecure(long t) {
+		return m_schedule.getValueSecure(t);
+	}
+
 }

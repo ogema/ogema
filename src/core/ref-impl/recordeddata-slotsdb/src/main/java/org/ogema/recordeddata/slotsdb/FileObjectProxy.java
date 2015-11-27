@@ -18,7 +18,6 @@ package org.ogema.recordeddata.slotsdb;
 import java.io.File;
 import java.io.IOException;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -34,10 +33,14 @@ import java.util.TimerTask;
 import java.util.Vector;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.core.recordeddata.RecordedDataConfiguration;
+import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class FileObjectProxy {
+
+	private static final int FLEXIBLE_STORING_PERIOD = -1;
 
 	private final static Logger logger = LoggerFactory.getLogger(FileObjectProxy.class);
 
@@ -64,7 +67,7 @@ public final class FileObjectProxy {
 
 	/**
 	 * Creates an instance of a FileObjectProxy<br>
-	 * The rootNodePath (output folder) usually is specified in JVM flag: org.openmuc.mux.dbprovider.slotsdb.dbfolder
+	 * The rootNodePath (output folder) can be specified in JVM flag: org.ogema.recordeddata.slotsdb.dbfolder
 	 */
 	public FileObjectProxy(String rootNodePath) {
 		timer = new Timer();
@@ -154,7 +157,7 @@ public final class FileObjectProxy {
 
 	/**
 	 * Creates a Thread, that causes Data Streams to be flushed every x-seconds.<br>
-	 * Define flush-period in seconds with JVM flag: org.openmuc.mux.dbprovider.slotsdb.flushperiod
+	 * Define flush-period in seconds with JVM flag: org.ogema.recordeddata.slotsdb.flushperiod
 	 */
 	private void createScheduledFlusher() {
 		timer.schedule(new Flusher(), flush_period * 1000, flush_period * 1000);
@@ -292,8 +295,19 @@ public final class FileObjectProxy {
 	 * @param storingPeriod
 	 * @throws IOException
 	 */
-	public synchronized void appendValue(String id, double value, long timestamp, byte state, long storingPeriod)
-			throws IOException {
+	public synchronized void appendValue(String id, double value, long timestamp, byte state,
+			RecordedDataConfiguration configuration) throws IOException {
+
+		long storingPeriod;
+		if (configuration.getStorageType().equals(StorageType.FIXED_INTERVAL)) {
+			// fixed interval
+			storingPeriod = configuration.getFixedInterval();
+		}
+		else {
+			/* flexible interval */
+			storingPeriod = FLEXIBLE_STORING_PERIOD;
+		}
+
 		FileObject toStoreIn = null;
 
 		id = encodeLabel(id);
@@ -304,7 +318,7 @@ public final class FileObjectProxy {
 		 * stored for this day) Eventually existing FileObjectLists from the day before will be flushed and closed. Also
 		 * the Hashtable size will be monitored, to not have too many opened Filestreams.
 		 */
-		if (!openFilesHM.containsKey(id + strDate)) {
+		if (!openFilesHM.containsKey(id + strDate) || openFilesHM.get(id + strDate).size() == 0) {
 			deleteEntryFromLastDay(timestamp, id);
 			controlHashtableSize();
 			FileObjectList first = new FileObjectList(rootNode.getPath() + "/" + strDate + "/" + id);
@@ -315,17 +329,23 @@ public final class FileObjectProxy {
 			 * will be stored and List reloaded for next Value to store.
 			 */
 			if (first.size() == 0) {
-				if (storingPeriod != -1) { /* constant intervall */
+
+				if (configuration.getStorageType().equals(StorageType.FIXED_INTERVAL)) {
+					// fixed interval
 					toStoreIn = new ConstantIntervalFileObject(rootNode.getPath() + "/" + strDate + "/" + id + "/c"
 							+ timestamp + SlotsDb.FILE_EXTENSION);
 				}
-				else { /* flexible intervall */
+				else {
+					/* flexible interval */
 					toStoreIn = new FlexibleIntervalFileObject(rootNode.getPath() + "/" + strDate + "/" + id + "/f"
 							+ timestamp + SlotsDb.FILE_EXTENSION);
-
 				}
-				toStoreIn.createFileAndHeader(timestamp, storingPeriod);
-				toStoreIn.append(value, timestamp, state);
+
+				long roundedTimestamp = getRoundedTimestamp(timestamp, configuration);
+				// System.out.println("   New file; rounded timestamp: " + roundedTimestamp + ", original : " +
+				// timestamp);
+				toStoreIn.createFileAndHeader(roundedTimestamp, storingPeriod);
+				toStoreIn.append(value, roundedTimestamp, state);
 				toStoreIn.close(); /* close() also calls flush(). */
 				openFilesHM.get(id + strDate).reLoadFolder();
 				return;
@@ -342,9 +362,14 @@ public final class FileObjectProxy {
 			/*
 			 * If StartTimeStamp is newer then the Timestamp of the value to store, this value can't be stored.
 			 */
-			if (toStoreIn.getStartTimeStamp() > timestamp) {
+			long roundedTimestamp = getRoundedTimestamp(timestamp, configuration);
+			if (toStoreIn.getStartTimeStamp() > roundedTimestamp) {
 				return;
 			}
+		}
+
+		if (toStoreIn == null) {
+			throw new IllegalStateException("could not find log file"); // FIXME
 		}
 
 		/*
@@ -352,7 +377,8 @@ public final class FileObjectProxy {
 		 */
 		if (toStoreIn.getStoringPeriod() == storingPeriod || toStoreIn.getStoringPeriod() == 0) {
 			toStoreIn = openFilesHM.get(id + strDate).getCurrentFileObject();
-			toStoreIn.append(value, timestamp, state);
+			long roundedTimestamp = getRoundedTimestamp(timestamp, configuration);
+			toStoreIn.append(value, roundedTimestamp, state);
 			if (flush_period == 0) {
 				toStoreIn.flush();
 			}
@@ -365,7 +391,7 @@ public final class FileObjectProxy {
 			 * Intervall changed -> create new File (if there are no newer values for this day, or file)
 			 */
 			if (toStoreIn.getTimestampForLatestValue() < timestamp) {
-				if (storingPeriod != -1) { /* constant intervall */
+				if (storingPeriod != FLEXIBLE_STORING_PERIOD) { /* constant intervall */
 					toStoreIn = new ConstantIntervalFileObject(rootNode.getPath() + "/" + strDate + "/" + id + "/c"
 							+ timestamp + SlotsDb.FILE_EXTENSION);
 				}
@@ -383,6 +409,61 @@ public final class FileObjectProxy {
 		}
 	}
 
+	/**
+	 * Rounds the timestamp to the next matching interval.
+	 * 
+	 * @param timestamp
+	 *            the timestamp to round
+	 * @param configuration
+	 *            RecordedDataConfiguration
+	 * @return
+	 */
+	public static long getRoundedTimestamp(long timestamp, RecordedDataConfiguration configuration) {
+
+		// FIXME: checking the configuration shouldn't be part of this method. If flexible interval is used, this method
+		// shouldn't be even called. Requires major refactoring!
+
+		if (configuration == null) {
+			// configuration doesn't exist. assuming flexible interval which needs no rounding
+			return timestamp;
+		}
+
+		if (configuration.getStorageType() == null) {
+			// storage type doesn't exist. assuming flexible interval which needs no rounding
+			return timestamp;
+		}
+
+		if (configuration.getStorageType().equals(StorageType.FIXED_INTERVAL)) {
+			// fixed interval
+
+			long stepInterval = configuration.getFixedInterval();
+
+			if (stepInterval <= 0) {
+				throw new IllegalArgumentException("FixedInterval size needs to be greater than 0 ms");
+			}
+			return getRoundedTimestamp(timestamp, stepInterval);
+
+		}
+		else {
+			// flexible interval - which needs no rounding
+			return timestamp;
+		}
+
+	}
+
+	// FIXME shouldn't be accessible from outside. ConstantIntervalFileObjects needs this as workaround.
+	public static long getRoundedTimestamp(long timestamp, long stepInterval) {
+		long distance = timestamp % stepInterval;
+		if (distance > stepInterval / 2) {
+			// go up
+			return timestamp - distance + stepInterval;
+		}
+		else {
+			// go down
+			return timestamp - distance;
+		}
+	}
+
 	private String encodeLabel(String label) throws IOException {
 		String encodedLabel = encodedLabels.get(label);
 		if (encodedLabel == null) {
@@ -394,8 +475,10 @@ public final class FileObjectProxy {
 		return encodedLabel;
 	}
 
-	public synchronized SampledValue readNextValue(String label, long timestamp) throws IOException {
+	public synchronized SampledValue readNextValue(String label, long timestamp, RecordedDataConfiguration configuration)
+			throws IOException {
 
+		timestamp = getRoundedTimestamp(timestamp, configuration);
 		label = encodeLabel(label);
 
 		String strDate = getStrDate(timestamp);
@@ -416,9 +499,13 @@ public final class FileObjectProxy {
 
 	}
 
-	public synchronized SampledValue read(String label, long timestamp) throws IOException {
+	public synchronized SampledValue read(String label, long timestamp, RecordedDataConfiguration configuration)
+			throws IOException {
 		// label = URLEncoder.encode(label,Charset.defaultCharset().toString());
 		// //encodes label to supported String for Filenames.
+
+		timestamp = getRoundedTimestamp(timestamp, configuration);
+
 		label = encodeLabel(label);
 
 		String strDate = getStrDate(timestamp);
@@ -436,10 +523,14 @@ public final class FileObjectProxy {
 		return null;
 	}
 
-	public synchronized List<SampledValue> read(String label, long start, long end) throws IOException {
+	public synchronized List<SampledValue> read(String label, long start, long end,
+			RecordedDataConfiguration configuration) throws IOException {
 		if (logger.isTraceEnabled()) {
 			logger.trace("Called: read(" + label + ", " + start + ", " + end + ")");
 		}
+
+		start = getRoundedTimestamp(start, configuration);
+		end = getRoundedTimestamp(end, configuration);
 
 		List<SampledValue> toReturn = new Vector<SampledValue>();
 
@@ -449,7 +540,7 @@ public final class FileObjectProxy {
 		}
 
 		if (start == end) {
-			toReturn.add(read(label, start)); // let other read function handle.
+			toReturn.add(read(label, start, configuration)); // let other read function handle.
 			toReturn.removeAll(Collections.singleton(null));
 			return toReturn;
 		}
@@ -678,6 +769,6 @@ public final class FileObjectProxy {
 			itr.next().flush();
 		}
 
-		logger.info("Data from " + openFilesHM.size() + " Folders flushed to disk.");
+		logger.debug("Data from " + openFilesHM.size() + " Folders flushed to disk.");
 	}
 }
