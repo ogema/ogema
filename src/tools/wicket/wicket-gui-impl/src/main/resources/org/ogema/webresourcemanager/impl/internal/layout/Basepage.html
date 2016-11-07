@@ -1,0 +1,55 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<html xmlns:wicket="http://wicket.apache.org">
+    <wicket:head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title wicket:id="title">Title</title>
+        <wicket:link>
+            <link rel="stylesheet" type="text/css" href="jquery-ui-1.10.3.custom/css/ui-lightness/jquery-ui-1.10.3.custom.min.css"/>
+            <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+            <link href="css/ogema.css" rel="stylesheet" type="text/css"/>
+        </wicket:link>
+        <link wicket:id="customCSS" rel="stylesheet" type="text/css"/>
+    </wicket:head>
+
+    <body>
+        <div  class="container-fluid">
+            <div class="row" id="navigation">
+                <!-- START Meta Navigation -->
+                <div class="col-xs-12 col-sm-12 col-md-12" wicket:id="OgemaNavigationPanel"></div>
+                <!-- START Meta Navigation -->
+            </div>
+            <div class="row" id="maincontent">
+                <!-- START Main Navigation -->
+                <div class="col-xs-12 col-sm-3 col-md-3" wicket:id="SubNavigation"></div>
+                <!-- END Main Navigation -->
+                <!-- START Main Content -->
+                <div class="col-xs-12 col-sm-9 col-md-9 well well-sm" wicket:id="MainContentPanel"></div>
+                <!-- END Main Content -->
+            </div>
+            <div class="row" id="footer">
+                <div class="col-xs-12 col-sm-12 col-md-12" wicket:id="FooterPanel"></div>
+            </div>
+        </div>
+    <wicket:link>
+        <script src="bootstrap/js/bootstrap.min.js" type="text/javascript"></script>
+    </wicket:link>
+</body>
+
+</html>

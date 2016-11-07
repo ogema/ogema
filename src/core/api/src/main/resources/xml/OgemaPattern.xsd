@@ -1,0 +1,200 @@
+<?xml version="1.0"?>
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	targetNamespace="http://www.ogema-source.net/REST_PATTERN" 
+	xmlns:og="http://www.ogema-source.net/REST_PATTERN">
+
+	<xs:element name="pattern" type="og:Pattern" />
+	<xs:element name="patternMatchList" type="og:PatternMatchList" />
+
+	<xs:complexType name="ResourceProxy">
+		<xs:annotation>
+			<xs:documentation xml:lang="en">
+				Represents a resource in the context of Resource Patterns. Does not provide
+				any information	on subresources.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="name" type="xs:string" minOccurs="1"
+				maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						Name of the pattern field.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="relativePath" type="xs:string" minOccurs="1" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						Path relative to the demanded model of the pattern.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="type" type="xs:string" minOccurs="1"
+				maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						OGEMA resource type of the resource.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="optional" type="xs:boolean" minOccurs="0"
+				maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						In a request this specifies whether the resource must exist (and be
+						active)	for a pattern match. Default is true.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="accessMode" type="xs:string" minOccurs="0"
+				maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						Access mode of the resource.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="location" type="xs:string" minOccurs="0"
+				maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						Location of the resource. Can be used to restrict the pattern match
+						results	to those with a specified location. In a pattern match list, this
+						simply indicates the location of the resource.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="value" type="xs:string" minOccurs="0"
+				maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						Value, in the case of SingleValueResources.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="ResourceProxiesList">
+		<xs:sequence>
+			<xs:element name="field" type="og:ResourceProxy" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+
+	<xs:complexType name="PatternMatch">
+		<xs:annotation>
+			<xs:documentation xml:lang="en">
+				A pattern match.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="demandedModel" type="og:ResourceProxy" minOccurs="1" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						The resource type of the pattern demanded model (main type that was
+						searched for).
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="resourceFields" type="og:ResourceProxiesList"	minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						Resource fields of the pattern match
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="Pattern">
+		<xs:annotation>
+			<xs:documentation xml:lang="en">
+				A resource pattern, which can be thought of as a search template for
+				the OGEMA resource tree.
+				It is possible to specify a main resource type to search for, and a
+				set of mandatory and optional
+				subresources that must exist and/or possess specified values or resource
+				locations.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="modelClass" type="xs:string" minOccurs="1" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						The resource type of the pattern demanded model (main type that is
+						searched for).
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="resourceFields" type="og:ResourceProxiesList" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						Pattern fields, corresponding to subresources of the demanded model, that
+						represent additional constraints for the search.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="PatternMatchList">
+		<xs:annotation>
+			<xs:documentation xml:lang="en">
+				List of pattern matches.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="nrMatches" type="xs:int" minOccurs="1" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						The number of matches for this search.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="matchesStart" type="xs:int" minOccurs="1" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						The index of the first listed item, among all matching items.
+						Relevant for paging.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="matchesEnd" type="xs:int" minOccurs="1" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>
+						The index of the last listed item, among all matching items.
+						Relevant for paging.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:sequence>
+				<xs:element name="match" type="og:PatternMatch" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>
+							Pattern matches.
+						</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:sequence>
+		</xs:sequence>
+	</xs:complexType>
+
+</xs:schema>

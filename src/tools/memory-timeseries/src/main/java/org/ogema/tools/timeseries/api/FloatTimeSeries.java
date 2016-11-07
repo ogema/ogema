@@ -21,7 +21,7 @@ import org.ogema.core.timeseries.InterpolationMode;
 
 /**
  * Definition of a float-valued time series that is interpreted as a function f
- * : Z->R.<br>
+ * : Z-&gt;R.<br>
  *
  * Please note that this class is experimental and may be subject to change. If
  * you need stable code, then use the base interface MemoryTimeSeries, instead.
@@ -89,7 +89,7 @@ public interface FloatTimeSeries extends MemoryTimeSeries {
 	 * Integration over a time interval. Returns zero for non-existing time intervals.
 	 * If an integration with reverse time order is required, use {@link #integrate(long, long)}, instead.
 	 * 
-	 * @see {@link #integrate(long, long)}.
+	 * @see #integrate(long, long)
 	 */
 	float integrate(TimeInterval interval);
 
@@ -97,7 +97,7 @@ public interface FloatTimeSeries extends MemoryTimeSeries {
 	 * Integrate the point-wise absolute of this function over the domain
 	 * [t0;t1). The result can be negative if t1 is smaller than t0.
 	 *
-	 * @see {@link #integrate(long, long)}.
+	 * @see #integrate(long, long)
 	 */
 	float integrateAbsolute(long t0, long t1);
 
@@ -120,6 +120,20 @@ public interface FloatTimeSeries extends MemoryTimeSeries {
 	 * @see #integratePositive(org.ogema.tools.timeseries.api.TimeInterval) 
 	 */
 	float integratePositive(long t0, long t1);
+	
+	float getAverage(long t0, long t1);
+	
+	/**
+	 * Returns a reduced set of points in the interval, obtained by downsampling 
+	 * to the specified time interval. 
+	 * This never increases the number of points in the interval, with respect to
+	 * the original set of points returned by {@link #getValues(long, long)}.
+	 * @param t0
+	 * @param t1
+	 * @param minimumInterval
+	 * @return
+	 */
+	List<SampledValue> downsample(long t0, long t1, long minimumInterval);
 
 	/**
 	 * Gets the maximum value in the interval [t0;t1) for which the quality is

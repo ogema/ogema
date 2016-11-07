@@ -31,6 +31,7 @@ import org.ogema.driver.homematic.manager.devices.MotionDetector;
 import org.ogema.driver.homematic.manager.devices.PowerMeter;
 import org.ogema.driver.homematic.manager.devices.Remote;
 import org.ogema.driver.homematic.manager.devices.SmokeSensor;
+import org.ogema.driver.homematic.manager.devices.SwitchPlug;
 import org.ogema.driver.homematic.manager.devices.THSensor;
 import org.ogema.driver.homematic.manager.devices.Thermostat;
 import org.ogema.driver.homematic.manager.devices.ThreeStateSensor;
@@ -113,7 +114,8 @@ public class RemoteDevice {
 		case "THSensor":
 			return new THSensor(this);
 		case "threeStateSensor":
-			return new ThreeStateSensor(this);
+			boolean isDoorWindowSensor = type.equals("00B1");
+			return new ThreeStateSensor(this, isDoorWindowSensor);
 		case "thermostat":
 			return new Thermostat(this);
 		case "powerMeter":
@@ -124,6 +126,8 @@ public class RemoteDevice {
 			return new CO2Detector(this);
 		case "motionDetector":
 			return new MotionDetector(this);
+		case "switch":
+			return new SwitchPlug(this);
 		case "remote":
 		case "pushbutton":
 		case "swi":

@@ -25,7 +25,9 @@ package org.ogema.serialization.jaxb;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
+import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
 
 /**
  * Representaion for an OGEMA primitive OpaqueResource.
@@ -52,7 +54,8 @@ import javax.xml.bind.annotation.XmlType;
  * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "OpaqueResource", propOrder = { "value" })
+@XmlType(name = "OpaqueResource", namespace = NS_OGEMA_REST, propOrder = { "value" })
+//@XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 public class OpaqueResource extends Resource {
 
 	@XmlElement(required = true)

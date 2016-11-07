@@ -45,7 +45,8 @@ import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.ResourceAccessRights;
 import org.ogema.accesscontrol.ResourcePermission;
 import org.ogema.accesscontrol.Util;
-import org.ogema.core.administration.AdministrationManager;
+import org.ogema.applicationregistry.ApplicationRegistry;
+import org.ogema.core.administration.CredentialStore;
 import org.ogema.core.application.AppID;
 import org.ogema.core.application.Application;
 import org.ogema.core.channelmanager.ChannelConfiguration;
@@ -55,6 +56,7 @@ import org.ogema.core.model.Resource;
 import org.ogema.core.security.AppPermission;
 import org.ogema.core.security.WebAccessManager;
 import org.ogema.resourcetree.TreeElement;
+import org.ogema.staticpolicy.StaticPolicies;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
@@ -89,7 +91,15 @@ public class DefaultPermissionManager implements PermissionManager {
 	org.apache.felix.useradmin.RoleRepositoryStore store;
 
 	@Reference
-	AdministrationManager admin;
+	ApplicationRegistry appreg;
+
+	@Reference
+	CredentialStore cStore;
+	
+	@Reference
+	StaticPolicies staticPolicies;
+
+	BundleContext bc;
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 
@@ -107,6 +117,7 @@ public class DefaultPermissionManager implements PermissionManager {
 	private AppDomainCombiner domainCombiner;
 
 	AppPermissionImpl defaultPolicies;
+	private ShellCommands sc; 
 
 	@Override
 	public WebAccessManager getWebAccess() {
@@ -120,10 +131,11 @@ public class DefaultPermissionManager implements PermissionManager {
 	}
 
 	@Activate
-	public void activate(BundleContext bc) throws BundleException {
+	public synchronized void activate(BundleContext bc) throws BundleException {
+		this.bc = bc;
 		// Get reference to ConditionalPermissionAdmin
 		ServiceReference<?> sRef = bc.getServiceReference(ConditionalPermissionAdmin.class.getName());
-		if (sRef != null) {
+		if (sRef != null) { // FIXME should we track hte cpa? What if it disappear?
 			cpa = (ConditionalPermissionAdmin) bc.getService(sRef);
 		}
 		else {
@@ -137,19 +149,34 @@ public class DefaultPermissionManager implements PermissionManager {
 			throw new BundleException("URPHandler registration failed.", e);
 		}
 
-		this.accessMan = new AccessManagerImpl(ua, bc, this);
+		this.accessMan = new AccessManagerImpl(ua, bc, cStore, this,staticPolicies);
 		bc.addBundleListener(this.accessMan); // BundleListener is needed to
 												// manage storage area each app.
-		this.webAccess = new ApplicationWebAccessFactory(this, http, ua, admin);
+		this.webAccess = new ApplicationWebAccessFactory(this, http, ua);
 
 		security = System.getSecurityManager();
 		this.domainCombiner = new AppDomainCombiner();
-		new ShellCommands(this, bc);
+		sc = new ShellCommands(this, bc);
 	}
 
 	@Deactivate
-	protected void deactivate(BundleContext context) throws Exception {
+	protected synchronized void deactivate(BundleContext context) throws Exception {
+		if (this.webAccess != null)
+			((ApplicationWebAccessFactory) webAccess).close();
+		if (sc != null)
+			sc.close();
+		if (context != null && accessMan != null) {
+			context.removeBundleListener(this.accessMan);
+		}
+		if (accessMan != null) 
+			accessMan.close();
 		unregisterURPHandler(context);
+//		currentAccessControlContext // are we sure instances are cleaned up?
+		this.webAccess = null;
+		this.sc = null;
+		this.accessMan = null;
+		this.bc = null;
+		this.cpa = null;
 	}
 
 	private ServiceRegistration<URLStreamHandlerService> urpHandlerRegistratrion;
@@ -237,7 +264,7 @@ public class DefaultPermissionManager implements PermissionManager {
 	@Override
 	public boolean handleSecurity(Permission perm) {
 		Application app = null;
-		AppID id = admin.getContextApp(this.getClass());
+		AppID id = appreg.getContextApp(this.getClass());
 		if (id != null)
 			app = id.getApplication();
 		if (security != null) {
@@ -375,11 +402,6 @@ public class DefaultPermissionManager implements PermissionManager {
 	}
 
 	@Override
-	public AdministrationManager getAdminManager() {
-		return admin;
-	}
-
-	@Override
 	public AppPermissionImpl getDefaultPolicies() {
 		if (this.defaultPolicies != null)
 			return defaultPolicies;
@@ -480,7 +502,7 @@ public class DefaultPermissionManager implements PermissionManager {
 			break;
 		}
 		ChannelPermission perm = new ChannelPermission(busID, devAddr, chParams, action);
-		AppID id = admin.getContextApp(this.getClass());
+		AppID id = appreg.getContextApp(this.getClass());
 		AccessControlContext acc = null;
 		if (id != null) {
 			Application app = id.getApplication();
@@ -500,10 +522,10 @@ public class DefaultPermissionManager implements PermissionManager {
 		chParams = configuration.getChannelLocator().getChannelAddress();
 
 		ChannelPermission perm = new ChannelPermission(busID, devAddr, chParams, ChannelPermission._DELETE);
-		AppID id = admin.getContextApp(this.getClass());
+		AppID id = appreg.getContextApp(this.getClass());
 		AccessControlContext acc = null;
 		if (id != null) {
-			Application app = admin.getContextApp(this.getClass()).getApplication();
+			Application app = appreg.getContextApp(this.getClass()).getApplication();
 			acc = getACC(app);
 		}
 		return handleSecurity(perm, acc);
@@ -749,5 +771,10 @@ public class DefaultPermissionManager implements PermissionManager {
 	@Override
 	public boolean isSecure() {
 		return (security != null);
+	}
+
+	@Override
+	public ApplicationRegistry getApplicationRegistry() {
+		return appreg;
 	}
 }

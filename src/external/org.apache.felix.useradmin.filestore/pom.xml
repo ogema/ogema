@@ -23,10 +23,21 @@
         <groupId>org.apache.felix</groupId>
         <version>1.2.0</version>
     </parent>
+    
+    <groupId>org.ogema.external</groupId>
     <artifactId>org.apache.felix.useradmin.filestore</artifactId>
     <version>1.0.2</version>
     <packaging>bundle</packaging>
     <description>Provides a file-based repository store for the UserAdmin OSGi compendium service.</description>
+	
+	<distributionManagement>
+		<repository>
+			<id>external-opensource</id>
+			<name>external-opensource</name>
+			<url>https://www.ogema-source.net/artifactory/external-opensource</url>
+		</repository>
+	</distributionManagement>
+	
     <dependencies>
         <dependency>
             <groupId>org.osgi</groupId>
@@ -108,6 +119,6 @@
         <connection>scm:svn:https://svn.apache.org/repos/asf/felix/releases/org.apache.felix.useradmin.filestore-1.0.2</connection>
         <developerConnection>scm:svn:https://svn.apache.org/repos/asf/felix/releases/org.apache.felix.useradmin.filestore-1.0.2</developerConnection>
         <url>scm:svn:https://svn.apache.org/repos/asf/felix/releases/org.apache.felix.useradmin.filestore-1.0.2</url>
-      <tag>ogema-2.0.4</tag>
+      <tag>ogema-2.1.0</tag>
   </scm>
 </project>

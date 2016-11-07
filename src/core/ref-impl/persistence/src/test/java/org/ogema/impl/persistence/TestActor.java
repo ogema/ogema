@@ -26,6 +26,7 @@ public interface TestActor extends MultiSwitch {
 
 	IntegerResource int_res();
 
+    @SuppressWarnings("deprecation")
 	OpaqueResource opaque_res();
 
 	StringResource string_res();

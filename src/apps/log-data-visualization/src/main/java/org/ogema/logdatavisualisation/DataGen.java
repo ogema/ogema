@@ -40,7 +40,7 @@ import org.ogema.core.timeseries.InterpolationMode;
  */
 public class DataGen {
 
-	private final Map<String, Object> dataSets = new HashMap<String, Object>();
+	private final Map<String, Object> dataSets = new HashMap<>();
 	private String currentGraphType;
 
 	/**
@@ -125,7 +125,7 @@ public class DataGen {
 
 		for (SampledValue value : values) {
 			//each Datapoint in the flott-chart consists out of two Values (x and y Axis)
-			final ArrayList<Object> xyPoint = new ArrayList();
+			final ArrayList<Object> xyPoint = new ArrayList<>();
 			//add x-axis value (Time as an formated Date)
 			xyPoint.add(new Date(value.getTimestamp()));
 			//add y-axis value (effective resource value) as double (brings auto convert for booleans)
@@ -178,6 +178,7 @@ public class DataGen {
 	 * @param key steps, show, fill
 	 * @param value the fitting value for the key
 	 */
+    @SuppressWarnings("unchecked")
 	public void changeType(String uniqueName, String key, boolean value) {
 		Map<String, Object> map = (Map<String, Object>) dataSets.get(uniqueName);
 		Map<String, Boolean> typeMap = (Map<String, Boolean>) map.get(currentGraphType);
@@ -189,6 +190,7 @@ public class DataGen {
 	 * @param uniqueName an unique name that is only used once. only used for intern purposes
 	 * @return arraylist with data to a given uniquename
 	 */
+    @SuppressWarnings("unchecked")
 	public ArrayList<Object> getDataArray(String uniqueName) {
 		Map<String, Object> map = (Map<String, Object>) dataSets.get(uniqueName);
 		return (ArrayList<Object>) map.get("data");

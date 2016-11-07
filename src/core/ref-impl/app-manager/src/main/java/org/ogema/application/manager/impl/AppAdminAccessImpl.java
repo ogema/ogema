@@ -18,12 +18,17 @@
  */
 package org.ogema.application.manager.impl;
 
+import java.util.Collections;
 import java.util.List;
 
+import javax.servlet.http.HttpServletRequest;
+
 import org.ogema.accesscontrol.AccessManager;
+import org.ogema.accesscontrol.SessionAuth;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.administration.AdminLogger;
 import org.ogema.core.administration.RegisteredAccessModeRequest;
+import org.ogema.core.administration.RegisteredPatternListener;
 import org.ogema.core.administration.RegisteredResourceDemand;
 import org.ogema.core.administration.RegisteredResourceListener;
 import org.ogema.core.administration.RegisteredStructureListener;
@@ -32,6 +37,7 @@ import org.ogema.core.administration.RegisteredValueListener;
 import org.ogema.core.application.AppID;
 import org.ogema.core.application.Application;
 import org.ogema.core.security.AppPermission;
+import org.ogema.core.security.WebAccessManager;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.ServiceRegistration;
 
@@ -225,6 +231,15 @@ public class AppAdminAccessImpl implements AdminApplication {
 	}
 
 	@Override
+	public List<RegisteredPatternListener> getPatternListeners() {
+		if (appman.advAcc == null)
+			return Collections.emptyList();
+		else {
+			return appman.advAcc.getRegisteredPatternListeners();
+		}
+	}
+
+	@Override
 	public List<RegisteredTimer> getTimers() {
 		return appman.getTimers();
 	}
@@ -248,6 +263,21 @@ public class AppAdminAccessImpl implements AdminApplication {
 	@Override
 	public String toString() {
 		return getID().toString();
+	}
+	
+	@Override
+	public WebAccessManager getWebAccess() {
+		return appman.tracker.getWebAccessManager(appman.getAppID());
+	}
+	
+	@Override
+	public boolean isWebAccessAllowed(HttpServletRequest req) {
+		SessionAuth sesAuth = (SessionAuth) req.getSession().getAttribute("ogemaAuth");
+		String user = null;
+		if (sesAuth != null) // if security is disabled sesAuth is null
+			user = sesAuth.getName();
+		AccessManager accMan = appman.tracker.getPermissionManager().getAccessManager();
+		return accMan.isAppPermitted(user, getID());
 	}
 
 }

@@ -26,7 +26,10 @@ import org.ogema.core.timeseries.TimeSeries;
  * {@link SingleValueResource} for nodes containing a single value, {@link ArrayResource}
  * for nodes containing an array of nodes, and {@link Schedule} for nodes containing
  * a full {@link TimeSeries}.
+ * 
+ * @deprecated use {@link ValueResource} instead
  */
+@Deprecated
 public interface ValueContainingResource extends Resource {
 
 	/**

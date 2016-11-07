@@ -25,7 +25,9 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.PermissionManager;
@@ -49,7 +51,7 @@ import org.slf4j.Logger;
 
 /* Collects services required for ApplicationManager via DS, and then starts
  tracking Application registrations in activate(). */
-@Component(specVersion = "1.1")
+@Component(specVersion = "1.2")
 // @Reference(referenceInterface = Application.class, cardinality = ReferenceCardinality.OPTIONAL_MULTIPLE, policy =
 // ReferencePolicy.DYNAMIC, bind = "addApplication", unbind = "removeApplication")
 public class ApplicationTracker {
@@ -146,7 +148,8 @@ public class ApplicationTracker {
         this.hardwareManager = hardwareManager;
     }
 
-    protected void activate(BundleContext ctx, Map<String, Object> config) {
+    @Activate
+    protected synchronized void activate(BundleContext ctx, Map<String, Object> config) {
         this.ctx = ctx;
         try {
             resDBManager = new ResourceDBManager(resDB, recordedData, timerScheduler,
@@ -172,8 +175,10 @@ public class ApplicationTracker {
         }
     }
 
-    protected void deactivate(Map<String, Object> config) {
-        tracker.close();
+    @Deactivate
+    protected synchronized void deactivate(Map<String, Object> config) {
+    	if (tracker != null)
+    		tracker.close();
         synchronized (apps) {
             Iterator<Application> it = apps.keySet().iterator();
             while (it.hasNext()) {
@@ -183,9 +188,24 @@ public class ApplicationTracker {
                 appMan.close();
                 it.remove();
             }
+            Iterator<AppAdminAccessImpl> itAdmin = appAdmins.values().iterator();
+            while (itAdmin.hasNext()) {
+            	AppAdminAccessImpl app = itAdmin.next();
+            	if (app.registration != null)
+            		app.registration.unregister();
+            	app.registration = null;
+            	itAdmin.remove();
+            }
         }
-        drainTimer.cancel();
+        if (drainTimer != null) {
+        	drainTimer.cancel();
+        	drainTimer.purge();
+        }
         logger.debug("ApplicationTracker deactivated.");
+        tracker = null;
+        resDBManager = null;
+        drainTimer = null;
+        ctx = null;
     }
 
     protected void addApplication(Application app, Bundle b) {
@@ -220,6 +240,7 @@ public class ApplicationTracker {
         synchronized (apps) {
             ApplicationManagerImpl appMan = apps.remove(app);
             AccessManager am = permissionManager.getAccessManager();
+            AppAdminAccessImpl aaa = appAdmins.remove(app);
             if (appMan != null) {
                 appMan.stopApplication();
                 unregisterWebResources(appMan.getAppID());
@@ -228,15 +249,16 @@ public class ApplicationTracker {
             } else {
                 logger.warn("tried to remove non existent app {}", app);
             }
-
-            AppAdminAccessImpl aaa = appAdmins.remove(app);
-
             /*
              * The app role (group) created at the installation of the app used by access rights management has to be
              * removed because the app is uninstalled.
              */
-            am.unregisterApp(aaa.id);
-            aaa.registration.unregister();
+            if (aaa != null) {
+            	if (am != null)
+            		am.unregisterApp(aaa.id);
+            	if (aaa.registration != null)
+            		aaa.registration.unregister();
+            }
             return appMan != null ? appMan.getAppID() : null;
         }
     }

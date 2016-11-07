@@ -223,7 +223,7 @@ public class ProgramEnforcerTest extends OsgiAppTestBase {
 
 	int resourceCounter = 0;
 
-	@Ignore
+//	@Ignore
 	@Test
 	public void testEnforcingMultipleProgramsRADs() throws InterruptedException {
 		final ResourcePatternAccess resourcePatternAccess = getApplicationManager().getResourcePatternAccess();
@@ -302,7 +302,7 @@ public class ProgramEnforcerTest extends OsgiAppTestBase {
 		
 		assertTrue("pattern not available", latch.await(3, TimeUnit.SECONDS));
 		
-		sleep(2000);
+		Thread.sleep(2000);
 
 		assertTrue(patterns.size() == 3);
 
@@ -413,7 +413,7 @@ public class ProgramEnforcerTest extends OsgiAppTestBase {
 		return values;
 	}
 
-	@Ignore
+//	@Ignore
 	@Test
 	public void testDeactivationConfiguration() throws InterruptedException {
 		TemperatureSensor sensor = resman.createResource("testTempSens", TemperatureSensor.class);
@@ -442,13 +442,5 @@ public class ProgramEnforcerTest extends OsgiAppTestBase {
 		tool.deleteAllConfigurations();
 		Thread.sleep(1000); // allow callbacks from delete methods to complete
 		sensor.delete();
-	}
-
-	private void sleep(int millis) {
-		try {
-			Thread.sleep(millis);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
 	}
 }

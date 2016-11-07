@@ -28,9 +28,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.devices.buildingtechnology.ElectricDimmer;
 import org.ogema.model.devices.connectiondevices.ThermalValve;
+import org.ogema.model.devices.sensoractordevices.SingleSwitchBox;
 import org.ogema.model.sensors.ElectricPowerSensor;
 import org.ogema.model.sensors.LightSensor;
 import org.ogema.model.sensors.MotionSensor;
@@ -81,7 +81,7 @@ public class KNXUtils {
 			dpStr = "12.001";
 		}
 
-		if (conInfo.getType().equals(OnOffSwitch.class.getSimpleName())) {
+		if (conInfo.getType().equals(SingleSwitchBox.class.getSimpleName())) {
 
 			dpStr = "1.001";
 

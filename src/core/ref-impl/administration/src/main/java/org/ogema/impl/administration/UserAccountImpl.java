@@ -15,19 +15,26 @@
  */
 package org.ogema.impl.administration;
 
+import java.util.Dictionary;
+
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.core.administration.UserAccount;
+import org.osgi.service.useradmin.User;
 
 public class UserAccountImpl implements UserAccount {
 
 	private String name;
 	private AccessManager accMngr;
+	User usr;
+	// private PermissionManager permMngr;
 
 	public UserAccountImpl(String name, boolean isnatural, PermissionManager pMan) {
 		this.name = name;
 		this.accMngr = pMan.getAccessManager();
-		pMan.getAccessManager().createUser(name, isnatural);
+		this.accMngr.createUser(name, null, isnatural);
+		this.usr = (User) accMngr.getRole(name);
+		// this.permMngr = pMan;
 	}
 
 	public UserAccountImpl() {
@@ -41,14 +48,28 @@ public class UserAccountImpl implements UserAccount {
 	@Override
 	public void setNewPassword(String oldPassword, String newPassword) {
 		boolean isNatural = accMngr.isNatural(name);
-		accMngr.authenticate(name, oldPassword, isNatural);
-		accMngr.setNewPassword(name, newPassword);
+		if (!accMngr.authenticate(name, oldPassword, isNatural))
+			throw new SecurityException("Authorization to change password failed!");
+		accMngr.setNewPassword(name, oldPassword, newPassword);
 	}
 
-	public static UserAccount createinstance(String user, boolean natural, PermissionManager pm) {
-		UserAccountImpl acc = new UserAccountImpl();
-		acc.name = user;
-		acc.accMngr = pm.getAccessManager();
-		return acc;
+	public static UserAccount createinstance(String name, boolean natural, PermissionManager pm) {
+		UserAccountImpl res;
+		AccessManager accm = pm.getAccessManager();
+		User user = (User) accm.getRole(name);
+		if (user == null) {
+			res = new UserAccountImpl(name, natural, pm);
+		}
+		else {
+			res = new UserAccountImpl();
+		}
+		return res;
+	}
+
+	@Override
+	public String getStoreUserName(String storeName) {
+		@SuppressWarnings("unchecked")
+		Dictionary<String, Object> dict = usr.getCredentials();
+		return (String) dict.get("user_" + storeName);
 	}
 }

@@ -16,19 +16,12 @@
 package org.ogema.rest.servlet;
 
 import java.io.IOException;
-import java.util.Map;
-
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Reference;
-import org.apache.felix.scr.annotations.Service;
 import org.ogema.accesscontrol.PermissionManager;
-import org.ogema.core.administration.AdministrationManager;
-import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.schedule.Schedule;
@@ -36,22 +29,20 @@ import org.ogema.core.tools.SerializationManager;
 import org.ogema.rest.RootResource;
 import org.ogema.rest.servlet.ResourceReaders.ResourceReader;
 import org.ogema.rest.servlet.ResourceWriters.ResourceWriter;
-import org.osgi.service.http.HttpService;
-import org.osgi.service.http.NamespaceException;
 
 /**
  * 
  * @author jlapp
  */
-@Component(specVersion = "1.2")
-@Service(Application.class)
-public class RestServlet extends HttpServlet implements Application {
+//@Component(specVersion = "1.2")
+//@Service(Application.class)
+public class RestServlet extends HttpServlet  {
 
 	private static final long serialVersionUID = 1L;
 
 	final static String alias = "/rest/resources";
 
-	boolean SECURITY_ENABLED;// "on".equalsIgnoreCase(System.getProperty("org.ogema.security", "off"));
+	final boolean SECURITY_ENABLED;// "on".equalsIgnoreCase(System.getProperty("org.ogema.security", "off"));
 
 	/**
 	 * URL parameter defining the maximum depth of the resource tree in the response, default is 0, i.e. transfer only
@@ -72,51 +63,54 @@ public class RestServlet extends HttpServlet implements Application {
 	public static final String PARAM_REFERENCES = "references";
 	static final boolean DEFAULT_REFERENCES = false;
 
-	@Reference
-	HttpService http;
-	@Reference
-	private PermissionManager permMan;
-	@Reference
-	private AdministrationManager adminMan;
+//	@Reference
+//	HttpService http;
+//	@Reference
+	private final PermissionManager permMan;
+//	@Reference
+//	private final AdministrationManager adminMan;
 
-	private RestAccess restAcc;
+	private final RestAccess restAcc;
 
-	protected ApplicationManager appman;
+	protected final ApplicationManager appman;
 
-	protected void activate(Map<String, ?> config) {
-		restAcc = new RestAccess(permMan, adminMan);
-		SECURITY_ENABLED = permMan.isSecure();
+//	protected void activate(Map<String, ?> config) {
+//		restAcc = new RestAccess(permMan, adminMan);
+//		SECURITY_ENABLED = permMan.isSecure();
+//	}
+//
+//	protected void deactivate(Map<String, ?> config) {
+//
+//	}
+	
+	public RestServlet(ApplicationManager am, PermissionManager permMan, RestAccess restAcc, boolean SECURITY_ENABLED) {
+		this.restAcc = restAcc;
+		this.SECURITY_ENABLED = SECURITY_ENABLED;
+		this.appman = am;
+//		this.adminMan = am.getAdministrationManager();
+		this.permMan = permMan;
+//		if (SECURITY_ENABLED && System.getSecurityManager() == null) {
+//			throw new Error("org.ogema.security=on, but security manager is null!");
+//		}
+//		try {
+//			http.registerServlet(alias, this, null, null);
+//			appman.getLogger().info("REST servlet registered, security enabled: {}", SECURITY_ENABLED);
+//		} catch (ServletException | NamespaceException ex) {
+//			appman.getLogger().error("could not register servlet");
+//		}
+//
+//		String url = appman.getWebAccessManager().registerWebResourcePath("/rest-gui", "rest/gui");
 	}
 
-	protected void deactivate(Map<String, ?> config) {
-
-	}
-
-	@Override
-	public void start(ApplicationManager appManager) {
-		appman = appManager;
-		if (SECURITY_ENABLED && System.getSecurityManager() == null) {
-			throw new Error("org.ogema.security=on, but security manager is null!");
-		}
-		try {
-			http.registerServlet(alias, this, null, null);
-			appman.getLogger().info("REST servlet registered, security enabled: {}", SECURITY_ENABLED);
-		} catch (ServletException | NamespaceException ex) {
-			appman.getLogger().error("could not register servlet");
-		}
-
-		String url = appman.getWebAccessManager().registerWebResourcePath("/rest-gui", "rest/gui");
-	}
-
-	@Override
-	public void stop(AppStopReason reason) {
-		http.unregister(alias);
-		appman.getWebAccessManager().unregisterWebResourcePath("/rest-gui");
-	}
+//	@Override
+//	public void stop(AppStopReason reason) {
+//		http.unregister(alias);
+//		appman.getWebAccessManager().unregisterWebResourcePath("/rest-gui");
+//	}
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		if (!setAccessContext(req, resp)) {
+		if (!restAcc.setAccessContext(req, resp, SECURITY_ENABLED)) {
 			return;
 		}
 		resp.setCharacterEncoding("UTF-8");
@@ -162,7 +156,7 @@ public class RestServlet extends HttpServlet implements Application {
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		try {
-			if (!setAccessContext(req, resp)) {
+			if (!restAcc.setAccessContext(req, resp, SECURITY_ENABLED)) {
 				return;
 			}
 			resp.setCharacterEncoding("UTF-8");
@@ -204,7 +198,7 @@ public class RestServlet extends HttpServlet implements Application {
 				return;
 			}
 			resp.setCharacterEncoding("UTF-8");
-			if (!setAccessContext(req, resp)) {
+			if (!restAcc.setAccessContext(req, resp, SECURITY_ENABLED)) {
 				return;
 			}
 			resp.setContentType(w.contentType());
@@ -233,7 +227,7 @@ public class RestServlet extends HttpServlet implements Application {
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		try {
-			if (!setAccessContext(req, resp)) {
+			if (!restAcc.setAccessContext(req, resp, SECURITY_ENABLED)) {
 				return;
 			}
 			resp.setCharacterEncoding("UTF-8");
@@ -339,20 +333,6 @@ public class RestServlet extends HttpServlet implements Application {
 			sman.setFollowReferences(DEFAULT_REFERENCES);
 		}
 		return sman;
-	}
-
-	protected boolean setAccessContext(HttpServletRequest req, HttpServletResponse resp) throws ServletException,
-			IOException {
-		if (!SECURITY_ENABLED) {
-			return true;
-		}
-		if (!restAcc.checkAccess(req)) {
-			resp.sendError(HttpServletResponse.SC_FORBIDDEN);
-			return false;
-		}
-		else {
-			return true;
-		}
 	}
 
 }

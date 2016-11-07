@@ -149,6 +149,9 @@ public class CommonServlet extends HttpServlet {
 		sb.append('[');
 		int index = 0;
 		for (TreeElement te : childs) {
+			// if the node is an internal one skip it
+			if (te.getPath().startsWith("@"))
+				continue;
 			if (index++ != 0)
 				sb.append(',');
 			sb.append("{\"text\":\"");
@@ -215,10 +218,10 @@ public class CommonServlet extends HttpServlet {
 		sb.append('[');
 		int index = 0;
 		for (TreeElement te : childs) {
-			String text = te.getName();
 			// if the node is an internal one skip it
-			if (text.startsWith("@"))
+			if (te.getPath().startsWith("@"))
 				continue;
+			String text = te.getName();
 			// If the node is a reference extend the name string with the path of the referee
 			if (te.isReference())
 				text = text + "->" + te.getLocation();
@@ -496,7 +499,7 @@ public class CommonServlet extends HttpServlet {
 		}
 	}
 
-	@SuppressWarnings( { "unchecked", "rawtypes" })
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		Map params = req.getParameterMap();
 		String info = req.getPathInfo(); // pathinfo /permissions, permission data is application/x-www-form-urlencoded,

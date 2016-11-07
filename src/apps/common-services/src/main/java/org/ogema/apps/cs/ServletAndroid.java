@@ -36,8 +36,8 @@ public class ServletAndroid extends HttpServlet {
 		this.ra = access;
 	}
 
-	synchronized public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException,
-			IOException {
+	synchronized public void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 		String pi = request.getPathInfo();
 		System.out.println(request.getPathInfo());
 		System.out.println(request.getPathTranslated());
@@ -62,8 +62,8 @@ public class ServletAndroid extends HttpServlet {
 
 	}
 
-	synchronized public void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException,
-			IOException {
+	synchronized public void doPut(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 		response.setContentType("text/script");
 	}
 
@@ -76,12 +76,12 @@ public class ServletAndroid extends HttpServlet {
 	static final String fbutton1 = "HM_ES_PMSw1_Pl_PowerMeter_274155/onOffSwitch/stateFeedback";
 	static final String fbutton2 = "Light_00212effff003dc6_0b/onOffSwitch/stateFeedback";
 	static final String fbutton3 = "Develco_Smart_Plug/onOffSwitch/stateFeedback";
-	static final String fbutton4 = "ZWave_Switch_Box_2/onOffSwitch/stateFeedback";
+	static final String fbutton4 = "ZWave_123601_Plug_in_Switch_swbox1/onOffSwitch/stateFeedback";
 
 	static final String cbutton1 = "HM_ES_PMSw1_Pl_PowerMeter_274155/onOffSwitch/stateControl";
 	static final String cbutton2 = "Light_00212effff003dc6_0b/onOffSwitch/stateControl";
 	static final String cbutton3 = "Develco_Smart_Plug/onOffSwitch/stateControl";
-	static final String cbutton4 = "ZWave_Switch_Box_2/onOffSwitch/stateControl";
+	static final String cbutton4 = "ZWave_123601_Plug_in_Switch_swbox1/onOffSwitch/stateControl";
 
 	BooleanResource boolButton1, boolButton2, boolButton3, boolButton4;
 	BooleanResource boolControl1, boolControl2, boolControl3, boolControl4;

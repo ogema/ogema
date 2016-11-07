@@ -157,7 +157,7 @@ public class DefaultLogger implements OgemaLogger {
         return max;
     }
     
-    private Level toSlf4jLevel(LogLevel lvl) {
+    private static Level toSlf4jLevel(LogLevel lvl) {
         switch (lvl) {
             case DEBUG : return Level.DEBUG;
             case ERROR : return Level.ERROR;
@@ -170,7 +170,7 @@ public class DefaultLogger implements OgemaLogger {
     }
     
     /* setting log level in logback requires (java.util.logging.LoggingPermission "control") */
-    private void setLogLevelPrivileged(final Logger logger, final Level level) {
+    private static void setLogLevelPrivileged(final Logger logger, final Level level) {
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
 
             @Override

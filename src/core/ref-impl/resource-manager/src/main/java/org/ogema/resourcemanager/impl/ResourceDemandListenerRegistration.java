@@ -83,6 +83,11 @@ public class ResourceDemandListenerRegistration implements RegisteredResourceDem
         }
         availableResources.remove(el);
         final Resource resource = resman.findResource(el);
+        if (resource == null) { 
+        	resman.logger.error("Resource unavailable callback cannot be fired, resource {} not found. This is an internal framework error.", 
+        			(el != null ? el.getPath() : null));
+        	return;
+        }
         
         Callable<Void> listenerCall = new Callable<Void>() {
             @Override

@@ -15,6 +15,8 @@
  */
 package org.ogema.pattern.test;
 
+import org.ogema.exam.ResourceAssertions;
+import org.ogema.pattern.test.pattern.HeatPumpPattern2;
 import org.ogema.pattern.test.pattern.HeatPumpRad;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -47,4 +49,23 @@ public class AdvancedAccessTest extends OsgiTestBase {
 		assertTrue(rad.allInactive());
 		assertFalse(rad.allActive());
 	}
+	
+	@Test 
+	public void createPatternWithDecoratorWorks() {
+		HeatPumpPattern2 pattern = advAcc.createResource(newResourceName(), HeatPumpPattern2.class);
+		ResourceAssertions.assertExists(pattern.model);
+		ResourceAssertions.assertExists(pattern.battery);
+		ResourceAssertions.assertExists(pattern.chargeSensor);
+		ResourceAssertions.assertIsVirtual(pattern.batteryStatus);
+		advAcc.createOptionalResourceFields(pattern, HeatPumpPattern2.class, false);
+		ResourceAssertions.assertExists(pattern.batteryStatus);
+		advAcc.activatePattern(pattern);
+		ResourceAssertions.assertActive(pattern.model);
+		ResourceAssertions.assertActive(pattern.battery);
+		ResourceAssertions.assertActive(pattern.chargeSensor);
+		ResourceAssertions.assertActive(pattern.batteryStatus);
+		
+		pattern.model.delete();
+	}
+
 }

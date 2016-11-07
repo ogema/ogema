@@ -16,8 +16,7 @@
 package org.ogema.impl.security;
 
 import java.util.Collections;
-import java.util.Dictionary;
-import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,11 +25,8 @@ import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpSession;
 
-import org.apache.felix.http.api.ExtHttpService;
-import org.eclipse.jetty.servlets.QoSFilter;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.SessionAuth;
-import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.AppID;
 import org.ogema.core.security.WebAccessManager;
 import org.osgi.service.http.HttpContext;
@@ -46,22 +42,17 @@ import org.slf4j.LoggerFactory;
  */
 public class ApplicationWebAccessFactory implements WebAccessManager {
 
-    PermissionManager pm;
+    final PermissionManager pm;
 
-    HttpService http;
-
-    Map<String, String> baseUrls = new ConcurrentHashMap<>();
-
-    Map<AppID, ApplicationWebAccessManager> appWAMs = new ConcurrentHashMap<>();
-    
+    final HttpService http;
+    final Map<String, String> baseUrls = new ConcurrentHashMap<>();
+    final Map<AppID, ApplicationWebAccessManager> appWAMs = new ConcurrentHashMap<>();
     final Logger logger = LoggerFactory.getLogger(getClass());
+    final RestHttpContext restContext;
+    final M2MLogin m2mLogin;
     
-    RestHttpContext restContext;
-    M2MLogin m2mLogin;
-    
-    public ApplicationWebAccessFactory(PermissionManager pm, HttpService http, UserAdmin userAdmin, AdministrationManager admin) {
+    public ApplicationWebAccessFactory(PermissionManager pm, HttpService http, UserAdmin userAdmin) {
 		this.http = http;
-		this.baseUrls = new ConcurrentHashMap<>();
         this.pm = pm;
 
 		this.restContext = new RestHttpContext();
@@ -85,15 +76,31 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
 		}
 	}
     
+    /*
+     * Other registrations are removed by the ApplicationTracker -> we need to keep a reference to the HttpService for this 
+     * (also of the ApplicationWebAccessManagers?)
+     */
+    public void close() {
+    	try {
+    		http.unregister("/login");
+    	} catch (Exception e) { /* ignore */ }
+    	try {
+    		http.unregister(LoginServlet.LOGIN_SERVLET_PATH);
+    	} catch (Exception e) { /* ignore */ }
+    	try {
+    		http.unregister("/m2mLogin");
+    	} catch (Exception e) { /* ignore */ }
+    	Iterator<ApplicationWebAccessManager> it = appWAMs.values().iterator();
+    	while (it.hasNext()) {
+    		ApplicationWebAccessManager wam = it.next();
+    		wam.close();
+    		it.remove();
+    	}
+    	baseUrls.clear();
+    }
+    
     private void registerFilter(HttpContext ctx) throws ServletException {
-
-		ExtHttpService extHttp = (ExtHttpService) http;
-		QoSFilter filter = new QoSFilter();
-
-		Dictionary<Object, Object> hashTable = new Hashtable<>();
-		hashTable.put("filter.scope", new String[] { "request" });
-		extHttp.registerFilter(filter, ".*", hashTable, 0, ctx);
-
+        //filter registrations moved to DS component definition in OSGI-INF/
 	}
     
     /*

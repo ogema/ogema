@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<artifactId>ogema-apps</artifactId>
+		<groupId>org.ogema.apps</groupId>
+		<version>2.1.0</version>
+	</parent>
+
+	<groupId>org.ogema.examples</groupId>
+	<artifactId>ogema-examples</artifactId>
+	<packaging>pom</packaging>
+
+	<name>OGEMA App templates</name>
+	<description>
+        The available archetypes generated as ready to copy app templates.
+    </description>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+	<repositories>
+		<repository>
+			<id>ogema-releases</id>
+			<name>OGEMA repository</name>
+			<url>http://www.ogema-source.net/artifactory/libs-release-local</url>
+		</repository>
+	</repositories>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-scr-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+			</plugin>
+		</plugins>
+
+	</build>
+
+	<profiles>
+		<profile>
+			<id>newProject</id>
+			<properties>
+				<archetypeCatalog>https://www.ogema-source.net/artifactory/libs-release-local/</archetypeCatalog>
+				<filter>org.ogema.archetypes:</filter>
+				<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+			</properties>
+			<build>
+				<defaultGoal>archetype:generate</defaultGoal>
+			</build>
+		</profile>
+	</profiles>
+	<modules>
+		<module>example-angular-gui-app</module>
+		<module>example-gui-app</module>
+		<module>example-pattern-app</module>
+		<module>example-simple-app</module>
+		<!-- <module>example-wicket-gui-app</module> --> <!-- required dependencies not normally available -->
+	</modules>
+</project>

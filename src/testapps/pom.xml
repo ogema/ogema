@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.ogema</groupId>
 		<artifactId>ogema</artifactId>
-		<version>2.0.4</version>
+		<version>2.1.0</version>
 	</parent>
 
 	<groupId>org.ogema.tests</groupId>
@@ -22,16 +22,18 @@
 		<module>activation-hell</module>
 		<module>arduino-uno</module>
 		<module>channel-manager-security-test-app</module>
+		<module>custom-type-provider</module>
 		<module>fill-schedule</module>
 		<module>listener-keepalive</module>
 		<module>memory-logger</module>
 		<module>multiapp-chain</module>
 		<module>ogema-admin</module>
-		<module>ogema-resource-management-gui</module>
+<!--    <module>ogema-resource-management-gui</module> --><!-- requires Wicket -->
 		<module>physical-unit-persistence</module>
 		<module>resource-consumption</module>
-	 <module>udp-response-test</module>
-	 <module>one-time-pw-example</module>
+		<module>resource-flash</module>
+		<module>udp-response-test</module>
+		<module>one-time-pw-example</module>
 	</modules>
 
 	<build>

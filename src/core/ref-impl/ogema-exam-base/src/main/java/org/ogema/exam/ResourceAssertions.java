@@ -26,7 +26,7 @@ public class ResourceAssertions {
 	}
 
 	public static void assertInactive(Resource res) {
-		assertFalse(toString(res) + " should be inactive", res.exists());
+		assertFalse(toString(res) + " should be inactive", res.isActive());
 	}
 
 	public static String toString(Resource res) {
@@ -38,7 +38,7 @@ public class ResourceAssertions {
 	}
 
 	public static void assertActive(Resource res) {
-		assertFalse(toString(res) + " should be active", res.exists());
+		assertTrue(toString(res) + " should be active", res.isActive());
 	}
 
 	/** res is direct subresource, not a reference
@@ -59,4 +59,8 @@ public class ResourceAssertions {
 		assertFalse(toString(res) + " should not exist", res.exists());
 	}
 
+	public static void assertLocationsEqual(Resource res1, Resource res2) {
+		assertTrue("Resources should have the same locations: " + res1 + ", " + res2,res1.equalsLocation(res2));
+	}
+	
 }

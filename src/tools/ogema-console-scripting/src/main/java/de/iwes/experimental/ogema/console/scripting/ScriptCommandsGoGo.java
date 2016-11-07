@@ -38,9 +38,9 @@ import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Properties;
 import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.felix.service.command.Descriptor;
-import org.codehaus.groovy.jsr223.GroovyScriptEngineFactory;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.Application.AppStopReason;
 import org.ogema.core.application.ApplicationManager;
@@ -65,20 +65,23 @@ import org.slf4j.LoggerFactory;
  * contain additional method definitions.
  *
  */
-@Component(specVersion = "1.1", immediate = true, enabled = true)
+@Component(specVersion = "1.2", immediate = true, enabled = true)
 @Service(Application.class)
 @Properties({ @Property(name = "osgi.command.scope", value = "ogs"),
 		@Property(name = "osgi.command.function", value = { "ogs", "run", "console", "init", "env" }) })
+@Reference(cardinality = ReferenceCardinality.OPTIONAL_MULTIPLE, referenceInterface = ScriptEngineFactory.class, bind = "addFactory", unbind = "removeFactory")
 public class ScriptCommandsGoGo implements Application {
 
 	@Reference
 	protected org.apache.felix.service.command.CommandProcessor cp;
-
-	protected ScriptEngineManager manager;
-	protected ScriptEngine engine;
+    
+	protected volatile ScriptEngineManager manager = new ScriptEngineManager();
+	protected volatile ScriptEngine engine;
 	protected boolean echo = false;
-	protected List<String> history = new ArrayList<>();
+	protected final List<String> history = new ArrayList<>();
 	protected ComponentContext ctx;
+    
+    protected final List<ScriptEngineFactory> addedFactories = new ArrayList<>();
 
 	protected ApplicationManager appMan;
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
@@ -170,19 +173,52 @@ public class ScriptCommandsGoGo implements Application {
 			System.out.println(se);
 		}
 	}
+    
+    protected void addFactory(ScriptEngineFactory fac) {
+        logger.debug("adding factory for {}", fac.getLanguageName());
+        for (String mimeType : fac.getMimeTypes()) {
+            manager.registerEngineMimeType(mimeType, fac);
+        }
+        manager.registerEngineName(fac.getLanguageName(), fac);
+        for (String ext : fac.getExtensions()) {
+            manager.registerEngineExtension(ext, fac);
+        }
+        addedFactories.add(fac);
+    }
+    
+    protected void removeFactory(ScriptEngineFactory fac) {
+        addedFactories.remove(fac);
+    }
 
-	protected void activate(ComponentContext ctx, Map<String, Object> config) {
+	protected synchronized void activate(ComponentContext ctx, Map<String, Object> config) {
 		this.ctx = ctx;
-		manager = new ScriptEngineManager();
-		ScriptEngineFactory gfac = new GroovyScriptEngineFactory();
-		manager.registerEngineName("Groovy", gfac);
+        try {
+            @SuppressWarnings("unchecked")
+            Class<ScriptEngineFactory> c = (Class<ScriptEngineFactory>) Class.forName("org.codehaus.groovy.jsr223.GroovyScriptEngineFactory");
+            ScriptEngineFactory f = c.newInstance();
+            addFactory(f);
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+            logger.debug("Groovy not available ({})", e.getMessage());
+        }
+        for (ScriptEngineFactory sef: manager.getEngineFactories()) {
+            logger.debug("engine discovered: '{}', {}, {}", sef.getEngineName(), sef.getLanguageName(), sef.getExtensions());
+        }
+        for (ScriptEngineFactory sef: addedFactories) {
+            logger.debug("engine added: '{}', {}, {}", sef.getEngineName(), sef.getLanguageName(), sef.getExtensions());
+        }
+        if (manager.getEngineByName("Groovy") != null) {
+            initEngine("Groovy");
+        } else {
+            initEngine("ECMAScript");
+        }
+        logger.debug("initialized {} engine", engine.getFactory().getLanguageName());
 	}
 
 	protected void initEngine(String scriptname) {
 		engine = getEnginePrivileged(scriptname);
 		if (engine == null) {
-			logger.warn("could not get script engine {} from manager, using Groovy", scriptname);
-			engine = new GroovyScriptEngineFactory().getScriptEngine();
+			logger.warn("could not get script engine {} from manager, using ECMAScript", scriptname);
+			engine = manager.getEngineByExtension("js");
 		}
 		engine.put("ctx", ctx.getBundleContext());
 		engine.put("bundle", ctx.getBundleContext().getBundle());
@@ -204,7 +240,17 @@ public class ScriptCommandsGoGo implements Application {
 		}
 	}
 
-	protected void deactivate(ComponentContext ctx, Map<String, Object> config) {
+	protected synchronized void deactivate(ComponentContext ctx, Map<String, Object> config) {
+		try {
+			engine.put("manager",null); // try to remove appmanager reference from the engine
+		} catch (Exception e) {}
+		engine = null;
+		try {
+			stop(null);
+		} catch (Exception e) {}
+		addedFactories.clear();
+		history.clear();
+		manager = null;
 	}
     
     private ScriptEngine getEnginePrivileged(final String engineName){
@@ -220,12 +266,12 @@ public class ScriptCommandsGoGo implements Application {
 	@Override
 	public void start(ApplicationManager appManager) {
 		this.appMan = appManager;
-		initEngine("Groovy");
 		engine.put("manager", appManager);
 	}
 
 	@Override
 	public void stop(AppStopReason whatever) {
+		this.appMan = null;
 	}
 
 }

@@ -20,6 +20,7 @@ import java.util.List;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.Quality;
@@ -51,6 +52,7 @@ public class GetValuesArgumentTest extends SlotsDbTest {
 	private static void generateTestData() {
 
 		SlotsDb sdb = new SlotsDb();
+		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);
@@ -62,6 +64,7 @@ public class GetValuesArgumentTest extends SlotsDbTest {
 			rds.insertValue(new SampledValue(new DoubleValue(3.0), 2, Quality.GOOD));
 			rds.insertValue(new SampledValue(new DoubleValue(4.0), 3, Quality.GOOD));
 			rds.insertValue(new SampledValue(new DoubleValue(5.0), 4, Quality.GOOD));
+			rds.insertValue(new SampledValue(new DoubleValue(7.0), System.currentTimeMillis(), Quality.GOOD));
 		} catch (DataRecorderException e) {
 			e.printStackTrace();
 		}
@@ -88,6 +91,32 @@ public class GetValuesArgumentTest extends SlotsDbTest {
 			List<SampledValue> recordedData = rds.getValues(2, 1, 1, mode);
 			Assert.assertTrue(recordedData.isEmpty());
 		}
+	}
+	
+	@Ignore // getNextValue fails
+	@Test
+	public void valuesAvailable() {
+		assert(rds.getValues(-1).size()>0) : "log data not found";
+		assert(rds.getNextValue(-7) != null) : "log data not found";
+	}
+	
+	/*
+	 * This test is important, because the framework methods often pass
+	 * Long.MIN_VALUE or Long.MAX_VALUE to recorded data
+	 */
+	@Ignore // getNextValue fails
+	@Test
+	public void testLargeRequestArguments() {
+		List<SampledValue> values = rds.getValues(Long.MIN_VALUE);
+		assert (values.size() > 0) : "log data not found";
+		values = rds.getValues(Long.MIN_VALUE,5);
+		assert (values.size() > 0) : "log data not found";
+		values = rds.getValues(Long.MIN_VALUE, Long.MAX_VALUE);
+		assert (values.size() > 0) : "log data not found";
+		values = rds.getValues(-1, Long.MAX_VALUE);
+		assert (values.size() > 0) : "log data not found";
+		SampledValue sv = rds.getNextValue(Long.MIN_VALUE);
+		assert (sv != null) : "log data not found";
 	}
 
 }

@@ -48,6 +48,7 @@ public class Activator implements BundleActivator {
 			logger.warn("Starting hardwaremanager with Dummy NativeAccess!. NO DEVICES will be found. "
 					+ "Start a bundle exporting the service {} before starting this bundle.", NativeAccess.class
 					.getName());
+			logger.warn("Note that HardwareManager currently supports Linux systems only.");
 		}
 
 		manager = new HardwareManagerImpl(nativeAccess);

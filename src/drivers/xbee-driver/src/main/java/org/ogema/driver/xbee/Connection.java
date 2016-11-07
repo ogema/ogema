@@ -33,7 +33,7 @@ public class Connection {
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("xbee-driver");
 	private final XBeeDriver xbeeDriver;
 
-	public Connection(String iface, XBeeDriver xbeeDriver) {
+	public Connection(String iface, XBeeDriver xbeeDriver) throws SerialPortException {
 		this.xbeeDriver = xbeeDriver;
 		interfaceId = iface;
 		devices = new HashMap<String, Device>();
@@ -43,6 +43,7 @@ public class Connection {
 		} catch (SerialPortException e) {
 			logger.info("Serial connection couldn't be established: " + e.getExceptionType());
 			temp = null;
+			throw e;
 		}
 		localDevice = temp;
 	}

@@ -15,6 +15,10 @@
  */
 package org.ogema.core.model.schedule;
 
+/**
+ * A schedule that is interpreted as a relative time series,
+ * i.e. only the difference between two timestamps is well-defined. 
+ */
 public interface RelativeSchedule extends Schedule {
 
 }

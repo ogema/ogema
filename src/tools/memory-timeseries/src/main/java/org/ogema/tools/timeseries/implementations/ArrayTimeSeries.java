@@ -95,7 +95,29 @@ public class ArrayTimeSeries implements MemoryTimeSeries {
 		final List<SampledValue> newValues = schedule.getValues(start, end);
 		m_values.addValuesCopies(newValues);
 		setInterpolationMode(schedule.getInterpolationMode());
-
+		return this;
+	}
+	
+	@Override
+	public ArrayTimeSeries readWithBoundaries(ReadOnlyTimeSeries schedule, long start, long end) {
+		m_values.clear();
+		setInterpolationMode(schedule.getInterpolationMode());
+		final List<SampledValue> newValues = schedule.getValues(start, end);
+		List<SampledValue> resultList = new ArrayList<SampledValue>();
+		if (end < start)
+			return this;
+		if (newValues.isEmpty() || start < newValues.get(0).getTimestamp()) {
+			SampledValue sv = schedule.getValue(start);
+			if (sv != null)
+				resultList.add(new SampledValue(sv));
+		}
+		resultList.addAll(newValues);
+		if (end > start) {
+			SampledValue sv = schedule.getValue(end);
+			if (sv != null)
+				resultList.add(new SampledValue(sv));
+		}
+		m_values.addValuesCopies(resultList);
 		return this;
 	}
 
@@ -144,6 +166,7 @@ public class ArrayTimeSeries implements MemoryTimeSeries {
 	}
 
 	@Override
+        @Deprecated
 	final public Long getTimeOfLatestEntry() {
 		return null;
 	}
@@ -293,11 +316,13 @@ public class ArrayTimeSeries implements MemoryTimeSeries {
 	}
 
 	@Override
+        @Deprecated
 	public final boolean addValueSchedule(long startTime, long stepSize, List<Value> values) {
 		return replaceValuesFixedStep(startTime, values, stepSize);
 	}
 
 	@Override
+        @Deprecated
 	public final boolean addValueSchedule(long startTime, long stepSize, List<Value> values, long timeOfCalculation) {
 		return replaceValuesFixedStep(startTime, values, stepSize, timeOfCalculation);
 	}

@@ -26,13 +26,13 @@ import org.slf4j.Logger;
 
 public class RestHttpContext implements HttpContext {
 
-	boolean securemode = true;
+	boolean httpEnable = false;
 
 	private Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 
 	public RestHttpContext() {
 		// For development purposes secure mode could be disabled
-		securemode = OgemaHttpContext.securemode;
+		httpEnable = OgemaHttpContext.httpEnable;
 	}
 
 	/*
@@ -50,7 +50,7 @@ public class RestHttpContext implements HttpContext {
 		 */
 
 		String scheme = request.getScheme();
-		if (securemode && (!scheme.equals("https") && !OgemaHttpContext.isLoopbackAddress(request.getRemoteAddr()))) {
+		if (!httpEnable && (!scheme.equals("https") && !OgemaHttpContext.isLoopbackAddress(request.getRemoteAddr()))) {
 			logger.info("\tSecure connection is required.");
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 			response.getOutputStream().write("\tSecure connection is required.".getBytes());

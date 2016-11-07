@@ -17,7 +17,6 @@ package org.ogema.application.manager.impl;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.ogema.core.application.AppID;
@@ -69,13 +68,14 @@ public class AppIDImpl implements AppID {
 
 	static final AtomicInteger instanceCounter = new AtomicInteger();
 
+	
 	private static String createID(Bundle bundle, Application app) {
 		String loc = bundle.getLocation();
 		int begin = loc.lastIndexOf('/') + 1;
 		int end = loc.lastIndexOf('.');
 		if (begin > end)
 			end = loc.length();
-		String appName = app.getClass().getSimpleName();
+//		String appName = app.getClass().getSimpleName();
 		return String.format("[%d]_%s@%d", instanceCounter.incrementAndGet(), app.getClass(), bundle.getBundleId(),
 				bundle.getLocation());
 		//.substring(begin, end));// loc.substring(begin, end) + "_" + bundle.getBundleId();

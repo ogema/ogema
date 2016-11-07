@@ -26,7 +26,7 @@ import org.ogema.driver.hmhl.Constants;
 import org.ogema.driver.hmhl.HM_hlConfig;
 import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
-import org.ogema.driver.hmhl.models.SmokeDetector;
+import org.ogema.model.sensors.SmokeDetector;
 import org.ogema.model.sensors.StateOfChargeSensor;
 import org.ogema.tools.resource.util.ResourceUtils;
 
@@ -78,13 +78,13 @@ public class SmokeSensor extends HM_hlDevice {
 		attributeConfig.chLocator = addChannel(attributeConfig);
 
 		SmokeDetector smokeDetector = resourceManager.createResource(hm_hlConfig.resourceName, SmokeDetector.class);
-		smokeAlert = (BooleanResource) smokeDetector.smokeAlert().create();
+		smokeAlert = smokeDetector.reading().create();
 		// smokeAlert.activate(true);
 		// smokeAlert.setValue(false);
 		smokeAlert.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
-		StateOfChargeSensor eSens = (StateOfChargeSensor) smokeDetector.battery().create();
-		batteryStatus = (FloatResource) eSens.reading().create();
+		StateOfChargeSensor eSens = smokeDetector.battery().chargeSensor().create();
+		batteryStatus = eSens.reading().create();
 		// batteryStatus.activate(true);
 		// batteryStatus.setValue(95);
 		batteryStatus.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);

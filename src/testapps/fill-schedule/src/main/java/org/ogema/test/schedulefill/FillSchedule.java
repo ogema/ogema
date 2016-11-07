@@ -25,7 +25,7 @@ import org.ogema.core.application.Timer;
 import org.ogema.core.application.TimerListener;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.array.FloatArrayResource;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.ResourceManagement;
 
@@ -38,7 +38,7 @@ import org.ogema.core.resourcemanager.ResourceManagement;
 public class FillSchedule implements Application {
 
 	protected OgemaLogger logger;
-	protected DefinitionSchedule schedule;
+	protected AbsoluteSchedule schedule;
 	protected FloatArrayResource farr;
 	protected ApplicationManager appMan;
 	int i = 0;
@@ -75,7 +75,7 @@ public class FillSchedule implements Application {
 
 		FloatResource res = resMan.createResource("dummyvalue", FloatResource.class);
 		farr = resMan.createResource("dummyarray", FloatArrayResource.class);
-		schedule = res.addDecorator("logdata", DefinitionSchedule.class);
+		schedule = res.addDecorator("logdata", AbsoluteSchedule.class);
 		schedule.activate(false);
 
 		appManager.createTimer(1000, timerListener);

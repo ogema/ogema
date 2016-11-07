@@ -1,0 +1,18 @@
+(org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.tools.*" "import")
+
+(org.osgi.framework.PackagePermission "org.apache.http" "import")
+(org.osgi.framework.PackagePermission "org.apache.http.*" "import")
+(org.osgi.framework.PackagePermission "org.slf4j" "import")
+(org.osgi.framework.PackagePermission "javax.net.ssl" "import")
+(org.osgi.framework.PackagePermission "javax.net.ssl.*" "import")
+(org.osgi.framework.PackagePermission "org.json" "import")
+
+# export custom resource type
+(org.osgi.framework.PackagePermission "de.iwes.ogema.remote.rest.connector.model" "exportonly")
+
+# TODO less generous resource permissions?
+(org.ogema.accesscontrol.ResourcePermission "type=*" "read,write,addsub,create,activity,delete")
+

@@ -19,6 +19,7 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlSeeAlso;
 import javax.xml.bind.annotation.XmlType;
 
 import org.ogema.core.model.ResourceList;
@@ -30,8 +31,9 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
  * @author jlapp
  */
 @XmlAccessorType(XmlAccessType.PROPERTY)
-@XmlType(name = "ResourceList", namespace = NS_OGEMA_REST)
+@XmlType(name = "ResourceList", namespace = NS_OGEMA_REST, propOrder = { "elementType" })
 @XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
+@XmlSeeAlso({JaxbResource.class})
 public class JaxbResourceList extends JaxbResource {
 
 	public JaxbResourceList(ResourceList<?> r, SerializationStatus serStat) {
@@ -42,6 +44,7 @@ public class JaxbResourceList extends JaxbResource {
 		throw new UnsupportedOperationException();
 	}
 
+	@SuppressWarnings("rawtypes")
 	@XmlElement
 	public Class<?> getElementType() {
 		return ((ResourceList) res).getElementType();

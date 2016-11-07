@@ -28,16 +28,25 @@ import org.ogema.core.model.Resource;
 import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
+import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceException;
 import org.ogema.core.resourcemanager.VirtualResourceException;
+import org.ogema.exam.ResourceAssertions;
+import org.ogema.exam.StructureTestListener;
 import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.connections.ElectricityConnection;
+import org.ogema.model.devices.buildingtechnology.ElectricDimmer;
+import org.ogema.model.devices.buildingtechnology.ElectricLight;
+import org.ogema.model.devices.storage.ElectricityStorage;
+import org.ogema.model.devices.whitegoods.CoolingDevice;
 import org.ogema.model.locations.PhysicalDimensions;
 import org.ogema.model.metering.ElectricityMeter;
+import org.ogema.model.prototypes.PhysicalElement;
 import org.ogema.model.ranges.BinaryRange;
+import org.ogema.model.sensors.StateOfChargeSensor;
 import org.ops4j.pax.exam.ProbeBuilder;
 import org.ops4j.pax.exam.TestProbeBuilder;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
@@ -209,7 +218,7 @@ public class ResourceTest extends OsgiTestBase {
 	@Test
 	public void equalsLocationWorks() {
 		OnOffSwitch elSwitch = resMan.createResource("test" + counter++, OnOffSwitch.class);
-		String topName = elSwitch.getName();
+//		String topName = elSwitch.getName();
 		elSwitch.addOptionalElement("physDim");
 		elSwitch.addDecorator("foo", elSwitch.physDim());
 		assertTrue("must the same location", elSwitch.physDim().equalsLocation(elSwitch.getSubResource("foo")));
@@ -226,11 +235,13 @@ public class ResourceTest extends OsgiTestBase {
 		Resource physDim2 = elSwitch.addDecorator("bar", PhysicalDimensions.class);
 		elSwitch.addDecorator("foo", physDim2);
 		assertNotNull(elSwitch.getSubResource("foo"));
+		@SuppressWarnings("unused")
 		Resource replacedDecorator = elSwitch.getSubResource("foo");
 		assertTrue("not the same resource", physDim2.equalsLocation(elSwitch.getSubResource("foo")));
 	}
 
-	@Test(expected = ResourceAlreadyExistsException.class)
+	//@Test(expected = ResourceAlreadyExistsException.class)
+    //this is OK now ...
 	public void addDecoratorWithReferenceBarfsOnExistingDecoratorOfIncompatibleType() throws Exception {
 		OnOffSwitch elSwitch = resMan.createResource("test" + counter++, OnOffSwitch.class);
 		Resource physDim = elSwitch.addOptionalElement("physDim");
@@ -256,6 +267,7 @@ public class ResourceTest extends OsgiTestBase {
 	@Test
 	public void addDecoratorWorksOnOptionalElementWithCompatibleType() {
 		OnOffSwitch elSwitch = resMan.createResource("test", OnOffSwitch.class);
+		@SuppressWarnings("unused")
 		Resource physDim = elSwitch.physDim().create();
 		elSwitch.addDecorator("ratedValues", BinaryRange.class);
 	}
@@ -266,6 +278,7 @@ public class ResourceTest extends OsgiTestBase {
 		OnOffSwitch elSwitch2 = resMan.createResource(newResourceName(), OnOffSwitch.class);
 		elSwitch2.ratedValues().create();
 
+		@SuppressWarnings("unused")
 		Resource physDim = elSwitch.physDim().create();
 		elSwitch.addDecorator("ratedValues", elSwitch2.ratedValues());
 	}
@@ -424,4 +437,84 @@ public class ResourceTest extends OsgiTestBase {
 		} catch (VirtualResourceException | ClassCastException e) {}
 		res.delete();
 	}
+	
+	@Test
+	public void deleteRemovesStructureListenerRegistrationFromReferencedSubresource() 	{
+		String suffix = newResourceName();
+		CoolingDevice cd1 = getApplicationManager().getResourceManagement().createResource("fridge1_" + suffix, CoolingDevice.class);
+		CoolingDevice cd2 = getApplicationManager().getResourceManagement().createResource("fridge2_" + suffix, CoolingDevice.class);
+		StructureTestListener listener = new StructureTestListener();
+		cd2.temperatureSensor().location().create();
+		cd1.temperatureSensor().setAsReference(cd2.temperatureSensor());
+		cd1.temperatureSensor().addStructureListener(listener);
+		
+		cd1.delete();
+		cd2.delete(); 
+	}
+	
+	// see test above
+	@Test
+	public void deleteRemovesStructureListenerRegistrationFromTransitivelyReferencedSubresource() 	{
+		String suffix = newResourceName();
+		CoolingDevice cd1 = getApplicationManager().getResourceManagement().createResource("fridge1_" + suffix, CoolingDevice.class);
+		CoolingDevice cd2 = getApplicationManager().getResourceManagement().createResource("fridge2_" + suffix, CoolingDevice.class);
+		CoolingDevice cd3 = getApplicationManager().getResourceManagement().createResource("fridge3_" + suffix, CoolingDevice.class);
+		StructureTestListener listener = new StructureTestListener();
+		cd3.temperatureSensor().location().create();
+		cd2.temperatureSensor().setAsReference(cd3.temperatureSensor());
+		cd1.temperatureSensor().setAsReference(cd2.temperatureSensor());
+		cd1.temperatureSensor().addStructureListener(listener);
+		
+		cd1.delete();
+		cd3.delete(); 
+		cd2.delete();
+	}
+	
+	// similar to the tests above, but the exception might occur in a different location
+	@Test
+	public void rereferencingRemovesStructureListenerRegistrationFromReferencedSubresource() {
+		String suffix = newResourceName();
+		StructureTestListener listener = new StructureTestListener();
+		CoolingDevice cd1 = getApplicationManager().getResourceManagement().createResource("baseResource_" + suffix, CoolingDevice.class);
+		PhysicalElement device1 = cd1.location().device().<PhysicalElement> create();
+		ElectricLight light = resMan.createResource("light1_" + suffix, ElectricLight.class);
+		light.dimmer().name().create();
+		CoolingDevice fridge = resMan.createResource("fridge1_" + suffix, CoolingDevice.class);
+		device1.setAsReference(light);
+		device1.getSubResource("dimmer", ElectricDimmer.class).addStructureListener(listener);
+		device1.setAsReference(fridge);
+		
+		light.delete();
+		fridge.delete();
+		device1.delete();
+	}
+	
+	@Test
+	public void newActivationStatusIsVisibleImmediately() {
+		ElectricityStorage battery = resMan.createResource(newResourceName(), ElectricityStorage.class);
+		StateOfChargeSensor socs = battery.chargeSensor();
+		socs.reading();
+		socs.create().activate(false);
+		socs.reading();
+		ResourceAssertions.assertActive(socs);
+		battery.delete();
+	}
+    
+    @Test(expected = NoSuchResourceException.class)
+    public void illegalResourceNamesAreIllegal() {
+        resMan.createResource("4711", ElectricityStorage.class);
+    }
+    
+    @Test(expected = NoSuchResourceException.class)
+    public void illegalSubResourceNamesAreIllegal() {
+        ElectricityStorage battery = resMan.createResource(newResourceName(), ElectricityStorage.class);
+        battery.addDecorator("4711", IntegerResource.class);
+    }
+    
+    @Test(expected = NoSuchResourceException.class)
+    public void illegalSubResourceNamesAreIllegal2() {
+        ElectricityStorage battery = resMan.createResource(newResourceName(), ElectricityStorage.class);
+        battery.addDecorator("4711", battery);
+    }
+    
 }

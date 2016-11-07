@@ -26,8 +26,8 @@ import javax.xml.bind.annotation.XmlType;
 import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
 
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "FloatArrayResource", propOrder = { "values" })
-@XmlRootElement(name = "floatArray", namespace = NS_OGEMA_REST)
+@XmlType(name = "FloatArrayResource", namespace = NS_OGEMA_REST, propOrder = { "values" })
+//@XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 public class FloatArrayResource extends Resource {
 
 	@XmlList

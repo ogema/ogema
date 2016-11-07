@@ -15,12 +15,16 @@
  */
 package org.ogema.pattern.test;
 
+import org.ogema.model.locations.Building;
+import org.ogema.pattern.test.pattern.BuildingRad;
 import org.ogema.pattern.test.pattern.ChargingStationRad;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -34,6 +38,7 @@ import org.ogema.core.model.units.PowerResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.pattern.PatternListener;
+import org.ogema.core.resourcemanager.pattern.ResourcePatternAccess;
 import org.ops4j.pax.exam.ProbeBuilder;
 import org.ops4j.pax.exam.TestProbeBuilder;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
@@ -184,4 +189,25 @@ public class ComplicatedAccessTest extends OsgiTestBase {
 		assertFalse(rad.cps.isActive());
 		assertTrue(rad.cps.getAllElements().isEmpty());
 	}
+	
+	/**
+	 * Create a toplevel pattern and a pattern below some other resource, and verify that
+	 * {@link ResourcePatternAccess#getSubresources(Resource, Class, boolean, AccessPriority)}
+	 * only returns the subpattern
+	 */
+	@Test	
+	public void testSubPatterns() {
+		Building test = resMan.createResource("testRes", Building.class);
+		test.location().create();
+		advAcc.addDecorator(test.location(), "recursiveTestSubRes", BuildingRad.class);
+		advAcc.addDecorator(test, "testSubRes",BuildingRad.class);
+		BuildingRad buildingPattern = advAcc.createResource("topResTest", BuildingRad.class);
+		test.activate(true);
+		advAcc.activatePattern(buildingPattern);
+		List<BuildingRad> subpatterns = advAcc.getSubresources(test, BuildingRad.class, false, AccessPriority.PRIO_HIGHEST);
+		assertEquals("Advanced access returned an unexpected number of subpatterns.",1, subpatterns.size());
+		test.delete();
+		buildingPattern.model.delete();
+	}
+	
 }

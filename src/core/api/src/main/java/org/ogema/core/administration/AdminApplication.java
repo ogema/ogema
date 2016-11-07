@@ -17,7 +17,10 @@ package org.ogema.core.administration;
 
 import java.util.List;
 
+import javax.servlet.http.HttpServletRequest;
+
 import org.ogema.core.application.AppID;
+import org.ogema.core.security.WebAccessManager;
 import org.osgi.framework.Bundle;
 
 /**
@@ -29,12 +32,12 @@ public interface AdminApplication {
 	/**
 	 * Gets the unique identifier of the application
 	 */
-	public AppID getID();
+	AppID getID();
 
 	/**
 	 * Gets the bundle reference of the application
 	 */
-	public Bundle getBundleRef();
+	Bundle getBundleRef();
 
 	/**
 	 * Gets the resource demands registered by this application.
@@ -65,6 +68,13 @@ public interface AdminApplication {
 	 * listeners.
 	 */
 	List<RegisteredStructureListener> getStructureListeners();
+	
+	/**
+	 * Gets the pattern listeners registered by this application.
+	 * 
+	 * @return registered pattern listeners.
+	 */
+	List<RegisteredPatternListener> getPatternListeners();
 
 	/**
 	 * Gets the timers added by this application.
@@ -85,12 +95,24 @@ public interface AdminApplication {
 	/**
 	 * Gets all loggers the application registered.
 	 */
-	public List<AdminLogger> getLoggers();
+	List<AdminLogger> getLoggers();
+	
+	/**
+	 * Get the WebAccessManager associated to this application. It allows, for instance,
+	 * to access the registered servlets and web resources. 
+	 */
+	WebAccessManager getWebAccess();
+	
+	/**
+	 * Is the user identified by the request allowed to access web resources of this app?
+	 * @param req
+	 */
+	boolean isWebAccessAllowed(HttpServletRequest req);
 
 	/**
 	 * return true if application is stopped via stop, other false
 	 */
-	public boolean isRunning();
+	boolean isRunning();
 
 	/*
 	 * stop bundle, but do not uninstall

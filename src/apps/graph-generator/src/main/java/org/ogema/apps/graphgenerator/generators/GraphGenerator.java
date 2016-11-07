@@ -15,9 +15,7 @@
  */
 package org.ogema.apps.graphgenerator.generators;
 
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -44,6 +42,7 @@ import org.ogema.model.prototypes.PhysicalElement;
  * graph into a string. Different GraphGenerators may support different graph
  * languages.
  */
+// FIXME synchronization in a servlet should be avoided; + remove finish method
 public abstract class GraphGenerator {
 
 	public static final String PATH_SEP = "__";
@@ -111,36 +110,53 @@ public abstract class GraphGenerator {
 	 */
 	public abstract String getGraph();
 
-	public synchronized Object generateAllResourcesGraph(ResourceAccess resAcc) {
+	public Object generateAllResourcesGraph(ResourceAccess resAcc) {
+		return generateResourcesGraph(Resource.class, resAcc);
+	}
+	
+	public synchronized Object generateResourcesGraph(Class<? extends Resource> topLevelType, ResourceAccess resAcc) {
 		init();
 
 		// Write the groups
-		logger.debug("Writing the groups and the resources");
-		final List<Resource> topLevelResources = resAcc.getToplevelResources(Resource.class);
+		logger.debug("Writing the groups and the resources for type " + topLevelType.getName());
+		final List<? extends Resource> topLevelResources = resAcc.getToplevelResources(topLevelType);
 		for (Resource root : topLevelResources) {
 			final List<Resource> groupElements = root.getDirectSubResources(true);
 			groupElements.add(root);
 			if (groupElements.size() > 2) {
-				addGroup(groupElements, root.getLocation("_"));
+				addGroup(groupElements, root.getLocation("_"));  // does  nothing in case of visJS
 			}
 		}
 		//        graph.writeDeviceGroups(resAcc.getToplevelResources(Resource.class), "");
 
 		// write all resources, including their style
-		final List<Resource> resources = resAcc.getResources(Resource.class);
+		final List<? extends Resource> resources = topLevelResources;
+		List<String> nodeLocations = new ArrayList<>();
 		for (Resource resource : resources) {
 			addNode(resource);
+			nodeLocations.add(resource.getLocation());
 		}
 
 		// write the edges
 		logger.debug("Writing edges.");
 		for (Resource resource : resources) {
-			final List<Resource> subresources = resource.getSubResources(false);
-			for (Resource subres : subresources) {
-				addEdge(resource, subres);
-			}
+			addSubresources(resource, nodeLocations);
 		}
 		return finish();
+	}
+	
+	private void addSubresources(Resource parent, List<String> nodeLocations) {
+		final List<Resource> subresources = parent.getSubResources(false);
+		for (Resource subres : subresources) {
+			addEdge(parent, subres);
+			String loc = subres.getLocation();
+			if (!nodeLocations.contains(loc)) {
+				addNode(subres);
+				nodeLocations.add(loc);
+				addSubresources(subres, nodeLocations);
+			}
+		}
+		
 	}
 
 	public synchronized <T extends Resource> Object generateGraph(ResourceAccess resAcc, Class<T> clazz) {

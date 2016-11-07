@@ -37,14 +37,14 @@ public class DLMSDriverTest {
 
 	public static void main(String[] args) {
 
-		DeviceLocator device = new TestDeviceLocator("dlms-driver", "", "hdlc:/dev/ttyUSB0:16:1",
+		DeviceLocator device = new DeviceLocator("dlms-driver", "", "hdlc:/dev/ttyUSB0:16:1",
 				"baudrate=9600;referencing=LN;usehandshake=false");
 
 		// Syntax for addressing: ClassID:OBISCODE:AttributeID
-		ChannelLocator channel = new TestChannelLocator(device, "1:1.1.96.1.0.255:2");
-		ChannelLocator channel1 = new TestChannelLocator(device, "1:0.0.42.0.0.255:2");
-		ChannelLocator channel2 = new TestChannelLocator(device, "3:1.1.31.25.0.255:2");
-		ChannelLocator channel3 = new TestChannelLocator(device, "3:1.1.32.25.0.255:2");
+		ChannelLocator channel = new ChannelLocator("1:1.1.96.1.0.255:2", device);
+		ChannelLocator channel1 = new ChannelLocator("1:0.0.42.0.0.255:2", device);
+		ChannelLocator channel2 = new ChannelLocator("3:1.1.31.25.0.255:2", device);
+		ChannelLocator channel3 = new ChannelLocator("3:1.1.32.25.0.255:2", device);
 
 		SampledValueContainer sample = new SampledValueContainer(channel);
 		SampledValueContainer sample1 = new SampledValueContainer(channel1);

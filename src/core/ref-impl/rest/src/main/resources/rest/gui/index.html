@@ -61,6 +61,8 @@
 	    			var optionStr = strIn.substring(idx+1);
 	    		}
 	    		var options = optionStr.split("&");
+	    		var usr=null;
+	    		var pw=null;
 	    		options.forEach(function(opt) { 
 	    			var keyVal = opt.split("=");  
 	    			if (keyVal.length != 2) return;
@@ -84,6 +86,12 @@
 	    						values[2] = true;
 	    					}
 	    					break;
+	    				case "user":
+	    					usr = val;
+	    					break;
+	    				case "pw":
+	    					pw = val;
+	    					break;
 	    				default:
 	    					return;
 	    			}
@@ -91,6 +99,14 @@
 	    		document.getElementById('depthField').value = values[0];
 	    		document.getElementById('optionReferences').checked = values[1];
 	    		document.getElementById('optionSchedules').checked = values[2];   		
+	    		if (usr != null) 
+	    			document.getElementById('userField').value = usr;	
+	    		else
+	    			document.getElementById('userField').value = '';	
+	    		if (pw != null) 
+	    			document.getElementById('pwField').value = pw;	
+	    		else
+	    			document.getElementById('pwField').value = '';	
 	    	}
 	    	function getOption(idx,depth) {
 	    		switch (idx) {
@@ -254,10 +270,16 @@
 		</script>
 	    <!--<form name="topform" action="#" onsubmit="sendRESTrequest('GET');">-->
 	    <form name="topform" action="javascript:sendRESTrequest('GET');">
-	        <h1 style="text-align:center;">OGEMA REST tool</h1>
+	        <h1 style="text-align:center;">OGEMA REST tool: resource access</h1>
 	        <div class="row">
 	        	<div class="col col-md-5">
-		           
+		            <p>
+		            	Select REST servlet
+		            	<select onchange="window.location = window.location.href.replace('index.html',this.value + '.html');">
+		            		<option selected="selected" value="index">Resources</option>
+		            		<option value="pattern">Resource patterns</option>
+		            	</select>
+		            </p>
 		            <h2>Request path</h2>
 		            /rest/resources/<input name="resourceField" type="text" size="84"
                                            onchange="setOptionFields()"

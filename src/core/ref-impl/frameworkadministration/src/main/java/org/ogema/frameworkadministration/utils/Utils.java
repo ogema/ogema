@@ -19,11 +19,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.servlet.http.HttpServletRequest;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.JsonParser;
-import org.codehaus.jackson.map.ObjectMapper;
+
 import org.ogema.frameworkadministration.json.JsonReplyMessage;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  *
@@ -56,6 +59,7 @@ public class Utils {
 	public static boolean isValidJSON(final String json) {
 		boolean valid = false;
 		try {
+            @SuppressWarnings("deprecation")
 			final JsonParser parser = new ObjectMapper().getJsonFactory().createJsonParser(json);
 			while (parser.nextToken() != null) {
 			}
@@ -110,7 +114,7 @@ public class Utils {
 			return jsonString;
 		}
 
-		return "{}";
+		return result;
 
 	}
 

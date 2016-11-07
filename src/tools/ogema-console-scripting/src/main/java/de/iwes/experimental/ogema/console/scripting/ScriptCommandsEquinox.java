@@ -29,7 +29,6 @@ import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Service;
 import org.eclipse.osgi.framework.console.CommandInterpreter;
 import org.eclipse.osgi.framework.console.CommandProvider;
-import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 
 /**
@@ -49,8 +48,8 @@ import org.ogema.core.application.ApplicationManager;
  * contain additional method definitions.
  *
  */
-@Component(specVersion = "1.1", immediate = true, enabled = false)
-@Service( { CommandProvider.class, Application.class })
+@Component(specVersion = "1.2", immediate = true, enabled = false)
+@Service(CommandProvider.class)
 public class ScriptCommandsEquinox extends ScriptCommandsGoGo implements CommandProvider {
 
 	@Override

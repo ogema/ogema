@@ -57,15 +57,8 @@ public class ResourceIOTest {
 
 	@Inject
 	BundleContext ctx;
-	// public ApplicationManager appMan;
-
-	// @Inject
-	// PermissionManager permMan;
 	@Inject
 	ResourceDB resdb;
-
-	// ResourceManagement resMan;
-	// ResourceAccess resAcc;
 
 	static String text = "Java 2 security uses several policy files to determine the granted permission for each Java program. See Dynamic policy for the list of available policy files. The Java Development Kit provides policytool to edit these policy files. This tool is recommended for editing any policy file to verify the syntax of its contents. Syntax errors in the policy file cause an AccessControlException during application execution, including the server start. Identifying the cause of this exception is not easy because the user might not be familiar with the resource that has an access violation. Be careful when you edit these policy files.";
 
@@ -183,14 +176,13 @@ public class ResourceIOTest {
 		return options(
 				// excludeDefaultRepositories(),
 				// repositories("file:.m2/"),
-				CoreOptions.systemProperty(DBConstants.PROP_NAME_PERSISTENCE_ACTIVE).value(
-						DBConstants.PROP_VALUE_PERSISTENCE_ACTIVE),
+				CoreOptions.systemProperty(DBConstants.PROP_NAME_PERSISTENCE_ACTIVE)
+						.value(DBConstants.PROP_VALUE_PERSISTENCE_ACTIVE),
 				CoreOptions.systemProperty(DBConstants.DB_PATH_PROP).value("resourceIOTest"),
 				CoreOptions.systemProperty(DBConstants.PROP_NAME_TIMEDPERSISTENCE_PERIOD).value("1000"),
 				CoreOptions.systemProperty(DBConstants.PROP_NAME_PERSISTENCE_COMPACTION_START_SIZE_GARBAGE).value("64"),
-				CoreOptions.systemProperty(DBConstants.PROP_NAME_PERSISTENCE_COMPACTION_START_SIZE_FILE).value("512"),
-				CoreOptions.systemProperty(DBConstants.PROP_NAME_PERSISTENCE_DEBUG).value("true"),
-				junitBundles(),
+				CoreOptions.systemProperty(DBConstants.PROP_NAME_PERSISTENCE_COMPACTION_START_SIZE).value("512"),
+				CoreOptions.systemProperty(DBConstants.PROP_NAME_PERSISTENCE_DEBUG).value("true"), junitBundles(),
 				CoreOptions.bundle("reference:file:target/classes/"), // load
 				// this
 				// bundle
@@ -199,27 +191,37 @@ public class ResourceIOTest {
 				// maven
 				// build
 				// dir
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.scr", "1.6.2").start(), CoreOptions
-						.mavenBundle("org.apache.felix", "org.apache.felix.framework.security", "2.2.0").start(),
-				CoreOptions.mavenBundle("org.ogema.ref-impl", "permission-admin", ogemaVersion).start(), CoreOptions
-						.mavenBundle("javax.servlet", "javax.servlet-api", "3.0.1"), CoreOptions.mavenBundle(
-						"org.slf4j", "slf4j-api", "1.7.2"), CoreOptions.mavenBundle("joda-time", "joda-time", "2.2"),
-				CoreOptions.mavenBundle("org.apache.wicket", "wicket-util", "6.9.1"), CoreOptions.mavenBundle(
-						"org.apache.wicket", "wicket-request", "6.9.1"), CoreOptions.mavenBundle("org.apache.wicket",
-						"wicket-core", "6.9.1"), CoreOptions.mavenBundle("org.ogema.core", "models", ogemaVersion)
-						.start(), CoreOptions.mavenBundle("org.ogema.core", "api", ogemaVersion).start(), CoreOptions
-						.mavenBundle("org.ogema.ref-impl", "internal-api", ogemaVersion).start(), CoreOptions
-						.mavenBundle("org.ogema.ref-impl", "ogema-logger", ogemaVersion).start(),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.scr", "1.6.2").start(),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.framework.security", "2.2.0").start(),
+				CoreOptions.mavenBundle("org.ogema.ref-impl", "permission-admin", ogemaVersion).start(),
+				CoreOptions.mavenBundle("javax.servlet", "javax.servlet-api", "3.0.1"),
+				CoreOptions.mavenBundle("org.slf4j", "slf4j-api", "1.7.2"),
+				CoreOptions.mavenBundle("joda-time", "joda-time", "2.2"),
+				CoreOptions.mavenBundle("org.json", "json", "20160212"),
+                CoreOptions.mavenBundle("com.google.guava", "guava", "19.0"),
+				CoreOptions.mavenBundle("org.ogema.core", "models", ogemaVersion).start(),
+				CoreOptions.mavenBundle("org.ogema.core", "api", ogemaVersion).start(),
+				CoreOptions.mavenBundle("org.ogema.ref-impl", "internal-api", ogemaVersion).start(),
+				CoreOptions.mavenBundle("org.ogema.ref-impl", "ogema-logger", ogemaVersion).start(),
 				// CoreOptions.mavenBundle("org.ogema.ref-impl", "app-manager",
 				// ogemaVersion).start(),
 				// CoreOptions.mavenBundle("org.ogema.ref-impl",
 				// "resource-manager", ogemaVersion).start(), // = this bundle
-				CoreOptions.mavenBundle("org.ogema.ref-impl", "security", ogemaVersion).start(), CoreOptions
-						.mavenBundle("org.ogema.ref-impl", "resource-manager", ogemaVersion).start(), CoreOptions
-						.mavenBundle("org.ogema.ref-impl", "util", ogemaVersion).start(), CoreOptions.mavenBundle(
-						"org.codehaus.jackson", "jackson-core-lgpl", "1.9.13"), CoreOptions.mavenBundle(
-						"org.codehaus.jackson", "jackson-mapper-lgpl", "1.9.13"), CoreOptions.mavenBundle(
-						"org.codehaus.jackson", "jackson-xc", "1.9.11")
+				CoreOptions.mavenBundle("org.ogema.ref-impl", "security", ogemaVersion).start(),
+				CoreOptions.mavenBundle("org.ogema.ref-impl", "resource-manager", ogemaVersion).start(),
+				CoreOptions.mavenBundle("org.ogema.ref-impl", "util", ogemaVersion),
+				CoreOptions.mavenBundle("org.ogema.tools", "resource-utils", ogemaVersion),
+				CoreOptions.mavenBundle("com.fasterxml.jackson.core", "jackson-core", "2.7.4"),
+				CoreOptions.mavenBundle("com.fasterxml.jackson.core", "jackson-annotations", "2.7.4"),
+				CoreOptions.mavenBundle("com.fasterxml.jackson.core", "jackson-databind", "2.7.4"),
+				CoreOptions.mavenBundle("com.fasterxml.jackson.module", "jackson-module-jaxb-annotations", "2.7.4"),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin.filestore", "1.0.2").start(),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.api", "2.3.0").start(),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin", "1.0.3").start(),
+				CoreOptions.mavenBundle("org.ogema.tools", "memory-timeseries").version(ogemaVersion).start(),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.jetty", "3.0.2").start(),
+				CoreOptions.mavenBundle("javax.servlet", "javax.servlet-api", "3.1.0"),
+				CoreOptions.mavenBundle("org.eclipse.jetty", "jetty-servlets", "9.2.11.v20150529")
 		// this
 		// bundle
 		// directly

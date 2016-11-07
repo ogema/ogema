@@ -15,6 +15,10 @@
  */
 package org.ogema.core.model.schedule;
 
+/**
+ * A {@link Schedule} that represents an absolute time series, i.e. the timestamps
+ * of the entries are interpreted as milliseconds since 1 January 1970.
+ */
 @SuppressWarnings("deprecation")
 public interface AbsoluteSchedule extends DefinitionSchedule, ForecastSchedule {
 

@@ -15,11 +15,10 @@
  */
 package org.ogema.resourcemanager.impl;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -36,11 +35,11 @@ import static org.ogema.core.resourcemanager.AccessMode.READ_ONLY;
 import static org.ogema.core.resourcemanager.AccessMode.SHARED;
 import org.ogema.core.resourcemanager.AccessModeListener;
 import org.ogema.core.resourcemanager.AccessPriority;
-import org.ogema.core.resourcemanager.ResourceStructureEvent;
-import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.persistence.impl.faketree.ScheduleTreeElement;
 import org.ogema.resourcemanager.impl.timeseries.DefaultRecordedData;
+import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 import org.ogema.resourcetree.TreeElement;
+import org.ogema.resourcetree.listeners.InternalValueChangedListenerRegistration;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -48,6 +47,9 @@ import org.slf4j.LoggerFactory;
  * existing locks and listener registrations. TreeElement and ElementInfo have a
  * n:1 relationship since a TreeElement shares its ElementInfo with its
  * referencing nodes.
+ * 
+ * (This class is not thread safe - read / write operations are synchronized
+ * in ResourceBase) - obsolete: synchronisation is done internally
  *
  * @author jlapp
  */
@@ -55,161 +57,93 @@ public class ElementInfo {
 
 	final ResourceDBManager man;
 
+	private final Object referencesLock = new Object();
 	// TreeElements which have a reference to this element.
-	private Collection<TreeElement> references;
+	private List<TreeElement> references;
 
+	private final Object listenersLock = new Object();
 	private Collection<Object> listeners;
 
 	static final int INITIAL_ACCESSREQUESTS_QUEUE_SIZE = 5;
+	private final Object accessLock = new Object();
 	PriorityQueue<AccessModeRequest> accessRequests;
 
 	/**
 	 * Schedule tree element wrapping the tree element, in case the element
 	 * represents a schedule.
 	 */
-	ScheduleTreeElement scheduleTreeElement = null;
+	WeakReference<ScheduleTreeElement> scheduleTreeElement = new WeakReference<>(null);
 
 	public ElementInfo(ResourceDBManager man, TreeElement el) {
+        //System.out.printf("NEW ELEMENTINFO %s: %s (%s)%n", this, el.getPath(), el.getLocation());
 		Objects.requireNonNull(man);
 		Objects.requireNonNull(el);
 		this.man = man;
 	}
 
-	@SuppressWarnings("unchecked")
-	public synchronized Collection<StructureListenerRegistration> getStructureListeners() {
-		if (listeners == null) {
-			return Collections.EMPTY_LIST;
+	private <T> Collection<T> getListeners(Class<T> type) {
+		synchronized (listenersLock) {
+	        if (listeners == null) {
+	            return Collections.emptyList();
+	        }
+	        Collection<T> listenersOfRequestedType = new ArrayList<>();
+	        for (Object listener : listeners) {
+	            if (type.isAssignableFrom(listener.getClass())) {
+	                listenersOfRequestedType.add(type.cast(listener));
+	            }
+	        }
+	        return listenersOfRequestedType;
 		}
-		return getListeners(StructureListenerRegistration.class);
-	}
-
-	private synchronized <T> Collection<T> getListeners(Class<T> type) {
-        if (listeners == null) {
-            return Collections.emptyList();
-        }
-        Collection<T> listenersOfRequestedType = new ArrayList<>();
-        for (Object listener : listeners) {
-            if (type.isAssignableFrom(listener.getClass())) {
-                listenersOfRequestedType.add(type.cast(listener));
-            }
-        }
-        return listenersOfRequestedType;
     }
 
-	private synchronized void addListener(Object listener) {
-        if (listeners == null) {
-            listeners = new ArrayList<>();
-        }
-        for (Object l : listeners) {
-            if (listener.equals(l)) {
-                return;
-            }
-        }
-        listeners.add(listener);
+	private void addListener(Object listener) {
+		synchronized (listenersLock) {
+	        if (listeners == null) {
+	            listeners = new ArrayList<>();
+	        }
+	        for (Object l : listeners) {
+	            if (listener.equals(l)) {
+	                return;
+	            }
+	        }
+	        listeners.add(listener);
+		}
     }
 
 	@SuppressWarnings("unchecked")
-	private synchronized <T> T removeListener(T listener) {
-		if (listeners == null) {
-			return null;
-		}
-		Iterator<Object> it = listeners.iterator();
-		while (it.hasNext()) {
-			Object l = it.next();
-			if (listener.equals(l)) {
-				it.remove();
-				return (T) l;
+	private <T> T removeListener(T listener) {
+		synchronized (listenersLock) {
+			if (listeners == null) {
+				return null;
+			}
+			Iterator<Object> it = listeners.iterator();
+			while (it.hasNext()) {
+				Object l = it.next();
+				if (listener.equals(l)) {
+					it.remove();
+					return (T) l;
+				}
 			}
 		}
 		return null;
 	}
 
-	public synchronized Collection<ResourceListenerRegistration> getResourceListeners() {
-		return listeners == null ? Collections.<ResourceListenerRegistration> emptyList()
-				: getListeners(ResourceListenerRegistration.class);
+	public Collection<InternalValueChangedListenerRegistration> getResourceListeners() {
+		return getListeners(InternalValueChangedListenerRegistration.class);
 	}
 
-	public void updateStructureListenerRegistrations() {
-		man.updateStructureListenerRegistrations();
-	}
-
-	public synchronized StructureListenerRegistration addStructureListener(Resource resource,
-			ResourceStructureListener listener, ApplicationManager appman) {
-		StructureListenerRegistration slr = new StructureListenerRegistration(resource, listener, appman);
-		addListener(slr);
-		return slr;
-	}
-
-	public synchronized void addResourceListener(ResourceListenerRegistration l) {
+	public void addResourceListener(InternalValueChangedListenerRegistration l) {
 		addListener(l);
-	}
-
-	public StructureListenerRegistration removeStructureListener(Resource resource, ResourceStructureListener listener,
-			ApplicationManager appman) {
-		StructureListenerRegistration search = new StructureListenerRegistration(resource, listener, appman);
-		return removeListener(search);
-	}
-
-	public void fireResourceActiveStateChanged(TreeElement el, boolean state) {
-		while (el.isReference()) {
-			el = el.getReference();
-		}
-		for (StructureListenerRegistration reg : getListeners(StructureListenerRegistration.class)) {
-			if (!el.getPath().equals(reg.resource.getLocation()) && !el.getPath().equals(reg.resource.getPath())) {
-				removeStructureListener(reg.resource, reg.listener, reg.appman);
-			}
-			else {
-				reg.queueActiveStateChangedEvent(state);
-			}
-		}
-	}
-
-	public void fireSubResourceAdded(TreeElement subresource) {
-		for (StructureListenerRegistration reg : getListeners(StructureListenerRegistration.class)) {
-			reg.queueSubResourceAddedEvent(subresource);
-		}
-	}
-
-	public void fireSubResourceRemoved(TreeElement subresource) {
-		for (StructureListenerRegistration reg : getListeners(StructureListenerRegistration.class)) {
-			reg.queueSubResourceRemovedEvent(subresource);
-		}
-	}
-
-	public void fireResourceDeleted(Resource r) {
-		for (StructureListenerRegistration reg : getListeners(StructureListenerRegistration.class)) {
-			if (!r.equalsPath(reg.getResource()) && r.isReference(false)) {
-				reg.queueReferenceChangedEvent(((ConnectedResource) r.getParent()).getTreeElement(), false);
-			}
-			else {
-				reg.queueResourceDeletedEvent();
-			}
-		}
-	}
-
-	public void fireResourceCreated(String path) {
-		for (StructureListenerRegistration reg : getListeners(StructureListenerRegistration.class)) {
-			reg.queueResourceCreatedEvent(path);
-		}
-	}
-
-	public void fireReferenceRemoved(Resource referer, Resource target) {
-		for (StructureListenerRegistration reg : getListeners(StructureListenerRegistration.class)) {
-			if (reg.getResource().equals(referer)) {
-				reg.queueEvent(new DefaultResourceStructureEvent(ResourceStructureEvent.EventType.REFERENCE_REMOVED,
-						target, referer));
-			}
-		}
 	}
 
 	/*
 	 * Removes a matching ResourceListenerRegistration and returns the
 	 * originally registered object, or null if no such registration is found.
 	 */
-	public synchronized ResourceListenerRegistration removeResourceListener(ResourceListenerRegistration reg) {
+	public InternalValueChangedListenerRegistration removeResourceListener(InternalValueChangedListenerRegistration reg) {
 		return removeListener(reg);
 	}
-
+	
 	public void fireResourceChanged(final ConnectedResource r, long time, boolean valueChanged) {
 		if (!r.isActive()) {
 			return;
@@ -218,11 +152,12 @@ public class ElementInfo {
 		if (d != null) {
 			d.update(time);
 		}
-		for (ResourceListenerRegistration reg : getListeners(ResourceListenerRegistration.class)) {
-			if (reg.isAbandoned()) {
+		for (InternalValueChangedListenerRegistration reg : getListeners(InternalValueChangedListenerRegistration.class)) {
+			if (reg instanceof ResourceListenerRegistration && ((ResourceListenerRegistration) reg).isAbandoned()) {
 				removeListener(reg);
 			}
 			else {
+                //FIXME
 				reg.queueResourceChangedEvent(r, valueChanged);
 			}
 		}
@@ -233,12 +168,18 @@ public class ElementInfo {
 	 * listeners on all newly reachable elements
 	 */
 	public void updateListenerRegistrations() {
-		for (ResourceListenerRegistration reg : getListeners(ResourceListenerRegistration.class)) {
-			if (reg.isAbandoned()) {
-				removeListener(reg);
+		for (InternalValueChangedListenerRegistration reg : getListeners(InternalValueChangedListenerRegistration.class)) {
+			if (reg instanceof ResourceListenerRegistration)
+				if (((ResourceListenerRegistration) reg).isAbandoned()) {
+					removeListener(reg);
+				}
+				else {
+					((ResourceListenerRegistration) reg).performRegistration();
 			}
 			else {
-				reg.performRegistration();
+				// TODO check: ok?
+				this.addResourceListener(reg);
+//				reg.performRegistration();
 			}
 		}
 	}
@@ -251,10 +192,10 @@ public class ElementInfo {
 	 * this path but are no longer valid for this TreeElement.
 	 * @return list of removed listener registrations.
 	 */
-	public synchronized List<ResourceListenerRegistration> invalidateListenerRegistrations(String oldPath) {
-        List<ResourceListenerRegistration> invalidRegs = new ArrayList<>();
-        for (ResourceListenerRegistration reg : getListeners(ResourceListenerRegistration.class)) {
-            if (reg.isAbandoned()) {
+	public List<InternalValueChangedListenerRegistration> invalidateListenerRegistrations(String oldPath) {
+        List<InternalValueChangedListenerRegistration> invalidRegs = new ArrayList<>();
+        for (InternalValueChangedListenerRegistration reg : getListeners(InternalValueChangedListenerRegistration.class)) {
+            if (reg instanceof ResourceListenerRegistration && ((ResourceListenerRegistration) reg).isAbandoned()) {
                 removeListener(reg);
                 continue;
             }
@@ -270,98 +211,154 @@ public class ElementInfo {
     }
 
 	public ScheduleTreeElement getSchedule() {
-		return scheduleTreeElement;
+		return scheduleTreeElement.get();
 	}
 
-	public void setSchedule(TreeElement element) {
-		if (scheduleTreeElement == null) {
-			scheduleTreeElement = new ScheduleTreeElement(element);
+	public void setSchedule(VirtualTreeElement element) {
+		if (scheduleTreeElement.get() == null) {
+			scheduleTreeElement = new WeakReference<>(new ScheduleTreeElement(element));
 		}
 	}
-
-	public synchronized void addReference(TreeElement el) {
-        if (references == null) {
-            references = new HashSet<>(5);
+    
+    /** 
+     * adds a reference poining to this ElementInfo's tree element. the reference
+     * is the actual link element, not the 'reference parent' of this element.
+     * @param reference the reference element
+     */
+	public void addReference(TreeElement reference) {
+        //System.out.printf("ADD REFERENCE %s: %s%n", this, reference);
+        if (!reference.isReference()) {
+            throw new IllegalArgumentException("not a reference: " + reference);
         }
-        references.add(el);
-        for (StructureListenerRegistration reg : getStructureListeners()) {
-            reg.queueReferenceChangedEvent(el, true);
+        synchronized (referencesLock) {
+	        if (references == null) {
+	            references = new ArrayList<>(3);
+	        }
+	        /* XXX references must be deleted in the correct order:
+	          in case of a reference to a reference insert that element before the
+	          element it references... 
+	        */
+	        boolean inserted = false;
+	        for (int i = 0; i < references.size(); i++) {
+	            TreeElement listEl = references.get(i);
+	            if (listEl == reference) {
+	                inserted = true;
+	                break;
+	            }
+	            if (reference.isReference() && reference.getReference() == listEl) {
+	                references.add(i, reference);
+	                inserted = true;
+	                break;
+	            }
+	        }
+	        if (!inserted) {
+	            references.add(reference);
+	        }
         }
     }
 
-	public synchronized void removeReference(TreeElement el) {
-		if (references == null) {
+	public void removeReference(TreeElement referenceElement, TreeElement target) {
+        //System.out.printf("REMOVE REFERENCE %s: %s%n", this, referenceElement);
+        boolean removed = false;
+        synchronized (referencesLock) {
+	        if (references != null) {
+	            removed = references.remove(referenceElement);
+	        }
+        }
+		if (!removed) {
 			//FIXME
-			LoggerFactory.getLogger(getClass()).warn("suspicious removeReference call on {}", el);
-			return;
+			LoggerFactory.getLogger(getClass()).warn("suspicious removeReference call on {}", referenceElement);
 		}
-		references.remove(el);
-		for (StructureListenerRegistration reg : getStructureListeners()) {
-			reg.queueReferenceChangedEvent(el, false);
-		}
+        //System.out.printf("REFERENCES %s: %s%n", this, references);
 	}
 
-	public synchronized Collection<TreeElement> getReferences() {
-		if (references == null) {
-			return Collections.emptyList();
-		}
-		return Arrays.asList(references.toArray(new TreeElement[references.size()]));
+    public Collection<TreeElement> getReferences(String path, boolean transitive) {
+    	synchronized (referencesLock) {
+			if (references == null) {
+				return Collections.emptyList();
+			}
+	        Collection<TreeElement> rval = new ArrayList<>(references.size());
+	        for (TreeElement e: references) {
+	            if (transitive) {
+	            	TreeElement p = e;
+		            while (p.isReference()) {
+	                    if (p.getReference().getPath().equals(path)) {
+		                    rval.add(e);
+		                    break;
+		                }
+		                p = p.getReference();
+		            }
+	            }
+	            else {
+	            	if (e.isReference() && e.getReference().getPath().equals(path)) {
+	                    rval.add(e);
+	                }
+	            }
+	        }
+	        return rval;
+    	}
 	}
 
-	synchronized AccessModeRequest addAccessModeRequest(Resource res, ApplicationManager app, AccessMode mode, AccessPriority priority) {
-        if (accessRequests == null) {
-            accessRequests = new PriorityQueue<>(INITIAL_ACCESSREQUESTS_QUEUE_SIZE);
-        }
-        AccessModeRequest newReq = new AccessModeRequest(res, this, app, mode, priority);
-
-        //remove previous request by the same app
-        for (Iterator<AccessModeRequest> it = accessRequests.iterator(); it.hasNext();) {
-            AccessModeRequest r = it.next();
-            if (r.getApplicationManager() == app) {
-                it.remove();
-            }
-        }
-
-        if (mode != AccessMode.READ_ONLY) {
-            accessRequests.add(newReq);
-        } else { //READ_ONLY requests are not stored (treated as 'no request').
-            newReq.setAvailableMode(READ_ONLY);
-            if (accessRequests.isEmpty()) {
-                return newReq;
-            }
-        }
-        AccessMode topMode = accessRequests.peek().getRequiredAccessMode();
-        AccessMode availableMode = topMode == AccessMode.EXCLUSIVE
-                ? READ_ONLY : AccessMode.SHARED;
-        for (AccessModeRequest r : accessRequests) {
-            if (r == accessRequests.peek()) {
-                r.setAvailableMode(r.getRequiredAccessMode());
-            } else {
-                r.setAvailableMode(availableMode);
-            }
-        }
-
-        return newReq;
+	AccessModeRequest addAccessModeRequest(Resource res, ApplicationManager app, AccessMode mode, AccessPriority priority) {
+		synchronized (accessLock) {
+	        if (accessRequests == null) {
+	            accessRequests = new PriorityQueue<>(INITIAL_ACCESSREQUESTS_QUEUE_SIZE);
+	        }
+	        AccessModeRequest newReq = new AccessModeRequest(res, this, app, mode, priority);
+	
+	        //remove previous request by the same app
+	        for (Iterator<AccessModeRequest> it = accessRequests.iterator(); it.hasNext();) {
+	            AccessModeRequest r = it.next();
+	            if (r.getApplicationManager() == app) {
+	                it.remove();
+	            }
+	        }
+	
+	        if (mode != AccessMode.READ_ONLY) {
+	            accessRequests.add(newReq);
+	        } else { //READ_ONLY requests are not stored (treated as 'no request').
+	            newReq.setAvailableMode(READ_ONLY);
+	            if (accessRequests.isEmpty()) {
+	                return newReq;
+	            }
+	        }
+	        AccessMode topMode = accessRequests.peek().getRequiredAccessMode();
+	        AccessMode availableMode = topMode == AccessMode.EXCLUSIVE
+	                ? READ_ONLY : AccessMode.SHARED;
+	        for (AccessModeRequest r : accessRequests) {
+	            if (r == accessRequests.peek()) {
+	                r.setAvailableMode(r.getRequiredAccessMode());
+	            } else {
+	                r.setAvailableMode(availableMode);
+	            }
+	        }
+	        return newReq;
+		}
     }
 
-	public synchronized List<RegisteredAccessModeRequest> getAccessRequests(ApplicationManager app) {
-        if (accessRequests == null) {
-            return Collections.emptyList();
-        }
-        List<RegisteredAccessModeRequest> rval = new ArrayList<>(accessRequests.size());
-        for (AccessModeRequest r : accessRequests) {
-            if (r.getApplicationManager() == app) {
-                rval.add(r);
-            }
-        }
-        return rval;
+	public List<RegisteredAccessModeRequest> getAccessRequests(ApplicationManager app) {
+		synchronized (accessLock) {
+	        if (accessRequests == null) {
+	            return Collections.emptyList();
+	        }
+	        List<RegisteredAccessModeRequest> rval = new ArrayList<>(accessRequests.size());
+	        for (AccessModeRequest r : accessRequests) {
+	            if (r.getApplicationManager() == app) {
+	                rval.add(r);
+	            }
+	        }
+	        return rval;
+		}
     }
 
 	public AccessMode getAccessMode(ApplicationManager app) {
-		if (accessRequests == null || accessRequests.isEmpty()) {
-			return SHARED;
+		AccessModeRequest top;
+		synchronized (accessLock) {
+			if (accessRequests == null || accessRequests.isEmpty()) {
+				return SHARED;
+			}
+			top = accessRequests.peek();
 		}
-		AccessModeRequest top = accessRequests.peek();
 		if (top.getRequiredAccessMode() == EXCLUSIVE) {
 			if (top.getApplicationManager() == app) {
 				return EXCLUSIVE;
@@ -376,18 +373,20 @@ public class ElementInfo {
 	}
 
 	public AccessPriority getAccessPriority(ApplicationManager app) {
-		if (accessRequests == null) {
-			return AccessPriority.PRIO_LOWEST;
-		}
-		for (AccessModeRequest r : accessRequests) {
-			if (r.getApplicationManager() == app) {
-				return r.getPriority();
+		synchronized (accessLock) {
+			if (accessRequests == null) {
+				return AccessPriority.PRIO_LOWEST;
+			}
+			for (AccessModeRequest r : accessRequests) {
+				if (r.getApplicationManager() == app) {
+					return r.getPriority();
+				}
 			}
 		}
 		return AccessPriority.PRIO_LOWEST;
 	}
 
-	public synchronized void addAccessModeListener(AccessModeListener l, Resource res, ApplicationManager app) {
+	public void addAccessModeListener(AccessModeListener l, Resource res, ApplicationManager app) {
 		addListener(new AccessModeListenerRegistration(app, res, l));
 	}
 
@@ -395,7 +394,7 @@ public class ElementInfo {
 		return removeListener(new AccessModeListenerRegistration(app, res, l)) != null;
 	}
 
-	public synchronized void fireAccessModeChanged(ApplicationManager app, final Resource r,
+	public void fireAccessModeChanged(ApplicationManager app, final Resource r,
 			final boolean requestedModeAvailable) {
 		for (AccessModeListenerRegistration reg : getListeners(AccessModeListenerRegistration.class)) {
 			final AccessModeListener l = reg.listener.get();
@@ -423,26 +422,25 @@ public class ElementInfo {
 
 	public void transferListeners(TreeElement target) {
 		ElementInfo targetElementInfo = (ElementInfo) target.getResRef();
-		for (ResourceListenerRegistration reg : getResourceListeners()) {
-			if (!reg.isRecursive()) {
+		for (InternalValueChangedListenerRegistration reg : getResourceListeners()) {
+			if (!(reg instanceof ResourceListenerRegistration) || !((ResourceListenerRegistration) reg).isRecursive()) {
 				targetElementInfo.addListener(reg);
 			}
-		}
-		for (StructureListenerRegistration slr : getListeners(StructureListenerRegistration.class)) {
-			targetElementInfo.addStructureListener(slr.getResource(), slr.getListener(), slr.appman);
 		}
 		targetElementInfo.addAccessModeListeners(this);
 	}
 
-	private synchronized void addAccessModeListeners(ElementInfo other) {
-        if (listeners == null){
-            listeners = new ArrayList<>();
-        }
-        Collection<AccessModeListenerRegistration> otherListeners = other.getListeners(AccessModeListenerRegistration.class);
-        for (AccessModeListenerRegistration amlr: otherListeners){
-            if (!listeners.contains(amlr)){
-                listeners.add(amlr);
-            }
-        }
+	private void addAccessModeListeners(ElementInfo other) {
+		synchronized (listenersLock) {
+	        if (listeners == null){
+	            listeners = new ArrayList<>();
+	        }
+	        Collection<AccessModeListenerRegistration> otherListeners = other.getListeners(AccessModeListenerRegistration.class);
+	        for (AccessModeListenerRegistration amlr: otherListeners){
+	            if (!listeners.contains(amlr)){
+	                listeners.add(amlr);
+	            }
+	        }
+		}
     }
 }

@@ -16,26 +16,25 @@
 package org.ogema.tools.impl;
 
 import java.io.IOException;
-import java.util.Objects;
-
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializerProvider;
-import org.codehaus.jackson.map.ser.std.SerializerBase;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.timeseries.ReadOnlyTimeSeries;
-import org.ogema.core.tools.SerializationManager;
 import org.ogema.serialization.JaxbFactory;
 import org.ogema.serialization.JaxbLink;
 import org.ogema.serialization.JaxbResource;
+import org.ogema.serialization.SerializationStatus;
+
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 /**
  * 
  * @author jlapp
  */
-public class ResourceSerializer extends SerializerBase<Resource> {
+public class ResourceSerializer extends StdSerializer<Resource> {
+    private static final long serialVersionUID = 1L;
 
 	private final ObjectMapper mapper;
 
@@ -51,7 +50,7 @@ public class ResourceSerializer extends SerializerBase<Resource> {
 			sp.defaultSerializeValue(new JaxbLink(t), jg);
 		}
 		else {
-			JaxbResource jr = JaxbFactory.createJaxbResource(t, null);// new JaxbResource(t,
+			JaxbResource jr = JaxbFactory.createJaxbResource(t, (SerializationStatus) null);// new JaxbResource(t,  // FIXME?
 			// true, true, true);
 			sp.defaultSerializeValue(jr, jg);
 		}

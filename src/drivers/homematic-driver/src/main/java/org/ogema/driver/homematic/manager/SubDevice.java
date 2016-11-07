@@ -105,7 +105,7 @@ public abstract class SubDevice {
 
 	private void getRegisterValues1(byte[] msg_data, int list) {
 		Map<Integer, Integer> target = configs.getRegValues(list);
-		int length = (int) msg_data.length - 1;
+		int length = msg_data.length - 1;
 		int offset = 1;
 		while (length > 1) { // >1 because to each value belong two bytes
 			int register = msg_data[offset++];
@@ -116,7 +116,7 @@ public abstract class SubDevice {
 	}
 
 	private void getRegisterValues2(byte[] msg_data, int list) {
-		int length = (int) msg_data.length - 1;
+		int length = msg_data.length - 1;
 		int offset = 1;
 		int register = msg_data[offset++];
 		length--;

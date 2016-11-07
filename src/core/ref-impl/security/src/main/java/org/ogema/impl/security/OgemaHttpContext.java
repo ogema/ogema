@@ -33,7 +33,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -49,8 +48,8 @@ import org.ogema.accesscontrol.Util;
 import org.ogema.core.application.AppID;
 import org.ogema.core.application.Application;
 import org.ogema.core.logging.LoggerFactory;
+import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.http.HttpContext;
-import org.osgi.service.useradmin.User;
 import org.slf4j.Logger;
 
 /**
@@ -66,17 +65,17 @@ import org.slf4j.Logger;
 public class OgemaHttpContext implements HttpContext {
 
 	private final PermissionManager pm;
-	static Boolean securemode;
-	private static boolean xservlet;
+	static Boolean httpEnable;
+	private static boolean xservletEnable;
 
 	AppID owner;
 
 	LoggerFactory factory;
 
 	// alias vs. resource path
-	HashMap<String, String> resources;
+	ConcurrentHashMap<String, String> resources;
 	// alias vs. app id
-	HashMap<String, String> servlets;
+	ConcurrentHashMap<String, String> servlets;
 
 	ConcurrentHashMap<String, String> sessionsOtpqueue;
 
@@ -86,12 +85,20 @@ public class OgemaHttpContext implements HttpContext {
 	public OgemaHttpContext(PermissionManager pm, AppID app) {
 		Objects.requireNonNull(pm);
 		Objects.requireNonNull(app);
-		this.resources = new HashMap<>();
-		this.servlets = new HashMap<>();
+		this.resources = new ConcurrentHashMap<>();
+		this.servlets = new ConcurrentHashMap<>();
 		this.sessionsOtpqueue = new ConcurrentHashMap<>();
 		this.pm = pm;
 		this.accessMngr = pm.getAccessManager();
 		this.owner = app;
+	}
+	
+	public void close() {
+		// note: this does not prevent the alias to be unregisterd from the http service, which is taken care 
+		// of by ApplicationWebAccessManager and ApplicationTracker
+		resources.clear();
+		servlets.clear();
+		sessionsOtpqueue.clear();
 	}
 
 	public final ThreadLocal<HttpSession> requestThreadLocale = new ThreadLocal<>();
@@ -106,6 +113,7 @@ public class OgemaHttpContext implements HttpContext {
 	 */
 	@Override
 	public boolean handleSecurity(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		
 		String currenturi = request.getRequestURI();
 		StringBuffer url = request.getRequestURL();
 		String servletpath = request.getServletPath();
@@ -127,7 +135,7 @@ public class OgemaHttpContext implements HttpContext {
 		 * Forbidden(403) and return false.
 		 */
 		String scheme = request.getScheme();
-		if (securemode && (!isLoopbackAddress(request.getRemoteAddr()) && !scheme.equals("https"))) {
+		if (!httpEnable && (!isLoopbackAddress(request.getRemoteAddr()) && !scheme.equals("https"))) {
 			logger.error("\tSecure connection is required.");
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 			response.getOutputStream().write("\tSecure connection is required.".getBytes());
@@ -188,7 +196,7 @@ public class OgemaHttpContext implements HttpContext {
 		/*
 		 * Satisfaction of APP-SEC 16
 		 */
-		if (!xservlet) {
+		if (xservletEnable) {
 			// check if its a servlet request. In this case only the one time password is to be checked.
 			/*
 			 * Get The authentication information
@@ -208,15 +216,15 @@ public class OgemaHttpContext implements HttpContext {
 		response.addHeader("SET-COOKIE", "JSESSIONID=" + sessionid + ";HttpOnly");
 
 		// Look for access right of the user to the app sites according this http context.
-		User usr = sesAuth.getUsr();
+		String usrName = sesAuth.getName();
 		boolean permitted = false;
 		try {
-			permitted = accessMngr.isAppPermitted(usr, owner);
+			permitted = accessMngr.isAppPermitted(usrName, owner);
 		} catch (Throwable e) {
 			e.printStackTrace();
 		}
 		if (!permitted) {
-			String message = "User " + usr.getName() + " is not permitted to access to " + request.getPathInfo();
+			String message = "User " + usrName + " is not permitted to access to " + request.getPathInfo();
 			request.getSession().invalidate();
 			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, message);
 
@@ -321,16 +329,16 @@ public class OgemaHttpContext implements HttpContext {
 	}
 
 	static {
-		if (securemode == null)
+		if (httpEnable == null)
 			AccessController.doPrivileged(new PrivilegedAction<Void>() {
 
 				@Override
 				public Void run() {
 					// For development purposes secure mode could be disabled
 					if (System.getProperty("org.ogema.non-secure.http.enable", "false").equals("false"))
-						securemode = true;
+						httpEnable = false;
 					else
-						securemode = false;
+						httpEnable = true;
 					/*
 					 * Switch to enable/disable servlet access restrictions after APP-SEC 16: Access to a web resource
 					 * out of a previously downloaded web page shall only be granted, if the requested web resource is a
@@ -338,9 +346,9 @@ public class OgemaHttpContext implements HttpContext {
 					 * the web page.
 					 */
 					if (System.getProperty("org.ogema.xservletacces.enable", "false").equals("false"))
-						xservlet = true;
+						xservletEnable = false;
 					else
-						xservlet = false;
+						xservletEnable = true;
 					return null;
 				}
 			});

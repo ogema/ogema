@@ -15,18 +15,19 @@
  */
 package org.ogema.driver.generic_zb.devices;
 
+import static org.ogema.driver.xbee.Constants.MAINS_POWER_OUTLET_DEVICE_ID;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.ChannelConfiguration;
-import org.ogema.core.channelmanager.ChannelConfigurationException;
+import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.measurements.ByteArrayValue;
-import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.units.ElectricCurrentResource;
@@ -35,7 +36,7 @@ import org.ogema.core.model.units.VoltageResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceValueListener;
-import org.ogema.driver.generic_zb.Constants;
+import org.ogema.driver.generic_zb.ChAddrConstants;
 import org.ogema.driver.generic_zb.Generic_ZbConfig;
 import org.ogema.driver.generic_zb.Generic_ZbDevice;
 import org.ogema.driver.generic_zb.Generic_ZbDriver;
@@ -81,57 +82,59 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceValueL
 	}
 
 	private void addMandatoryChannels() {
-		if (deviceName != null)
+		if (deviceName != null) {
 			generic_ZbConfig.resourceName = deviceName;
+			unifyResourceName(generic_ZbConfig);
+		}
 		offCmdConfig = new Generic_ZbConfig();
 		offCmdConfig.interfaceId = generic_ZbConfig.interfaceId;
 		offCmdConfig.deviceAddress = generic_ZbConfig.interfaceId;
-		offCmdConfig.deviceId = Constants.MAINS_POWER_OUTLET;
-		offCmdConfig.channelAddress = Constants.OFF_CMD_ADDRESS;
+		offCmdConfig.deviceId = MAINS_POWER_OUTLET_DEVICE_ID;
+		offCmdConfig.channelAddress = ChAddrConstants.OFF_CMD_ADDRESS;
 		offCmdConfig.timeout = 0; // Not necessary because it's hard coded for Commands
 		offCmdConfig.resourceName = generic_ZbConfig.resourceName;
 
 		offCmdConfig.resourceName += "_TurnOff"; // In case of several devices with the same
 		// resourceName
-		offCmdConfig.chLocator = addChannel(offCmdConfig);
+		offCmdConfig.chConfiguration = addChannel(offCmdConfig);
 
 		onCmdConfig = new Generic_ZbConfig();
 		onCmdConfig.interfaceId = generic_ZbConfig.interfaceId;
 		onCmdConfig.deviceAddress = generic_ZbConfig.interfaceId;
-		onCmdConfig.deviceId = Constants.MAINS_POWER_OUTLET;
-		onCmdConfig.channelAddress = Constants.ON_CMD_ADDRESS;
+		onCmdConfig.deviceId = MAINS_POWER_OUTLET_DEVICE_ID;
+		onCmdConfig.channelAddress = ChAddrConstants.ON_CMD_ADDRESS;
 		onCmdConfig.timeout = 0; // Not necessary because it's hard coded for Commands
 		onCmdConfig.resourceName = generic_ZbConfig.resourceName;
 
 		onCmdConfig.resourceName += "_TurnOn"; // In case of several devices with the same
 		// resourceName
-		onCmdConfig.chLocator = addChannel(onCmdConfig);
+		onCmdConfig.chConfiguration = addChannel(onCmdConfig);
 
 		toggleCmdConfig = new Generic_ZbConfig();
 		toggleCmdConfig.interfaceId = generic_ZbConfig.interfaceId;
 		toggleCmdConfig.deviceAddress = generic_ZbConfig.interfaceId;
-		toggleCmdConfig.deviceId = Constants.MAINS_POWER_OUTLET;
-		toggleCmdConfig.channelAddress = Constants.TOGGLE_CMD_ADDRESS;
+		toggleCmdConfig.deviceId = MAINS_POWER_OUTLET_DEVICE_ID;
+		toggleCmdConfig.channelAddress = ChAddrConstants.TOGGLE_CMD_ADDRESS;
 		toggleCmdConfig.timeout = 0; // Not necessary because it's hard coded for Commands
 		toggleCmdConfig.resourceName = generic_ZbConfig.resourceName;
 
 		toggleCmdConfig.resourceName += "_Toggle"; // In case of several devices with the same
 		// resourceName
-		toggleCmdConfig.chLocator = addChannel(toggleCmdConfig);
+		toggleCmdConfig.chConfiguration = addChannel(toggleCmdConfig);
 
 		onOffConfig = new Generic_ZbConfig();
 		onOffConfig.interfaceId = generic_ZbConfig.interfaceId;
 		onOffConfig.deviceAddress = generic_ZbConfig.interfaceId;
-		onOffConfig.deviceId = Constants.MAINS_POWER_OUTLET;
-		onOffConfig.channelAddress = Constants.ON_OFF_ATTR_ADDRESS;
+		onOffConfig.deviceId = MAINS_POWER_OUTLET_DEVICE_ID;
+		onOffConfig.channelAddress = ChAddrConstants.ON_OFF_ATTR_ADDRESS;
 		onOffConfig.timeout = 2000;
 		onOffConfig.resourceName = generic_ZbConfig.resourceName;
 
 		onOffConfig.resourceName += "_OnOffAttribute"; // In case of several devices with the same
 		// resourceName
-		onOffConfig.chLocator = addChannel(onOffConfig);
+		onOffConfig.chConfiguration = addChannel(onOffConfig);
 		// create container list for cyclic read
-		ChannelLocator chloc = onOffConfig.chLocator;
+		ChannelLocator chloc = onOffConfig.chConfiguration.getChannelLocator();
 		SampledValueContainer container = new SampledValueContainer(chloc);
 		onOffChannelList = new ArrayList<SampledValueContainer>(1);
 		onOffChannelList.add(container);
@@ -139,37 +142,37 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceValueL
 		meterVoltageRMS = new Generic_ZbConfig();
 		meterVoltageRMS.interfaceId = generic_ZbConfig.interfaceId;
 		meterVoltageRMS.deviceAddress = generic_ZbConfig.interfaceId;
-		meterVoltageRMS.deviceId = Constants.MAINS_POWER_OUTLET;
-		meterVoltageRMS.channelAddress = Constants.DEVELCO_METER_VOLTAGE_ATTRIBUTE_ADDRESS;
+		meterVoltageRMS.deviceId = MAINS_POWER_OUTLET_DEVICE_ID;
+		meterVoltageRMS.channelAddress = ChAddrConstants.DEVELCO_METER_VOLTAGE_ATTRIBUTE_ADDRESS;
 		meterVoltageRMS.timeout = 20000;
 		meterVoltageRMS.resourceName = generic_ZbConfig.resourceName;
 
 		meterVoltageRMS.resourceName += "_MeterVoltageRMS"; // In case of several devices with the same
 		// resourceName
-		meterVoltageRMS.chLocator = addChannel(meterVoltageRMS);
+		meterVoltageRMS.chConfiguration = addChannel(meterVoltageRMS);
 
 		meterCurrentRMS = new Generic_ZbConfig();
 		meterCurrentRMS.interfaceId = generic_ZbConfig.interfaceId;
 		meterCurrentRMS.deviceAddress = generic_ZbConfig.interfaceId;
-		meterCurrentRMS.deviceId = Constants.MAINS_POWER_OUTLET;
-		meterCurrentRMS.channelAddress = Constants.DEVELCO_METER_CURRENT_ATTRIBUTE_ADDRESS;
+		meterCurrentRMS.deviceId = MAINS_POWER_OUTLET_DEVICE_ID;
+		meterCurrentRMS.channelAddress = ChAddrConstants.DEVELCO_METER_CURRENT_ATTRIBUTE_ADDRESS;
 		meterCurrentRMS.timeout = 20000;
 		meterCurrentRMS.resourceName = generic_ZbConfig.resourceName;
 
 		meterCurrentRMS.resourceName += "_MeterCurrentRMS"; // In case of several devices with the same
 		// resourceName
-		meterCurrentRMS.chLocator = addChannel(meterCurrentRMS);
+		meterCurrentRMS.chConfiguration = addChannel(meterCurrentRMS);
 
 		meterLineFreq = new Generic_ZbConfig();
 		meterLineFreq.interfaceId = generic_ZbConfig.interfaceId;
 		meterLineFreq.deviceAddress = generic_ZbConfig.interfaceId;
-		meterLineFreq.deviceId = Constants.MAINS_POWER_OUTLET;
-		meterLineFreq.channelAddress = Constants.DEVELCO_METER_FREQUENCY_ATTRIBUTE_ADDRESS;
+		meterLineFreq.deviceId = MAINS_POWER_OUTLET_DEVICE_ID;
+		meterLineFreq.channelAddress = ChAddrConstants.DEVELCO_METER_FREQUENCY_ATTRIBUTE_ADDRESS;
 		meterLineFreq.timeout = 20000;
 		meterLineFreq.resourceName = generic_ZbConfig.resourceName;
 		meterLineFreq.resourceName += "_meterFreqRMS"; // In case of several devices with the same
 		// resourceName
-		meterLineFreq.chLocator = addChannel(meterLineFreq);
+		meterLineFreq.chConfiguration = addChannel(meterLineFreq);
 
 		/*
 		 * Initialize the resource tree
@@ -213,15 +216,14 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceValueL
 	}
 
 	@Override
-	public ChannelLocator addChannel(Generic_ZbConfig config) {
+	public ChannelConfiguration addChannel(Generic_ZbConfig config) {
 		String[] splitAddress = config.channelAddress.split(":");
 		ChannelLocator channelLocator = createChannelLocator(config.channelAddress);
-		ChannelConfiguration channelConfig = channelAccess.getChannelConfiguration(channelLocator);
+		ChannelConfiguration channelConfig = null;
 		if (driver.channelMap.containsKey(config.resourceName)) {
 			System.out.println("Error, resourceName already taken.");
 			return null;
 		}
-		driver.channelMap.put(config.resourceName, channelLocator);
 		String type;
 		if (splitAddress[1].equals("EXT")) {
 			type = splitAddress[2];
@@ -231,32 +233,30 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceValueL
 		}
 		switch (type) {
 		case "COMMAND":
-			commandChannel.put(config.channelAddress, channelLocator);
-			channelConfig.setSamplingPeriod(-1);
 			try {
-				channelAccess.addChannel(channelConfig);
-			} catch (ChannelConfigurationException e) {
+				channelConfig = channelAccess.addChannel(channelLocator, Direction.DIRECTION_INOUT, -1);
+				addToUpdateListener(channelConfig);
+				commandChannel.put(config.channelAddress, channelConfig);
+				driver.channelMap.put(config.resourceName, channelConfig);
+			} catch (ChannelAccessException e) {
 				e.printStackTrace();
 			}
-			addToUpdateListener(channelLocator);
 			break;
 		case "ATTRIBUTE":
-			attributeChannel.put(config.channelAddress, channelLocator);
-			timeout = config.timeout;
-			channelConfig.setSamplingPeriod(timeout);
-
 			try {
-				channelAccess.addChannel(channelConfig);
-			} catch (ChannelConfigurationException e) {
+				channelConfig = channelAccess.addChannel(channelLocator, Direction.DIRECTION_INOUT, config.timeout);
+				addToUpdateListener(channelConfig);
+				attributeChannel.put(config.channelAddress, channelConfig);
+				driver.channelMap.put(config.resourceName, channelConfig);
+			} catch (ChannelAccessException e) {
 				e.printStackTrace();
 			} catch (NullPointerException ex) {
 				ex.printStackTrace();
 			}
-			addToUpdateListener(channelLocator);
 			break;
 		default:
 		}
-		return channelLocator;
+		return channelConfig;
 	}
 
 	@Override
@@ -264,9 +264,9 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceValueL
 		try {
 			if (resource.equals(onOff)) {
 				if (onOff.getValue())
-					channelAccess.setChannelValue(onCmdConfig.chLocator, ON);
+					channelAccess.setChannelValue(onCmdConfig.chConfiguration, ON);
 				else
-					channelAccess.setChannelValue(offCmdConfig.chLocator, OFF);
+					channelAccess.setChannelValue(offCmdConfig.chConfiguration, OFF);
 				updateOnOffState();
 			}
 		} catch (ChannelAccessException e) {
@@ -275,39 +275,47 @@ public class DevelcoSmartPlug extends Generic_ZbDevice implements ResourceValueL
 	}
 
 	private void updateOnOffState() {
-		channelAccess.readUnconfiguredChannels(onOffChannelList);
-		SampledValueContainer onoffState = onOffChannelList.get(0);
-		Value v = onoffState.getSampledValue().getValue();
-		if (v != null) {
-			isOn.setValue(v.getBooleanValue());
+		try {
+			channelAccess.readUnconfiguredChannels(onOffChannelList);
+			SampledValueContainer onoffState = onOffChannelList.get(0);
+			Value v = onoffState.getSampledValue().getValue();
+			if (v != null) {
+				isOn.setValue(v.getBooleanValue());
+			}
+		} catch (ChannelAccessException e) {
+			e.printStackTrace();
 		}
 	}
 
 	@Override
-	public void updateChannelValue(String chAddr, Value value) {
-		try {
+	public void updateChannelValue(String chAddr, Value v) {
+		if (v == null) {
+			Generic_ZbDriver.logger.info(String.format("Develco smart plug %s channel delivered null value", chAddr));
+			return;
+		}
+		else {
 			switch (chAddr) {
-			case Constants.ON_OFF_ATTR_ADDRESS:
-				SampledValue onoffState = channelAccess.getChannelValue(onOffConfig.chLocator);
-				isOn.setValue(onoffState.getValue().getBooleanValue());
+			case ChAddrConstants.ON_OFF_ATTR_ADDRESS:
+				// SampledValue onoffState = channelAccess.getChannelValue(onOffConfig.chLocator);
+				// Value v = onoffState.getValue();
+				isOn.setValue(v.getBooleanValue());
 				break;
-			case Constants.DEVELCO_METER_CURRENT_ATTRIBUTE_ADDRESS:
-				SampledValue iRMS = channelAccess.getChannelValue(meterCurrentRMS.chLocator);
-				iRes.setValue(iRMS.getValue().getFloatValue() / 1000f);
+			case ChAddrConstants.DEVELCO_METER_CURRENT_ATTRIBUTE_ADDRESS:
+				// SampledValue iRMS = channelAccess.getChannelValue(meterCurrentRMS.chLocator);
+				// v=iRMS.getValue();
+				iRes.setValue(v.getFloatValue() / 1000f);
 				break;
-			case Constants.DEVELCO_METER_VOLTAGE_ATTRIBUTE_ADDRESS:
-				SampledValue vRMS = channelAccess.getChannelValue(meterVoltageRMS.chLocator);
-				vRes.setValue(vRMS.getValue().getFloatValue() / 10f);
+			case ChAddrConstants.DEVELCO_METER_VOLTAGE_ATTRIBUTE_ADDRESS:
+				// SampledValue vRMS = channelAccess.getChannelValue(meterVoltageRMS.chLocator);
+				vRes.setValue(v.getFloatValue() / 10f);
 				break;
-			case Constants.DEVELCO_METER_FREQUENCY_ATTRIBUTE_ADDRESS:
-				SampledValue f = channelAccess.getChannelValue(meterLineFreq.chLocator);
-				fRes.setValue(((float) (f.getValue().getIntegerValue())) / 10.0f);
+			case ChAddrConstants.DEVELCO_METER_FREQUENCY_ATTRIBUTE_ADDRESS:
+				// SampledValue f = channelAccess.getChannelValue(meterLineFreq.chLocator);
+				fRes.setValue(((float) (v.getIntegerValue())) / 10.0f);
 				break;
 			default:
 				break;
 			}
-		} catch (ChannelAccessException e) {
-			e.printStackTrace();
 		}
 	}
 }

@@ -25,6 +25,7 @@ import org.osgi.service.permissionadmin.PermissionInfo;
 
 public class AppPermissionTypeImpl implements AppPermissionType, Cloneable {
 
+	@SuppressWarnings("unused")
 	private static final String BUNDLE_LOCATION_CONDITION_NAME = "org.osgi.service.condpermadmin.BundleLocationCondition";
 
 	HashSet<PermissionInfo> perms;

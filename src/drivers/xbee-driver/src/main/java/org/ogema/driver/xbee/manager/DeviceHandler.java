@@ -155,6 +155,8 @@ public class DeviceHandler implements Runnable {
 				switch (remoteDevice.getDeviceState()) {
 				case AWAITING_RESPONSE: // Waiting for the response of a request
 					sentFrame = sentFramesAwaitingResponse.get(remoteDevice.getAddress64Bit());
+					if (sentFrame == null)
+						break;
 					logger.debug("awaiting response: " + sentFrame.getResponseType().toString());
 					logger.debug("from: " + Long.toHexString(remoteDevice.getAddress64Bit()));
 					logger.debug("from: " + Integer.toHexString(remoteDevice.getAddress16Bit() & 0xffff));
@@ -194,8 +196,8 @@ public class DeviceHandler implements Runnable {
 				case UNINITIALIZED: // The endpoint is missing some information
 					if (remoteDevice.getAddress16Bit() == 0) {
 						logger.debug("The network address is missing");
-						NetworkAddressRequest networkAddressRequest = new NetworkAddressRequest(remoteDevice
-								.getAddress64Bit());
+						NetworkAddressRequest networkAddressRequest = new NetworkAddressRequest(
+								remoteDevice.getAddress64Bit());
 						byte frameId = localDevice.getFrameId();
 						networkAddressRequest.setFrameId(frameId);
 						byte[] tempFrame = null;
@@ -209,8 +211,8 @@ public class DeviceHandler implements Runnable {
 						logger.debug(Long.toHexString(remoteDevice.getAddress64Bit()));
 						// TODO localDevice.frameIdMap.put(frameId, tempFrame);
 						localDevice.sendFrame(tempFrame);
-						sentFramesAwaitingResponse.put(remoteDevice.getAddress64Bit(), new SentFrame(tempFrame,
-								ResponseType.NETWORK_ADDRESS_RESPONSE));
+						sentFramesAwaitingResponse.put(remoteDevice.getAddress64Bit(),
+								new SentFrame(tempFrame, ResponseType.NETWORK_ADDRESS_RESPONSE));
 						localDevice.setFrameIdToDestination(frameId, remoteDevice.getAddress64Bit());
 						remoteDevice.setDeviceState(DeviceStates.AWAITING_RESPONSE);
 					}
@@ -236,8 +238,8 @@ public class DeviceHandler implements Runnable {
 						logger.debug(Integer.toHexString(remoteDevice.getAddress16Bit() & 0xffff));
 						// TODO localDevice.frameIdMap.put(frameId, tempFrame);
 						localDevice.sendFrame(tempFrame);
-						sentFramesAwaitingResponse.put(remoteDevice.getAddress64Bit(), new SentFrame(tempFrame,
-								ResponseType.ACTIVE_ENDPOINT_RESPONSE));
+						sentFramesAwaitingResponse.put(remoteDevice.getAddress64Bit(),
+								new SentFrame(tempFrame, ResponseType.ACTIVE_ENDPOINT_RESPONSE));
 						localDevice.setFrameIdToDestination(frameId, remoteDevice.getAddress64Bit());
 						remoteDevice.setDeviceState(DeviceStates.AWAITING_RESPONSE);
 					}
@@ -253,15 +255,15 @@ public class DeviceHandler implements Runnable {
 						nodeDescriptorRequest.setFrameId(frameId);
 						byte[] tempFrame = null;
 						try {
-							tempFrame = XBeeFrameFactory.composeMessageToFrame(nodeDescriptorRequest.getUnicastMessage(
-									remoteDevice.getAddress64Bit(), remoteDevice.getAddress16Bit()));
+							tempFrame = XBeeFrameFactory.composeMessageToFrame(nodeDescriptorRequest
+									.getUnicastMessage(remoteDevice.getAddress64Bit(), remoteDevice.getAddress16Bit()));
 						} catch (WrongFormatException e) {
 							e.printStackTrace();
 						}
 						// TODO localDevice.frameIdMap.put(frameId, tempFrame);
 						localDevice.sendFrame(tempFrame);
-						sentFramesAwaitingResponse.put(remoteDevice.getAddress64Bit(), new SentFrame(tempFrame,
-								ResponseType.NODE_DESCRIPTOR_RESPONSE));
+						sentFramesAwaitingResponse.put(remoteDevice.getAddress64Bit(),
+								new SentFrame(tempFrame, ResponseType.NODE_DESCRIPTOR_RESPONSE));
 						localDevice.setFrameIdToDestination(frameId, remoteDevice.getAddress64Bit());
 						remoteDevice.setDeviceState(DeviceStates.AWAITING_RESPONSE);
 					}
@@ -274,37 +276,38 @@ public class DeviceHandler implements Runnable {
 						userDescriptorRequest.setFrameId(frameId);
 						byte[] tempFrame = null;
 						try {
-							tempFrame = XBeeFrameFactory.composeMessageToFrame(userDescriptorRequest.getUnicastMessage(
-									remoteDevice.getAddress64Bit(), remoteDevice.getAddress16Bit()));
+							tempFrame = XBeeFrameFactory.composeMessageToFrame(userDescriptorRequest
+									.getUnicastMessage(remoteDevice.getAddress64Bit(), remoteDevice.getAddress16Bit()));
 						} catch (WrongFormatException e) {
 							e.printStackTrace();
 						}
 						localDevice.sendFrame(tempFrame);
-						sentFramesAwaitingResponse.put(remoteDevice.getAddress64Bit(), new SentFrame(tempFrame,
-								ResponseType.USER_DESCRIPTOR_RESPONSE));
+						sentFramesAwaitingResponse.put(remoteDevice.getAddress64Bit(),
+								new SentFrame(tempFrame, ResponseType.USER_DESCRIPTOR_RESPONSE));
 						localDevice.setFrameIdToDestination(frameId, remoteDevice.getAddress64Bit());
 						remoteDevice.setDeviceState(DeviceStates.AWAITING_RESPONSE);
-					}/*
+					} /*
 						 * else if (remoteDevice.getNodeDescriptor() // TODO need to implement
 						 * handleComplexDescriptorResponse in InputHandler first .hasComplexDescriptor() && null ==
 						 * remoteDevice.getComplexDescriptor()) { logger.info("The complex descriptor is missing: ");
 						 * ComplexDescriptorRequest complexDescriptorRequest = new ComplexDescriptorRequest();
-						 * complexDescriptorRequest .setNwkAddrOfInterest(remoteDevice .getAddress16Bit()); byte[] tempFrame
-						 * = null; byte frameId = localDevice.getFrameId(); complexDescriptorRequest.setFrameId(frameId);
-						 * try { tempFrame = XBeeFrameFactory.composeMessageToFrame(
-						 * complexDescriptorRequest.getUnicastMessage( remoteDevice .getAddress64Bit(), remoteDevice
-						 * .getAddress16Bit())); } catch (WrongFormatException e) { // TODO Auto-generated catch block
-						 * e.printStackTrace(); } localDevice.sendFrame(tempFrame);
-						 * sentFramesAwaitingResponse.put(remoteDevice .getAddress64Bit(), new SentFrame(tempFrame,
-						 * ResponseType.COMPLEX_DESCRIPTOR_RESPONSE)); remoteDevice
-						 * .setDeviceState(DeviceStates.AWAITING_RESPONSE); }
+						 * complexDescriptorRequest .setNwkAddrOfInterest(remoteDevice .getAddress16Bit()); byte[]
+						 * tempFrame = null; byte frameId = localDevice.getFrameId();
+						 * complexDescriptorRequest.setFrameId(frameId); try { tempFrame =
+						 * XBeeFrameFactory.composeMessageToFrame( complexDescriptorRequest.getUnicastMessage(
+						 * remoteDevice .getAddress64Bit(), remoteDevice .getAddress16Bit())); } catch
+						 * (WrongFormatException e) { // TODO Auto-generated catch block e.printStackTrace(); }
+						 * localDevice.sendFrame(tempFrame); sentFramesAwaitingResponse.put(remoteDevice
+						 * .getAddress64Bit(), new SentFrame(tempFrame, ResponseType.COMPLEX_DESCRIPTOR_RESPONSE));
+						 * remoteDevice .setDeviceState(DeviceStates.AWAITING_RESPONSE); }
 						 */
 					else if (remoteDevice instanceof XBeeDevice
 							&& null == ((XBeeDevice) remoteDevice).getNodeIdentifier()) {
 
 						logger.debug("The NI is missing: ");
-						RemoteAtCommand niRequest = new RemoteAtCommand(localDevice.getFrameId(), remoteDevice
-								.getAddress64Bit(), remoteDevice.getAddress16Bit(), (byte) 0x00, (short) 0x4E49, null);
+						RemoteAtCommand niRequest = new RemoteAtCommand(localDevice.getFrameId(),
+								remoteDevice.getAddress64Bit(), remoteDevice.getAddress16Bit(), (byte) 0x00,
+								(short) 0x4E49, null);
 						byte[] tempFrame = null;
 						try {
 							tempFrame = XBeeFrameFactory.composeMessageToFrame(niRequest.getMessage());
@@ -312,13 +315,13 @@ public class DeviceHandler implements Runnable {
 							e.printStackTrace();
 						}
 						localDevice.sendFrame(tempFrame);
-						sentFramesAwaitingResponse.put(remoteDevice.getAddress64Bit(), new SentFrame(tempFrame,
-								ResponseType.REMOTE_NI_COMMAND));
+						sentFramesAwaitingResponse.put(remoteDevice.getAddress64Bit(),
+								new SentFrame(tempFrame, ResponseType.REMOTE_NI_COMMAND));
 						remoteDevice.setDeviceState(DeviceStates.AWAITING_RESPONSE);
 					}
 					else { // Check if all active endpoints have there simple
-						// descriptor, if not request it for one
-						// endpoint at a time.
+							// descriptor, if not request it for one
+							// endpoint at a time.
 						logger.debug("Check if all active endpoints have their simple descriptor: ");
 						for (Map.Entry<Byte, Endpoint> endpoint : remoteDevice.getEndpoints().entrySet()) {
 							if (!(remoteDevice instanceof XBeeDevice)
@@ -330,15 +333,15 @@ public class DeviceHandler implements Runnable {
 								simpleDescriptorRequest.setFrameId(frameId);
 								byte[] tempFrame = null;
 								try {
-									tempFrame = XBeeFrameFactory.composeMessageToFrame(simpleDescriptorRequest
-											.getUnicastMessage(remoteDevice.getAddress64Bit(), remoteDevice
-													.getAddress16Bit()));
+									tempFrame = XBeeFrameFactory.composeMessageToFrame(
+											simpleDescriptorRequest.getUnicastMessage(remoteDevice.getAddress64Bit(),
+													remoteDevice.getAddress16Bit()));
 								} catch (WrongFormatException e) {
 									e.printStackTrace();
 								}
 								localDevice.sendFrame(tempFrame);
-								sentFramesAwaitingResponse.put(remoteDevice.getAddress64Bit(), new SentFrame(tempFrame,
-										ResponseType.SIMPLE_DESCRIPTOR_RESPONSE));
+								sentFramesAwaitingResponse.put(remoteDevice.getAddress64Bit(),
+										new SentFrame(tempFrame, ResponseType.SIMPLE_DESCRIPTOR_RESPONSE));
 								localDevice.setFrameIdToDestination(frameId, remoteDevice.getAddress64Bit());
 								remoteDevice.setDeviceState(DeviceStates.AWAITING_RESPONSE);
 								break;
@@ -348,9 +351,8 @@ public class DeviceHandler implements Runnable {
 							remoteDevice.setInitState(InitStates.INITIALIZED);
 							logger.info("-------Device initlialized-------");
 							logger.info("64Bit Address:" + Long.toHexString(remoteDevice.getAddress64Bit()));
-							logger
-									.info("16Bit Address:"
-											+ Integer.toHexString(remoteDevice.getAddress16Bit() & 0xffff));
+							logger.info(
+									"16Bit Address:" + Integer.toHexString(remoteDevice.getAddress16Bit() & 0xffff));
 							remoteDevice.postInit();
 							/*
 							 * logger.info("Endpoints: "); for (Map.Entry<Byte, Endpoint> endpoint : remoteDevice
@@ -358,9 +360,9 @@ public class DeviceHandler implements Runnable {
 							 * Integer.toHexString(endpoint.getKey() & 0xff)); for (Map.Entry<Short, Cluster> cluster :
 							 * endpoint .getValue().getClusters().entrySet()) { logger.info("    Cluster: " +
 							 * Integer.toHexString(cluster .getKey() & 0xffff)); for (Map.Entry<Short, ClusterAttribute>
-							 * clusterAttribute : cluster .getValue().clusterAttributes .entrySet()) {
-							 * logger.info("      Cluster Attribute: " + Integer .toHexString(clusterAttribute .getKey()
-							 * & 0xffff) + " " + clusterAttribute.getValue() .getAttributeName()); } for (Entry<Byte,
+							 * clusterAttribute : cluster .getValue().clusterAttributes .entrySet()) { logger.info(
+							 * "      Cluster Attribute: " + Integer .toHexString(clusterAttribute .getKey() & 0xffff) +
+							 * " " + clusterAttribute.getValue() .getAttributeName()); } for (Entry<Byte,
 							 * ClusterCommand> clusterCommand : cluster .getValue().clusterCommands .entrySet()) {
 							 * logger.info("      Cluster Command: " + Integer .toHexString(clusterCommand .getKey() &
 							 * 0xff) + " " + clusterCommand.getValue() .getDescription()); } } }

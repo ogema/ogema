@@ -1,0 +1,90 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:wicket="http://wicket.sourceforge.net/" xml:lang="en" lang="en">
+    <body>
+        <wicket:panel>
+            <div class="panel-group" id="ogemaMainNavigation">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h4 class="panel-title" style="min-height: 44px;">
+                            <a data-toggle="collapse" data-parent="#ogemaMainNavigation" href="#horst">
+                                <img wicket:id="ogemaFav" class="img-responsive" />
+                                <span>OGEMA</span>
+                            </a>                                            
+                        </h4>
+                    </div>
+                    <div id="horst" class="panel-collapse collapse">
+                        <ul class="list-group">
+                            <li class="list-group-item"><a wicket:id="contact">OGEMA Contact</a></li>
+                            <li class="list-group-item"><a href="https://www.ogema-source.net/wiki/">OGEMA Confluence</a></li>
+                            <li class="list-group-item"><a href="https://www.ogema-source.net/apidocs/">OGEMA JavaDoc</a></li>
+                            <li class="list-group-item"><a href="http://www.ogema.org/">OGEMA HomePage</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <wicket:container wicket:id="list">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h4 class="panel-title" style="min-height: 44px;">
+                                <a wicket:id="panelTitle" data-toggle="collapse" data-parent="#ogemaMainNavigation" href="#egon">
+                                    <img wicket:id="img" class="img-responsive" />
+                                    <span wicket:id="title"/>
+                                </a>                                            
+                            </h4>
+                        </div>
+                        <div wicket:id="collapse" id="egon" class="panel-collapse collapse">
+                            <ul class="list-group">
+                                <li class="list-group-item" wicket:id="pageLink">
+                                    <a wicket:id="link" >
+                                        <img wicket:id="img" class="img-responsive" />
+                                        <span wicket:id="subtext"></span>
+                                    </a>
+                                </li>
+                                <li wicket:id="list2" class="list-group-item" >
+                                    <a wicket:id="link2"><span wicket:id="text2"></span></a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </wicket:container>
+                <div class="panel panel-default" wicket:id="list3Container">
+                    <div class="panel-heading">
+                        <h4 class="panel-title" style="min-height: 44px;">
+                            <a data-toggle="collapse" data-parent="#ogemaMainNavigation" href="#bob">
+                                <img wicket:id="appDefaultIcon" class="img-responsive" />
+                                <span>Apps</span>
+                            </a>                                            
+                        </h4>
+                    </div>
+                    <div id="bob" class="panel-collapse collapse">
+                        <ul class="list-group">       
+                            <li wicket:id="list3" class="list-group-item" >
+                               <a wicket:id="link3"><span wicket:id="text3"></span></a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </wicket:panel>
+    </body>
+</html>
+
+

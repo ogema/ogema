@@ -47,7 +47,6 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	 */
 	static final String ELEMENTS = "@elements";
 
-	@SuppressWarnings("unchecked")
 	protected Class<T> elementType;
 
 	@SuppressWarnings("unchecked")
@@ -62,7 +61,6 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	protected final Class<? extends Resource> findElementTypeOnParent() {
 		Resource p = getParent();
 		if (p == null) {
@@ -176,12 +174,12 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	}
 
 	@Override
-	public <T extends Resource> T addDecorator(String name, Class<T> resourceType)
+	public <S extends Resource> S addDecorator(String name, Class<S> resourceType)
 			throws ResourceAlreadyExistsException, NoSuchResourceException {
 		if (getElementType() != null && getElementType().isAssignableFrom(resourceType)) {
 			getResourceDB().lockStructureWrite();
 			try {
-				T dec = super.addDecorator(name, resourceType);
+				S dec = super.addDecorator(name, resourceType);
 				List<String> elementNames = getElementNames();
 				if (!elementNames.contains(name)) {
 					elementNames.add(name);
@@ -197,13 +195,23 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 		}
 	}
 
+    @Override
+    protected void checkDecoratorCompatibility(Resource newDecorator, TreeElement existingDecorator) {
+        if (getElementType() != null && getElementType().isAssignableFrom(existingDecorator.getType())) {
+            //when replacing a list element, the replacement must also be compatible with the list element type
+            if (!getElementType().isAssignableFrom(newDecorator.getResourceType())) {
+                throw new ResourceAlreadyExistsException("decorator exists and is a list element, cannot be replaced by a non-list element");
+            }
+        }        
+    }    
+
 	@Override
-	public <T extends Resource> T addDecorator(String name, T decorator) throws ResourceAlreadyExistsException,
+	public <S extends Resource> S addDecorator(String name, S decorator) throws ResourceAlreadyExistsException,
 			NoSuchResourceException, ResourceGraphException {
 		if (getElementType() != null && getElementType().isAssignableFrom(decorator.getResourceType())) {
 			getResourceDB().lockStructureWrite();
 			try {
-				T dec = super.addDecorator(name, decorator);
+				S dec = super.addDecorator(name, decorator);
 				List<String> elementNames = getElementNames();
 				if (!elementNames.contains(name)) {
 					elementNames.add(name);
@@ -218,20 +226,19 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	}
 
 	@Override
-	public void add(T arg0) {
+	public T add(T arg0) {
 		Objects.requireNonNull(arg0, "reference must not be null");
 		checkType(arg0);
 		getResourceDB().lockStructureWrite();
 		try {
 			String name = findNewName();
-			addDecorator(name, arg0);
+			return addDecorator(name, arg0);
 		} finally {
 			getResourceDB().unlockStructureWrite();
 		}
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public T add() {
 		if (elementType == null) {
 			throw new IllegalStateException("array element type has not been set.");
@@ -323,6 +330,20 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	@Override
 	protected void reload() {
 		getAllElements();
+	}
+
+	//TODO: get rid of parent parameter?
+	@Override
+	protected void treeElementChildAdded(TreeElement parent, TreeElement child) {
+		super.treeElementChildAdded(parent, child);
+		if (parent.equals(getEl())) {
+			String name = child.getName();
+			List<String> elementNames = getElementNames();
+			if (!elementNames.contains(name)) {
+				elementNames.add(name);
+				updateElementsNode(elementNames);
+			}
+		}
 	}
 
 }

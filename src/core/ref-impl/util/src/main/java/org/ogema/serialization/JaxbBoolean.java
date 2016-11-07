@@ -32,7 +32,7 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
  */
 @XmlAccessorType(XmlAccessType.PROPERTY)
 @XmlType(name = "BooleanResource", namespace = NS_OGEMA_REST)
-@XmlRootElement(name = "boolean", namespace = NS_OGEMA_REST)
+@XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 public class JaxbBoolean extends JaxbResource {
 
 	JaxbBoolean(BooleanResource r, SerializationStatus serStat) {

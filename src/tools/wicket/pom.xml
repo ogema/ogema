@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+    
+	<!-- Parent-POM: OGEMA master pom with project-wide settings -->
+	<parent>
+		<groupId>org.ogema.tools</groupId>
+		<artifactId>ogema-tools</artifactId>
+		<version>2.1.0</version>
+	</parent>
+	
+	<properties>
+    	<wicket.version>6.23.0</wicket.version>
+    </properties>
+
+	<artifactId>wicket-wrapper</artifactId>
+	<packaging>pom</packaging>
+	<name>OGEMA wrapper for Apache Wicket / Pax Wicket</name>
+
+	<!-- Sub-projects: OGEMA Tools (in alphabetical order).  -->
+	<modules>
+		<module>org.ops4j.pax.wicket.service</module>
+		<module>wicket-gui</module>
+		<module>wicket-gui-impl</module>
+	</modules>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+</project>

@@ -26,6 +26,7 @@ import java.util.List;
 
 import org.ogema.core.application.AppID;
 import org.ogema.core.installationmanager.InstallationManagement;
+import org.ogema.core.installationmanager.SourcesManagement;
 import org.osgi.framework.Bundle;
 
 /** Framework component providing information and interaction for administration applications */
@@ -40,12 +41,9 @@ public interface AdministrationManager {
 	public List<UserAccount> getAllUsers();
 
 	/**
-	 * Add user account. If an account with this user name already exists the password is changed.
-	 * 
-	 * @param password
-	 *            new password of user account. If null, the user account is deleted.
+	 * Gets users account holding user credentials and properties.
 	 */
-	public void setUserCredential(String userName, String password);
+	public UserAccount getUser(String userName);
 
 	/**
 	 * Get all loggers on the system with administration level access (interface LoggerAdmin).
@@ -70,12 +68,12 @@ public interface AdministrationManager {
 	public AppID getContextApp(Class<?> ignore);
 
 	/**
-	 * Scan the call stack for a class which is a class of an ogema application and determine the AppID object of the
-	 * application. All found classes up to the specified class are ignored.
+	 * Scan the call stack for the first occurrence of a class that belongs to an osgi bundle. All entries up to the
+	 * specified class parameter are ignored.
 	 * 
 	 * @param ignore
 	 *            The class on the stack the scan begins from
-	 * @return Bundle reference of the application the found class belongs to
+	 * @return Bundle reference of the found class
 	 */
 	public Bundle getContextBundle(Class<?> ignore);
 
@@ -90,7 +88,8 @@ public interface AdministrationManager {
 	public AdminApplication getAppById(String id);
 
 	/**
-	 * Get the AppID object related to the ogema application with the specified bundle reference.
+	 * Get the AppID object related to the ogema application with the specified bundle reference. FIXME this need not be
+	 * a 1-1 correspondence
 	 * 
 	 * @param b
 	 *            The bundle reference of the application.
@@ -125,4 +124,10 @@ public interface AdministrationManager {
 	 * @return The InstallationManager service reference
 	 */
 	public InstallationManagement getInstallationManager();
+	
+	/**
+	 * Get the available application sources.
+	 * @return
+	 */
+	public SourcesManagement getSources();
 }

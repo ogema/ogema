@@ -27,13 +27,15 @@ public class UserJsonChangePassword implements Serializable {
 
 	private String user;
 	private String pwd;
+	private String oldpwd;
 
 	public UserJsonChangePassword() {
 	}
 
-	public UserJsonChangePassword(String user, String pwd) {
+	public UserJsonChangePassword(String user, String oldpwd, String pwd) {
 		this.user = user;
 		this.pwd = pwd;
+		this.oldpwd = oldpwd;
 	}
 
 	public String getUser() {
@@ -50,6 +52,14 @@ public class UserJsonChangePassword implements Serializable {
 
 	public void setPwd(String pwd) {
 		this.pwd = pwd;
+	}
+
+	public String getoldpwd() {
+		return oldpwd;
+	}
+
+	public void setoldpwd(String pwd) {
+		this.oldpwd = pwd;
 	}
 
 }

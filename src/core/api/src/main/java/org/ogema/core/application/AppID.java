@@ -27,7 +27,9 @@ import org.osgi.framework.Bundle;
  */
 public interface AppID {
 	/**
-	 * Get a unique string as an id for this application.
+	 * Get a unique string as an id for this application. Note: this is not invariant under restart of
+	 * the framework, and it also changes when the application is removed and reinstalled. 
+	 * For an invariant app id, use the bundle symbolic name (see {@link #getBundle()}).
 	 * 
 	 * @return Id string of the owner application or null if any exception occurs.
 	 */

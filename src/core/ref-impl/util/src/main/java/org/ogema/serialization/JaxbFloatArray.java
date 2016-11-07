@@ -31,7 +31,7 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
  */
 @XmlAccessorType(XmlAccessType.PROPERTY)
 @XmlType(name = "FloatArrayResource", namespace = NS_OGEMA_REST)
-@XmlRootElement(name = "floatArray", namespace = NS_OGEMA_REST)
+@XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 public class JaxbFloatArray extends JaxbResource {
 
 	JaxbFloatArray(FloatArrayResource r, SerializationStatus serMan) {

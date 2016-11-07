@@ -24,6 +24,7 @@ import org.ogema.model.targetranges.LuminousFluxTargetRange;
  * Light flow sensor.
  */
 public interface LuminousFluxSensor extends GenericFloatSensor {
+	
 	@NonPersistent
 	@Override
 	LuminousFluxResource reading();

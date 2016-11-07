@@ -15,13 +15,17 @@
  */
 package org.ogema.exam;
 
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.Assert;
 import org.ogema.core.model.Resource;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
+import org.ogema.core.resourcemanager.ResourceStructureEvent.EventType;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 
 /**
@@ -29,10 +33,13 @@ import org.ogema.core.resourcemanager.ResourceStructureListener;
  * @author jlapp
  */
 public class StructureTestListener implements ResourceStructureListener {
-    final Map<ResourceStructureEvent.EventType, CountDownLatch> eventLatches = new EnumMap<>(ResourceStructureEvent.EventType.class);
-    Resource expectedSource;
-    Resource expectedChangedResource;
-    ResourceStructureEvent lastEvent;
+    protected final Map<ResourceStructureEvent.EventType, CountDownLatch> eventLatches =
+            Collections.synchronizedMap(new EnumMap<EventType, CountDownLatch>(ResourceStructureEvent.EventType.class));
+    protected final Map<ResourceStructureEvent.EventType, AtomicInteger> eventCounts =
+            Collections.synchronizedMap(new EnumMap<EventType, AtomicInteger>(ResourceStructureEvent.EventType.class));
+    protected volatile Resource expectedSource;
+    protected volatile Resource expectedChangedResource;
+    protected volatile ResourceStructureEvent lastEvent;
     {
         reset();
     }
@@ -49,18 +56,28 @@ public class StructureTestListener implements ResourceStructureListener {
     public void resourceStructureChanged(ResourceStructureEvent event) {
         System.out.printf("%s: %s, %s%n", event.getType(), event.getSource(), event.getChangedResource());
         lastEvent = event;
+        EventType type = event.getType();
         if (expectedSource != null) {
             Assert.assertEquals("wrong event source", expectedSource, event.getSource());
         }
         if (expectedChangedResource != null) {
             Assert.assertEquals("wrong changed resource", expectedChangedResource, event.getChangedResource());
         }
-        eventLatches.get(event.getType()).countDown();
+        synchronized (eventCounts) {
+            eventCounts.get(type).incrementAndGet();
+        	//eventCounts.put(type, eventCounts.get(type)+1);
+        }
+        eventLatches.get(type).countDown();
     }
 
     public void reset() {
+        reset(1);
+    }
+    
+    public void reset(int nrExpectedEvents) {
         for (ResourceStructureEvent.EventType e : ResourceStructureEvent.EventType.values()) {
-            eventLatches.put(e, new CountDownLatch(1));
+        	eventCounts.put(e, new AtomicInteger(0));
+            eventLatches.put(e, new CountDownLatch(nrExpectedEvents));
         }
     }
 
@@ -94,6 +111,12 @@ public class StructureTestListener implements ResourceStructureListener {
     
     public ResourceStructureEvent getLastEvent() {
         return lastEvent;
+    }
+    
+    public int getEventCount(EventType type) {
+        synchronized (eventCounts) {
+            return eventCounts.get(type).get();
+        }
     }
     
 }

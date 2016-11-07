@@ -24,18 +24,18 @@ public class LeafValue implements SimpleResourceData {
 	// Fields holding the value of the leaf.
 	// only one of them has an meaningful content.
 	// typeKey specify which variable holds the valid value.
-	public boolean Z;// BoolenaResource
-	public float F;// FloatResource
-	public int I;// IntegerResource
-	public long J;// TimeResource
-	public String S;// StringResource
+	volatile public boolean Z;// BoolenaResource
+	volatile public float F;// FloatResource
+	volatile public int I;// IntegerResource
+	volatile public long J;// TimeResource
+	volatile public String S;// StringResource
 
-	public boolean aZ[];// BoolenaArrayResource
-	public float aF[];// FloatArrayResource
-	public int aI[];// IntegerArrayResource
-	public long aJ[];// TimeArrayResource
-	public String aS[];// StringArrayResource
-	public byte aB[];// OpaqueResource
+	volatile public boolean aZ[];// BoolenaArrayResource
+	volatile public float aF[];// FloatArrayResource
+	volatile public int aI[];// IntegerArrayResource
+	volatile public long aJ[];// TimeArrayResource
+	volatile public String aS[];// StringArrayResource
+	volatile public byte aB[];// OpaqueResource
 	// int arrLength;
 	private TreeElementImpl owner;
 	int typeKey;

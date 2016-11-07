@@ -19,6 +19,7 @@
 package org.ogema.accesscontrol;
 
 import java.util.Set;
+
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -156,5 +157,4 @@ public class Util {
 		}
 		return false;
 	}
-
 }

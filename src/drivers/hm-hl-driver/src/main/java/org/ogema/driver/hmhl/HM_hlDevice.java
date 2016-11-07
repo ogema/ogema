@@ -19,14 +19,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.ChannelConfiguration;
-import org.ogema.core.channelmanager.ChannelConfigurationException;
+import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
 import org.ogema.core.channelmanager.ChannelEventListener;
 import org.ogema.core.channelmanager.EventType;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
@@ -43,6 +43,7 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.logging.OgemaLogger;
+import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
 
 /**
@@ -55,15 +56,16 @@ public abstract class HM_hlDevice {
 	protected final ChannelAccess channelAccess;
 	protected final HM_hlConfig hm_hlConfig;
 	protected final ResourceManagement resourceManager;
+	protected final ResourceAccess resourceAccess;
 	protected final DeviceLocator deviceLocator;
 	protected final ApplicationManager appManager;
 	protected final DeviceDescriptor deviceDescriptor;
 
 	protected final String type;
 
-	protected final Map<String, ChannelLocator> attributeChannel; // <channelAddress, ChannelLocator>
-	protected final List<ChannelLocator> channelList;
-	protected final Map<String, ChannelLocator> commandChannel; // <channelAddress, ChannelLocator>
+	protected final Map<String, ChannelConfiguration> attributeChannel; // <channelAddress, ChannelLocator>
+	protected final List<ChannelConfiguration> channelList;
+	protected final Map<String, ChannelConfiguration> commandChannel; // <channelAddress, ChannelLocator>
 
 	protected ChannelEventListener channelEventListener;
 	protected long timeout;
@@ -76,18 +78,19 @@ public abstract class HM_hlDevice {
 	protected final OgemaLogger logger;
 
 	public HM_hlDevice(HM_hlDriver driver, ApplicationManager appManager, HM_hlConfig config) {
-		attributeChannel = new HashMap<String, ChannelLocator>();
-		channelList = new ArrayList<ChannelLocator>(); // UpdateListenerList
-		commandChannel = new HashMap<String, ChannelLocator>();
+		attributeChannel = new HashMap<String, ChannelConfiguration>();
+		channelList = new ArrayList<ChannelConfiguration>(); // UpdateListenerList
+		commandChannel = new HashMap<String, ChannelConfiguration>();
 		channelAccess = appManager.getChannelAccess();
 		resourceManager = appManager.getResourceManagement();
+		resourceAccess = appManager.getResourceAccess();
 		this.appManager = appManager;
 		this.logger = appManager.getLogger();
 		hm_hlConfig = config;
 		this.type = config.channelAddress.split(":")[0];
 		this.driver = driver;
 		deviceDescriptor = driver.getDeviceDescriptor();
-		deviceLocator = channelAccess.getDeviceLocator(config.driverId, config.interfaceId, config.deviceAddress,
+		deviceLocator = new DeviceLocator(config.driverId, config.interfaceId, config.deviceAddress,
 				config.deviceParameters);
 
 		channelEventListener = new ChannelEventListener() {
@@ -115,10 +118,11 @@ public abstract class HM_hlDevice {
 	public HM_hlDevice(HM_hlDriver driver, ApplicationManager appManager, DeviceLocator deviceLocator) {
 		this.appManager = appManager;
 		channelAccess = appManager.getChannelAccess();
-		attributeChannel = new HashMap<String, ChannelLocator>();
-		channelList = new ArrayList<ChannelLocator>();
-		commandChannel = new HashMap<String, ChannelLocator>();
+		attributeChannel = new HashMap<String, ChannelConfiguration>();
+		channelList = new ArrayList<ChannelConfiguration>();
+		commandChannel = new HashMap<String, ChannelConfiguration>();
 		resourceManager = appManager.getResourceManagement();
+		resourceAccess = appManager.getResourceAccess();
 		logger = appManager.getLogger();
 		this.hm_hlConfig = new HM_hlConfig();
 		this.driver = driver;
@@ -157,7 +161,7 @@ public abstract class HM_hlDevice {
 	protected abstract void parseValue(Value value, String channelAddress);
 
 	protected ChannelLocator createChannelLocator(String channelAddress) {
-		return channelAccess.getChannelLocator(channelAddress, deviceLocator);
+		return new ChannelLocator(channelAddress, deviceLocator);
 	}
 
 	public void close() {
@@ -167,35 +171,34 @@ public abstract class HM_hlDevice {
 	public ChannelLocator addChannel(HM_hlConfig config) {
 		String[] splitAddress = config.channelAddress.split(":");
 		ChannelLocator channelLocator = createChannelLocator(config.channelAddress);
-		ChannelConfiguration channelConfig = channelAccess.getChannelConfiguration(channelLocator);
-		driver.channelMap.put(config.resourceName, channelLocator);
+		ChannelConfiguration channelConfig;
 		switch (splitAddress[0]) {
 		case "COMMAND":
-			commandChannel.put(config.channelAddress, channelLocator);
 			timeout = -1;
-			channelConfig.setSamplingPeriod(timeout);
 			try {
-				channelAccess.addChannel(channelConfig);
-			} catch (ChannelConfigurationException e) {
+				channelConfig = channelAccess.addChannel(channelLocator, Direction.DIRECTION_INOUT, timeout);
+				commandChannel.put(config.channelAddress, channelConfig);
+				driver.channelMap.put(config.resourceName, channelConfig);
+			} catch (ChannelAccessException e) {
 				e.printStackTrace();
 			}
 			break;
 		case "ATTRIBUTE":
 		case "MULTIPLE ATTRIBUTES":
-			attributeChannel.put(config.channelAddress, channelLocator);
 			timeout = config.timeout;
-			channelConfig.setSamplingPeriod(timeout);
 			dataResourceId = config.resourceName;
 
 			logger.debug("channel access addchannel");
 			try {
-				channelAccess.addChannel(channelConfig);
-			} catch (ChannelConfigurationException e) {
+				channelConfig = channelAccess.addChannel(channelLocator, Direction.DIRECTION_INOUT, timeout);
+				attributeChannel.put(config.channelAddress, channelConfig);
+				driver.channelMap.put(config.resourceName, channelConfig);
+				
+				addToUpdateListener(channelConfig);
+			} catch (ChannelAccessException e) {
 				e.printStackTrace();
-			} catch (NullPointerException ex) {
-				ex.printStackTrace();
 			}
-			addToUpdateListener(channelLocator);
+
 			break;
 		default:
 			break;
@@ -203,17 +206,22 @@ public abstract class HM_hlDevice {
 		return channelLocator;
 	}
 
-	public void writeToChannel(ChannelLocator channelLocator, Value value) {
+	public void writeToChannel(ChannelConfiguration channelConfiguration, Value value) {
 		try {
-			channelAccess.setChannelValue(channelLocator, value);
+			channelAccess.setChannelValue(channelConfiguration, value);
 		} catch (ChannelAccessException e) {
 			e.printStackTrace();
 		}
 	}
 
-	protected void addToUpdateListener(ChannelLocator channelLocator) {
-		channelList.add(channelLocator);
-		channelAccess.registerUpdateListener(channelList, channelEventListener);
+	protected void addToUpdateListener(ChannelConfiguration channelConfiguration) {
+		channelList.add(channelConfiguration);
+		try {
+			channelAccess.registerUpdateListener(channelList, channelEventListener);
+		} catch (ChannelAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		channelList.clear();
 	}
 
@@ -271,24 +279,14 @@ public abstract class HM_hlDevice {
 	}
 
 	protected void removeChannels() {
-		Set<Entry<String, ChannelLocator>> set = attributeChannel.entrySet();
-		for (Entry<String, ChannelLocator> e : set) {
-			try {
-				ChannelLocator chLoc = e.getValue();
-				channelAccess.deleteChannel(chLoc);
-			} catch (ChannelConfigurationException ex) {
-				ex.printStackTrace();
-			}
+		Set<Entry<String, ChannelConfiguration>> set = attributeChannel.entrySet();
+		for (Entry<String, ChannelConfiguration> e : set) {
+			channelAccess.deleteChannel(e.getValue());
 		}
 
 		set = commandChannel.entrySet();
-		for (Entry<String, ChannelLocator> e : set) {
-			try {
-				ChannelLocator chLoc = e.getValue();
-				channelAccess.deleteChannel(chLoc);
-			} catch (ChannelConfigurationException ex) {
-				ex.printStackTrace();
-			}
+		for (Entry<String, ChannelConfiguration> e : set) {
+			channelAccess.deleteChannel(e.getValue());
 		}
 	}
 

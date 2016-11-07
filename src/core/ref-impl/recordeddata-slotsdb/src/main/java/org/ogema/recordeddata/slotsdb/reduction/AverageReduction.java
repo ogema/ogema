@@ -21,9 +21,6 @@ import java.util.List;
 import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
-import org.ogema.recordeddata.slotsdb.SlotsDb;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class AverageReduction implements Reduction {
 

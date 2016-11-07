@@ -51,7 +51,7 @@ public class DemandTestListener<T extends Resource> implements ResourceDemandLis
 		LoggerFactory.getLogger(getClass().getSimpleName()).info("resourceAvailable: {}", resource.getPath());
 		if (expectedResource != null) {
 			Assert.assertEquals(String.format("unexpected resource in resourceAvailable callback: %s != %s",
-					expectedResource, resource), expectedResource, resource);
+					expectedResource.getPath(), resource.getPath()), expectedResource, resource);
 		}
 		available.countDown();
 	}

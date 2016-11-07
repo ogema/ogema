@@ -18,10 +18,9 @@ package org.ogema.accesscontrol;
 import java.io.PrintStream;
 import java.security.AccessControlContext;
 import java.security.Permission;
-import java.util.ArrayList;
 import java.util.Map;
 
-import org.ogema.core.administration.AdministrationManager;
+import org.ogema.applicationregistry.ApplicationRegistry;
 import org.ogema.core.application.AppID;
 import org.ogema.core.application.Application;
 import org.ogema.core.channelmanager.ChannelConfiguration;
@@ -49,7 +48,7 @@ public interface PermissionManager {
 	/**
 	 * Update the policy table of the conditional permission admin. The given AppPermission includes a list of
 	 * AppPermissionTypes where each of them represents a named entry of the policy table. The AppPermission instance is
-	 * obtained by the call to {@link getPolicies}. Multiple entries, positive (permission) or negative(exception),
+	 * obtained by the call to {@link #getPolicies(AppID)}. Multiple entries, positive (permission) or negative(exception),
 	 * should be avoided, in order to prevent negative effects on the performance.
 	 *
 	 * @param perm
@@ -128,6 +127,13 @@ public interface PermissionManager {
 	 * @return The object reference.
 	 */
 	public Object getSystemPermissionAdmin();
+	
+	/**
+	 * Gets the {@link ApplicationRegistry}.
+	 * 
+	 * @return
+	 */
+	public ApplicationRegistry getApplicationRegistry();
 
 	/**
 	 * Creates an AppPermission instance that contains the application specific policies. This method is called to get
@@ -180,13 +186,6 @@ public interface PermissionManager {
 	 * @return true if the permission is granted, false otherwise.
 	 */
 	public boolean checkDeleteResource(Application app, TreeElement te);
-
-	/**
-	 * Gets the {@link AdministrationManager} instance of the system.
-	 * 
-	 * @return The AdministrationManager reference.
-	 */
-	public AdministrationManager getAdminManager();
 
 	/**
 	 * Gets an AppPermission instance that encapsulates the default permission currently set in the system.

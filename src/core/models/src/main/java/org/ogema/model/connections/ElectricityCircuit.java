@@ -29,4 +29,12 @@ public interface ElectricityCircuit extends GenericCircuit {
 	 * 3 : sub phase of a multi-phase circuit
 	 */
 	public IntegerResource type();
+	
+	/**
+	 * 0: not specified
+	 * 1: L1
+	 * 2: L2
+	 * 3: L3
+	 */
+	public IntegerResource phase();
 }

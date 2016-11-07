@@ -79,8 +79,8 @@ public class RadFactory<T extends Resource, P extends ResourcePattern<T>> {
 		try {
 			result = m_factory.createNewPattern(demandMatch);
 		} catch (Exception ex) {
-			throw new RuntimeException("could not create a RAD object", ex);
-		}
+			throw new RuntimeException("could not create a RAD object for " + demandMatch, ex);
+		} 
 		return result;
 	}
 

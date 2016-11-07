@@ -22,6 +22,8 @@
 
 package org.ogema.serialization.jaxb;
 
+import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
+
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.annotation.XmlElementDecl;
 import javax.xml.bind.annotation.XmlRegistry;
@@ -40,7 +42,8 @@ import javax.xml.namespace.QName;
 @XmlRegistry
 public class ObjectFactory {
 
-	private final static QName _Resource_QNAME = new QName("http://www.ogema-source.net/REST", "resource");
+	private final static QName _Resource_QNAME = new QName(NS_OGEMA_REST, "resource");
+	private final static QName _ResourceCollection_QNAME = new QName(NS_OGEMA_REST, "resources");
 
 	/**
 	 * Create a new ObjectFactory that can be used to create new instances of schema derived classes for package:
@@ -50,6 +53,10 @@ public class ObjectFactory {
 	public ObjectFactory() {
 	}
 
+	public ResourceCollection createResources() {
+		return new ResourceCollection();
+	}
+	
 	/**
 	 * Create an instance of {@link Resource }
 	 * 
@@ -209,14 +216,23 @@ public class ObjectFactory {
 	public TimeResource createTimeResource() {
 		return new TimeResource();
 	}
+	
+	public ResourceList createResourceList() {
+		return new ResourceList();
+	}
 
 	/**
 	 * Create an instance of {@link JAXBElement }{@code <}{@link Resource }{@code >}
 	 * 
 	 */
-	@XmlElementDecl(namespace = "http://www.ogema-source.net/REST", name = "resource")
+	@XmlElementDecl(namespace = NS_OGEMA_REST, name = "resource")
 	public JAXBElement<Resource> createResource(Resource value) {
 		return new JAXBElement<Resource>(_Resource_QNAME, Resource.class, null, value);
+	}
+	
+	@XmlElementDecl(namespace = NS_OGEMA_REST, name = "resources")
+	public JAXBElement<ResourceCollection> createResources(ResourceCollection value) {
+		return new JAXBElement<ResourceCollection>(_ResourceCollection_QNAME, ResourceCollection.class, null, value);
 	}
 
 }

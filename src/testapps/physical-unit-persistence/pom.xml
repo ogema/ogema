@@ -4,12 +4,12 @@
 	<parent>
 		<artifactId>ogema-tests</artifactId>
 		<groupId>org.ogema.tests</groupId>
-		<version>2.0.4</version>
+		<version>2.1.0</version>
 	</parent>
 
 	<groupId>org.ogema.tests</groupId>
 	<artifactId>physical-unit-persistence</artifactId>
-	<version>2.0.4</version>
+	<version>2.1.0</version>
 
         <name>OGEMA Tests :: Physical Units</name>
         <description>Writes a physical unit to database upon clean start or reads out the data type of the resource for non-clean start and checks it still is the correct type.</description>
@@ -56,7 +56,7 @@
 		<dependency>
 			<groupId>org.ogema.ref-impl</groupId>
 			<artifactId>ogema-exam-base</artifactId>
-			<version>2.0.4</version>
+			<version>2.1.0</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

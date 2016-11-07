@@ -5,7 +5,7 @@
     <parent>
         <artifactId>ref-impl</artifactId>
         <groupId>org.ogema.ref-impl</groupId>
-        <version>2.0.4</version>
+        <version>2.1.0</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -49,7 +49,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <argLine>-ea -Djava.security.policy=all.policy -Dorg.osgi.framework.security=osgi</argLine>
+                    <argLine>-ea -DforkCount=0 -Djava.security.policy=all.policy</argLine>
                 </configuration>
             </plugin>
 
@@ -65,7 +65,7 @@
         <dependency>
             <groupId>org.ogema.ref-impl</groupId>
             <artifactId>ogema-logger</artifactId>
-            <version>2.0.4</version>
+            <version>2.1.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>ch.qos.logback</groupId>
@@ -97,29 +97,34 @@
             <artifactId>ogema-exam-base</artifactId>
             <scope>test</scope>
             <!-- using equinox for security tests -->
-            <exclusions> 
-                <exclusion> 
-                    <artifactId>org.apache.felix.framework</artifactId> 
-                    <groupId>org.apache.felix</groupId> 
-                </exclusion> 
-            </exclusions>
+<!--             <exclusions>  -->
+<!--                 <exclusion>  -->
+<!--                     <artifactId>org.apache.felix.framework</artifactId>  -->
+<!--                     <groupId>org.apache.felix</groupId>  -->
+<!--                 </exclusion>  -->
+<!--             </exclusions> -->
         </dependency>
+        <dependency>
+			<groupId>org.ogema.core</groupId>
+			<artifactId>models</artifactId>
+			<scope>test</scope>
+		</dependency>
     </dependencies>
 
-    <profiles> 
-        <profile> 
-            <activation> 
-                <activeByDefault>true</activeByDefault> 
-            </activation> 
-            <id>equinox</id> 
-            <dependencies> 
-                <dependency> 
-                    <groupId>org.eclipse.tycho</groupId> 
-                    <artifactId>org.eclipse.osgi</artifactId> 
-                    <version>3.9.1.v20130814-1242</version> 
-                </dependency> 
-            </dependencies> 
-        </profile> 
-    </profiles>
+<!--     <profiles>  -->
+<!--         <profile>  -->
+<!--             <activation>  -->
+<!--                 <activeByDefault>true</activeByDefault>  -->
+<!--             </activation>  -->
+<!--             <id>equinox</id>  -->
+<!--             <dependencies>  -->
+<!--                 <dependency>  -->
+<!--                     <groupId>org.eclipse.tycho</groupId>  -->
+<!--                     <artifactId>org.eclipse.osgi</artifactId>  -->
+<!--                     <version>3.9.1.v20130814-1242</version>  -->
+<!--                 </dependency>  -->
+<!--             </dependencies>  -->
+<!--         </profile>  -->
+<!--     </profiles> -->
 
 </project>

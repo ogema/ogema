@@ -108,8 +108,9 @@
                     </accordion-heading>
                     <div class="row">
                         <div class="col-md-4"><label>For User</label> <select ng-model="userForNewPwd" class="form-control" ng-options="user.name for user in users"></select></div>
+						<div class="col-md-4"><label>old Password</label><input class="form-control" ng-model="oldPwdForUser" type="text"></div>
                         <div class="col-md-4"><label>new Password</label><input class="form-control" ng-model="newPwdForUser" type="text"></div>
-                        <div class="col-md-4"><label> </label><br/><button class="btn btn-success" ng-disabled="userForNewPwd == undefined || newPwdForUser == ''" ng-click="changePassword(userForNewPwd.name, newPwdForUser)">Change Password</button></div>
+                        <div class="col-md-4"><label> </label><br/><button class="btn btn-success" ng-disabled="userForNewPwd == undefined || newPwdForUser == ''" ng-click="changePassword(userForNewPwd.name, oldPwdForUser, newPwdForUser)">Change Password</button></div>
                     </div>
                     <div class="row" ng-if="msg.changePassword != ''">
                         <span class="alert">{{msg.changePassword}}</span>

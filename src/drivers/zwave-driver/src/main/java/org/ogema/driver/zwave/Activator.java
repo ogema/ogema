@@ -40,23 +40,22 @@ public class Activator {
 	private ServiceRegistration<?> registration;
 	@Reference
 	private HardwareManager hardwareManager;
-	@Reference(bind = "setChannelAccess")
-	protected ChannelAccess channelAccess;
 
-	public static boolean bundleIsRunning;
+	public static volatile boolean bundleIsRunning;
+	public ShellCommands sc;
 
 	@Activate
-	public void activate(final BundleContext context, Map<String, Object> config) throws Exception {
+	public synchronized void activate(final BundleContext context, Map<String, Object> config) throws Exception {
 		bundleIsRunning = true;
 		if (driver == null)
-			driver = new ZWaveDriver(channelAccess, hardwareManager);
+			driver = new ZWaveDriver(hardwareManager);
 		driver.establishConnection();
 		registration = context.registerService(ChannelDriver.class, driver, null);
-		new ShellCommands(driver, context);
+		sc = new ShellCommands(driver, context);
 	}
 
 	@Deactivate
-	public void deactivate(Map<String, Object> config) throws Exception {
+	public synchronized void deactivate(Map<String, Object> config) throws Exception {
 		bundleIsRunning = false;
 		for (Map.Entry<String, Connection> entry : driver.getConnections().entrySet()) {
 			entry.getValue().close();
@@ -64,9 +63,8 @@ public class Activator {
 
 		if (registration != null)
 			registration.unregister();
-	}
-
-	protected void setChannelAccess(ChannelAccess ca) {
-		this.channelAccess = ca;
+		if (sc != null)
+			sc.close();
+		sc = null;
 	}
 }

@@ -16,6 +16,7 @@
 package org.ogema.driver.zwavehl.devices;
 
 import org.ogema.core.application.ApplicationManager;
+import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.Value;
@@ -26,9 +27,10 @@ import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.driver.zwavehl.ZWaveHlConfig;
 import org.ogema.driver.zwavehl.ZWaveHlDevice;
 import org.ogema.driver.zwavehl.ZWaveHlDriver;
-import org.ogema.driver.zwavehl.models.DoorOpeningSensorConfig;
+import org.ogema.model.sensors.DoorWindowSensor;
 import org.ogema.model.sensors.GenericBinarySensor;
 import org.ogema.model.sensors.StateOfChargeSensor;
+import org.ogema.tools.resource.util.ResourceUtils;
 
 /**
  * 
@@ -40,7 +42,7 @@ public class DoorOpeningSensor extends ZWaveHlDevice {
 	private FloatResource battery;
 	private BooleanResource doorOpen;
 	private BooleanResource alarm;
-	private DoorOpeningSensorConfig openingDevice;
+	private DoorWindowSensor openingDevice;
 
 	public DoorOpeningSensor(ZWaveHlDriver driver, ApplicationManager appManager, ZWaveHlConfig config) {
 		super(driver, appManager, config);
@@ -56,6 +58,7 @@ public class DoorOpeningSensor extends ZWaveHlDevice {
 		switch (channelAddress) {
 		case "0030:0001:0000":
 			doorOpen.setValue(value.getBooleanValue());
+			doorOpen.activate(false);
 			break;
 		case "009C:0001:0000":
 			Byte b = value.getByteArrayValue()[0];
@@ -63,17 +66,20 @@ public class DoorOpeningSensor extends ZWaveHlDevice {
 				alarm.setValue(false);
 			else
 				alarm.setValue(true);
+			alarm.activate(false);
 			break;
 		case "0080:0001:0000":
 			Byte bb = value.getByteArrayValue()[0];
 			battery.setValue(bb.intValue());
+			battery.activate(false);
 			break;
 		}
 	}
 
 	protected void init() {
 		logger.debug("DoorOpeningSensor created!");
-		openingDevice = resourceManager.createResource(zwaveHlConfig.resourceName, DoorOpeningSensorConfig.class);
+		openingDevice = resourceManager.createResource(zwaveHlConfig.resourceName, DoorWindowSensor.class);
+		openingDevice.activate(false);
 	}
 
 	private void initDoorOpen() {
@@ -83,11 +89,17 @@ public class DoorOpeningSensor extends ZWaveHlDevice {
 		attributeConfig.deviceAddress = zwaveHlConfig.deviceAddress;
 		attributeConfig.channelAddress = "0030:0001:0000";
 		attributeConfig.resourceName = zwaveHlConfig.resourceName + "_DoorOpen";
-		attributeConfig.chLocator = addChannel(attributeConfig);
+		attributeConfig.chConfiguration = addChannel(attributeConfig);
 
-		GenericBinarySensor dSens = (GenericBinarySensor) openingDevice.doorOpen().create();
-		doorOpen = (BooleanResource) dSens.reading().create();
+//		GenericBinarySensor dSens = (GenericBinarySensor) openingDevice.doorOpen().create();
+		doorOpen = openingDevice.reading().create();
 		doorOpen.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
+		try {
+			readValue(attributeConfig.channelAddress);
+		} catch (ChannelAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	private void initAlarm() {
@@ -98,11 +110,18 @@ public class DoorOpeningSensor extends ZWaveHlDevice {
 		attributeConfig.deviceAddress = zwaveHlConfig.deviceAddress;
 		attributeConfig.channelAddress = "009C:0001:0000";
 		attributeConfig.resourceName = zwaveHlConfig.resourceName + "_Alarm";
-		attributeConfig.chLocator = addChannel(attributeConfig);
+		attributeConfig.chConfiguration = addChannel(attributeConfig);
 
-		GenericBinarySensor aSens = (GenericBinarySensor) openingDevice.alarm().create();
-		alarm = (BooleanResource) aSens.reading().create();
+		GenericBinarySensor aSens = openingDevice.alarm().create();
+		openingDevice.alarm().activate(false);
+		alarm = aSens.reading().create();
 		alarm.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
+		try {
+			readValue(attributeConfig.channelAddress);
+		} catch (ChannelAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	private void initBatStat() {
@@ -113,11 +132,18 @@ public class DoorOpeningSensor extends ZWaveHlDevice {
 		attributeConfig.deviceAddress = zwaveHlConfig.deviceAddress;
 		attributeConfig.channelAddress = "0080:0001:0000";
 		attributeConfig.resourceName = zwaveHlConfig.resourceName + "_BatteryStatus";
-		attributeConfig.chLocator = addChannel(attributeConfig);
+		attributeConfig.chConfiguration = addChannel(attributeConfig);
 
-		StateOfChargeSensor eSens = (StateOfChargeSensor) openingDevice.battery().create();
-		battery = (FloatResource) eSens.reading().create();
+		StateOfChargeSensor eSens =  openingDevice.battery().chargeSensor().create();
+		ResourceUtils.activateComplexResources(openingDevice.battery(), true, appManager.getResourceAccess());
+		battery = eSens.reading().create();
 		battery.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
+		try {
+			readValue(attributeConfig.channelAddress);
+		} catch (ChannelAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	@Override

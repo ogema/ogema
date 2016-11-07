@@ -28,7 +28,6 @@ import org.ogema.app.webresman.ResourceTypeContentPanel;
 import org.ogema.apps.wicket.ApplicationPage;
 import org.ogema.apps.wicket.ApplicationPanel;
 import org.ogema.apps.wicket.ComponentProvider;
-import org.osgi.framework.Bundle;
 
 @Service(ComponentProvider.class)
 @Component(specVersion = "1.1", immediate = true)

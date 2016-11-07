@@ -17,7 +17,6 @@ package org.ogema.resourcemanager.impl.timeseries;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.recordeddata.RecordedDataConfiguration;
@@ -92,4 +91,10 @@ public class EmptyRecordedData implements RecordedDataStorage {
 	public void update(RecordedDataConfiguration configuration) throws DataRecorderException {
 	}
 
+	@Override
+	public String getPath() {
+		return null;
+	}
+	
+	
 }

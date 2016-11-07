@@ -20,9 +20,6 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.util.List;
 
-import org.codehaus.jackson.JsonFactory;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.ogema.core.channelmanager.measurements.BooleanValue;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.IntegerValue;
@@ -44,13 +41,20 @@ import org.ogema.core.model.units.PhysicalUnitResource;
 import org.ogema.core.tools.SerializationManager;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /**
  *
  * @author Eric Sternberg (esternberg)
+ * @deprecated not suited for extensions of the REST interface; should offer static methods 
+ * to serialize resources without header, etc. To be replaced.
  */
+@Deprecated 
 public class FastJsonGenerator {
 
-	private final static JsonFactory jsonFactory = new JsonFactory();
+	final static JsonFactory jsonFactory = new JsonFactory();
 	private JsonGenerator jGen = null;
 	private StateController stateControl = null;
 
@@ -78,7 +82,7 @@ public class FastJsonGenerator {
 	public void serialize(Writer writer, Resource resource, SerializationManager serializationManager)
 			throws IOException {
 		jGen = jsonFactory.createJsonGenerator(writer).useDefaultPrettyPrinter();
-		this.stateControl = new StateController(serializationManager, resource);
+		this.stateControl = new StateController(serializationManager, resource); 
 		try {
 			this.serializeResource(resource);
 		} catch (Throwable e) {
@@ -131,11 +135,11 @@ public class FastJsonGenerator {
 
 		// the resource type occures as "@type" element just in the requested root-resource
 		if (stateControl.isRquestedRootResource(resource)) {
-			jGen.writeStringField("@type", this.figgureOutResourceType(resource));
+			jGen.writeStringField("@type", this.figureOutResourceType(resource));
 			this.writeResourceBody(resource);
 		}
 		else {
-			jGen.writeObjectFieldStart(this.figgureOutResourceType(resource));
+			jGen.writeObjectFieldStart(this.figureOutResourceType(resource));
 			this.writeResourceBody(resource);
 			jGen.writeEndObject();
 		}
@@ -274,36 +278,42 @@ public class FastJsonGenerator {
 			@Override
 			public void writeValue(SampledValue v, JsonGenerator jGen) throws IOException {
 				jGen.writeBooleanField("value", v.getValue().getBooleanValue());
+				jGen.writeStringField("@type", "SampledBoolean");
 			}
 		},
 		FloatWriter(FloatValue.class) {
 			@Override
 			public void writeValue(SampledValue v, JsonGenerator jGen) throws IOException {
 				jGen.writeNumberField("value", v.getValue().getFloatValue());
+				jGen.writeStringField("@type", "SampledFloat");
 			}
 		},
 		IntWriter(IntegerValue.class) {
 			@Override
 			public void writeValue(SampledValue v, JsonGenerator jGen) throws IOException {
 				jGen.writeNumberField("value", v.getValue().getIntegerValue());
+				jGen.writeStringField("@type", "SampledInteger");
 			}
 		},
 		LongWriter(LongValue.class) {
 			@Override
 			public void writeValue(SampledValue v, JsonGenerator jGen) throws IOException {
 				jGen.writeNumberField("value", v.getValue().getLongValue());
+				jGen.writeStringField("@type", "SampledLong");
 			}
 		},
 		StringWriter(StringValue.class) {
 			@Override
 			public void writeValue(SampledValue v, JsonGenerator jGen) throws IOException {
 				jGen.writeStringField("value", v.getValue().getStringValue());
+				jGen.writeStringField("@type", "SampledString");
 			}
 		},
 		DefaultWriter(Value.class) {
 			@Override
 			public void writeValue(SampledValue v, JsonGenerator jGen) throws IOException {
 				jGen.writeStringField("value", v.getValue().getStringValue());
+				jGen.writeStringField("@type", "SampledString");
 			}
 		};
 
@@ -323,6 +333,7 @@ public class FastJsonGenerator {
 			return DefaultWriter;
 		}
 
+		// FIXME this misses the type of the field... leads to failure
 		void write(SampledValue val, JsonGenerator jGen) throws IOException {
 			jGen.writeStartObject();
 			jGen.writeNumberField("time", val.getTimestamp());
@@ -341,16 +352,16 @@ public class FastJsonGenerator {
 	 * @param resource
 	 * @return String
 	 */
-	private String figgureOutResourceType(Resource resource) {
+	private String figureOutResourceType(Resource resource) {
 
-		if (resource instanceof SingleValueResource) {
+		if (resource instanceof SingleValueResource || resource instanceof ResourceList) {
 			if (resource instanceof FloatResource) {
 				return FloatResource.class.getSimpleName();
 			}
 			return resource.getResourceType().getSimpleName();
 		}
 		if (resource instanceof Schedule) {
-			return this.figgureOutScheduleType((Schedule) resource);
+			return this.figureOutScheduleType((Schedule) resource);
 		}
 		// return "Resource";
 		// TODO: clarify why different cases in old json-serialization?
@@ -359,12 +370,12 @@ public class FastJsonGenerator {
 
 	/**
 	 * We have to figgure out which (simple)type of Schedule we have ( (but there are no simple typs of schedules in the
-	 * ogema model) otherwise deserialization of a shedule wont work.
+	 * ogema model) otherwise deserialization of a schedule wont work.
 	 *
 	 * @param schedule
 	 * @return
 	 */
-	private String figgureOutScheduleType(Schedule schedule) {
+	private String figureOutScheduleType(Schedule schedule) {
 		final Resource parent = schedule.getParent();
 		if (parent instanceof BooleanResource) {
 			return "BooleanSchedule";
@@ -382,7 +393,7 @@ public class FastJsonGenerator {
 			return "TimeSchedule";
 		}
 		// NOTE deserialization of type shedule wont work
-		return "Shedule";
+		return "Schedule";
 	}
-
+		
 }

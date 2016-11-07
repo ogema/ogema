@@ -15,19 +15,15 @@
  */
 package org.ogema.serialization.jaxb;
 
-import java.util.ArrayList;
-import java.util.List;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlList;
-import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
 
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "ByteArrayResource", propOrder = { "values" })
-@XmlRootElement(name = "byteArray", namespace = NS_OGEMA_REST)
+@XmlType(name = "ByteArrayResource", namespace = NS_OGEMA_REST, propOrder = { "values" })
+//@XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 public class ByteArrayResource extends Resource {
 
 	@XmlElement(required = true)

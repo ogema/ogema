@@ -20,46 +20,46 @@ import java.util.Map;
 
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
+import org.ogema.core.channelmanager.ChannelAccess;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
 import org.ogema.driver.generic_zb.devices.ColorDimmableLight;
 import org.ogema.driver.generic_zb.devices.DevelcoSmartPlug;
 import org.ogema.driver.generic_zb.devices.MainsPowerOutlet;
+import org.ogema.driver.generic_zb.devices.SmartPlug;
+import org.ogema.driver.xbee.Constants;
 import org.slf4j.Logger;
 
 public class Generic_ZbDriver implements Application, DeviceScanListener {
 	/** Cached ApplicationManager */
 	protected ApplicationManager appManager;
 	/** Map of active Fls_Pp devices */
-	protected final Map<String, Generic_ZbDevice> devices; // String == interface:deviceAddress
-	public final Map<String, ChannelLocator> channelMap; // Map a name to a channelLocator (resourceId)
+	protected final Map<String, Generic_ZbDevice> devices = new HashMap<String, Generic_ZbDevice>(); // String == interface:deviceAddress
+	public final Map<String, ChannelConfiguration> channelMap =  new HashMap<String, ChannelConfiguration>(); // Map a name to a channelLocator (resourceId)
 	private DeviceScanListener deviceScanListener;
 
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+	public static final Logger logger = org.slf4j.LoggerFactory.getLogger("generic-zb");
 
 	public Generic_ZbDriver() {
-		devices = new HashMap<String, Generic_ZbDevice>();
-		channelMap = new HashMap<String, ChannelLocator>();
 	}
 
 	@Override
 	public void start(ApplicationManager appManager) {
-		// TODO Auto-generated method stub
 		this.appManager = appManager;
-
-		/*
-		 * ResourceManagement resourceManager = appManager.getResourceManagement(); ResourceAccess resourceAccess =
-		 * appManager.getResourceAccessManager();
-		 * 
-		 * // register custom LemonegDataModel resourceManager.addResourceType(Fls_PpLightDataModel.class);
-		 */
 	}
 
 	@Override
 	public void stop(AppStopReason reason) {
+
 		for (Generic_ZbDevice device : devices.values()) {
 			device.close();
+		}
+
+		ChannelAccess ca = appManager.getChannelAccess();
+		
+		for (ChannelConfiguration chConf : channelMap.values()) {
+			ca.deleteChannel(chConf);
 		}
 	}
 
@@ -67,12 +67,12 @@ public class Generic_ZbDriver implements Application, DeviceScanListener {
 		if (!devices.containsKey(config.interfaceId + ":" + config.deviceAddress)) {
 			Generic_ZbDevice device;
 			switch (config.deviceId) {
-			case Constants.COLOR_DIMMABLE_LIGHT:
+			case Constants.COLOR_DIMMABLE_LIGHT_DEVICE_ID:
 				device = new ColorDimmableLight(this, appManager, config);
 				System.out.println("device created");
 				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
 				break;
-			case Constants.MAINS_POWER_OUTLET:
+			case Constants.MAINS_POWER_OUTLET_DEVICE_ID:
 				device = new MainsPowerOutlet(this, appManager, config);
 				System.out.println("device created");
 				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
@@ -115,15 +115,18 @@ public class Generic_ZbDriver implements Application, DeviceScanListener {
 			return;
 		}
 		if (splitStringArray[0].equals("ZigBee")) {
-			if (splitStringArray[3].equals(Constants.HOME_AUTOMATION)) {
+			if (splitStringArray[3].equals(Constants.HOME_AUTOMATION_PROFILE_ID)) {
 				String deviceId = splitStringArray[2];
 				Generic_ZbDevice zbDevice = null;
 				switch (deviceId) {
-				case Constants.COLOR_DIMMABLE_LIGHT_STRING:
+				case Constants.COLOR_DIMMABLE_LIGHT_DEVICE_ID_STRING:
 					zbDevice = new ColorDimmableLight(this, appManager, deviceLocator, null);
 					break;
-				case Constants.MAINS_POWER_OUTLET_STRING:
-					zbDevice = new DevelcoSmartPlug(this, appManager, deviceLocator, "Develco_Smart_Plug");
+				case Constants.MAINS_POWER_OUTLET_DEVICE_ID_STRING:
+					zbDevice = new DevelcoSmartPlug(this, appManager, deviceLocator, splitStringArray[1]);
+					break;
+				case Constants.SMART_PLUG_DEVICE_ID_STRING:
+					zbDevice = new SmartPlug(this, appManager, deviceLocator, splitStringArray[1]);
 					break;
 				default:
 					logger.info("Unsupported device detected: " + deviceLocator);
@@ -131,8 +134,7 @@ public class Generic_ZbDriver implements Application, DeviceScanListener {
 				}
 				if (zbDevice != null) {
 					logger.debug("device created");
-					devices.put(
-							deviceLocator.getInterfaceName() + ":" + deviceLocator.getDeviceAddress().toUpperCase(),
+					devices.put(deviceLocator.getInterfaceName() + ":" + deviceLocator.getDeviceAddress().toUpperCase(),
 							zbDevice);
 				}
 			}
@@ -142,8 +144,8 @@ public class Generic_ZbDriver implements Application, DeviceScanListener {
 				String deviceId = splitStringArray[2];
 				Generic_ZbDevice zbDevice = null;
 				switch (deviceId) {
-				case Constants.PHILIPS_HUE_ID:
-					zbDevice = new ColorDimmableLight(this, appManager, deviceLocator, "Philips_Hue");
+				case Constants.PHILIPS_HUE_ID_STRING:
+					zbDevice = new ColorDimmableLight(this, appManager, deviceLocator, splitStringArray[1]);
 					break;
 				default:
 					logger.info("Unsupported device detected: " + deviceLocator);
@@ -151,8 +153,7 @@ public class Generic_ZbDriver implements Application, DeviceScanListener {
 				}
 				if (zbDevice != null) {
 					logger.debug("device created");
-					devices.put(
-							deviceLocator.getInterfaceName() + ":" + deviceLocator.getDeviceAddress().toUpperCase(),
+					devices.put(deviceLocator.getInterfaceName() + ":" + deviceLocator.getDeviceAddress().toUpperCase(),
 							zbDevice);
 				}
 			}
@@ -162,7 +163,7 @@ public class Generic_ZbDriver implements Application, DeviceScanListener {
 				String deviceId = splitStringArray[2];
 				Generic_ZbDevice zbDevice = null;
 				switch (deviceId) {
-				case Constants.DEVELCO_ZHWR202_ID:
+				case Constants.DEVELCO_ZHWR202_ID_STRING:
 					// zbDevice = new DevelcoSmartPlug(this, appManager, deviceLocator);
 					break;
 				default:

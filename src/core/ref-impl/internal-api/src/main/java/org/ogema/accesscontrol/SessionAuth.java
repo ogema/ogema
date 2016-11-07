@@ -24,12 +24,12 @@ import javax.servlet.http.HttpSessionBindingListener;
 
 import org.ogema.core.application.AppID;
 import org.osgi.service.useradmin.Authorization;
-import org.osgi.service.useradmin.User;
 import org.slf4j.Logger;
 
 public class SessionAuth implements HttpSessionBindingListener {
 
 	public static final String AUTH_ATTRIBUTE_NAME = "ogemaAuth";
+	public static final String USER_CREDENTIAL = "usrCred";
 
 	Authorization auth;
 	HttpSession ses;
@@ -41,31 +41,34 @@ public class SessionAuth implements HttpSessionBindingListener {
 	}
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
-	User usr;
+	// User usr;
+	private AccessManager accMngr;
 
-	public User getUsr() {
-		return usr;
-	}
+	//public User getUsr() {
+	//	return usr;
+	//}
 
 	static Random rnd;
 
-	public SessionAuth(Authorization auth, User user, HttpSession ses) {
+	public SessionAuth(Authorization auth, AccessManager accessManager, HttpSession ses) {
 		this.auth = auth;
 		this.ses = ses;
-		this.usr = user;
+		// this.usr = user;
 		this.otpList = new ConcurrentHashMap<>();
+		this.accMngr = accessManager;
 	}
 
 	@Override
 	public void valueBound(HttpSessionBindingEvent arg0) {
-		String id = ses.getId();
-		//		logger.info("Session binding event: bound " + id);
+//		String id = ses.getId();
+//		logger.info("Session binding event: bound " + id);
 	}
 
 	@Override
 	public void valueUnbound(HttpSessionBindingEvent arg0) {
 		String id = ses.getId();
-		//		logger.info("Session binding event: unbound " + id);
+		logger.info("Session binding event: unbound " + id);
+		accMngr.logout(auth.getName());
 	}
 
 	public String registerAppOtp(AppID app) {
@@ -84,5 +87,9 @@ public class SessionAuth implements HttpSessionBindingListener {
 
 	static {
 		rnd = new Random(System.currentTimeMillis());
+	}
+
+	public String getName() {
+		return auth.getName();
 	}
 }

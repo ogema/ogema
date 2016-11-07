@@ -26,7 +26,7 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.ChannelConfiguration;
-import org.ogema.core.channelmanager.ChannelConfigurationException;
+import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
 import org.ogema.core.channelmanager.ChannelEventListener;
 import org.ogema.core.channelmanager.EventType;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
@@ -58,14 +58,14 @@ public abstract class ZWaveHlDevice implements ChannelScanListener {
 	protected final ResourceManagement resourceManager;
 	protected final DeviceLocator deviceLocator;
 	protected final ApplicationManager appManager;
-	protected final Map<String, ChannelLocator> valueChannel; // <channelAddress, ChannelLocator>
-	protected final List<ChannelLocator> ChannelLocatorList;
+	protected final Map<String, ChannelConfiguration> valueChannel; // <channelAddress, ChannelLocator>
+	protected final List<ChannelConfiguration> ChannelLocatorList;
 
 	protected ChannelEventListener channelEventListener;
 	protected ZWaveHlDriver driver;
 	protected final OgemaLogger logger;
 	protected String deviceID;
-	public final Map<String, ChannelLocator> channelMap; // Map a name to a channelLocator (resourceId)
+	public final Map<String, ChannelConfiguration> channelMap; // Map a name to a channelLocator (resourceId)
 
 	/**
 	 * This Constructor is called by resourceAvailable method initiated by ShellCommand "createChannel".
@@ -73,22 +73,28 @@ public abstract class ZWaveHlDevice implements ChannelScanListener {
 	 * @param driver
 	 * @param appManager
 	 * @param config
+	 * @throws ChannelAccessException 
 	 */
 	public ZWaveHlDevice(ZWaveHlDriver driver, ApplicationManager appManager, ZWaveHlConfig config) {
-		valueChannel = new HashMap<String, ChannelLocator>();
-		ChannelLocatorList = new ArrayList<ChannelLocator>(); // UpdateListenerList
+		valueChannel = new HashMap<String, ChannelConfiguration>();
+		ChannelLocatorList = new ArrayList<ChannelConfiguration>(); // UpdateListenerList
 		channelAccess = appManager.getChannelAccess();
 		resourceManager = appManager.getResourceManagement();
 		this.appManager = appManager;
 		this.logger = appManager.getLogger();
 		zwaveHlConfig = config;
 		this.driver = driver;
-		deviceLocator = channelAccess.getDeviceLocator(config.driverId, config.interfaceId, config.deviceAddress,
+		deviceLocator = new DeviceLocator(config.driverId, config.interfaceId, config.deviceAddress,
 				config.deviceParameters);
-		this.channelMap = new HashMap<String, ChannelLocator>();
+		this.channelMap = new HashMap<String, ChannelConfiguration>();
 
 		init();
-		channelAccess.discoverChannels(deviceLocator, this);
+		try {
+			channelAccess.discoverChannels(deviceLocator, this);
+		} catch (ChannelAccessException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 
 		channelEventListener = new ChannelEventListener() {
 
@@ -99,7 +105,7 @@ public abstract class ZWaveHlDevice implements ChannelScanListener {
 					try {
 						updateChannelValue(c.getChannelLocator().getChannelAddress(), c.getSampledValue().getValue());
 					} catch (IllegalConversionException e) {
-						System.out.println("Changed channel value could not be read");
+						logger.error("Changed channel value could not be read",e);
 					}
 				}
 			}
@@ -118,12 +124,13 @@ public abstract class ZWaveHlDevice implements ChannelScanListener {
 	 * @param driver
 	 * @param appManager
 	 * @param deviceLocator
+	 * @throws ChannelAccessException 
 	 */
 	public ZWaveHlDevice(ZWaveHlDriver driver, ApplicationManager appManager, DeviceLocator deviceLocator) {
 		this.appManager = appManager;
 		channelAccess = appManager.getChannelAccess();
-		valueChannel = new HashMap<String, ChannelLocator>();
-		ChannelLocatorList = new ArrayList<ChannelLocator>();
+		valueChannel = new HashMap<String, ChannelConfiguration>();
+		ChannelLocatorList = new ArrayList<ChannelConfiguration>();
 		resourceManager = appManager.getResourceManagement();
 		logger = appManager.getLogger();
 		this.zwaveHlConfig = new ZWaveHlConfig();
@@ -136,10 +143,9 @@ public abstract class ZWaveHlDevice implements ChannelScanListener {
 
 		this.deviceLocator = deviceLocator;
 		unifyResourceName(zwaveHlConfig);
-		this.channelMap = new HashMap<String, ChannelLocator>();
+		this.channelMap = new HashMap<String, ChannelConfiguration>();
 
 		init();
-		channelAccess.discoverChannels(deviceLocator, this);
 
 		channelEventListener = new ChannelEventListener() {
 
@@ -150,7 +156,7 @@ public abstract class ZWaveHlDevice implements ChannelScanListener {
 					try {
 						updateChannelValue(c.getChannelLocator().getChannelAddress(), c.getSampledValue().getValue());
 					} catch (IllegalConversionException e) {
-						System.out.println("Changed channel value could not be read");
+						logger.error("Changed channel value could not be read",e);
 					}
 				}
 			}
@@ -161,87 +167,83 @@ public abstract class ZWaveHlDevice implements ChannelScanListener {
 				parseValue(value, channelAddress);
 			}
 		};
+		logger.debug("Zwave device inited: " + deviceLocator.toString());
+		try {
+			channelAccess.discoverChannels(deviceLocator, this);
+		} catch (ChannelAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
 	protected abstract void parseValue(Value value, String channelAddress);
 
 	protected ChannelLocator createChannelLocator(String channelAddress) {
-		return channelAccess.getChannelLocator(channelAddress, deviceLocator);
+		return new ChannelLocator(channelAddress, deviceLocator);
 	}
 
 	public void close() {
 		// TODO
 	}
 
-	public ChannelLocator addChannel(ZWaveHlConfig config) {
+	public ChannelConfiguration addChannel(ZWaveHlConfig config) {
+		
+		logger.debug("channel access addchannel");
+
 		ChannelLocator channelLocator = createChannelLocator(config.channelAddress);
-		ChannelConfiguration channelConfig = channelAccess.getChannelConfiguration(channelLocator);
-		channelMap.put(config.resourceName, channelLocator);
-		valueChannel.put(config.channelAddress, channelLocator);
-		channelConfig.setSamplingPeriod(ChannelConfiguration.LISTEN_FOR_UPDATE);
+		ChannelConfiguration channelConfiguration = null;
+		
 		this.deviceID = config.resourceName;
 
-		logger.debug("channel access addchannel");
 		try {
-			channelAccess.addChannel(channelConfig);
-		} catch (ChannelConfigurationException e) {
+			channelConfiguration = channelAccess.addChannel(channelLocator, Direction.DIRECTION_INOUT, ChannelConfiguration.LISTEN_FOR_UPDATE);
+			addToUpdateListener(channelConfiguration);
+			channelMap.put(config.resourceName, channelConfiguration);
+			valueChannel.put(config.channelAddress, channelConfiguration);
+		} catch (ChannelAccessException e) {
 			logger.error("addChannel failed!");
 			e.printStackTrace();
-			return null;
 		}
-		addToUpdateListener(channelLocator);
-		return channelLocator;
+
+		return channelConfiguration;
 	}
 
 	protected void removeChannels() {
-		Set<Entry<String, ChannelLocator>> set = channelMap.entrySet();
-		for (Entry<String, ChannelLocator> e : set) {
-			try {
-				ChannelLocator chLoc = e.getValue();
-				channelAccess.deleteChannel(chLoc);
-			} catch (ChannelConfigurationException ex) {
-				ex.printStackTrace();
-			}
+		Set<Entry<String, ChannelConfiguration>> set = channelMap.entrySet();
+		for (Entry<String, ChannelConfiguration> e : set) {
+				ChannelConfiguration chConf = e.getValue();
+				channelAccess.deleteChannel(chConf);
 		}
 	}
 
-	public void writeToChannel(ChannelLocator channelLocator, Value value) {
+	public void writeToChannel(ChannelConfiguration channelConfiguration, Value value) {
 
 		try {
-			channelAccess.setChannelValue(channelLocator, value);
+			channelAccess.setChannelValue(channelConfiguration, value);
 		} catch (ChannelAccessException e) {
 			e.printStackTrace();
 		}
 	}
 
 	public void deleteChannel(ZWaveHlConfig config) {
-		ChannelLocator locator = null;
-		if (valueChannel.containsKey(config.channelAddress)) {
-			locator = valueChannel.get(config.channelAddress);
-			valueChannel.remove(config.channelAddress);
-		}
-		else {
+		ChannelConfiguration chConf = valueChannel.remove(config.channelAddress);
+		
+		if (chConf == null)
 			return;
-		}
-
-		removeFromUpdateListener(locator);
-
-		try {
-			channelAccess.deleteChannel(locator);
-		} catch (ChannelConfigurationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		
+		removeFromUpdateListener(chConf);
+		channelAccess.deleteChannel(chConf);
 	}
 
-	protected void addToUpdateListener(ChannelLocator channelLocator) {
-		ChannelLocatorList.add(channelLocator);
+	protected void addToUpdateListener(ChannelConfiguration channelConfiguration) throws ChannelAccessException {
+		ChannelLocatorList.add(channelConfiguration);
 		channelAccess.registerUpdateListener(ChannelLocatorList, channelEventListener);
 	}
 
-	private void removeFromUpdateListener(ChannelLocator channelLocator) {
-		ChannelLocatorList.remove(channelLocator);
-		channelAccess.registerUpdateListener(ChannelLocatorList, channelEventListener);
+	private void removeFromUpdateListener(ChannelConfiguration channelConfiguration) {
+		ChannelLocatorList.remove(channelConfiguration);
+		channelAccess.unregisterUpdateListener(ChannelLocatorList, channelEventListener);
 	}
 
 	public void printValue(Value value, String channelAddress) {
@@ -289,9 +291,9 @@ public abstract class ZWaveHlDevice implements ChannelScanListener {
 		printValue(value, channel);
 	}
 
-	public void readValue(String channelAddress) {
-		ChannelLocator chloc = valueChannel.get(channelAddress);
-		SampledValueContainer container = new SampledValueContainer(chloc);
+	public void readValue(String channelAddress) throws ChannelAccessException {
+		ChannelConfiguration chConf = valueChannel.get(channelAddress);
+		SampledValueContainer container = new SampledValueContainer(chConf.getChannelLocator());
 
 		List<SampledValueContainer> channelList = new ArrayList<SampledValueContainer>(1);
 
@@ -303,13 +305,31 @@ public abstract class ZWaveHlDevice implements ChannelScanListener {
 		parseValue(c, channelAddress);
 	}
 
+	public void readValue(ChannelLocator channel) {
+		String channelAddress = channel.getChannelAddress();
+		SampledValueContainer container = new SampledValueContainer(channel);
+
+		List<SampledValueContainer> channelList = new ArrayList<SampledValueContainer>(1);
+
+		channelList.add(container);
+
+		try {
+			channelAccess.readUnconfiguredChannels(channelList);
+		} catch (ChannelAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		Value c = channelList.get(0).getSampledValue().getValue();
+		parseValue(c, channelAddress);
+	}
+
 	protected abstract void unifyResourceName(ZWaveHlConfig config);
 
 	protected abstract void terminate();
 
 	protected abstract void init();
 
-	public ChannelLocator getChannel(String resourceId) {
+	public ChannelConfiguration getChannel(String resourceId) {
 		return channelMap.get(resourceId);
 	}
 }

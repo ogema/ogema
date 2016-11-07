@@ -32,7 +32,6 @@ import org.ogema.driver.hmhl.Converter;
 import org.ogema.driver.hmhl.HM_hlConfig;
 import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
-import org.ogema.driver.hmhl.models.RemoteControl;
 import org.ogema.model.sensors.StateOfChargeSensor;
 
 public class Remote extends HM_hlDevice {
@@ -111,7 +110,9 @@ public class Remote extends HM_hlDevice {
 		 * Initialize the resource tree
 		 */
 		// Create top level resource
-		RemoteControl rem = resourceManager.createResource(hm_hlConfig.resourceName, RemoteControl.class);
+        @SuppressWarnings("deprecation")
+		org.ogema.driver.hmhl.models.RemoteControl rem =
+                resourceManager.createResource(hm_hlConfig.resourceName, org.ogema.driver.hmhl.models.RemoteControl.class);
 
 		StateOfChargeSensor eSens = rem.battery().chargeSensor().create();
 		batteryStatus = (FloatResource) eSens.reading().create();
@@ -135,7 +136,17 @@ public class Remote extends HM_hlDevice {
 			numOfSwitches = Integer.parseInt(splitChannel[2]) - Integer.parseInt(splitChannel[1]) + 1;
 			if (splitChannel[0].equals("Sw") || splitChannel[0].equals("Btn")) {
 				for (int i = numOfLongElements; i < numOfSwitches; i++) {
-					BooleanResource ll = longPress.add();
+//					BooleanResource ll = longPress.add();
+					String resName;
+					int resourceId;
+					if (i % 2 == 0) {
+						resName = Constants.BUTTON_OFF_LONG;
+						resourceId = i / 2;
+					} else {
+						resName = Constants.BUTTON_ON_LONG;
+						resourceId = (i-1) / 2;
+					}
+					BooleanResource ll = longPress.addDecorator(resName + resourceId, BooleanResource.class);
 					// ll.activate(true);
 					ll.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
@@ -152,7 +163,17 @@ public class Remote extends HM_hlDevice {
 				}
 
 				for (int i = numOfShortElements; i < numOfSwitches; i++) {
-					BooleanResource sh = shortPress.add();
+					String resName;
+					int resourceId;
+					if (i % 2 == 0) {
+						resName = Constants.BUTTON_OFF_SHORT;
+						resourceId = i / 2;
+					} else {
+						resName = Constants.BUTTON_ON_SHORT;
+						resourceId = (i-1) / 2;
+					}
+					BooleanResource sh = shortPress.addDecorator(resName + resourceId, BooleanResource.class);
+//					BooleanResource sh = shortPress.add();
 					// sh.activate(true);
 					sh.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 

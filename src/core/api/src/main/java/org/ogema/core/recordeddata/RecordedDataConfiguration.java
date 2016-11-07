@@ -81,10 +81,10 @@ public class RecordedDataConfiguration implements Serializable {
 	}
 
 	/**
-	 * Getter for the fixed time interval for storage type FIXED_INTERVAL
+	 * Setter for the fixed time interval for storage type FIXED_INTERVAL
 	 * 
 	 * @param fixedInterval
-	 *            fixed time interval for storage type FIXED_INTERVAL
+	 *            fixed time interval for storage type FIXED_INTERVAL in ms
 	 */
 	public void setFixedInterval(long fixedInterval) {
 		this.fixedInterval = fixedInterval;

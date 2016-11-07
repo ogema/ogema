@@ -38,9 +38,9 @@ import org.slf4j.LoggerFactory;
 
 class SlotsDbStorage implements RecordedDataStorage {
 
-	private RecordedDataConfiguration configuration;
-	private String id;
-	private SlotsDb recorder;
+	private volatile RecordedDataConfiguration configuration;
+	private final String id;
+	private final SlotsDb recorder;
 
 	private final static Logger logger = LoggerFactory.getLogger(SlotsDbStorage.class);
 
@@ -48,6 +48,11 @@ class SlotsDbStorage implements RecordedDataStorage {
 		this.configuration = configuration;
 		this.id = id;
 		this.recorder = recorder;
+	}
+	
+	@Override
+	public String getPath() {
+		return id;
 	}
 
 	@Override
@@ -117,7 +122,7 @@ class SlotsDbStorage implements RecordedDataStorage {
 	public List<SampledValue> getValues(final long startTime) {
 
 		try {
-			return (List<SampledValue>) AccessController
+			return AccessController
 					.doPrivileged(new PrivilegedExceptionAction<List<SampledValue>>() {
 
 						@Override
@@ -126,7 +131,11 @@ class SlotsDbStorage implements RecordedDataStorage {
 							List<SampledValue> records = null;
 							try {
 								// long storageInterval = configuration.getFixedInterval();
-								records = recorder.proxy.read(id, startTime, System.currentTimeMillis(), configuration);
+//								records = recorder.proxy.read(id, startTime, System.currentTimeMillis(), configuration);
+								if (recorder.clock != null)
+									records = recorder.proxy.read(id, startTime, recorder.clock.getExecutionTime(), configuration);
+								else // only relevant for tests
+									records = recorder.proxy.read(id, startTime,  System.currentTimeMillis(), configuration);
 							} catch (IOException e) {
 								logger.error("", e);
 							}
@@ -147,7 +156,7 @@ class SlotsDbStorage implements RecordedDataStorage {
 	public List<SampledValue> getValues(final long startTime, final long endTime) {
 
 		try {
-			return (List<SampledValue>) AccessController
+			return AccessController
 					.doPrivileged(new PrivilegedExceptionAction<List<SampledValue>>() {
 
 						@Override
@@ -180,7 +189,7 @@ class SlotsDbStorage implements RecordedDataStorage {
 	public SampledValue getValue(final long timestamp) {
 
 		try {
-			return (SampledValue) AccessController.doPrivileged(new PrivilegedExceptionAction<SampledValue>() {
+			return AccessController.doPrivileged(new PrivilegedExceptionAction<SampledValue>() {
 
 				@Override
 				public SampledValue run() throws Exception {
@@ -214,7 +223,7 @@ class SlotsDbStorage implements RecordedDataStorage {
 		final long endTimeMinusOne = endTime - 1;
 
 		try {
-			return (List<SampledValue>) AccessController
+			return AccessController
 					.doPrivileged(new PrivilegedExceptionAction<List<SampledValue>>() {
 
 						@Override
@@ -339,6 +348,8 @@ class SlotsDbStorage implements RecordedDataStorage {
 		return returnValues;
 	}
 
+	
+	@SuppressWarnings("unused")
 	private void debug_printIntervals(List<Interval> intervals) {
 
 		Iterator<Interval> it2 = intervals.iterator();
@@ -437,7 +448,7 @@ class SlotsDbStorage implements RecordedDataStorage {
 	public SampledValue getNextValue(final long time) {
 
 		try {
-			return (SampledValue) AccessController.doPrivileged(new PrivilegedExceptionAction<SampledValue>() {
+			return AccessController.doPrivileged(new PrivilegedExceptionAction<SampledValue>() {
 
 				@Override
 				public SampledValue run() throws Exception {
@@ -464,7 +475,6 @@ class SlotsDbStorage implements RecordedDataStorage {
 	}
 
 	@Override
-	@SuppressWarnings("deprecation")
 	public Long getTimeOfLatestEntry() {
 		// TODO
 		return null;

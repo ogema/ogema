@@ -27,7 +27,7 @@ import org.ogema.resourcemanager.virtual.VirtualTreeElement;
  * 
  * @author jlapp
  */
-public class DynamicProxyResource extends ResourceBase implements InvocationHandler, Serializable, ConnectedResource {
+public class DynamicProxyResource extends ResourceBase implements InvocationHandler, Serializable {
 
 	private static final long serialVersionUID = 1434574137743006313L;
 

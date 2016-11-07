@@ -20,7 +20,6 @@ import java.util.Random;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.recordeddata.RecordedDataConfiguration;
 import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
@@ -37,7 +36,7 @@ public class FileObjectTest extends SlotsDbTest {
 		deleteTestFiles();
 	}
 
-	/**
+	/*
 	 * Verifies that the start time stamp of a new log file is always smaller than
 	 * the time stamp of the first value written to the file.
 	 */
@@ -54,6 +53,7 @@ public class FileObjectTest extends SlotsDbTest {
 	}
 
 	private void startTimeStampTest(long timestamp) throws IOException {
+        @SuppressWarnings("deprecation")
 		FileObjectProxy proxy = new FileObjectProxy(SlotsDb.DEFAULT_DB_ROOT_FOLDER);
 
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
@@ -65,6 +65,22 @@ public class FileObjectTest extends SlotsDbTest {
 			proxy.appendValue("testId", 24.1, timestamp, (byte) 1, conf);
 		} finally {
 			proxy.flush();
+		}
+	}
+	
+	/*
+	 * Verifies that there is no value overflow
+	 */
+	@Test
+	public void checkInternalRoundingMethod() {
+		RecordedDataConfiguration rdc = new RecordedDataConfiguration();
+		rdc.setStorageType(StorageType.FIXED_INTERVAL);
+		for (long i=0;i<50;i++) {
+			rdc.setFixedInterval(3 + 17*i);
+			long roundedTimestampMax = FileObjectProxy.getRoundedTimestamp(Long.MAX_VALUE, rdc);
+			long roundedTimestampMin = FileObjectProxy.getRoundedTimestamp(Long.MIN_VALUE, rdc);
+			assert (roundedTimestampMax > 0);
+			assert (roundedTimestampMin < 0);
 		}
 	}
 

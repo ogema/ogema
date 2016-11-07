@@ -1,0 +1,132 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html>
+  <!--[if IE 8]>         <html class="no-js lt-ie9" lang="en"> <![endif]-->
+  <!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width">
+    <meta name="google" value="notranslate">
+
+    <title>Memory check</title>
+	<script src="/ogema/jslib/jquery/jquery-1.11.1.min.js"></script>  <!-- requires ogema-js-bundle -->
+	<link href="/ogema/jslib/bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css"/> 
+  </head>
+
+  <body>
+	<div id="memory" class="container-fluid">
+		<h2>Memory</h2>
+		<table class = "table table.striped">
+			<tr>
+				<td>
+					<p>Memory used:</p>	
+				</td>
+				<td>
+					<input type="text" id="memUsed" readonly/>MB
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<p>Free memory:</p>	
+				</td>
+				<td>
+					<input type="text" id="memFree" readonly/>MB
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<p>Total memory:</p>	
+				</td>
+				<td>
+					<input type="text" id="memTotal" readonly/>MB
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<p>Maximum memory:</p>	
+				</td>
+				<td>
+					<input type="text" id="memMax" readonly/>MB
+				</td>
+			</tr>
+			<tr>
+				<td><p>Number of resources</p></td>
+				<td><input id="resNum" value=0 readonly/></td>
+			</tr>
+			<tr>
+				<td><p>Memory / resource</p></td>
+				<td><input id="kBytesPerResource" value=0 readonly/>kB</td>
+			</tr>
+			<tr>
+				<td><p>Running since</p></td>
+				<td><input id="appRunTime" readonly/></td>
+			<tr>
+				<td><p>Update interval</p></td>
+				<td><input type="text" id="updateInterval" value="10" />s</td>
+			</tr>
+		</table>
+		
+	
+	</div>
+
+	<script>
+		console.log("Starting update script");
+		var debug;
+		var interval = 200; 
+		var tic = function() {
+			setTimeout(function() {
+				 $.ajax({
+			        type: "GET",
+			        url: "/ogema/servlet/memorycheckapp",
+			        contentType: "application/json"
+			    }).done(function (response) {
+			    	var result = JSON.parse(response);
+			    	var memUsed = result.memUsed;
+			    	var memFree = result.memFree;
+			    	var memTotal = result.memTotal;
+			    	var memMax = result.memMax;
+			    	var resNum = result.resNum;
+			    	var appRunTime = result.appRunTime;
+			    	var kBytesPerResource = result.kBytesPerResource;
+			    	console.log("Memory GET response received",response,interval);
+			    	debug = response;
+					$("#memUsed").val(memUsed);
+					$("#memFree").val(memFree);
+			    	$("#memTotal").val(memTotal);
+			    	$("#memMax").val(memMax);
+			    	$("#resNum").val(resNum);
+			    	$("#appRunTime").val(appRunTime);
+			    	$("#kBytesPerResource").val(kBytesPerResource);
+			    	var intv = $("#updateInterval").val();
+			    	if (!isNaN(intv) && intv > 0) {
+			    		interval = intv*1000;
+			    	}
+			    	else {
+			    	 	interval = 10000; // default = 10s
+			    	}
+			    	tic();
+			    });
+					
+				}, interval);
+		}
+		tic();
+	
+	</script>
+  </body>
+</html>

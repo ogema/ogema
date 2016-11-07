@@ -22,6 +22,7 @@ import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.model.units.VoltageResource;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.model.devices.buildingtechnology.Thermostat;
+import org.ogema.model.targetranges.TemperatureTargetRange;
 
 /**
  * Pattern for a thermostat created by Homematic driver.
@@ -41,6 +42,7 @@ public class ThermostatPattern extends ResourcePattern<Thermostat> {
 	/**
 	 * Current battery voltage.
 	 */
+	@Existence(required = CreateMode.OPTIONAL)
 	public final VoltageResource batteryVoltage = model.battery().internalVoltage().reading();
 
 	/**
@@ -60,6 +62,11 @@ public class ThermostatPattern extends ResourcePattern<Thermostat> {
 	@Existence(required = CreateMode.OPTIONAL)
 	public final BooleanResource isSwitchControllable = model.valve().setting().controllable();
 
+	/**
+	 * Existence indicates that thermostat is controllable
+	 */
+	public final TemperatureTargetRange setttings = model.temperatureSensor().settings();
+	
 	/**
 	 * Temperature setpoint set by the OGEMA management system.
 	 */

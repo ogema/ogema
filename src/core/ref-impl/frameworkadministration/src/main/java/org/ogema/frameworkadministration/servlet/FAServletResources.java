@@ -33,6 +33,7 @@ import org.ogema.frameworkadministration.utils.Utils;
  * @author tgries
  */
 public class FAServletResources extends HttpServlet {
+    private static final long serialVersionUID = 1L;
 
 	ResourceController resourceController;
 

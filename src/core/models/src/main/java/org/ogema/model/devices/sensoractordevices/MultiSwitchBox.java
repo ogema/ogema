@@ -24,6 +24,9 @@ import org.ogema.model.prototypes.PhysicalElement;
  * switching/measurement
  */
 public interface MultiSwitchBox extends PhysicalElement {
-	/** Set of the individual switch box units. */
+	
+	/** 
+	 * Set of the individual switch box units. 
+	 */
 	public ResourceList<SingleSwitchBox> switchboxes();
 }

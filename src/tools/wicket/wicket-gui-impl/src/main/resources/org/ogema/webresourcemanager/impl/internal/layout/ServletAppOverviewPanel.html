@@ -1,0 +1,68 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:wicket="http://wicket.sourceforge.net/" xml:lang="en" lang="en">
+    <wicket:head>
+        <wicket:link>
+            <link href="app.css" rel="stylesheet" type="text/css">
+        </wicket:link>
+    </wicket:head>
+    <body>
+        <wicket:panel>
+            <h3>Installed OGEMA Apps &AMP; Drivers</h3>
+            <div class="container">
+                <div wicket:id="feedback"></div>
+                <div class="row ng-scope" ng-view="">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="row">
+
+                                <div wicket:id="servletList">
+                                    <div class="appContainer" >
+                                        <div class="applogoarea">
+                                            <img class="applogo" wicket:id="image">                                
+                                        </div>
+                                        <div class="bundleShortInfos">
+                                            <b><a href="#" wicket:id="link">name</a></b><br>
+                                                <span class="appversion ng-binding" wicket:id="buildBy"> 2.0.2.SNAPSHOT </span>
+                                                <div class="appdescription"  wicket:id="description">blablabla</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div wicket:id="wicketList">                                           
+                                    <div class="appContainer" >
+                                        <div class="applogoarea">
+                                            <img class="applogo" wicket:id="image">                                
+                                        </div>
+                                        <div class="bundleShortInfos">
+                                            <b><a href="#" wicket:id="link"><span wicket:id="text"></span></a></b>
+                                            <br>
+                                                <span class="appversion ng-binding" wicket:id="buildBy"> 2.0.2.SNAPSHOT </span>
+                                                <div class="appdescription"  wicket:id="description">blablabla</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </wicket:panel>
+    </body>
+</html>

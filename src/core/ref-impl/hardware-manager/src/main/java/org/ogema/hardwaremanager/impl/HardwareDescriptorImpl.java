@@ -125,7 +125,7 @@ public class HardwareDescriptorImpl implements HardwareDescriptor {
 			try {
 				listener.hardwareRemoved(this);
 			} catch (Throwable t) {
-				logger.error("A HardwareListener threw an exception", t);
+				logger.warn("A HardwareListener threw an exception", t);
 			}
 		}
 	}

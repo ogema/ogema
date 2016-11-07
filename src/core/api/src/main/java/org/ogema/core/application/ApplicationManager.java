@@ -167,7 +167,7 @@ public interface ApplicationManager extends Serializable {
 	/**
 	 * Gets an instance of a SerializationManager with default parameters for serialization (see
 	 * {@link SerializationManager} for default configuration).
-	 * @return an application specific SerializationManager instance
+	 * @return an application specific SerializationManager instance (every call to this method creates a new instance)
 	 */
 	SerializationManager getSerializationManager();
 

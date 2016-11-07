@@ -90,6 +90,7 @@ public class MessageHandler {
 		private static final int HM_SENT_RETRIES = 4;
 		private String dest;
 		private int tries;
+		private volatile int errorCounter = 0;
 
 		private volatile Map<Long, Message> unsentMessageQueue; // Messages waiting to be sent
 
@@ -100,71 +101,78 @@ public class MessageHandler {
 
 		@Override
 		public void run() {
-			while (Activator.bundleIsRunning) {
-				Message entry = null;
-				logger.debug("Try: " + tries);
-				synchronized (unsentMessageQueue) {
-					try {
-						entry = this.unsentMessageQueue.get(getSmallestKey());
-						if (entry == null) {
-							unsentMessageQueue.wait();
-							entry = this.unsentMessageQueue.get(getSmallestKey());
-						}
-					} catch (InterruptedException e) {
-					}
-				}
-				long token = entry.getToken();
-				sentMessageAwaitingResponse.add(token);
-				logger.debug("sentMessageAwaitingResponse added " + token);
-				// register command message to assign additional info about the request message to the receiver of
-				// the response
-				if (entry instanceof CmdMessage) {
-					int num = entry.refreshMsg_num();
-					String key = entry.getDest() + "" + num;
-					synchronized (sentCommands) {
-						entry.getDevice().sentMsgNum = num;
-						((CmdMessage) entry).sentNum = num;
-						sentCommands.put(key, (CmdMessage) entry);
-					}
-					System.out.println("Sent command registered with  key: " + key);
-				}
-
-				while (tries < HM_SENT_RETRIES) {
-					if (sentMessageAwaitingResponse.contains(token)) {
-						localDevice.sendFrame(entry.getFrame());
+			while (Activator.bundleIsRunning && errorCounter < 25) {
+				try {
+					Message entry = null;
+					logger.debug("Try: " + tries);
+					synchronized (unsentMessageQueue) {
 						try {
-							Thread.sleep(3000);
+							entry = this.unsentMessageQueue.remove(getSmallestKey());
+							if (entry == null) {
+								unsentMessageQueue.wait();
+								entry = this.unsentMessageQueue.get(getSmallestKey());
+								if (entry == null)
+									continue;
+							}
 						} catch (InterruptedException e) {
+						}
+					}
+					long token = entry.getToken(); 
+					sentMessageAwaitingResponse.add(token);
+					logger.debug("sentMessageAwaitingResponse added " + token);
+					// register command message to assign additional info about the request message to the receiver of
+					// the response
+					if (entry instanceof CmdMessage) {
+						int num = entry.refreshMsg_num();
+						String key = entry.getDest() + "" + num;
+						synchronized (sentCommands) {
+							entry.getDevice().sentMsgNum = num;
+							((CmdMessage) entry).sentNum = num;
+							sentCommands.put(key, (CmdMessage) entry);
+						}
+						System.out.println("Sent command registered with  key: " + key);
+					}
+
+					while (tries < HM_SENT_RETRIES) {
+						if (sentMessageAwaitingResponse.contains(token)) {
+							localDevice.sendFrame(entry.getFrame());
+							try {
+								Thread.sleep(3000);
+							} catch (InterruptedException e) {
+								break;
+							}
+							logger.debug(
+									String.format("Response from %s for the message %d took to long ...", dest, token));
+							tries++;
+						}
+						else {
+							logger.debug("unsentMessageQueue removed " + token);
 							break;
 						}
-						logger
-								.debug(String.format("Response from %s for the message %d took to long ...", dest,
-										token));
-						tries++;
 					}
-					else {
-						logger.debug("unsentMessageQueue removed " + token);
-						break;
+					RemoteDevice device = localDevice.getDevices().get(dest);
+					if (!sentMessageAwaitingResponse.contains(token) && tries <= HM_SENT_RETRIES) {
+						if (device.getInitState() == InitStates.PAIRING) {
+							device.setInitState(InitStates.PAIRED);
+							logger.info("Device " + dest + " paired");
+						}
 					}
-				}
-				RemoteDevice device = localDevice.getDevices().get(dest);
-				if (!sentMessageAwaitingResponse.contains(token) && tries <= HM_SENT_RETRIES) {
-					if (device.getInitState() == InitStates.PAIRING) {
-						device.setInitState(InitStates.PAIRED);
-						logger.info("Device " + dest + " paired");
+					else if (device.getInitState() == InitStates.PAIRING) { // here we aren't sure that the device is no
+						// longer present. In case of configuration
+						// request,
+						// the device wouldn't react, if the activation button is not pressed. Removing of devices
+						// should be done actively by the user/administrator.
+						device.setInitState(InitStates.UNKNOWN);
+						localDevice.getDevices().remove(device.getAddress());
+						logger.warn("Device " + dest + " removed!");
 					}
+					// this.unsentMessageQueue.remove(token);
+					tries = 0;
+					errorCounter = 0;
+				} catch (Exception e) {
+					logger.error("Error in Homematic message handler thread", e);
+					errorCounter++;
 				}
-				else if (device.getInitState() == InitStates.PAIRING) { // here we aren't sure that the device is no
-					// longer present. In case of configuration
-					// request,
-					// the device wouldn't react, if the activation button is not pressed. Removing of devices
-					// should be done actively by the user/administrator.
-					device.setInitState(InitStates.UNKNOWN);
-					localDevice.getDevices().remove(device.getAddress());
-					logger.warn("Device " + dest + " removed!");
-				}
-				this.unsentMessageQueue.remove(token);
-				tries = 0;
 			}
 		}
 

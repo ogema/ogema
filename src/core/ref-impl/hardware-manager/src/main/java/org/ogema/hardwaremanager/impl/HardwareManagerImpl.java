@@ -67,7 +67,7 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 		Container[] containers = nativeAccess.getHandles();
 
 		if (null == containers) {
-			logger.error("nativeAccess.getHandles() == null. No initial devices detected.");
+			logger.warn("nativeAccess.getHandles() == null. No initial devices detected.");
 		}
 		else
 			for (Container container : containers) {
@@ -77,7 +77,7 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 				devices.put(descriptor.getIdentifier(), descriptor);
 			}
 
-		logger.info("Starting event thread.");
+		logger.debug("Starting event thread.");
 		thread = new Thread(this, "OGEMA HardwareManager event thread");
 		thread.start();
 	}
@@ -188,18 +188,18 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 				}
 				break;
 			default:
-				logger.error("unkown event {} from NativeAccess.getEvent()", container.event);
+				logger.warn("unkown event {} from NativeAccess.getEvent()", container.event);
 				break;
 			}
 		}
-		logger.info("exiting event thread.");
+		logger.debug("exiting event thread.");
 	}
 
 	private void callListenersAdded(HardwareDescriptorImpl descriptor) {
 
 		ArrayList<HardwareListener> arrayList;
 
-		logger.info("added descriptor {}", descriptor.getIdentifier());
+		logger.debug("added descriptor {}", descriptor.getIdentifier());
 
 		// make a copy of the listeners list to avoid a
 		// ConcurrentModificationException
@@ -209,7 +209,7 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 			try {
 				listener.hardwareAdded(descriptor);
 			} catch (Throwable t) {
-				logger.error("A HardwareListener threw an Exception.", t);
+				logger.warn("A HardwareListener threw an Exception.", t);
 			}
 		}
 	}
@@ -218,7 +218,7 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 
 		ArrayList<HardwareListener> arrayList;
 
-		logger.info("removed descriptor {}", descriptor.getIdentifier());
+		logger.debug("removed descriptor {}", descriptor.getIdentifier());
 
 		// make a copy of the listeners list to avoid a
 		// ConcurrentModificationException
@@ -228,7 +228,7 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 			try {
 				listener.hardwareRemoved(descriptor);
 			} catch (Throwable t) {
-				logger.error("A HardwareListener threw an Exception.", t);
+				logger.warn("A HardwareListener threw an Exception.", t);
 			}
 		}
 	}

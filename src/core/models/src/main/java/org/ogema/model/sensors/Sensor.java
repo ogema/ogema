@@ -20,6 +20,7 @@ import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.TimeResource;
+import org.ogema.model.devices.storage.ElectricityStorage;
 import org.ogema.model.prototypes.PhysicalElement;
 import org.ogema.model.ranges.Range;
 import org.ogema.model.targetranges.TargetRange;
@@ -76,6 +77,12 @@ public interface Sensor extends PhysicalElement {
 	 * @see #deviceSettings() 
 	 */
 	TargetRange deviceFeedback();
+	
+	/**
+	 * The battery status is available in the subresource
+	 * battery/chargeSensor/reading.
+	 */
+	ElectricityStorage battery();
 
 	/**
 	 * Time of measurement (for real sensors) or time of last update (for sensor

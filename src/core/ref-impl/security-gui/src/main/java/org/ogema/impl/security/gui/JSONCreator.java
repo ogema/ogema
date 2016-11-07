@@ -37,13 +37,16 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.ogema.accesscontrol.PermissionManager;
+import org.ogema.applicationregistry.ApplicationRegistry;
 import org.ogema.core.administration.AdminApplication;
+import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.AppID;
 import org.ogema.core.model.Resource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.security.AppPermission;
+import org.ogema.core.security.WebAccessManager;
 import org.ogema.persistence.ResourceDB;
 import org.ogema.resourcetree.SimpleResourceData;
 import org.ogema.resourcetree.TreeElement;
@@ -60,7 +63,11 @@ public class JSONCreator {
 
 	private SecurityGui admin;
 
+	private AdministrationManager adminMan;
+
 	ResourceDB db;
+
+	private Users user;
 
 	private ResourceAccess resMngr;
 
@@ -69,7 +76,9 @@ public class JSONCreator {
 	JSONCreator(PermissionManager pm, SecurityGui adminapp) {
 		this.admin = adminapp;
 		this.pman = pm;
+		this.user = new Users(pm, admin.getUserAdmin());
 		db = adminapp.db;
+		adminMan = adminapp.admin;
 	}
 
 	String frameworkStartLevel2JSON() {
@@ -162,6 +171,7 @@ public class JSONCreator {
 
 	}
 
+	@SuppressWarnings("unused")
 	private StringBuffer appInfos2JSON(int id) {
 		StringBuffer sb = new StringBuffer();
 		/*
@@ -171,7 +181,7 @@ public class JSONCreator {
 		sb.append(id);
 		sb.append("\",\"policies\":[");
 		Bundle b = admin.osgi.getBundle(id);
-		AppID aid = pman.getAdminManager().getAppByBundle(b);
+		AppID aid = adminMan.getAppByBundle(b);
 		AppPermission ap = pman.getPolicies(aid);
 		/*
 		 * Put policies info
@@ -493,15 +503,15 @@ public class JSONCreator {
 
 	StringBuffer appsList2JSON() {
 		StringBuffer sb = new StringBuffer();
-		ArrayList<AdminApplication> apps = (ArrayList<AdminApplication>) pman.getAdminManager().getAllApps();
+		ArrayList<AdminApplication> apps = (ArrayList<AdminApplication>) adminMan.getAllApps();
 		sb.append('[');
 		int index = 0;
 		for (AdminApplication entry : apps) {
 			if (index++ != 0)
 				sb.append(',');
-			sb.append("{\"name\":\"");
-			sb.append(entry.getID().getBundle().getSymbolicName());
-			sb.append('"');
+			sb.append("{\"name\":");
+			sb.append(JSONObject.quote(entry.getID().getBundle().getSymbolicName()));
+			// sb.append('"');
 			sb.append(',');
 			sb.append("\"id\":\"");
 			sb.append(entry.getBundleRef().getBundleId());
@@ -514,44 +524,146 @@ public class JSONCreator {
 
 	StringBuffer bundlesList2JSON() {
 		StringBuffer sb = new StringBuffer();
-		String descr = "";
+		String entryJson = "";
+		String name = "";
 		Bundle[] bundles = admin.osgi.getBundles();
 		sb.append('[');
 		int index = 0;
 		for (Bundle entry : bundles) {
-			if (index++ != 0)
-				sb.append(',');
-			sb.append("{\"name\":\"");
 			if (entry.getSymbolicName() == null) {
 				int i = entry.getLocation().lastIndexOf("/");
 				int j = entry.getLocation().indexOf(".jar");
-				sb.append(entry.getLocation().substring(i + 1, j));
+				name = (entry.getLocation().substring(i + 1, j));
 			}
 			else {
-				sb.append(entry.getSymbolicName());
+				name = (entry.getSymbolicName());
 			}
-			sb.append('"');
-			sb.append(',');
-			sb.append("\"id\":\"");
-			sb.append(entry.getBundleId());
-			sb.append('"');
-			sb.append(',');
-			sb.append("\"description\":\"");
-			Dictionary<String, String> metaInf = entry.getHeaders();
+			if (index++ != 0)
+				sb.append(',');
+			entryJson = appendBundlesList(entry, name);
 
-			descr = metaInf.get("Bundle-Description");
-			if (descr == "" || descr == null) {
-				sb.append("");
-			}
-			else {
-				sb.append(descr);
-			}
-			sb.append('"');
-
-			sb.append('}');
+			sb.append(entryJson);
 		}
 		sb.append(']');
 		return sb;
+	}
+
+	String filteredBundlesList2Json(String nameFilter, String startLevel, Boolean appsOnly, Boolean driversOnly) {
+		String name = "";
+		Bundle[] bundles = admin.osgi.getBundles();
+		JSONArray returnArr = new JSONArray();
+
+		for (Bundle entry : bundles) {
+			if (entry.getSymbolicName() == null) {
+				int i = entry.getLocation().lastIndexOf("/");
+				int j = entry.getLocation().indexOf(".jar");
+				name = (entry.getLocation().substring(i + 1, j));
+			}
+			else {
+				name = (entry.getSymbolicName());
+			}
+
+			if (nameFilter != null) {
+				if (filterNames(name, nameFilter)) {
+					continue;
+				}
+			}
+			if (startLevel != null) {
+				if (filterStartLevels(entry, startLevel)) {
+					continue;
+				}
+			}
+			if (appsOnly) {
+				if (filterApps(entry)) {
+					continue;
+				}
+			}
+			if (driversOnly) {
+				if (filterDrivers(entry)) {
+					continue;
+				}
+			}
+			returnArr.put(entry.getBundleId());
+		}
+		return returnArr.toString();
+
+	}
+
+	private String appendBundlesList(Bundle entry, String name) {
+		StringBuffer sb = new StringBuffer();
+		String descr = "";
+
+		sb.append("{\"name\":\"");
+		sb.append(name);
+		sb.append('"');
+		sb.append(',');
+		sb.append("\"id\":\"");
+		sb.append(entry.getBundleId());
+		sb.append('"');
+		sb.append(',');
+		sb.append("\"description\":\"");
+		Dictionary<String, String> metaInf = entry.getHeaders();
+
+		descr = metaInf.get("Bundle-Description");
+		if (descr == "" || descr == null) {
+			sb.append("");
+		}
+		else {
+			if (descr.indexOf('"') != -1)
+			descr = descr.replace("\"","\\\"");
+			descr = descr.replace("\t","\\t");
+			sb.append(descr);
+		}
+		sb.append('"');
+
+		sb.append('}');
+
+		return sb.toString();
+	}
+
+	private boolean filterNames(String bundleName, String filtername) {
+
+		if (filtername.length() == 0 || bundleName.contains(filtername)) {
+			return false;
+		}
+		else {
+			return true;
+		}
+
+	}
+
+	private boolean filterStartLevels(Bundle entry, String startLevel) {
+		if (startLevel.length() == 0) {
+			return false;
+		}
+		Integer filterLevel = Integer.parseInt(startLevel);
+		BundleStartLevel level = entry.adapt(BundleStartLevel.class);
+		int thisStartLevel = level.getStartLevel();
+
+		if (thisStartLevel >= filterLevel) {
+			return false;
+		}
+		else {
+			return true;
+		}
+	}
+
+	private boolean filterApps(Bundle entry) {
+		ApplicationRegistry adman = pman.getApplicationRegistry();
+		List<AdminApplication> appList = adman.getAllApps();
+
+		for (AdminApplication app : appList) {
+			if (app.getBundleRef() == entry) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private boolean filterDrivers(Bundle entry) {
+
+		// TODO: implementation
+		return false;
 	}
 
 	StringBuffer simpleResourceValue2JSON(int id) {
@@ -681,12 +793,33 @@ public class JSONCreator {
 		return result;
 	}
 
+	String manifest2JSON(int id) {
+		JSONArray manifest = new JSONArray();
+		Bundle b = admin.osgi.getBundle(id);
+		Dictionary<String, String> metaInf = b.getHeaders();
+
+		Enumeration<String> keys = metaInf.keys();
+
+		while (keys.hasMoreElements()) {
+			String key = keys.nextElement();
+			JSONObject manifestEntry = new JSONObject();
+			try {
+				manifestEntry.put(key, metaInf.get(key));
+				manifest.put(manifestEntry);
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+		}
+
+		return manifest.toString();
+	}
+
 	StringBuffer webResourceTree2JSON(int id, String path, String alias) {
 		int index = 0;
 		StringBuffer sb;
 		sb = new StringBuffer();
 		if (path.equals("#")) {
-			AppID appid = pman.getAdminManager().getAppByBundle(admin.osgi.getBundle(id));
+			AppID appid = adminMan.getAppByBundle(admin.osgi.getBundle(id));
 			if (appid == null) // probably not yet running
 				return sb;
 			@SuppressWarnings("deprecation")
@@ -735,7 +868,6 @@ public class JSONCreator {
 				if (b.findEntries(file, null, false) == null)
 					// if (query != null)
 					isDir = false;
-
 				if (index++ != 0)
 					sb.append(',');
 				sb.append("{\"text\":\"");
@@ -762,6 +894,30 @@ public class JSONCreator {
 		}
 		else
 			return null;
+	}
+
+	String url2JSON(int id) {
+		ApplicationRegistry adman = pman.getApplicationRegistry();
+		Bundle b = admin.osgi.getBundle(id);
+		AppID aID = adman.getAppByBundle(b);
+		if (aID != null) {
+			WebAccessManager wam = pman.getWebAccess(aID);
+			return wam.getStartUrl();
+		}
+		else {
+			return null;
+		}
+	}
+
+	String users2JSON() {
+		List<String> userList = user.userList();
+		JSONArray users = new JSONArray();
+
+		for (String thisUser : userList) {
+			users.put(thisUser);
+		}
+
+		return users.toString();
 	}
 
 	String newOgemaPolicy() {

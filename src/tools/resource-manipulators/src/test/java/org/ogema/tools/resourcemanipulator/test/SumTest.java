@@ -34,7 +34,6 @@ import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.ResourceValueListener;
-import org.ogema.core.resourcemanager.Transaction;
 import org.ogema.exam.OsgiAppTestBase;
 import org.ogema.tools.resourcemanipulator.ResourceManipulator;
 import org.ogema.tools.resourcemanipulator.ResourceManipulatorImpl;
@@ -282,7 +281,8 @@ public class SumTest extends OsgiAppTestBase {
 		sumConfig.commit();
 
 		sum.addValueListener(listener);
-		Transaction t = getApplicationManager().getResourceAccess().createTransaction();
+        @SuppressWarnings("deprecation")
+		org.ogema.core.resourcemanager.Transaction t = getApplicationManager().getResourceAccess().createTransaction();
 		for (IntegerResource fl : floats) {
 			t.addResource(fl);
 			t.setInteger(fl, ++i);

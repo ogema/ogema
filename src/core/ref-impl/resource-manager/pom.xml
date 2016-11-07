@@ -4,11 +4,10 @@
     <parent>
         <artifactId>ref-impl</artifactId>
         <groupId>org.ogema.ref-impl</groupId>
-        <version>2.0.4</version>
+        <version>2.1.0</version>
     </parent>
     
     <artifactId>resource-manager</artifactId>
-    <version>2.0.4</version>
     <name>OGEMA ref-impl :: resource-manager</name>
 
     <packaging>bundle</packaging>
@@ -29,12 +28,13 @@
                 <configuration>
                     <instructions>
                         <Bundle-Activator>org.ogema.persistence.impl.mem.Activator</Bundle-Activator>
+                        <!-- FIXME -->
                         <Export-Package>
                             org.ogema.resourcemanager.impl,
-			    org.ogema.persistence.impl.faketree
+			    			org.ogema.persistence.impl.faketree
                         </Export-Package>
                         <Import-Package>org.objectweb.*;resolution:=optional,
-                            org.codehaus.jackson.annotate;resolution:=optional,
+                            com.fasterxml.jackson.annotation;resolution:=optional,
                             *</Import-Package>
                         <DynamicImport-Package>*</DynamicImport-Package>
                     </instructions>
@@ -43,9 +43,9 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.17</version>
                 <configuration>
                     <argLine>-ea</argLine>
+                    <trimStackTrace>false</trimStackTrace>
                 </configuration>
             </plugin>
         </plugins>
@@ -56,12 +56,12 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.6.4.201312101107</version>
+                <version>0.7.6.201602180812</version>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>cobertura-maven-plugin</artifactId>
-                <version>2.4</version>
+                <version>2.7</version>
             </plugin>
         </plugins>
     </reporting>
@@ -91,9 +91,13 @@
         	<groupId>org.ogema.ref-impl</groupId>
         	<artifactId>util</artifactId>
         </dependency>
-	<dependency>
+		<dependency>
         	<groupId>org.ogema.tools</groupId>
         	<artifactId>memory-timeseries</artifactId>
+        </dependency>
+        <dependency>
+        	<groupId>org.ogema.tools</groupId>
+        	<artifactId>resource-utils</artifactId>
         </dependency>
         <dependency>
             <groupId>org.ow2.asm</groupId>
@@ -105,6 +109,7 @@
         <dependency>
             <groupId>org.ogema.ref-impl</groupId>
             <artifactId>ogema-exam-base</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.ogema.ref-impl</groupId>
@@ -114,7 +119,7 @@
         <dependency>
             <groupId>org.ogema.ref-impl</groupId>
             <artifactId>security</artifactId>
-            <version>2.0.4</version>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -122,6 +127,11 @@
             <artifactId>commons-math3</artifactId>
             <version>3.3</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>19.0</version>
         </dependency>
     </dependencies>
 </project>

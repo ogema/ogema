@@ -52,9 +52,13 @@ public class PatternFinder<P extends ResourcePattern<?>> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public List<P> getAllPatterns() {
+	public List<P> getAllPatterns(Resource resource, boolean recursive) {
 		List<P> list = new ArrayList<P>();
-		List<Resource> modelMatches = (List<Resource>) ra.getResources(resType);
+		List<Resource> modelMatches;
+		if (resource == null)
+			modelMatches = (List<Resource>) ra.getResources(resType);
+		else 
+			modelMatches = (List<Resource>) resource.getSubResources(resType, recursive); 
 		// System.out.println("  Pattern finder has " + modelMatches.size() + " model matches for resource type " + resType.getSimpleName());
 		Iterator<Resource> it = modelMatches.iterator();
 		while (it.hasNext()) {
@@ -70,7 +74,16 @@ public class PatternFinder<P extends ResourcePattern<?>> {
 		}
 		return list;
 	}
-
+	
+	public boolean isSatisfied(P pattern) {
+		try {
+			return checkCompletion(pattern);
+		} catch (Exception e) {
+			LoggerFactory.getLogger(getClass()).error("Error in pattern completion check " + e);
+			return false;
+		}
+	}
+	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private boolean checkCompletion(P pattern) {
 		for (ResourceFieldInfo info : radFactory.getResourceFieldInfos()) {
@@ -95,4 +108,17 @@ public class PatternFinder<P extends ResourcePattern<?>> {
 		}
 		return pattern.accept(); // user implemented -> may throw Exceptions
 	}
+	
+	public void createOptionalFields(P pattern, boolean createRequiredFields) {
+		for (ResourceFieldInfo info : radFactory.getResourceFieldInfos()) {
+			final Resource resource = RadFactory.getResource(info.getField(), pattern);
+			final CreateMode mode = info.getCreateMode();
+			if (resource == null)
+				continue;
+			if (!createRequiredFields && mode == CreateMode.MUST_EXIST)
+				continue;
+			resource.create();
+		}
+	}
+	
 }

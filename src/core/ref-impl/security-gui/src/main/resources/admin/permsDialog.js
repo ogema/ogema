@@ -92,6 +92,9 @@ function customizePermission(num, permContainer) {
 	if($("#newFilter"+num).length==0){
 		appendNewFilter(num);
 	}
+	if($("#newActions"+num).length==0){
+		appendNewActions(num);
+	}
 	$("#Filter"+num).attr("readonly", "readonly");
 	permContainer.find("div:last-child").css("background", "#89A5CC");
 	permContainer.find("div:last-child").find("input[type='text']").addClass("highlightInputText");

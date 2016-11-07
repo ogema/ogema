@@ -42,10 +42,9 @@ class PrimaryDemandListener<T extends Resource, P extends ResourcePattern<T>> {
     final PatternFactory<P> m_factory;
     final Map<String, P> m_matches = new HashMap<>();
     final OgemaLogger m_log;
-    private boolean available = false;
 
     public PrimaryDemandListener(ApplicationManager appMan, Class<T> resType, Class<P> radType, PatternListener<P> listener, PatternFactory<P> factory) {
-        m_resAcc = appMan.getResourceAccess();
+    	m_resAcc = appMan.getResourceAccess();
         m_resType = resType;
         m_radType = radType;
         m_radListener = listener;
@@ -70,7 +69,8 @@ class PrimaryDemandListener<T extends Resource, P extends ResourcePattern<T>> {
             	* but no reason to file a bug report; we can however dismiss the resource in this case
             	*/
 //              throw new RuntimeException("Framework error: Received resourceAvailable callback with path="+resource.getPath()+" not equal to location="+resource.getLocation()+". Please report this bug to the framework developers!");
-            	m_log.debug("Pattern primary demand listener received a callback for a referencing resource. "
+            	if (m_log.isDebugEnabled())
+            		m_log.debug("Pattern primary demand listener received a callback for a referencing resource. "
             			+ "Path: {}, location:_{}",resource.getPath(),resource.getLocation());
             	return;
             }
@@ -88,30 +88,33 @@ class PrimaryDemandListener<T extends Resource, P extends ResourcePattern<T>> {
 //            }
             try {
             	rad = m_factory.createNewPattern(resource); 
+            } catch (RuntimeException e) {
+            	// happens regularly
+            	m_log.debug("Could not create a pattern object; probably the resource was immediately deleted "
+            			+ "after being created: " + resource,e);
+            	return;
             } catch (Exception ex) {
-            	throw new RuntimeException("could not create a RAD object", ex);
+            	throw new RuntimeException("could not create a RAD object for " + resource, ex); // XXX ?
             }
             
             m_matches.put(resource.getPath(), rad);
             m_radListener.patternAvailable(rad);
-            available = true;
         }
 
         @Override
         public void resourceUnavailable(T resource) {
-        	m_log.debug("Primary demand loss: {}", resource.getLocation());
+        	m_log.debug("Primary demand loss: {}", resource.getLocation()); 
             Objects.requireNonNull(resource);
-            final P rad = m_matches.get(resource.getPath());
+            final P rad = m_matches.remove(resource.getPath());
             if (rad==null) {
             	/* 
             	 * may actually occur, see explanation in resourceAvailable
             	 */
                 //throw new RuntimeException("Framework error: Reveiced resourceUnavailable callback for resource "+resource.getPath()+", but no primary RAD had been created for it in the first place. Please report this error to the OGEMA developers.");
+            	m_log.debug("Primary demand loss, but no corresponding resource found: {}",resource);
             	return;
             }
-            m_matches.remove(resource.getPath());
-            if (available) m_radListener.patternUnavailable(rad);
-            available = false;
+            m_radListener.patternUnavailable(rad);
         }
     };
 
@@ -120,6 +123,6 @@ class PrimaryDemandListener<T extends Resource, P extends ResourcePattern<T>> {
     }
 
     void stop() {
-        m_resAcc.removeResourceDemand(m_resType, m_demandListener);       
+        m_resAcc.removeResourceDemand(m_resType, m_demandListener);
     }
 }

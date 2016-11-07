@@ -475,7 +475,7 @@ public String getIPAddressFromTextField() {
 		    		{
 	    			   flag4On = false;
 	    			   response = client.execute(new HttpGet("https://" + ipAdr + ":8443/servletAndroid/write" + "?resource=" + 
-			                      "ZWave_Switch_Box_2.onOffSwitch.stateControl" + "&body=" + "true"));
+			                      "ZWave_123601_Plug_in_Switch_swbox1.onOffSwitch.stateControl" + "&body=" + "true"));
 		    			
 		    		}else
 		    		
@@ -483,7 +483,7 @@ public String getIPAddressFromTextField() {
 		    		{
 		    			flag4Off = false;
 		    			HttpGet httpGet = new HttpGet("https://" + ipAdr + ":8443/servletAndroid/write" + "?resource=" + 
-		    					"ZWave_Switch_Box_2.onOffSwitch.stateControl" + "&body=" + "false");
+		    					"ZWave_123601_Plug_in_Switch_swbox1.onOffSwitch.stateControl" + "&body=" + "false");
 		    			response = client.execute(httpGet);
 		    			
 		    		}   

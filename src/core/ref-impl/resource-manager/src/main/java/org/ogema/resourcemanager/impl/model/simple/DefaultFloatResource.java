@@ -19,7 +19,6 @@ import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.recordeddata.RecordedData;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
-import org.ogema.resourcemanager.impl.ResourceBase;
 import org.ogema.resourcemanager.impl.model.schedule.HistoricalSchedule;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 
@@ -27,7 +26,7 @@ import org.ogema.resourcemanager.virtual.VirtualTreeElement;
  * 
  * @author jlapp
  */
-public class DefaultFloatResource extends ResourceBase implements FloatResource {
+public class DefaultFloatResource extends SingleValueResourceBase implements FloatResource {
 
 	public DefaultFloatResource(VirtualTreeElement el, String path, ApplicationResourceManager resMan) {
 		super(el, path, resMan);
@@ -66,11 +65,6 @@ public class DefaultFloatResource extends ResourceBase implements FloatResource 
 	@Override
 	public AbsoluteSchedule program() {
 		return getSubResource("program", AbsoluteSchedule.class);
-	}
-
-	@Override
-	public long getLastUpdateTime() {
-		return super.getLastUpdateTime();
 	}
 
 	@Override

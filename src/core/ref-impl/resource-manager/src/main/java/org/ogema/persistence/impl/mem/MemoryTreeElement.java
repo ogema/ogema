@@ -36,23 +36,39 @@ import org.ogema.resourcetree.TreeElement;
  */
 public class MemoryTreeElement implements TreeElement {
 
-    static AtomicInteger RESOURCE_IDS = new AtomicInteger(0);
-    private String appID;
-    private Object resRef;
-    private boolean active = false;
-    private boolean optional = false;
-    private boolean decorating = false;
-    private boolean array = false;
+    protected static final AtomicInteger RESOURCE_IDS = new AtomicInteger(0);
+    
+    private final boolean decorating;
+    private final boolean array;
     private final Class<? extends Resource> type;
-    private Class<? extends Resource> listType;
-    private final TreeElement parent;
+    private volatile TreeElement parent;
     private final String name;
     private final int resId;
-    private SimpleResourceData data;
     private final Map<String, MemoryTreeElement> children = new HashMap<>();
 
+    private volatile String appID;
+    private volatile Object resRef;
+    private volatile boolean active = false;
+    private volatile Class<? extends Resource> listType;
+    private volatile SimpleResourceData data;
+    
+    public MemoryTreeElement(MemoryTreeElement original, TreeElement newParent) {
+        this(original.name, original.type, newParent, original.decorating);
+        this.data = original.data;
+        this.active = original.active;
+        this.appID = original.appID;
+        this.resRef = original.resRef;
+        this.listType = original.listType;
+        this.children.putAll(original.children);
+    }
+    
     public MemoryTreeElement(String name, Class<? extends Resource> type, TreeElement parent) {
         this(name, type, parent, false);
+    }
+    
+    public MemoryTreeElement(String name, Class<? extends Resource> type, TreeElement parent, boolean decorating, SimpleResourceData data) {
+        this(name,type,parent,decorating);
+        this.data = data;
     }
 
     public MemoryTreeElement(String name, Class<? extends Resource> type, TreeElement parent, boolean decorating) {
@@ -66,6 +82,8 @@ public class MemoryTreeElement implements TreeElement {
         if (ResourceList.class.isAssignableFrom(type)){
             listType = findElementTypeOnParent();
             array = true;
+        } else {
+            array = false;
         }
         this.type = type;
     }
@@ -77,7 +95,7 @@ public class MemoryTreeElement implements TreeElement {
         }
 		Class<? extends Resource> pType = parent.getType();
 		for (Method m : pType.getMethods()) {
-			if (m.getName().equals(getName()) && Resource.class.isAssignableFrom(m.getReturnType())) {
+			if (m.getName().equals(getName()) && !m.isBridge() &&!m.isSynthetic() && Resource.class.isAssignableFrom(m.getReturnType())) {
 				Type returnType = m.getGenericReturnType();
 				if (returnType instanceof ParameterizedType) {
 					Type[] actualTypes = ((ParameterizedType) returnType).getActualTypeArguments();
@@ -90,11 +108,6 @@ public class MemoryTreeElement implements TreeElement {
 		return null;
 	}
     
-    public MemoryTreeElement(String name, Class<? extends Resource> type, TreeElement parent, boolean decorating, SimpleResourceData data) {
-        this(name,type,parent,decorating);
-        this.data = data;
-    }
-
     @Override
     public String toString() {
         return String.format("%s:%s (%d)", getName(), getType(), getResID());
@@ -137,6 +150,10 @@ public class MemoryTreeElement implements TreeElement {
         return parent;
     }
 
+    public void setParent(TreeElement parent) {
+    	this.parent = parent;
+    }
+    
     @Override
     public int getResID() {
         return resId;
@@ -144,7 +161,7 @@ public class MemoryTreeElement implements TreeElement {
 
     @Override
     public int getTypeKey() {
-        throw new UnsupportedOperationException("unused");
+        throw new UnsupportedOperationException(getClass().getSimpleName()+"#getTypeKey");
     }
 
     @Override
@@ -159,7 +176,7 @@ public class MemoryTreeElement implements TreeElement {
 
     @Override
     public boolean isNonpersistent() {
-        throw new UnsupportedOperationException("unused");
+        throw new UnsupportedOperationException(getClass().getSimpleName()+"#isNonpersistent");
     }
 
     @Override
@@ -183,7 +200,7 @@ public class MemoryTreeElement implements TreeElement {
     }
 
     @Override
-    public TreeElement addChild(String name, Class<? extends Resource> type, boolean isDecorating) {
+    public synchronized TreeElement addChild(String name, Class<? extends Resource> type, boolean isDecorating) {
         if (!isDecorating) {
             Class<?> optionalType = getOptionalElementType(name);
             if (optionalType == null) {
@@ -193,12 +210,11 @@ public class MemoryTreeElement implements TreeElement {
                 throw new IllegalArgumentException("type does not match definition of optional subresource");
             }
             MemoryTreeElement el = new MemoryTreeElement(name, type, this);
-            el.optional = true;
+//            el.optional = true;
             children.put(name, el);
             return el;
         } else {
-            MemoryTreeElement decorator = new MemoryTreeElement(name, type, this);
-            decorator.decorating = true;
+            MemoryTreeElement decorator = new MemoryTreeElement(name, type, this, true);
             children.put(name, decorator);
             return decorator;
         }
@@ -215,13 +231,13 @@ public class MemoryTreeElement implements TreeElement {
     }
 
     @Override
-    public TreeElement addReference(TreeElement ref, String name, boolean isDecorating) {
+    public synchronized TreeElement addReference(TreeElement ref, String name, boolean isDecorating) {
         MemoryTreeElement existingChild = children.get(name);
         if (existingChild != null && existingChild.isReference()){
             ((ReferenceElement)existingChild).setReference(ref);
             return existingChild;
         } else {
-            ReferenceElement refElement = new ReferenceElement((MemoryTreeElement) ref, name, parent, isDecorating);
+            ReferenceElement refElement = new ReferenceElement(ref, name, parent, isDecorating);
             children.put(name, refElement);
             return refElement;
         }
@@ -236,20 +252,20 @@ public class MemoryTreeElement implements TreeElement {
     }
 
     @Override
-    public List<TreeElement> getChildren() {
+    public synchronized List<TreeElement> getChildren() {
         List<TreeElement> rval = new ArrayList<>(children.size());
         rval.addAll(children.values());
         return rval;
     }
 
     @Override
-    public TreeElement getChild(String childName) {
+    public synchronized TreeElement getChild(String childName) {
         return children.get(childName);
     }
 
     @Override
     public TreeElement getReference() {
-        throw new UnsupportedOperationException("unused");
+        throw new UnsupportedOperationException(getClass().getSimpleName()+"#getReference");
     }
 
     @Override

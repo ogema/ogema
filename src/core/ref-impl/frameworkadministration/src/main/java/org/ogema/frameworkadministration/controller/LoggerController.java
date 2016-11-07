@@ -22,8 +22,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.servlet.http.HttpServletResponse;
-import org.codehaus.jackson.map.ObjectMapper;
+
 import org.ogema.core.administration.AdminLogger;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.logging.LogLevel;
@@ -33,6 +34,8 @@ import org.ogema.frameworkadministration.json.LoggerJsonSizeResponse;
 import org.ogema.frameworkadministration.json.get.LoggerJsonGet;
 import org.ogema.frameworkadministration.json.get.LoggerJsonGetList;
 import org.ogema.frameworkadministration.json.post.LoggerJsonPost;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  *

@@ -29,20 +29,26 @@ public class Activator implements BundleActivator {
 
 	private ServiceRegistration<?> serviceRegistration;
 	private ZWaveHlDriver driver;
-	public static boolean bundleIsRunning = true;
+	public static volatile boolean bundleIsRunning = true;
+	private ShellCommands sc;
 
 	@Override
-	public void start(BundleContext context) throws Exception {
+	public synchronized void start(BundleContext context) throws Exception {
 		driver = new ZWaveHlDriver();
 		Application application = driver;
 		serviceRegistration = context.registerService(Application.class.getName(), application, null);
-		new ShellCommands(driver, context);
+		sc = new ShellCommands(driver, context);
 	}
 
 	@Override
-	public void stop(BundleContext context) throws Exception {
-		serviceRegistration.unregister();
+	public synchronized void stop(BundleContext context) throws Exception {
 		bundleIsRunning = false;
+		if (serviceRegistration != null)
+			serviceRegistration.unregister();
+		serviceRegistration = null;
+		if (sc != null)
+			sc.close();
+		sc = null;
 	}
 
 }

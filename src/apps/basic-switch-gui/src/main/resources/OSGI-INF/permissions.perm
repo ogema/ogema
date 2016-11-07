@@ -5,8 +5,9 @@
 (org.osgi.framework.PackagePermission "javax.servlet" "import")
 (org.osgi.framework.PackagePermission "javax.servlet.http" "import")
 
-(org.osgi.framework.PackagePermission "org.codehaus.jackson" "import")
-(org.osgi.framework.PackagePermission "org.codehaus.jackson.*" "import")
+(org.osgi.framework.PackagePermission "com.fasterxml.jackson" "import")
+(org.osgi.framework.PackagePermission "com.fasterxml.jackson.*" "import")
+(java.util.PropertyPermission "org.ogema.apps.createtestresources" "read")
 
 #(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.prototypes.PhysicalElement" "read,write,addsub,create,activity")
 #(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.actors.OnOffSwitch" "read,write,addsub,create,activity")
@@ -18,5 +19,5 @@
 #(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.devices.buildingtechnology.Thermostat" "read,write,addsub,create,activity")
 (org.ogema.accesscontrol.ResourcePermission "path=*" "read,write,addsub,create,activity")
 
-
+# FIXME this permission should not be granted... 
 (java.lang.RuntimePermission "accessDeclaredMembers")

@@ -32,13 +32,16 @@ public class Activator implements BundleActivator {
 
 	@Override
 	public void start(BundleContext bcontext) throws Exception {
-
+		String osName = System.getProperty("os.name");
+		if (osName.startsWith("Windows"))
+			return;
 		nativeAccess = new NativeAccessImpl();
 		nativeAccessRegistration = bcontext.registerService(NativeAccess.class, nativeAccess, null);
 	}
 
 	@Override
 	public void stop(BundleContext bcontext) throws Exception {
-		nativeAccessRegistration.unregister();
+		if (nativeAccessRegistration != null)
+			nativeAccessRegistration.unregister();
 	}
 }

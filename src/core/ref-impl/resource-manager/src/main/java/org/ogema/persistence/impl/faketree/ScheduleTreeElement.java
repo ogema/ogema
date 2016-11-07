@@ -69,7 +69,8 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 			CALCULATION_TIME_NAME = "+c", INTERPOLATION_NAME = "+i", VALUE_NAME = "+v";
 
 	// actual tree element and element attached to realElement that contains actual schedule data.
-	private final TreeElement realElement, pseudoElement;
+	private final VirtualTreeElement baseElement;
+    private final VirtualTreeElement scheduleDataElement;
 
 	// actual data in memory, also provides the schedule functionalities.
 	private final MemoryTimeSeries m_schedule;
@@ -82,14 +83,14 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 	// Synchronization
 	private final ReadWriteLock m_lock = new ReentrantReadWriteLock();
 
-	public ScheduleTreeElement(TreeElement element) {
-		realElement = element;
-		final TreeElement existingPseudoElement = element.getChild(OWN_NAME);
+	public ScheduleTreeElement(VirtualTreeElement element) {
+		baseElement = element;
+		final VirtualTreeElement existingPseudoElement = element.getChild(OWN_NAME);
 		if (existingPseudoElement != null) {
-			pseudoElement = existingPseudoElement;
+			scheduleDataElement = existingPseudoElement;
 		}
 		else {
-			pseudoElement = element.addChild(OWN_NAME, PseudoSchedule.class, true);
+			scheduleDataElement = (VirtualTreeElement) element.addChild(OWN_NAME, PseudoSchedule.class, true);
 		}
 
 		// Read in or create the sub-treenodes
@@ -98,11 +99,11 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 		m_times = getOrAddChild(TIME_NAME, TimeArrayResource.class, true);
 		m_qualities = getOrAddChild(QUALITY_NAME, IntegerArrayResource.class, true);
 
-		Class<?> parentClass = realElement.getParent().getType();
+		Class<?> parentClass = baseElement.getParent().getType();
 		if (!SingleValueResource.class.isAssignableFrom(parentClass)) {
 			// error: parent is not a simple resource
-			throw new ResourceNotFoundException("Cannot create a schedule tree element for parent resource of type "
-					+ parentClass.getCanonicalName() + ".");
+			throw new ResourceNotFoundException(String.format("Cannot create a schedule on parent of type %s (%s)",
+					parentClass.getCanonicalName(), baseElement.getParent().getPath()));
 		}
 
 		if (FloatResource.class.isAssignableFrom(parentClass)) {
@@ -448,77 +449,77 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 	 -------------------------------------------------------------------------*/
 	@Override
 	final public String getAppID() {
-		return pseudoElement.getAppID();
+		return scheduleDataElement.getAppID();
 	}
 
 	@Override
 	final public void setAppID(String appID) {
-		pseudoElement.setAppID(appID);
+		scheduleDataElement.setAppID(appID);
 	}
 
 	@Override
 	final public Object getResRef() {
-		return pseudoElement.getResRef();
+		return scheduleDataElement.getResRef();
 	}
 
 	@Override
 	final public void setResRef(Object resRef) {
-		pseudoElement.setResRef(resRef);
+		scheduleDataElement.setResRef(resRef);
 	}
 
 	@Override
 	final public boolean isActive() {
-		return pseudoElement.isActive();
+		return scheduleDataElement.isActive();
 	}
 
 	@Override
 	final public void setActive(boolean active) {
-		pseudoElement.setActive(active);
+		scheduleDataElement.setActive(active);
 	}
 
 	@Override
 	final public TreeElement getParent() {
-		return pseudoElement.getParent();
+		return scheduleDataElement.getParent();
 	}
 
 	@Override
 	final public int getResID() {
-		return pseudoElement.getResID();
+		return scheduleDataElement.getResID();
 	}
 
 	@Override
 	final public int getTypeKey() {
-		return pseudoElement.getTypeKey();
+		return scheduleDataElement.getTypeKey();
 	}
 
 	@Override
 	final public String getName() {
-		return pseudoElement.getName();
+		return scheduleDataElement.getName();
 	}
 
 	@Override
 	final public Class<? extends Resource> getType() {
-		return pseudoElement.getType();
+		return scheduleDataElement.getType();
 	}
 
 	@Override
 	final public boolean isNonpersistent() {
-		return pseudoElement.isNonpersistent();
+		return scheduleDataElement.isNonpersistent();
 	}
 
 	@Override
 	final public boolean isDecorator() {
-		return pseudoElement.isDecorator();
+		return scheduleDataElement.isDecorator();
 	}
 
 	@Override
 	final public boolean isToplevel() {
-		return pseudoElement.isToplevel();
+		return scheduleDataElement.isToplevel();
 	}
 
 	@Override
 	final public boolean isReference() {
-		return pseudoElement.isReference();
+		return scheduleDataElement.isReference();
 	}
 
 	@Override
@@ -528,48 +529,48 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 
 	@Override
 	final public TreeElement getReference() {
-		return pseudoElement.getReference();
+		return scheduleDataElement.getReference();
 	}
 
 	@Override
 	final public TreeElement addChild(String name, Class<? extends Resource> type, boolean isDecorating)
 			throws ResourceAlreadyExistsException, InvalidResourceTypeException {
-		return pseudoElement.addChild(name, type, isDecorating);
+		return scheduleDataElement.addChild(name, type, isDecorating);
 	}
 
 	@Override
 	final public TreeElement addReference(TreeElement ref, String name, boolean isDecorating) {
-		return pseudoElement.addReference(ref, name, isDecorating);
+		return scheduleDataElement.addReference(ref, name, isDecorating);
 	}
 
 	@Override
 	final public List<TreeElement> getChildren() {
-		return pseudoElement.getChildren();
+		return scheduleDataElement.getChildren();
 	}
 
 	@Override
 	final public TreeElement getChild(String childName) {
-		return pseudoElement.getChild(childName);
+		return scheduleDataElement.getChild(childName);
 	}
 
 	@Override
 	final public SimpleResourceData getData() throws ResourceNotFoundException, UnsupportedOperationException {
-		return pseudoElement.getData();
+		return scheduleDataElement.getData();
 	}
 
 	@Override
 	final public void fireChangeEvent() {
-		pseudoElement.fireChangeEvent();
+		scheduleDataElement.fireChangeEvent();
 	}
 
 	@Override
 	public void setLastModified(long time) {
-		pseudoElement.setLastModified(time);
+		scheduleDataElement.setLastModified(time);
 	}
 
 	@Override
 	public long getLastModified() {
-		return pseudoElement.getLastModified();
+		return scheduleDataElement.getLastModified();
 	}
 
 	/**
@@ -804,5 +805,9 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 		// TODO Auto-generated method stub
 		return null;
 	}
+    
+    public VirtualTreeElement getScheduleElement() {
+        return scheduleDataElement;
+    }
 
 }

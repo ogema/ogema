@@ -4,7 +4,7 @@
     <parent>
         <artifactId>ref-impl</artifactId>
         <groupId>org.ogema.ref-impl</groupId>
-        <version>2.0.4</version>
+        <version>2.1.0</version>
     </parent>
 
     <artifactId>rest</artifactId>
@@ -35,11 +35,14 @@
                     <instructions>
                         <JAX-RS-Alias>/example</JAX-RS-Alias>
                         <JAX-RS-Classes>org.ogema.rest.Example</JAX-RS-Classes>
+                        <!-- patternmimic only exported for tests... necessary? -->
                         <Export-Package>
-                            org.ogema.rest
+                            org.ogema.rest,
+                            org.ogema.rest.patternmimic
                         </Export-Package>
                         <Import_Package>
-                        	org.ogema.rest
+                        	org.ogema.rest,
+                        	org.ogema.rest.patternmimic
                         </Import_Package>
                         <!-- need dynamic import to resolve input data classes during deserialization -->
                         <DynamicImport-Package>*</DynamicImport-Package>
@@ -82,7 +85,16 @@
             <version>4.11</version>
             <scope>test</scope>
         </dependency>
-        
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
+            <version>2.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.joda</groupId>
+            <artifactId>joda-convert</artifactId>
+            <version>1.2</version>
+        </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
@@ -107,6 +119,7 @@
             <groupId>org.jooq</groupId>
             <artifactId>joox</artifactId>
             <version>1.2.0</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
 			<groupId>org.ogema.ref-impl</groupId>

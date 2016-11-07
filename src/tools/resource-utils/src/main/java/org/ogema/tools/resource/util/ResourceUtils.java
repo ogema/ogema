@@ -1,3 +1,18 @@
+/**
+ * This file is part of OGEMA.
+ *
+ * OGEMA is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
+ *
+ * OGEMA is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.ogema.tools.resource.util;
 
 import org.ogema.core.model.Resource;
@@ -6,7 +21,7 @@ import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.model.locations.Room;
 import org.ogema.model.prototypes.PhysicalElement;
-import org.ogema.tools.activation.impl.TransactionVisitor;
+import org.ogema.tools.activation.impl.ActivationVisitor;
 import org.ogema.tools.resource.visitor.PatternProxy;
 import org.ogema.tools.resource.visitor.ResourceProxy;
 
@@ -15,12 +30,16 @@ import org.ogema.tools.resource.visitor.ResourceProxy;
  */
 public class ResourceUtils {
 
+	// no need to construct this
+	private ResourceUtils() {}
+	
 	/**
 	 * Activates a resource and recursively all of its complex subresources, but not
-	 * the primitive subresources (primitive resources meaning {@see ValueResource}s here). References resources
+	 * the primitive subresources (primitive resource meaning ValueResource here). Referenced resources
 	 * and their subresources are not activated.<br>
 	 * Use {@link Resource#activate(boolean)} or {@link Resource#deactivate(boolean)} with argument 
-	 * <code>true</code> instead if you want to activate or deactivate all subresources, including primitive ones.
+	 * <code>true</code> instead if you want to activate or deactivate all subresources, including primitive ones.<br>
+	 * The activation is done in a transaction.
 	 * @param resource
 	 * 		start resource
 	 * @param activate
@@ -28,17 +47,18 @@ public class ResourceUtils {
 	 * 		it happens rarely that one wants to deactivate all but the value resources. 
 	 */
 	public static void activateComplexResources(Resource resource, boolean activate, ResourceAccess ra) {
-		TransactionVisitor visitor = new TransactionVisitor(ra);
+		ActivationVisitor visitor = new ActivationVisitor(ra, activate);
 		ResourceProxy proxy = new ResourceProxy(resource);
 		proxy.depthFirstSearch(visitor, false);
-		visitor.activate(activate);
+		visitor.commit();
 	}
 
 	/**
-	 * Activates all existing resource fields of a pattern, except the {@see ValueResource}s.
-	 * Use {@see ResourcePatternAccess#activatePattern(ResourcePattern)} and 
-	 * {@see ResourcePatternAccess#deactivatePattern(ResourcePattern)} to activate or deactivate all
-	 * resources of a pattern, including value resources.
+	 * Activates all existing resource fields of a pattern, except the ValueResources.
+	 * Use ResourcePatternAccess#activatePattern(ResourcePattern) and 
+	 * ResourcePatternAccess#deactivatePattern(ResourcePattern) to activate or deactivate all
+	 * resources of a pattern, including value resources.<br>
+	 * The activation is done in a transaction.
 	 * @param pattern
 	 * @param activate
 	 * 		activate or deactivate; for most application scenarios only the activation should be relevant,
@@ -46,16 +66,16 @@ public class ResourceUtils {
 	 * @param ra
 	 */
 	public static void activateComplexResources(ResourcePattern<?> pattern, boolean activate, ResourceAccess ra) {
-		TransactionVisitor visitor = new TransactionVisitor(ra);
+		ActivationVisitor visitor = new ActivationVisitor(ra, activate);
 		PatternProxy proxy = new PatternProxy(pattern);
 		proxy.traversePattern(visitor);
-		visitor.activate(activate);
+		visitor.commit();
 	}
 
 	/**
 	 * Returns a valid resource name for an arbitrary String, by replacing invalid
 	 * characters by an underscore, and prepending an underscore if the first character
-	 * is not allowed as start character. Valid resource name are precisely the 
+	 * is not allowed as start character. Valid resource names are precisely the 
 	 * valid Java variable names. 
 	 * @param nameIn
 	 * @return
@@ -83,30 +103,55 @@ public class ResourceUtils {
 	 */
 	public static String getHumanReadableName(Resource resource) {
 		Resource name = resource.getSubResource("name");
-		if (name != null && name.isActive() && name instanceof StringResource)
-			return ((StringResource) (name)).getValue();
-		else
-			return resource.getPath();
+		if ((name != null) && (name instanceof StringResource)) {
+			String val = ((StringResource) (name)).getValue();
+			if (name.isActive() && (!val.trim().isEmpty()))
+				return val;
+		}
+		return resource.getLocation();
 	}
-
+	
 	/** 
-	 * Find room in resource itself or in super resource. 
+	 * Find room in resource itself or in super resource.
+	 * @param device 
 	 * @return
 	 * 		Room in which device is located, or null if this information is not available
 	 */
-	public static Room getDeviceRoom(PhysicalElement device) {
+	public static Room getDeviceRoom(Resource device) {
 		while (device != null) {
-			if (!(device instanceof PhysicalElement)) {
-				device = device.getParent();
-				continue;
-			}
-			Room room = ((PhysicalElement) device).location().room();
-			if (room.isActive()) {
-				return room;
+			if (device instanceof Room)
+				return (Room) device;
+			if (device instanceof PhysicalElement) {
+				Room room = ((PhysicalElement) device).location().room();
+				if (room.isActive()) 
+					return room;
 			}
 			device = device.getParent();
 		}
 		return null;
+	}
+	
+	/**
+	 * Check whether parent is a (higher-level) parent of child
+	 * @param child
+	 * @param parent
+	 * @param allowReferences
+	 * 		if false, only parents in the direct tree above child will be checked, otherwise references are considered as well 
+	 * @return
+	 */
+	public static boolean isRecursiveParent(Resource child, Resource parent, boolean allowReferences) {
+		child = child.getParent();
+		boolean found;
+		while (child != null) {
+			if (allowReferences)
+				found = parent.equalsLocation(child);
+			else
+				found = parent.equals(child);
+			if (found)
+				return true;
+			child = child.getParent();
+		}
+		return false;
 	}
 
 }

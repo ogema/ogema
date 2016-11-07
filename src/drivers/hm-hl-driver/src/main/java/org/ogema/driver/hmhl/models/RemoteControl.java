@@ -15,16 +15,9 @@
  */
 package org.ogema.driver.hmhl.models;
 
-import org.ogema.core.model.Resource;
-import org.ogema.core.model.ResourceList;
-import org.ogema.core.model.simple.BooleanResource;
-import org.ogema.model.devices.storage.EnergyStorage;
-
-public interface RemoteControl extends Resource {
-
-	EnergyStorage battery();
-
-	ResourceList<BooleanResource> longPress();
-
-	ResourceList<BooleanResource> shortPress();
+/**
+ * @deprecated use {@link org.ogema.model.actors.RemoteControl} instead
+ */
+@Deprecated
+public interface RemoteControl extends org.ogema.model.actors.RemoteControl {
 }

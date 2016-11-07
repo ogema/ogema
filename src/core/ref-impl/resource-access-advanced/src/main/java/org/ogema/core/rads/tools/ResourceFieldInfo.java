@@ -25,6 +25,7 @@ import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.Access;
+import org.ogema.core.resourcemanager.pattern.ResourcePattern.ChangeListener;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.CreateMode;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.Existence;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.ValueChangedListener;
@@ -45,6 +46,9 @@ public class ResourceFieldInfo {
 	private final boolean m_valueRequired;
 	private final int m_requiredValue;
 	private final boolean m_valueListener;
+	private final boolean m_changedListener_value; // TODO use array instead?
+	private final boolean m_changedListener_structure;
+	private final boolean m_changedListener_callOnEveryUpdate;
 
 	public ResourceFieldInfo(Field field, AccessPriority writePriority) {
 		m_field = field;
@@ -94,6 +98,17 @@ public class ResourceFieldInfo {
 		else {
 			m_valueListener = false;
 		}
+		final ChangeListener cl = field.getAnnotation(ChangeListener.class);
+		if (cl == null) {
+			m_changedListener_value = false;
+			m_changedListener_structure = false;
+			m_changedListener_callOnEveryUpdate = false;
+		}
+		else {
+			m_changedListener_value = cl.valueListener();
+			m_changedListener_structure = cl.structureListener();
+			m_changedListener_callOnEveryUpdate =cl.callOnEveryUpdate();
+		}
 	}
 
 	public Field getField() {
@@ -122,6 +137,18 @@ public class ResourceFieldInfo {
 
 	public boolean requiresValueListener() {
 		return m_valueListener;
+	}
+	
+	public boolean requiresChangeListenerValue() {
+		return m_changedListener_value;
+	}
+	
+	public boolean changeListenerValueCallOnEveryUpdate() {
+		return m_changedListener_callOnEveryUpdate;
+	}
+	
+	public boolean requiresChangeListenerStructure() {
+		return m_changedListener_structure;
 	}
 
 	public boolean valueSatisfied(Resource resource) {

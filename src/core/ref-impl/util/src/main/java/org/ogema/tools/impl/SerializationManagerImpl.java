@@ -19,13 +19,13 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.Writer;
+import java.util.Collection;
+
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
-import org.codehaus.jackson.JsonFactory;
-import org.codehaus.jackson.JsonGenerator;
-import org.ogema.core.channelmanager.measurements.SampledValue;
 
+import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.recordeddata.RecordedData;
@@ -34,6 +34,9 @@ import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.tools.SerializationManager;
+
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
 
 /**
  * Implementation of the SerializationManager. This class only holds the configuration defined for a serialization. For
@@ -306,7 +309,8 @@ public class SerializationManagerImpl implements SerializationManager {
 	@Override
 	public void writeJson(Writer writer, Resource res, RecordedData data, long startTime, long endTime, long interval,
 			ReductionMode mode) throws IOException {
-        try (JsonGenerator jg = new JsonFactory().createJsonGenerator(writer).useDefaultPrettyPrinter()) {
+        try (@SuppressWarnings("deprecation")
+JsonGenerator jg = new JsonFactory().createJsonGenerator(writer).useDefaultPrettyPrinter()) {
             jg.writeStartObject();
             jg.writeStringField("@type", "RecordedData");
             
@@ -336,5 +340,69 @@ public class SerializationManagerImpl implements SerializationManager {
             jg.writeEndObject();
             jg.flush();
         }
+	}
+
+	@Override
+	public String toJson(Collection<Resource> resources) {
+		return core.toJson(resources, this);
+	}
+
+	@Override
+	public String toXml(Collection<Resource> resources) {
+		return core.toXml(resources, this);
+	}
+
+	@Override
+	public void writeJson(Writer output, Collection<Resource> resources) throws IOException {
+		core.writeJson(output, resources, this);
+	}
+
+	@Override
+	public void writeXml(Writer output, Collection<Resource> resources) throws IOException {
+		core.writeXml(output, resources, this);
+	}
+
+	@Override
+	public Collection<Resource> createResourcesFromXml(String xml) { // TODO method taking a reader
+		StringReader xmlReader = new StringReader(xml);
+		try {
+			return core.create(core.deserializeXmlCollection(xmlReader), null);
+		} catch (IOException | CloneNotSupportedException ioex) {
+			//TODO
+			throw new RuntimeException(ioex);
+		}
+	}
+
+	@Override
+	public Collection<Resource> createResourcesFromJson(String json) {
+		StringReader jsonReader = new StringReader(json);
+		try {
+			return core.create(core.deserializeJsonCollection(jsonReader), null);
+		} catch (IOException ioex) {
+			//TODO
+			throw new RuntimeException(ioex);
+		}
+	}
+
+	@Override
+	public Collection<Resource> createResourcesFromXml(String xml, Resource parent) {
+		StringReader xmlReader = new StringReader(xml);
+		try {
+			return core.create(core.deserializeXmlCollection(xmlReader), parent);
+		} catch (IOException | CloneNotSupportedException ioex) {
+			//TODO
+			throw new RuntimeException(ioex);
+		}
+	}
+
+	@Override
+	public Collection<Resource> createResourcesFromJson(String json, Resource parent) {
+		StringReader jsonReader = new StringReader(json);
+		try {
+			return core.create(core.deserializeJsonCollection(jsonReader), parent);
+		} catch (IOException ioex) {
+			//TODO
+			throw new RuntimeException(ioex);
+		}
 	}
 }

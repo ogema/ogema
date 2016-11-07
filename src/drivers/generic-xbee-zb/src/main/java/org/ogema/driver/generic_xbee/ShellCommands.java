@@ -21,6 +21,7 @@ import java.util.Map;
 import org.apache.felix.service.command.Descriptor;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.NoSuchDriverException;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
@@ -43,8 +44,8 @@ public class ShellCommands implements HLDriverInterface {
 	}
 
 	public void showCreatedChannels() {
-		for (Map.Entry<String, ChannelLocator> mapEntry : driver.channelMap.entrySet()) {
-			System.out.println(mapEntry.getKey() + ": " + mapEntry.getValue().toString());
+		for (Map.Entry<String, ChannelConfiguration> mapEntry : driver.channelMap.entrySet()) {
+			System.out.println(mapEntry.getKey() + ": " + mapEntry.getValue().getChannelLocator().toString());
 		}
 	}
 

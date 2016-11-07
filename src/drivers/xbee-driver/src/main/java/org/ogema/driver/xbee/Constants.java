@@ -172,4 +172,41 @@ public class Constants {
 
 	public static final byte STATUS_NOT_SUPPORTED = (byte) 0x84;
 
+	/*
+	 * Device IDs/Descriptions
+	 * 
+	 * @see ZigBee Home Automation Public Profile chapter 5.7
+	 */
+	// Profile IDs
+	public static final String HOME_AUTOMATION_PROFILE_ID = "0104";
+	public static final String DEVELCO_MANUFACTURER_PROFILE = "c0c9";
+
+	public static final String PHILIPS_HUE_MANUFACTURER_PROFILE = "c05e";
+
+	public static final String DEVELCO_ZHWR202_ID_STRING = "0001";
+	public static final String PHILIPS_HUE_ID_STRING = "0200";
+	public static final short DEVELCO_ZHWR202_ID = 0x001;
+	public static final short PHILIPS_HUE_ID = 0x200;
+	public static final short COLOR_DIMMABLE_LIGHT_DEVICE_ID = 0x0102;
+	public static final String COLOR_DIMMABLE_LIGHT_DEVICE_ID_STRING = "0102";
+	public static final short MAINS_POWER_OUTLET_DEVICE_ID = 0x0009;
+	public static final String MAINS_POWER_OUTLET_DEVICE_ID_STRING = "0009";
+	public static final short SMART_PLUG_DEVICE_ID = 0x0051;
+	public static final String SMART_PLUG_DEVICE_ID_STRING = "0051";
+
+	public static String getDeviceDescription(short deviceID, String adress) {
+		switch (deviceID) {
+		case DEVELCO_ZHWR202_ID:
+			return "Develco_Smart_Plug_" + adress;
+		case PHILIPS_HUE_ID:
+			return "Philips_Hue_" + adress;
+		case COLOR_DIMMABLE_LIGHT_DEVICE_ID:
+			return "Light_" + adress;
+		case MAINS_POWER_OUTLET_DEVICE_ID:
+			return "Mains_Power_Outlet_" + adress;
+		case SMART_PLUG_DEVICE_ID:
+			return "Smart_Plug_" + adress;
+		}
+		return null;
+	}
 }

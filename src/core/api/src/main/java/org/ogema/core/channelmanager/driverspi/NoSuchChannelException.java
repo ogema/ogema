@@ -17,7 +17,7 @@ package org.ogema.core.channelmanager.driverspi;
 
 /**
  * 
- * A Exception thrown if channel don't exists
+ * An Exception thrown if channel doesn't exist
  */
 public class NoSuchChannelException extends Exception {
 

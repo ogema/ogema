@@ -39,7 +39,9 @@ import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.administration.AdminLogger;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.administration.FrameworkClock;
+import org.ogema.core.administration.PatternCondition;
 import org.ogema.core.administration.RegisteredAccessModeRequest;
+import org.ogema.core.administration.RegisteredPatternListener;
 import org.ogema.core.administration.RegisteredResourceDemand;
 import org.ogema.core.administration.RegisteredResourceListener;
 import org.ogema.core.administration.RegisteredStructureListener;
@@ -48,12 +50,13 @@ import org.ogema.core.administration.RegisteredValueListener;
 import org.ogema.core.application.TimerListener;
 import org.ogema.core.logging.LogLevel;
 import org.ogema.core.logging.LogOutput;
+import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 
 /**
  * 
  * @author jlapp
  */
-@Component(specVersion = "1.1", immediate = true)
+@Component(specVersion = "1.2", immediate = true)
 @Properties( { @Property(name = "osgi.command.scope", value = "ogm"),
 		@Property(name = "osgi.command.function", value = { "apps", "clock", "loggers", "log", "dump_cache" }) })
 @Service(ShellCommands.class)
@@ -121,7 +124,7 @@ public class ShellCommands {
 								.getRequiredAccessMode(), ramr.getPriority(), ramr.isFulfilled());
 					}
 				}
-				if (!app.getResourceListeners().isEmpty()) {
+				if (!app.getResourceListeners().isEmpty() || !app.getValueListeners().isEmpty()) {
 					System.out.printf("  change listeners:%n", app.getResourceListeners());
 					for (RegisteredResourceListener rrl : app.getResourceListeners()) {
 						System.out.printf("    %s: %s%n", rrl.getResource().getPath(), getListenerName(rrl
@@ -139,6 +142,40 @@ public class ShellCommands {
 								.getListener()));
 					}
 				}
+                if (!app.getPatternListeners().isEmpty()) {
+                    System.out.printf("  pattern listeners:%n");
+                    for (RegisteredPatternListener rpl: app.getPatternListeners()) {
+                        System.out.printf("    %s: %s%n", rpl.getPatternDemandedModelType(), getListenerName(rpl.getListener()));
+                        if (!rpl.getCompletedPatterns().isEmpty()) {
+                            System.out.printf("    complete:%n");
+                            for (ResourcePattern<?> completedPattern: rpl.getCompletedPatterns()) {
+                                System.out.printf("      %s%n", completedPattern.model.getPath());
+                            }
+                        }
+                        if (!rpl.getIncompletePatterns().isEmpty()) {
+                            System.out.printf("    incomplete:%n");
+                            for (ResourcePattern<?> incompletePattern: rpl.getIncompletePatterns()) {
+                                System.out.printf("      %s%n", incompletePattern.model.getPath());
+                                for (PatternCondition cond: rpl.getConditions(incompletePattern)) {
+                                    if (!cond.isSatisfied()) {
+                                        StringBuilder state = new StringBuilder(cond.getPath()).append(" ");
+                                        if (cond.exists()) {
+                                            state.append("(exists) ");
+                                        } else {
+                                            if (!cond.isOptional()) {
+                                                state.append("(missing) ");
+                                            }
+                                        }
+                                        if (!cond.isActive()) {
+                                            state.append("(inactive) ");
+                                        }
+                                        System.out.printf("        %s: %s%n", cond.getFieldName(), state);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 			}
 		}
 	}

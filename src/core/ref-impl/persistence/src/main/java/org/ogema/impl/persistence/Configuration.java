@@ -17,6 +17,6 @@ package org.ogema.impl.persistence;
 
 public class Configuration {
 
-	public static boolean LOGGING = false;
+	public static boolean LOGGING = true;
 
 }

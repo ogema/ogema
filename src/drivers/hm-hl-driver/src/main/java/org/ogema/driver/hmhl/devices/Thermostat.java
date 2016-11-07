@@ -16,6 +16,7 @@
 package org.ogema.driver.hmhl.devices;
 
 import org.ogema.core.application.ApplicationManager;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.FloatValue;
@@ -78,7 +79,7 @@ public class Thermostat extends HM_hlDevice implements ResourceValueListener<Tem
 
 	private void activate(ThermostatPattern device) {
 		// do not activate value resources, since they do not contain sensible values yet
-		ResourceUtils.activateComplexResources(device, true, appManager.getResourceAccess());
+		ResourceUtils.activateComplexResources(device.model, true, appManager.getResourceAccess());
 		device.model.valve().setting().controllable().setValue(false); // valve is not directly controllable, only via temp setting
 		device.model.valve().setting().controllable().activate(false);
 	}
@@ -142,7 +143,7 @@ public class Thermostat extends HM_hlDevice implements ResourceValueListener<Tem
 	@Override
 	public void resourceChanged(TemperatureResource res) {
 		float localDesiredTemp = res.getCelsius();
-		ChannelLocator locator = this.commandChannel.get("COMMAND:01");
+		ChannelConfiguration locator = this.commandChannel.get("COMMAND:01");
 		writeToChannel(locator, new FloatValue(localDesiredTemp));
 	}
 

@@ -18,14 +18,13 @@ package org.ogema.resourcemanager.impl.model.simple;
 import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
-import org.ogema.resourcemanager.impl.ResourceBase;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 
 /**
  * 
  * @author jlapp
  */
-public class DefaultStringResource extends ResourceBase implements StringResource {
+public class DefaultStringResource extends SingleValueResourceBase implements StringResource {
 
 	public DefaultStringResource(VirtualTreeElement el, String path, ApplicationResourceManager resMan) {
 		super(el, path, resMan);
@@ -60,11 +59,6 @@ public class DefaultStringResource extends ResourceBase implements StringResourc
 	@Override
 	public AbsoluteSchedule program() {
 		return getSubResource("program", AbsoluteSchedule.class);
-	}
-
-	@Override
-	public long getLastUpdateTime() {
-		return super.getLastUpdateTime();
 	}
 
 }

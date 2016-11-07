@@ -27,7 +27,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.codehaus.jackson.map.ObjectMapper;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -38,9 +37,7 @@ import org.ogema.core.application.AppID;
 import org.ogema.core.security.AppPermission;
 import org.ogema.core.security.WebAccessManager;
 import org.ogema.frameworkadministration.controller.AppStoreController;
-import org.ogema.frameworkadministration.utils.AppStore;
 import org.ogema.frameworkadministration.utils.AppStoreUtils;
-
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
@@ -55,6 +52,8 @@ import org.ogema.frameworkadministration.utils.BundleIcon;
 import org.ogema.frameworkadministration.utils.Utils;
 import org.osgi.service.condpermadmin.ConditionInfo;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 public class FAServletAppStore extends HttpServlet {
 
 	private static final long serialVersionUID = 7370224231398359148L;
@@ -62,7 +61,6 @@ public class FAServletAppStore extends HttpServlet {
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 	private final PermissionManager permissionManager;
 	private final BundleContext bundleContext;
-	private final AppStore tmpFileUpload;
 	private final long bundleID;
 	private final AdministrationManager administrationManager;
 	private final AppStoreController appStoreController;
@@ -77,14 +75,6 @@ public class FAServletAppStore extends HttpServlet {
 		this.bundleID = bundleID;
 		this.administrationManager = administrationManager;
 		this.appStoreController = appStoreController;
-
-		String defaultAppStorePath = administrationManager.getInstallationManager().getDefaultAppStore().getAddress();
-		File file = new File(defaultAppStorePath);
-		file.mkdir();
-
-		// appStoreController.initAppStores();
-
-		tmpFileUpload = new AppStore("localAppDirectory", defaultAppStorePath, true);
 	}
 
 	public void register(WebAccessManager wam) {
@@ -113,9 +103,7 @@ public class FAServletAppStore extends HttpServlet {
 			return;
 		}
 
-		// OutputStream bout = resp.getOutputStream();
 		String data = null;
-		//		logger.debug("AdminServlet path URI is " + pi);
 
 		int id = -1;
 
@@ -123,69 +111,10 @@ public class FAServletAppStore extends HttpServlet {
 		 * List of locations where App-files archived (Appstores)
 		 */
 		switch (pi) {
-		case "/appstores":
-			logger.info("Get Appstores");
-			try {
-				data = appStoreController.getAppstoresData();
-				printResponse(resp, data);
-			} catch (Exception e1) {
-				e1.printStackTrace(resp.getWriter());
-			}
-			break;
-		/*
-		 * List of the apps in a specific location.
-		 */
-		case "/apps": // The path is in this case /serletName/path1
-			String appStore = req.getParameter("name");
-			// AppStore appSource = appStoreController.getAppStores().get(appStore);
-			ApplicationSource appSource = administrationManager.getInstallationManager().connectAppSource(appStore);
-			logger.info("Get Apps in " + appSource.getAddress());
-			if (appStore.equals(administrationManager.getInstallationManager().getDefaultAppStore().getName())) {
-				File f = new File(appSource.getAddress());
-				if (!f.exists()) {
-					printResponse(resp, "No Apps available");
-					return;
-				}
-				else {
-					try {
-						data = appStoreController.getAppFiles(f);
-						printResponse(resp, data);
-					} catch (Exception e) {
-						e.printStackTrace(resp.getWriter());
-					}
-				}
-			}
-			else {
-				printResponse(resp, "Only local appstores supported yet");
-			}
-			break;
-		case "/app":
-			String name = req.getParameter("name");
-			appStore = req.getParameter("appstore");
-			// appSource = appStoreController.getAppStores().get(appStore);
-			appSource = administrationManager.getInstallationManager().connectAppSource(appStore);
-			if (appStore == null || name == null) {
-				printResponse(resp, "No appstore or app is selected.");
-
-				break;
-			}
-			appStoreController.startAppInstall(req, resp, appSource.getAddress(), name);
-			break;
-		case "/resourceperm":
-			resp.setContentType("application/json");
-			String idStr = req.getParameter("id");
-			if (idStr != null && !idStr.equals("#"))
-				id = Integer.valueOf(idStr);
-			String type = req.getParameter("type");
-			String actions = req.getParameter("action");
-			sb = appStoreController.resourceTree2JSON(id);
-			data = sb.toString();
-			printResponse(resp, data);
-			break;
 		case "/installedapps":
 			resp.setContentType("application/json");
 			String action = req.getParameter("action");
-			idStr = req.getParameter("app");
+			String idStr = req.getParameter("app");
 
 			if (idStr != null) {
 				//FIXME: remove this error in javascript rather than here (use of angular ng-markups could solve this)  
@@ -333,6 +262,7 @@ public class FAServletAppStore extends HttpServlet {
 					List<AppsJsonAppConditions> conditions = appPolicy.getConditions();
 					List<AppsJsonAppPermissions> permissions = appPolicy.getPermissions();
 
+					@SuppressWarnings("unused")
 					ConditionInfo conditionInfo = null;
 
 					if (conditions != null && !conditions.isEmpty()) {
@@ -340,6 +270,7 @@ public class FAServletAppStore extends HttpServlet {
 						//there is only one condition
 						AppsJsonAppConditions appCondition = conditions.get(0);
 						if (appCondition != null) {
+							@SuppressWarnings("unused")
 							String conditionType = appCondition.getType();
 							String arg1 = appCondition.getArg1();
 							String arg2 = appCondition.getArg2();
@@ -407,8 +338,7 @@ public class FAServletAppStore extends HttpServlet {
 			// Check if the parameter of the current installation process has changed
 			String appname = req.getParameter("name");
 			String appStore = req.getParameter("appstore");
-			// AppStore appSource = appStoreController.getAppStores().get(appStore);
-			ApplicationSource appSource = administrationManager.getInstallationManager().connectAppSource(appStore);
+			ApplicationSource appSource = administrationManager.getSources().connectAppSource(appStore);
 			InstallableApplication installingApp = (InstallableApplication) req.getSession().getAttribute(
 					AppStoreUtils.INSTALLATION_STATE_ATTR_NAME);
 			if (!installingApp.getName().equals(appname)

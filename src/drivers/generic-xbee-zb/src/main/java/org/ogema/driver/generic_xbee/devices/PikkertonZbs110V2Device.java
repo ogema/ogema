@@ -23,7 +23,7 @@ import org.json.JSONObject;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.ChannelConfiguration;
-import org.ogema.core.channelmanager.ChannelConfigurationException;
+import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.ByteArrayValue;
@@ -171,21 +171,21 @@ public class PikkertonZbs110V2Device extends GenericXbeeZbDevice implements Reso
 	@Override
 	public void addChannel(GenericXbeeZbConfig config) {
 		ChannelLocator channelLocator = createChannelLocator(config.channelAddress);
-		ChannelConfiguration channelConfig = channelAccess.getChannelConfiguration(channelLocator);
-		channelConfig.setSamplingPeriod(config.timeout);
+		ChannelConfiguration channelConfig = null;
 
 		if (driver.channelMap.containsKey(config.resourceName)) {
 			logger.error("resourceName already taken.");
 			return;
 		}
-		driver.channelMap.put(config.resourceName, channelLocator);
-
+		
 		try {
-			channelAccess.addChannel(channelConfig);
-		} catch (ChannelConfigurationException e) {
+			channelConfig = channelAccess.addChannel(channelLocator, Direction.DIRECTION_INOUT, config.timeout);
+			driver.channelMap.put(config.resourceName, channelConfig);
+			addToUpdateListener(channelConfig);
+		} catch (ChannelAccessException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		addToUpdateListener(channelLocator);
 	}
 
 	@Override
@@ -304,17 +304,17 @@ public class PikkertonZbs110V2Device extends GenericXbeeZbDevice implements Reso
 
 		// Here the on/off command channel should be written
 		// Currently only 1 channel for everything
-		ChannelLocator channelLocator = driver.channelMap.get(attributeConfig.resourceName);
+		ChannelConfiguration chConf = driver.channelMap.get(attributeConfig.resourceName);
 		if (onoffCommand) { // Turn on
 			try {
-				channelAccess.setChannelValue(channelLocator, new ByteArrayValue(powOn));
+				channelAccess.setChannelValue(chConf, new ByteArrayValue(powOn));
 			} catch (ChannelAccessException e) {
 				e.printStackTrace();
 			}
 		}
 		else { // Turn off
 			try {
-				channelAccess.setChannelValue(channelLocator, new ByteArrayValue(powOff));
+				channelAccess.setChannelValue(chConf, new ByteArrayValue(powOff));
 			} catch (ChannelAccessException e) {
 				e.printStackTrace();
 			}

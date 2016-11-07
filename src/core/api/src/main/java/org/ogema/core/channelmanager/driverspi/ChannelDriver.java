@@ -127,6 +127,8 @@ public interface ChannelDriver {
 	 * channels specified. Each call to listenChannel resets the list of channels listened to. So to stop all
 	 * subscriptions call this method with an empty list in channels. Management of subscription requests from different
 	 * listeners shall be controlled by the ChannelManager.<br>
+	 * When the driver is de-registered or the ChannelManager is in shutdown, 
+	 * this method is called with an empty list and a <code>null</code> listener.
 	 * 
 	 * @param channels
 	 *            the channels to listen for

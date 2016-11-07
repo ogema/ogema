@@ -1,0 +1,59 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<div id="newInstallDiv"class="part">
+	<h1
+		style="position: relative; top: 5px; padding: 5px; font-size: 17px; font-weight: normal; border-bottom: 1px solid #124791; margin-bottom: 0px;">
+		Choose the Way to Install a new Bundle</h1>
+	<br>
+	<h1 style="position: relative; top: 5px; padding: 5px; font-size: 12px; font-weight: normal; margin-bottom: 0px;">
+		&bull; Select a marketplace and press Open Apsstore OR &bull; Click to browse and upload your own bundle
+		file</h1>
+	<div id='wrapContents'>
+		<div class="content" id="content1">
+			<div class="innerContent">
+				<form action="apps.html" method="get">
+				<select id="installStore" name="store">
+				</select>
+				<input id="openStore" class="jQueryButton" type="submit" value="Open Appstore"/>
+				</form>
+			</div>
+		</div>
+		<div class="content" id="content2">
+			<div class="innerContent">
+				<button id='initUp' type='button' onclick="openUploader()">Install a local bundle File ...</button>
+				<div id="diaUpload" title="Uploader">
+					<form action="" method="post" enctype="multipart/form-data">
+						<br>
+						<div id="wrapUpload">
+							<div id="wrapFiles"></div>
+							<input name="file" type="file" id="fileA" onchange="fileChange();" /> <input name="upload" 
+								value="Upload" type="button" onclick="uploadFile();" /> <input name="abort" 
+								value="Stop" type="button"onclick="uploadAbort();" />
+						</div>
+					</form>
+				</div>
+			</div>
+			<div class='uploadDia' id='dialUpload' title='Permissions'></div>
+		</div>
+	</div>
+
+</div>
+<script type="text/javascript">
+	listAppstores();
+	diaAppstores();
+</script>	

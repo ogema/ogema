@@ -1,0 +1,5 @@
+This is a fork of a sub project of Pax Wicket (https://github.com/ops4j/org.ops4j.pax.wicket).
+A minor change has been made for compatibility with activated security.
+
+Issue: https://ops4j1.jira.com/projects/PAXWICKET/issues/PAXWICKET-465
+Pull request: https://github.com/ops4j/org.ops4j.pax.wicket/pull/18

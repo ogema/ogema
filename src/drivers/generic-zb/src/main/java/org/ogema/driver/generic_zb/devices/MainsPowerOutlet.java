@@ -15,10 +15,12 @@
  */
 package org.ogema.driver.generic_zb.devices;
 
+import static org.ogema.driver.xbee.Constants.MAINS_POWER_OUTLET_DEVICE_ID;
+
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.ChannelConfiguration;
-import org.ogema.core.channelmanager.ChannelConfigurationException;
+import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.ByteArrayValue;
@@ -29,7 +31,7 @@ import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceListener;
-import org.ogema.driver.generic_zb.Constants;
+import org.ogema.driver.generic_zb.ChAddrConstants;
 import org.ogema.driver.generic_zb.Generic_ZbConfig;
 import org.ogema.driver.generic_zb.Generic_ZbDevice;
 import org.ogema.driver.generic_zb.Generic_ZbDriver;
@@ -70,50 +72,50 @@ public class MainsPowerOutlet extends Generic_ZbDevice implements ResourceListen
 		offCmdConfig = new Generic_ZbConfig();
 		offCmdConfig.interfaceId = generic_ZbConfig.interfaceId;
 		offCmdConfig.deviceAddress = generic_ZbConfig.interfaceId;
-		offCmdConfig.deviceId = Constants.MAINS_POWER_OUTLET;
-		offCmdConfig.channelAddress = Constants.OFF_CMD_ADDRESS;
+		offCmdConfig.deviceId = MAINS_POWER_OUTLET_DEVICE_ID;
+		offCmdConfig.channelAddress = ChAddrConstants.OFF_CMD_ADDRESS;
 		offCmdConfig.timeout = -1; // Not necessary because it's hard coded for Commands
 		offCmdConfig.resourceName = generic_ZbConfig.resourceName;
 
 		offCmdConfig.resourceName += "_TurnOff"; // In case of several devices with the same
 		// resourceName
-		offCmdConfig.chLocator = addChannel(offCmdConfig);
+		offCmdConfig.chConfiguration = addChannel(offCmdConfig);
 
 		onCmdConfig = new Generic_ZbConfig();
 		onCmdConfig.interfaceId = generic_ZbConfig.interfaceId;
 		onCmdConfig.deviceAddress = generic_ZbConfig.interfaceId;
-		onCmdConfig.deviceId = Constants.MAINS_POWER_OUTLET;
-		onCmdConfig.channelAddress = Constants.ON_CMD_ADDRESS;
+		onCmdConfig.deviceId = MAINS_POWER_OUTLET_DEVICE_ID;
+		onCmdConfig.channelAddress = ChAddrConstants.ON_CMD_ADDRESS;
 		onCmdConfig.timeout = -1; // Not necessary because it's hard coded for Commands
 		onCmdConfig.resourceName = generic_ZbConfig.resourceName;
 
 		onCmdConfig.resourceName += "_TurnOn"; // In case of several devices with the same
 		// resourceName
-		onCmdConfig.chLocator = addChannel(onCmdConfig);
+		onCmdConfig.chConfiguration = addChannel(onCmdConfig);
 
 		toggleCmdConfig = new Generic_ZbConfig();
 		toggleCmdConfig.interfaceId = generic_ZbConfig.interfaceId;
 		toggleCmdConfig.deviceAddress = generic_ZbConfig.interfaceId;
-		toggleCmdConfig.deviceId = Constants.MAINS_POWER_OUTLET;
-		toggleCmdConfig.channelAddress = Constants.TOGGLE_CMD_ADDRESS;
+		toggleCmdConfig.deviceId = MAINS_POWER_OUTLET_DEVICE_ID;
+		toggleCmdConfig.channelAddress = ChAddrConstants.TOGGLE_CMD_ADDRESS;
 		toggleCmdConfig.timeout = -1; // Not necessary because it's hard coded for Commands
 		toggleCmdConfig.resourceName = generic_ZbConfig.resourceName;
 
 		toggleCmdConfig.resourceName += "_Toggle"; // In case of several devices with the same
 		// resourceName
-		toggleCmdConfig.chLocator = addChannel(toggleCmdConfig);
+		toggleCmdConfig.chConfiguration = addChannel(toggleCmdConfig);
 
 		onOffConfig = new Generic_ZbConfig();
 		onOffConfig.interfaceId = generic_ZbConfig.interfaceId;
 		onOffConfig.deviceAddress = generic_ZbConfig.interfaceId;
-		onOffConfig.deviceId = Constants.MAINS_POWER_OUTLET;
-		onOffConfig.channelAddress = Constants.ON_OFF_ATTR_ADDRESS;
+		onOffConfig.deviceId = MAINS_POWER_OUTLET_DEVICE_ID;
+		onOffConfig.channelAddress = ChAddrConstants.ON_OFF_ATTR_ADDRESS;
 		onOffConfig.timeout = 10000;
 		onOffConfig.resourceName = generic_ZbConfig.resourceName;
 
 		onOffConfig.resourceName += "_OnOffAttribute"; // In case of several devices with the same
 		// resourceName
-		onOffConfig.chLocator = addChannel(onOffConfig);
+		onOffConfig.chConfiguration = addChannel(onOffConfig);
 
 		/*
 		 * Initialize the resource tree
@@ -132,53 +134,50 @@ public class MainsPowerOutlet extends Generic_ZbDevice implements ResourceListen
 	}
 
 	@Override
-	public ChannelLocator addChannel(Generic_ZbConfig config) {
+	public ChannelConfiguration addChannel(Generic_ZbConfig config) {
+		ChannelLocator channelLocator;
+		ChannelConfiguration channelConfig = null;
 		String[] splitAddress = config.channelAddress.split(":");
-		ChannelLocator channelLocator = createChannelLocator(config.channelAddress);
-		ChannelConfiguration channelConfig = channelAccess.getChannelConfiguration(channelLocator);
+		channelLocator = createChannelLocator(config.channelAddress);
 		if (driver.channelMap.containsKey(config.resourceName)) {
 			System.out.println("Error, resourceName already taken.");
 			return null;
 		}
-		driver.channelMap.put(config.resourceName, channelLocator);
 		switch (splitAddress[1]) {
 		case "COMMAND":
-			commandChannel.put(config.channelAddress, channelLocator);
-			channelConfig.setSamplingPeriod(-1);
 			try {
-				channelAccess.addChannel(channelConfig);
-			} catch (ChannelConfigurationException e) {
+				channelConfig = channelAccess.addChannel(channelLocator, Direction.DIRECTION_INOUT, -1);
+				addToUpdateListener(channelConfig);
+				commandChannel.put(config.channelAddress, channelConfig);
+				driver.channelMap.put(config.resourceName, channelConfig);
+			} catch (ChannelAccessException e) {
 				e.printStackTrace();
 			}
-			addToUpdateListener(channelLocator);
 			break;
 		case "ATTRIBUTE":
-			attributeChannel.put(config.channelAddress, channelLocator);
-			timeout = config.timeout;
-			channelConfig.setSamplingPeriod(timeout);
-
 			try {
-				channelAccess.addChannel(channelConfig);
-			} catch (ChannelConfigurationException e) {
+				channelConfig = channelAccess.addChannel(channelLocator, Direction.DIRECTION_INOUT, config.timeout);
+				addToUpdateListener(channelConfig);
+				attributeChannel.put(config.channelAddress, channelConfig);
+				driver.channelMap.put(config.resourceName, channelConfig);
+			} catch (ChannelAccessException e) {
 				e.printStackTrace();
-			} catch (NullPointerException ex) {
-				ex.printStackTrace();
 			}
-			addToUpdateListener(channelLocator);
 			break;
 		default:
 		}
-		return channelLocator;
+		
+		return channelConfig;
 	}
-
+	
 	@Override
 	public void resourceChanged(Resource resource) {
 		try {
 			if (resource.equals(onOff)) {
 				if (onOff.getValue())
-					channelAccess.setChannelValue(onCmdConfig.chLocator, ON);
+					channelAccess.setChannelValue(onCmdConfig.chConfiguration, ON);
 				else
-					channelAccess.setChannelValue(offCmdConfig.chLocator, OFF);
+					channelAccess.setChannelValue(offCmdConfig.chConfiguration, OFF);
 			}
 		} catch (ChannelAccessException e) {
 			// TODO Auto-generated catch block
@@ -190,8 +189,8 @@ public class MainsPowerOutlet extends Generic_ZbDevice implements ResourceListen
 	public void updateChannelValue(String chAddr, Value value) {
 		try {
 			switch (chAddr) {
-			case Constants.ON_OFF_ATTR_ADDRESS:
-				SampledValue onoffState = channelAccess.getChannelValue(onOffConfig.chLocator);
+			case ChAddrConstants.ON_OFF_ATTR_ADDRESS:
+				SampledValue onoffState = channelAccess.getChannelValue(onOffConfig.chConfiguration);
 				isOn.setValue(onoffState.getValue().getBooleanValue());
 				break;
 			default:

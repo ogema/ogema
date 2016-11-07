@@ -16,6 +16,7 @@
 package org.ogema.driver.zwavehl.devices;
 
 import org.ogema.core.application.ApplicationManager;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.BooleanValue;
@@ -69,7 +70,7 @@ public class SwitchBox extends ZWaveHlDevice implements ResourceValueListener<Bo
 		attributeConfig.deviceAddress = zwaveHlConfig.deviceAddress;
 		attributeConfig.channelAddress = "0025:0001:0000";
 		attributeConfig.resourceName = zwaveHlConfig.resourceName + "_OnOffToggle";
-		attributeConfig.chLocator = addChannel(attributeConfig);
+		attributeConfig.chConfiguration = addChannel(attributeConfig);
 
 		// The on/off switch
 		onOff = (BooleanResource) switchBox.onOffSwitch().stateControl().create();
@@ -78,6 +79,8 @@ public class SwitchBox extends ZWaveHlDevice implements ResourceValueListener<Bo
 		isOn.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
 		switchBox.activate(true);
+		onOff.activate(false);
+		isOn.activate(false);
 		onOff.addValueListener(this, true);
 	}
 
@@ -88,9 +91,9 @@ public class SwitchBox extends ZWaveHlDevice implements ResourceValueListener<Bo
 
 	@Override
 	public void resourceChanged(BooleanResource resource) {
-		ChannelLocator locator = this.valueChannel.get("0025:0001:0000");
+		ChannelConfiguration chConf = this.valueChannel.get("0025:0001:0000");
 		BooleanValue newState = new BooleanValue(resource.getValue());
-		writeToChannel(locator, newState);
+		writeToChannel(chConf, newState);
 	}
 
 	@Override

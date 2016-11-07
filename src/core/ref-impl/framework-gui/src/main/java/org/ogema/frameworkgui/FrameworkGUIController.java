@@ -18,7 +18,6 @@ package org.ogema.frameworkgui;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Dictionary;
 import java.util.Enumeration;
@@ -27,22 +26,19 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
-
-import org.codehaus.jackson.map.ObjectMapper;
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.AppID;
-import org.ogema.core.security.WebAccessManager;
 import org.ogema.frameworkgui.json.AppsJsonGet;
 import org.ogema.frameworkgui.json.AppsJsonWebResource;
 import org.ogema.frameworkgui.utils.AppCompare;
-import org.ogema.frameworkgui.utils.Utils;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  *
@@ -54,7 +50,7 @@ public class FrameworkGUIController {
 	private final BundleContext bundleContext;
 	private final AccessManager accessManager;
 	private final PermissionManager permissionManager;
-	private static final String DONT_APPEND = "no_index_html";
+//	private static final String DONT_APPEND = "no_index_html";
 
 	public FrameworkGUIController(AdministrationManager administrationManager, BundleContext bundleContext,
 			AccessManager accessManager, PermissionManager permissionManager) {
@@ -80,7 +76,7 @@ public class FrameworkGUIController {
 
 		for (AdminApplication entry : apps) {
 			String name = entry.getID().getBundle().getSymbolicName();
-			AppID appId = entry.getID();
+//			AppID appId = entry.getID();
 			if (!accessManager.isAppPermitted(user, entry.getID())) {
 				continue;
 			}
@@ -238,7 +234,7 @@ public class FrameworkGUIController {
 		//		Bundle b = bundleContext.getBundle(id);
 		Bundle b = app.getBundleRef();
 		Enumeration<URL> entries = b.findEntries(path, null, false);
-		String replace = path + "/";
+//		String replace = path + "/";
 		if (entries != null) {
 			// permObj.put("webResources", permsArray);
 			sb.append('[');

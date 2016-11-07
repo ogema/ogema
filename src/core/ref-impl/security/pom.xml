@@ -11,7 +11,7 @@
 	<parent>
 		<groupId>org.ogema.ref-impl</groupId>
 		<artifactId>ref-impl</artifactId>
-		<version>2.0.4</version>
+		<version>2.1.0</version>
 	</parent>
 
 	<properties>
@@ -42,8 +42,12 @@
 				<extensions>true</extensions>
 				<configuration>
 					<instructions>
-						<Export-Package>org.ogema.impl.security</Export-Package>
-						<Import-Package>org.apache.felix.service.command;resolution:=optional,*</Import-Package>
+<!-- 						<Export-Package>org.ogema.impl.security</Export-Package> -->
+						<Import-Package>
+                            org.apache.felix.service.command;resolution:=optional,
+                            org.eclipse.jetty.servlets;resolution:=optional,
+                            *
+                        </Import-Package>
 						<Embed-StripVersion>true</Embed-StripVersion>
 						<Embed-Dependency>user-rights-proxy</Embed-Dependency>
 					</instructions>
@@ -122,7 +126,6 @@
 		<dependency>
 			<groupId>org.json</groupId>
 			<artifactId>json</artifactId>
-			<version>20070829</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.felix</groupId>
@@ -133,11 +136,6 @@
 			<groupId>org.ogema.ref-impl</groupId>
 			<artifactId>user-rights-proxy</artifactId>
 			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.eclipse.jetty</groupId>
-			<artifactId>jetty-servlets</artifactId>
-			<version>9.2.11.v20150529</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.felix</groupId>

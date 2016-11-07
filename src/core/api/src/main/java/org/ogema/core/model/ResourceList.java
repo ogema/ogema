@@ -70,7 +70,7 @@ public interface ResourceList<T extends Resource> extends Resource {
 	 * @throws IllegalArgumentException if the type of reference is incompatible
 	 * with this array's type.
 	 */
-	void add(T reference);
+	T add(T reference);
 
 	/**
 	 * Add direct child resource as element of the list

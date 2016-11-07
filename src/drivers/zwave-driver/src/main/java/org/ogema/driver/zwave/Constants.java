@@ -25,5 +25,6 @@ public class Constants {
 	public static final String STATIC_IF_NAME = "org.ogema.driver.zwave.portname";
 	public static final int CONNECT_WAIT_TIME = 30000;
 	public static final String HARDWARE_DESCRIPTOR = "org.ogema.driver.zwave.hardware-descriptor";
-	public static final String DEFAULT_HW_DESCRIPTOR = ".+:0658:0200:";
+	public static final String SIGMA_ACC_UZB_EU = ".+:0658:0200:";
+	public static final String AEON_LABS_DSA02203_ZWEU = ".+:10c4:ea60:.+";
 }

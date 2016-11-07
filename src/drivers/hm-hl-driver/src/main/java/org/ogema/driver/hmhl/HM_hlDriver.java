@@ -20,20 +20,20 @@ import java.util.Map;
 
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
-import org.ogema.core.channelmanager.NoSuchDriverException;
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
+import org.ogema.core.channelmanager.ChannelAccessException;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
-import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
+import org.ogema.driver.hmhl.devices.CO2Detector;
+import org.ogema.driver.hmhl.devices.DoorWindowSensor;
 import org.ogema.driver.hmhl.devices.MotionDetector;
 import org.ogema.driver.hmhl.devices.PowerMeter;
 import org.ogema.driver.hmhl.devices.Remote;
-import org.ogema.driver.hmhl.devices.CO2Detector;
 import org.ogema.driver.hmhl.devices.SmokeSensor;
+import org.ogema.driver.hmhl.devices.SwitchPlug;
 import org.ogema.driver.hmhl.devices.THSensor;
 import org.ogema.driver.hmhl.devices.Thermostat;
 import org.ogema.driver.hmhl.devices.WaterSensor;
-import org.ogema.driver.hmhl.Activator;
 import org.slf4j.Logger;
 
 public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
@@ -43,7 +43,8 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 	protected final Map<String, HM_hlDevice> devices; // String ==
 	// interface:deviceAddress
 	protected final DeviceDescriptor deviceDesc;
-	public final Map<String, ChannelLocator> channelMap; // Map a name to a
+	public final Map<String, ChannelConfiguration> channelMap; // Map a name to a
+	private volatile Thread thread;
 	// channelLocator
 	// (resourceId)
 
@@ -52,21 +53,26 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 	public HM_hlDriver() {
 		this.devices = new HashMap<String, HM_hlDevice>();
 		this.deviceDesc = new DeviceDescriptor();
-		this.channelMap = new HashMap<String, ChannelLocator>();
+		this.channelMap = new HashMap<String, ChannelConfiguration>();
 	}
 
 	@Override
 	public void start(ApplicationManager appManager) {
 		logger = appManager.getLogger();
 		this.appManager = appManager;
-		new Thread(this, "homematic-hl-deviceScan").start();
+		thread = new Thread(this, "homematic-hl-deviceScan");
+		thread.start();
 	}
 
 	@Override
 	public void stop(AppStopReason reason) {
+		Activator.bundleIsRunning = false;
 		for (HM_hlDevice device : devices.values()) {
 			device.close();
 		}
+		if (thread != null) 
+			thread.interrupt();
+		thread = null;
 	}
 
 	/**
@@ -84,8 +90,12 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 				device = new THSensor(this, appManager, config);
 				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
 				break;
-			case "threeStateSensor":
-				device = new WaterSensor(this, appManager, config);
+			case "threeStateSensor":  // can be either a water sensor or a door window contact
+				boolean isDoorWindowContact = config.deviceParameters.equals("00B1"); // FIXME better way to identify this?
+				if (isDoorWindowContact)
+					device = new DoorWindowSensor(this, appManager, config);
+				else
+					device = new WaterSensor(this, appManager, config);
 				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
 				break;
 			case "thermostat":
@@ -94,6 +104,10 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 				break;
 			case "powerMeter":
 				device = new PowerMeter(this, appManager, config);
+				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
+				break;
+			case "switch":
+				device = new SwitchPlug(this, appManager, config);
 				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
 				break;
 			case "smokeDetector":
@@ -146,14 +160,21 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 			case "THSensor":
 				device = new THSensor(this, appManager, deviceLocator);
 				break;
-			case "threeStateSensor":
-				device = new WaterSensor(this, appManager, deviceLocator);
+			case "threeStateSensor": // water sensor or door window contact
+				boolean isDoorWindowContact = deviceLocator.getParameters().equals("00B1"); // FIXME better way to identify this?
+				if (isDoorWindowContact)
+					device = new DoorWindowSensor(this, appManager, deviceLocator);
+				else
+					device = new WaterSensor(this, appManager, deviceLocator);
 				break;
 			case "thermostat":
 				device = new Thermostat(this, appManager, deviceLocator);
 				break;
 			case "powerMeter":
 				device = new PowerMeter(this, appManager, deviceLocator);
+				break;
+			case "switch":
+				device = new SwitchPlug(this, appManager, deviceLocator);
 				break;
 			case "smokeDetector":
 				device = new SmokeSensor(this, appManager, deviceLocator);
@@ -195,20 +216,18 @@ public class HM_hlDriver implements Application, DeviceScanListener, Runnable {
 		while (true && Activator.bundleIsRunning) {
 			try {
 				Thread.sleep(Constants.DEVICE_SCAN_WAITING_TIME);
+			} catch (InterruptedException e) {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+			if (!Activator.bundleIsRunning)
+				return;
 			logger.debug("Start device scan ...");
 			try {
 				this.appManager.getChannelAccess().discoverDevices("homematic-driver", "USB", null, this);
-			} catch (UnsupportedOperationException e) {
-				logger.error("homematic-driver seems not to support device scan.");
-			} catch (NoSuchInterfaceException e) {
-				logger
-						.error("homematic-driver reported problem during the communication oder the specified interface.");
-			} catch (NoSuchDriverException e) {
-				logger
-						.debug("Either the homematic-driver is not yet installed or the coordinator hardware is not connected.");
+			} catch (ChannelAccessException e) {
+				logger.warn("device scan failed", e.getCause());
+				e.printStackTrace();
 			}
 			logger.debug("... device scan finished!");
 		}

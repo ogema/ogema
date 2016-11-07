@@ -295,6 +295,36 @@ public class AppPermissionImpl implements AppPermission {
 		ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
 		List<ConditionalPermissionInfo> piList = cpu.getConditionalPermissionInfos();
 
+		// apply the exceptions
+		for (AppPermissionType apt : nTypes) {
+			// Create new permission info object each new entry
+			// Multiple entries with same name are not permitted.
+			AppPermissionTypeImpl aptimpl = (AppPermissionTypeImpl) apt;
+			String name = aptimpl.name;
+			ConditionInfo conds[] = new ConditionInfo[aptimpl.conds.size()];
+			PermissionInfo perms[] = new PermissionInfo[aptimpl.perms.size()];
+			ConditionalPermissionInfo cpi = cpa.newConditionalPermissionInfo(name, aptimpl.conds.toArray(conds),
+					aptimpl.perms.toArray(perms), ConditionalPermissionInfo.DENY);
+			// Check if a permission info with the same name exists
+			for (ConditionalPermissionInfo tmpcpi : piList) {
+				// If a permission info exists in the table remove it before
+				// adding the new info with the same name
+				if (DefaultPermissionManager.implies(tmpcpi, cpi)) {
+					exists = true;
+					break;
+				}
+			}
+			if (!exists) {
+				if (Configuration.DEBUG) {
+					log.info(apt.getDeclarationString());
+				}
+				piList.add(cpi);
+				aptimpl.pInfo = cpi;
+			}
+			else
+				exists = false;
+		}
+
 		// apply the permissions
 		for (AppPermissionType apt : pTypes) {
 			// Create new permission info object each new entry
@@ -325,35 +355,6 @@ public class AppPermissionImpl implements AppPermission {
 				exists = false;
 		}
 
-		// apply the exceptions
-		for (AppPermissionType apt : nTypes) {
-			// Create new permission info object each new entry
-			// Multiple entries with same name are not permitted.
-			AppPermissionTypeImpl aptimpl = (AppPermissionTypeImpl) apt;
-			String name = aptimpl.name;
-			ConditionInfo conds[] = new ConditionInfo[aptimpl.conds.size()];
-			PermissionInfo perms[] = new PermissionInfo[aptimpl.perms.size()];
-			ConditionalPermissionInfo cpi = cpa.newConditionalPermissionInfo(name, aptimpl.conds.toArray(conds),
-					aptimpl.perms.toArray(perms), ConditionalPermissionInfo.DENY);
-			// Check if a permission info with the same name exists
-			for (ConditionalPermissionInfo tmpcpi : piList) {
-				// If a permission info exists in the table remove it before
-				// adding the new info with the same name
-				if (DefaultPermissionManager.implies(tmpcpi, cpi)) {
-					exists = true;
-					break;
-				}
-			}
-			if (!exists) {
-				if (Configuration.DEBUG) {
-					log.info(apt.getDeclarationString());
-				}
-				piList.add(cpi);
-				aptimpl.pInfo = cpi;
-			}
-			else
-				exists = false;
-		}
 		boolean result = cpu.commit();
 		refresh();
 		return result;

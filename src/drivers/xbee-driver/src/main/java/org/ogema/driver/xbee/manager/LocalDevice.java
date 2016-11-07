@@ -75,16 +75,12 @@ public class LocalDevice {
 		addressMappings = new AddressMappings();
 
 		this.ogemaConnection = ogemaConnection;
-
+		
 		deviceHandler = new DeviceHandler(this, cyclicSleepPeriod);
 		deviceHandlerThread = new Thread(deviceHandler);
-		deviceHandlerThread.setName("xbee-driver-deviceHandler");
-		deviceHandlerThread.start();
 
 		messageHandler = new MessageHandler(this, cyclicSleepPeriod);
 		messageHandlerThread = new Thread(messageHandler);
-		messageHandlerThread.setName("xbee-driver-messageHandler");
-		messageHandlerThread.start();
 
 		inputHandler = new InputHandler(this);
 
@@ -93,6 +89,12 @@ public class LocalDevice {
 		} catch (SerialPortException e) {
 			throw e;
 		}
+
+		deviceHandlerThread.setName("xbee-driver-deviceHandler");
+		deviceHandlerThread.start();
+
+		messageHandlerThread.setName("xbee-driver-messageHandler");
+		messageHandlerThread.start();
 
 		connection.sendFrame(atCommandReadSp);
 		remoteDevicesFile = new File("./config", "zigbee.devices");

@@ -31,7 +31,7 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
  */
 @XmlAccessorType(XmlAccessType.PROPERTY)
 @XmlType(name = "TimeArrayResource", namespace = NS_OGEMA_REST)
-@XmlRootElement(name = "timeArray", namespace = NS_OGEMA_REST)
+@XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 public class JaxbTimeArray extends JaxbResource {
 
 	JaxbTimeArray(TimeArrayResource r, SerializationStatus serMan) {

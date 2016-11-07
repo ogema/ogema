@@ -31,14 +31,12 @@ import org.ogema.core.model.array.IntegerArrayResource;
 import org.ogema.core.model.array.StringArrayResource;
 import org.ogema.core.model.array.TimeArrayResource;
 import org.ogema.core.model.schedule.Schedule;
-import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
-import org.ogema.core.resourcemanager.Transaction;
 import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.core.timeseries.ReadOnlyTimeSeries;
@@ -54,6 +52,7 @@ import org.ops4j.pax.exam.spi.reactors.PerClass;
  * @author Jan Lapp, Timo Fischer, Fraunhofer IWES
  */
 @ExamReactorStrategy(PerClass.class)
+@SuppressWarnings("deprecation")
 public class TransactionTest extends OsgiTestBase {
 
 	/*
@@ -64,7 +63,7 @@ public class TransactionTest extends OsgiTestBase {
 		final BooleanResource b1 = resMan.createResource("b1", BooleanResource.class);
 		final BooleanResource b2 = resMan.createResource("b2", BooleanResource.class);
 
-		final Transaction transaction = resAcc.createTransaction();
+		final org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(b1);
 		transaction.addResource(b2);
 		assertNull(transaction.getBoolean(b1));
@@ -93,7 +92,7 @@ public class TransactionTest extends OsgiTestBase {
 		final FloatResource f2 = resMan.createResource("f2", FloatResource.class);
 		final IntegerResource i1 = resMan.createResource("i1", IntegerResource.class);
 
-		Transaction transaction = resAcc.createTransaction();
+		org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		transaction.addResources(Arrays.asList(new Resource[] { f1, f2, i1 }));
 		assertNull(transaction.getFloat(f1));
 		assertNull(transaction.getFloat(f2));
@@ -126,7 +125,7 @@ public class TransactionTest extends OsgiTestBase {
 		final StringResource res1 = resMan.createResource("s1", StringResource.class);
 		final StringResource res2 = resMan.createResource("s2", StringResource.class);
 
-		final Transaction transaction = resAcc.createTransaction();
+		final org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(res1);
 		transaction.addResource(res2);
 		assertNull(transaction.getString(res1));
@@ -154,7 +153,7 @@ public class TransactionTest extends OsgiTestBase {
 		final TimeResource res1 = resMan.createResource("t1", TimeResource.class);
 		final TimeResource res2 = resMan.createResource("t2", TimeResource.class);
 
-		final Transaction transaction = resAcc.createTransaction();
+		final org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(res1);
 		transaction.addResource(res2);
 		assertNull(transaction.getTime(res1));
@@ -178,14 +177,13 @@ public class TransactionTest extends OsgiTestBase {
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
 	public void transactionWritesOpaqueValues() {
 		final org.ogema.core.model.simple.OpaqueResource res1 = resMan.createResource("o1",
 				org.ogema.core.model.simple.OpaqueResource.class);
 		final org.ogema.core.model.simple.OpaqueResource res2 = resMan.createResource("o2",
 				org.ogema.core.model.simple.OpaqueResource.class);
 
-		final Transaction transaction = resAcc.createTransaction();
+		final org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(res1);
 		transaction.addResource(res2);
 		assertNull(transaction.getByteArray(res1));
@@ -226,7 +224,7 @@ public class TransactionTest extends OsgiTestBase {
 		final ByteArrayResource res1 = resMan.createResource("bya1", ByteArrayResource.class);
 		final ByteArrayResource res2 = resMan.createResource("bya2", ByteArrayResource.class);
 
-		final Transaction transaction = resAcc.createTransaction();
+		final org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(res1);
 		transaction.addResource(res2);
 		assertNull(transaction.getByteArray(res1));
@@ -267,7 +265,7 @@ public class TransactionTest extends OsgiTestBase {
 		final BooleanArrayResource res1 = resMan.createResource("ba1", BooleanArrayResource.class);
 		final BooleanArrayResource res2 = resMan.createResource("ba2", BooleanArrayResource.class);
 
-		final Transaction transaction = resAcc.createTransaction();
+		final org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(res1);
 		transaction.addResource(res2);
 		assertNull(transaction.getBooleanArray(res1));
@@ -308,7 +306,7 @@ public class TransactionTest extends OsgiTestBase {
 		final FloatArrayResource res1 = resMan.createResource("fa1", FloatArrayResource.class);
 		final FloatArrayResource res2 = resMan.createResource("fa2", FloatArrayResource.class);
 
-		final Transaction transaction = resAcc.createTransaction();
+		final org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(res1);
 		transaction.addResource(res2);
 		assertNull(transaction.getFloatArray(res1));
@@ -347,7 +345,7 @@ public class TransactionTest extends OsgiTestBase {
 	@Test
 	public void transactionWritesIntArrayValues() {
 		final IntegerArrayResource resource = resMan.createResource("ia1", IntegerArrayResource.class);
-		final Transaction transaction = resAcc.createTransaction();
+		final org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(resource);
 		assertNull(transaction.getIntegerArray(resource));
 		for (int i = 0; i < 10; ++i) {
@@ -376,7 +374,7 @@ public class TransactionTest extends OsgiTestBase {
 	@Test
 	public void transactionWritesStringArrayValues() {
 		final StringArrayResource resource = resMan.createResource("sa1", StringArrayResource.class);
-		final Transaction transaction = resAcc.createTransaction();
+		final org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(resource);
 		assertNull(transaction.getStringArray(resource));
 		for (int i = 0; i < 10; ++i) {
@@ -404,7 +402,7 @@ public class TransactionTest extends OsgiTestBase {
 	@Test
 	public void transactionWritesTimeArrayValues() {
 		final TimeArrayResource resource = resMan.createResource("ta1", TimeArrayResource.class);
-		final Transaction transaction = resAcc.createTransaction();
+		final org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(resource);
 		assertNull(transaction.getTimeArray(resource));
 		for (int i = 0; i < 10; ++i) {
@@ -434,7 +432,7 @@ public class TransactionTest extends OsgiTestBase {
 	public void transactionWritesSchedules() {
 		final TimeResource resource = resMan.createResource("ta1scheduleAdded", TimeResource.class);
 		final Schedule schedule = resource.addDecorator("schedule", Schedule.class);
-		final Transaction transaction = resAcc.createTransaction();
+		final org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(schedule);
 		assertNull(transaction.getSchedule(schedule));
 		for (int i = 0; i < 10; ++i) {
@@ -460,8 +458,9 @@ public class TransactionTest extends OsgiTestBase {
 	@Test
 	public void settingValuesToUninitializedFieldsThrowsException() {
 		final FloatResource f1 = resMan.createResource("f1", FloatResource.class);
+		@SuppressWarnings("unused")
 		final FloatResource f2 = resMan.createResource("f2", FloatResource.class);
-		Transaction transaction = resAcc.createTransaction();
+		org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		boolean exceptionOccurred = false;
 		try {
 			transaction.setFloat(f1, 1.f);
@@ -475,7 +474,7 @@ public class TransactionTest extends OsgiTestBase {
 	public void writingToVirtualResourceThrowsException() {
 		final ElectricityMeter meter = resMan.createResource("dummyMeter", ElectricityMeter.class);
 		final FloatResource f1 = meter.price().price();
-		Transaction transaction = resAcc.createTransaction();
+		org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 		transaction.addResource(f1);
 		transaction.setFloat(f1, 33.1f);
 		boolean exceptionOccurred = false;
@@ -491,7 +490,7 @@ public class TransactionTest extends OsgiTestBase {
 	public void activationWithComplexResources() {
 		final TemperatureSensor tempSens = resMan.createResource("TransactionTestTempSens", TemperatureSensor.class);
 		tempSens.reading().create();
-		final Transaction transaction = resAcc.createTransaction();
+		final org.ogema.core.resourcemanager.Transaction transaction = resAcc.createTransaction();
 
 		transaction.addTree(tempSens, false);
 		assertTrue(transaction.getResources().contains(tempSens));

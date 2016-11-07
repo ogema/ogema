@@ -63,7 +63,9 @@ public class InputHandler implements Runnable {
 					try {
 						inputEventLock.wait();
 					} catch (InterruptedException e1) {
-						e1.printStackTrace();
+//						e1.printStackTrace();
+						if (!Activator.bundleIsRunning)
+							return;
 					}
 				}
 				// long timeStamp = System.currentTimeMillis();

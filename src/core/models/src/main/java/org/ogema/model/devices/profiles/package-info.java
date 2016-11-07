@@ -14,7 +14,8 @@
  * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
 /**
- * TODO
+ * Models for profile information, such as consumption patterns of 
+ * electrical devices.
  */
 package org.ogema.model.devices.profiles;
 

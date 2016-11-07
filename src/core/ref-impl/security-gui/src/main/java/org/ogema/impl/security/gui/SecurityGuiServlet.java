@@ -19,11 +19,15 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.security.AllPermission;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -40,6 +44,7 @@ import org.ogema.accesscontrol.AdminPermission;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.core.installationmanager.ApplicationSource;
 import org.ogema.core.installationmanager.InstallableApplication;
+import org.ogema.core.installationmanager.InstallableApplication.InstallState;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
@@ -54,7 +59,12 @@ import org.ogema.resourcetree.SimpleResourceData;
 import org.ogema.resourcetree.TreeElement;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleException;
+import org.osgi.framework.FrameworkEvent;
+import org.osgi.framework.FrameworkListener;
+import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.startlevel.FrameworkStartLevel;
+import org.osgi.framework.wiring.BundleWiring;
+import org.osgi.framework.wiring.FrameworkWiring;
 import org.slf4j.Logger;
 
 public class SecurityGuiServlet extends HttpServlet {
@@ -86,19 +96,22 @@ public class SecurityGuiServlet extends HttpServlet {
 
 	private DefaultFilter filter;
 
+	private Users user;
+
 	SecurityGuiServlet(PermissionManager pm, SecurityGui adminapp) {
 		this.admin = adminapp;
 		this.pman = pm;
 		db = adminapp.db;
 		this.json = new JSONCreator(pm, adminapp);
 		this.filter = new DefaultFilter(logger);
+		this.user = new Users(pm, admin.getUserAdmin());
 	}
 
 	synchronized public String getAppstoresData() throws Exception {
 		JSONArray appStoresData = new JSONArray();
 		int i = 0;
 		JSONObject json = new JSONObject();
-		List<ApplicationSource> appStores = admin.instMan.getConnectedAppSources();
+		List<ApplicationSource> appStores = admin.sources.getConnectedAppSources();
 		for (ApplicationSource entry : appStores) {
 			appStoresData.put(i++, entry.getName());
 		}
@@ -141,6 +154,7 @@ public class SecurityGuiServlet extends HttpServlet {
 		 * List of locations where App-files archived (Appstores)
 		 */
 		switch (pi) {
+
 		case "/geticon":
 			id = Integer.valueOf(req.getParameter("id"));
 			BundleIcon.forBundle(admin.osgi.getBundle(id), defaultIcon).writeIcon(resp);
@@ -159,7 +173,39 @@ public class SecurityGuiServlet extends HttpServlet {
 				printResponse(resp, "error");
 			}
 			break;
+		case "/appstoreusers":
+			resp.setContentType("application/json");
+			String appstore = req.getParameter("store");
+			JSONArray acc = user.getAssignedUsers(appstore);
+			printResponse(resp, acc.toString());
+			break;
+		case "/userappstores":
+			resp.setContentType("application/json");
+			String username = req.getParameter("user");
+			acc = user.getAssignedStores(username);
+			printResponse(resp, acc.toString());
+			break;
+		case "/hasappstoreaccess":
+			resp.setContentType("application/json");
+			acc = new JSONArray();
+			username = req.getParameter("user");
+			appstore = req.getParameter("store");
+			boolean access = user.hasAccess(appstore, username);
+			acc.put(access);
+			printResponse(resp, acc.toString());
+			break;
+		case "/users":
+			resp.setContentType("application/json");
+			data = json.users2JSON();
+			if (data != null) {
+				printResponse(resp, data);
+			}
+			else {
+				printResponse(resp, "error");
+			}
+			break;
 		case "/appstores":
+			resp.setContentType("application/json");
 			if (DEBUG)
 				logger.info("Get Appstores");
 			try {
@@ -174,25 +220,20 @@ public class SecurityGuiServlet extends HttpServlet {
 		 */
 		case "/apps": // The path is in this case /serletName/path1
 			String appStore = req.getParameter("name");
-			ApplicationSource appSource = admin.instMan.connectAppSource(appStore);
+			ApplicationSource appSource = admin.sources.connectAppSource(appStore);
 			if (DEBUG)
 				logger.info("Get Apps in " + appSource.getAddress());
-			if (appStore.equals(admin.instMan.getLocalStore().getName())) {
-				try {
-					data = getAppFiles(appSource);
-					printResponse(resp, data);
-				} catch (Exception e) {
-					e.printStackTrace(resp.getWriter());
-				}
-			}
-			else {
-				printResponse(resp, "Only local appstores supported yet");
+			try {
+				data = getAppFiles(appSource);
+				printResponse(resp, data);
+			} catch (Exception e) {
+				e.printStackTrace(resp.getWriter());
 			}
 			break;
 		case "/app":
 			String name = req.getParameter("name");
 			appStore = req.getParameter("appstore");
-			appSource = admin.instMan.connectAppSource(appStore);
+			appSource = admin.sources.connectAppSource(appStore);
 			if (appStore == null || name == null) {
 				printResponse(resp, "No appstore or app is selected.");
 				;
@@ -314,10 +355,18 @@ public class SecurityGuiServlet extends HttpServlet {
 				id = Integer.valueOf(idStr);
 
 			switch (action) {
-			case "getInfo":
+			case "getURL":
+				resp.setContentType("application/json");
+
 				if (id != -1) {
-					sb = json.bundleInfos2JSON(id);
-					data = sb.toString();
+					data = "{ \"url\":\"" + json.url2JSON(id) + "\"}";
+					printResponse(resp, data);
+				}
+				break;
+			case "getInfo":
+				resp.setContentType("application/json");
+				if (id != -1) {
+					data = json.manifest2JSON(id);
 					printResponse(resp, data);
 				}
 				else
@@ -339,7 +388,6 @@ public class SecurityGuiServlet extends HttpServlet {
 				Bundle b = admin.osgi.getBundle(id);
 				InstallableApplication app = admin.instMan.createInstallableApp(b);
 				admin.instMan.install(app);
-				// admin.osgi.getBundle(id).update();
 				printResponse(resp, "{\"statusInfo\":\"Update Succeded\"}");
 				break;
 			case "start":
@@ -348,7 +396,42 @@ public class SecurityGuiServlet extends HttpServlet {
 				b = admin.osgi.getBundle(id);
 				app = admin.instMan.createInstallableApp(b);
 				try {
-					admin.osgi.getBundle(id).start();
+					
+					// XXX modified
+					Bundle framework = admin.osgi.getBundle(0);
+					
+					FrameworkWiring fw = framework.adapt(FrameworkWiring.class);
+					final CountDownLatch latch = new CountDownLatch(1);
+					FrameworkListener listener = new FrameworkListener() {
+						
+						@Override
+						public void frameworkEvent(FrameworkEvent event) {
+							if (event.getType() == FrameworkEvent.PACKAGES_REFRESHED) {
+								latch.countDown();
+							}
+						}
+					};
+					List<Bundle> l = new ArrayList<>();
+					l.add(b);
+					Collection<Bundle> forRefresh = fw.getRemovalPendingBundles();
+					Bundle[] bdls = admin.osgi.getBundles();
+					// the persistence bundle is not refreshed by default, we need to add it explicitly
+					for (Bundle bdl : bdls) {
+						if (bdl.getSymbolicName().equals("org.ogema.ref-impl.persistence")) {  
+							forRefresh.add(bdl);
+							break;
+						}
+					}
+					forRefresh = fw.getDependencyClosure(forRefresh);
+					fw.refreshBundles(forRefresh, listener);
+					try {
+						latch.await(30, TimeUnit.SECONDS);
+					} catch (InterruptedException e) { /* ignore */ }
+					//
+					
+//					admin.osgi.getBundle(id).start();
+					b.start();
+					app.setState(InstallState.FINISHED);
 				} catch (BundleException e1) {
 					printResponse(resp, "{\"statusInfo\":\"");
 					e1.printStackTrace(resp.getWriter());
@@ -406,6 +489,27 @@ public class SecurityGuiServlet extends HttpServlet {
 				data = sb.toString();
 				printResponse(resp, data);
 				break;
+			case "list":
+				sb = json.bundlesList2JSON();
+				data = sb.toString();
+				printResponse(resp, data);
+				break;
+			case "filter":
+				String nameFilter = "";
+				String minLevel = "";
+				Boolean appsOnly = false;
+				Boolean driversOnly = false;
+				nameFilter = req.getParameter("name");
+				minLevel = req.getParameter("minlvl");
+				if (req.getParameterMap().containsKey("apps")) {
+					appsOnly = true;
+				}
+				if (req.getParameterMap().containsKey("drivers")) {
+					driversOnly = true;
+				}
+				data = json.filteredBundlesList2Json(nameFilter, minLevel, appsOnly, driversOnly);
+				printResponse(resp, data);
+				break;
 			case "webResources":
 				resp.setContentType("application/json");
 				String path = req.getParameter("id");
@@ -425,12 +529,11 @@ public class SecurityGuiServlet extends HttpServlet {
 		}
 	}
 
-	private void startAppInstall(HttpServletRequest req, HttpServletResponse resp, String address, String name)
-			throws IOException {
+	private synchronized void startAppInstall(HttpServletRequest req, HttpServletResponse resp, String address,
+			String name) throws IOException {
 		if (!pman.handleSecurity(new AdminPermission(AdminPermission.APP)))
 			throw new SecurityException("Permission to install Application denied!" + address + name);
 		InstallableApplication app = admin.instMan.createInstallableApp(address, name);
-		// req.getSession().setAttribute(INSTALLATION_STATE_ATTR_NAME, app);
 
 		Bundle b = null;
 		admin.instMan.install(app);
@@ -447,7 +550,6 @@ public class SecurityGuiServlet extends HttpServlet {
 		// Start the state machine for the installation process
 
 		try {
-			// String data = getDesiredPerms(app);
 			String data = "{\"name\":\"" + b.getSymbolicName() + "\",\"id\":" + b.getBundleId() + "}";
 			printResponse(resp, data);
 		} catch (Exception e) {
@@ -460,7 +562,7 @@ public class SecurityGuiServlet extends HttpServlet {
 		pw.print(data);
 	}
 
-	@SuppressWarnings( { "unchecked", "rawtypes" })
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		PrintWriter pw = resp.getWriter();
 
@@ -490,6 +592,30 @@ public class SecurityGuiServlet extends HttpServlet {
 					logger.info(s);
 		}
 		switch (info) {
+		case "/appstorelogin":
+			resp.setContentType("text/html");
+			String status = "";
+			String userName = "";
+			String pwd = "";
+			String store = "";
+			userName = req.getParameter("user");
+			pwd = req.getParameter("pwd");
+			store = req.getParameter("store");
+			status = user.checkLogin(userName, pwd, store);
+			printResponse(resp, status);
+			break;
+		case "/appstoreuser":
+			resp.setContentType("text/html");
+			status = "";
+			userName = "";
+			pwd = "";
+			store = "";
+			userName = req.getParameter("user");
+			pwd = req.getParameter("pwd");
+			store = req.getParameter("store");
+			status = user.addCredentials(pwd, store, userName);
+			printResponse(resp, status);
+			break;
 		case "/newstartlevel":
 			resp.setContentType("text/html");
 			String levelstr = "";
@@ -513,8 +639,8 @@ public class SecurityGuiServlet extends HttpServlet {
 			break;
 		case "/newpolicy":
 			resp.setContentType("text/html");
-			String success = json.newOgemaConfig();
-			success = success + " and " + json.newOgemaPolicy();
+			String success = "\n" + json.newOgemaConfig();
+			success = success + "\n\n" + json.newOgemaPolicy();
 			printResponse(resp, success);
 			break;
 		case "/writeresource":
@@ -654,10 +780,10 @@ public class SecurityGuiServlet extends HttpServlet {
 							// default policy
 							else if (!filter.filterPermission(mode, permname, args, ap)) {
 								addPolicy(ap, mode, permname, args);
-								if (!(permname.equals(permType)
-										&& args[0].equals(filterstr)
-										&& ((args[1] == null && actions == null) || (args[1] != null && args[1]
-												.equals(actions))) && removeds == null)) {
+								if (!(permname.equals(permType) && args[0].equals(filterstr)
+										&& ((args[1] == null && actions == null)
+												|| (args[1] != null && args[1].equals(actions)))
+										&& removeds == null)) {
 									pman.removePermission(b, permType, filterstr, actions);
 								}
 							}
@@ -699,15 +825,17 @@ public class SecurityGuiServlet extends HttpServlet {
 			}
 			break;
 		case "/uploadApp":
-			String path = admin.instMan.getLocalStore().getAddress();
+			String path = System.getProperty("java.io.tmpdir"); // admin.instMan.getLocalStore().getAddress();
 			File file = receiveFile(req, resp, path);
 			String name = file.getName();
 			startAppInstall(req, resp, path, name);
 			break;
 		case "/removepermission":
+			resp.setContentType("application/json");
 			id = -2;
 			int count = -1;
 			idStr = req.getParameter("id");
+			String data = "";
 			String countStr = req.getParameter("count");
 			if (idStr != null)
 				id = Integer.valueOf(idStr);
@@ -717,14 +845,14 @@ public class SecurityGuiServlet extends HttpServlet {
 				Bundle b = admin.osgi.getBundle(id);
 				String perms = req.getParameter("remove");
 				if (perms != null) {
-					JSONObject json;
+					JSONObject jsonOb;
 					JSONObject toBeremoved = null;
 					try {
-						json = new JSONObject(perms);
+						jsonOb = new JSONObject(perms);
 						for (int i = 0; i < count; i++) {
 							// get each of the Permissions that should be
 							// removed
-							toBeremoved = (JSONObject) json.get("permission" + i);
+							toBeremoved = (JSONObject) jsonOb.get("permission" + i);
 							String permType = toBeremoved.getString("type");
 							String filter, actions;
 							try {
@@ -741,12 +869,27 @@ public class SecurityGuiServlet extends HttpServlet {
 							if (id != -1) {
 
 								pman.removePermission(b, permType, filter, actions);
+
+								try {
+									data = json.grantedPerms2JSON(id);
+									printResponse(resp, data);
+								} catch (Exception e) {
+									e.printStackTrace(resp.getWriter());
+								}
+
 							}
 							else {
 								// remove one Default Permission
 								pman.removePermission(null, permType, filter, actions);
 
 								pman.setDefaultPolicies();
+
+								try {
+									data = json.grantedPerms2JSON(-1);
+									printResponse(resp, data);
+								} catch (Exception e) {
+									e.printStackTrace(resp.getWriter());
+								}
 							}
 
 						}
@@ -758,6 +901,7 @@ public class SecurityGuiServlet extends HttpServlet {
 
 			break;
 		case "/removeall":
+			resp.setContentType("application/json");
 			id = -2;
 			Bundle b = null;
 			defPol = false;
@@ -777,8 +921,24 @@ public class SecurityGuiServlet extends HttpServlet {
 				ap.removePermissions();
 				ap.removeExceptions();
 			}
-			if (defPol)
+			if (defPol) {
 				pman.setDefaultPolicies();
+				try {
+					data = json.grantedPerms2JSON(-1);
+					printResponse(resp, data);
+				} catch (Exception e) {
+					e.printStackTrace(resp.getWriter());
+				}
+			}
+			else {
+				try {
+					data = json.grantedPerms2JSON(id);
+					printResponse(resp, data);
+				} catch (Exception e) {
+					e.printStackTrace(resp.getWriter());
+				}
+			}
+
 			break;
 		default:
 			break;
@@ -863,7 +1023,6 @@ public class SecurityGuiServlet extends HttpServlet {
 		try {
 			out = resp.getWriter();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		if (!isMultipart) {

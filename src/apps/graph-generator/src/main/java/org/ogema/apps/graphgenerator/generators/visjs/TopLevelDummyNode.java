@@ -25,7 +25,6 @@ import org.ogema.core.resourcemanager.InvalidResourceTypeException;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceGraphException;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.resourcemanager.VirtualResourceException;
@@ -76,11 +75,13 @@ public class TopLevelDummyNode implements Resource {
 	}
 
 	@Override
-	public void addResourceListener(ResourceListener listener, boolean recursive) {
+    @Deprecated
+	public void addResourceListener(org.ogema.core.resourcemanager.ResourceListener listener, boolean recursive) {
 	}
 
 	@Override
-	public boolean removeResourceListener(ResourceListener listener) {
+    @Deprecated
+	public boolean removeResourceListener(org.ogema.core.resourcemanager.ResourceListener listener) {
 		return false;
 	}
 
@@ -239,6 +240,16 @@ public class TopLevelDummyNode implements Resource {
 
 	@Override
 	public <T extends Resource> T getSubResource(String name, Class<T> type) throws NoSuchResourceException {
+		return null;
+	}
+
+	@Override
+	public <T extends Resource> T getLocationResource() {
+		return null;
+	}
+
+	@Override
+	public List<Resource> getReferencingNodes(boolean transitive) {
 		return null;
 	}
 

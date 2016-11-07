@@ -119,8 +119,9 @@ public class SumImpl implements Sum {
 	}
 
 	@Override
+    @SuppressWarnings("unchecked")
 	public List<SingleValueResource> getAddends() {
-		return Collections.unmodifiableList(m_inputs);
+		return m_inputs != null ? Collections.unmodifiableList(m_inputs) : Collections.EMPTY_LIST;
 	}
 
 	@Override

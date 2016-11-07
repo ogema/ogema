@@ -252,8 +252,11 @@ function draw() {
 		if (water == true) {
 			imgName = 'waterp.png';
 			setmessage($("#message3"), 'Im Raum ' + titleString + ' wurde Wasseraustritt festgestellt!', 4);
-		} else
+		} else{
 			imgName = 'watern.png';
+			var msgbox = $("#message3");
+			msgbox.hide();
+			}
 		document.getElementById('water').innerHTML = '<img src="' + imgName + '" />';
 	}
 

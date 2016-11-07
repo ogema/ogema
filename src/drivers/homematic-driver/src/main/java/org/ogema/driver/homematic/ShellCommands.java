@@ -33,10 +33,13 @@ import org.ogema.driver.homematic.manager.DeviceCommand;
 import org.ogema.driver.homematic.manager.RemoteDevice;
 import org.ogema.driverconfig.LLDriverInterface;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceRegistration;
 
 public class ShellCommands implements LLDriverInterface {
 	private HMDriver driver;
 	private Connection connection;
+	private final ServiceRegistration<LLDriverInterface> srLLDriver;
+	private final ServiceRegistration<ShellCommands> srCommands;
 
 	public ShellCommands(HMDriver driver, BundleContext context) {
 		Hashtable<String, Object> props = new Hashtable<String, Object>();
@@ -47,8 +50,17 @@ public class ShellCommands implements LLDriverInterface {
 				"cfglookup", "getdevconfig" });
 		this.driver = driver;
 		connection = driver.findConnection("USB");
-		context.registerService(this.getClass().getName(), this, props);
-		context.registerService(LLDriverInterface.class, this, null);
+		srCommands = context.registerService(ShellCommands.class, this, props);
+		srLLDriver = context.registerService(LLDriverInterface.class, this, null);
+	}
+	
+	void close() {
+		try {
+			srCommands.unregister();
+		} catch (Exception e) {}
+		try {
+			srLLDriver.unregister();
+		} catch (Exception e) {}
 	}
 
 	@Descriptor("Enables pairing for 60 seconds.")

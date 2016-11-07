@@ -37,4 +37,14 @@ public class DefaultEnergyResource extends UnitFloatResource implements EnergyRe
 	public final PhysicalUnit getUnit() {
 		return PhysicalUnit.JOULES;
 	}
+
+	@Override
+	public float getKWhs() {
+		return getValue() / 3600000;
+	}
+
+	@Override
+	public void setKWhs(float value) {
+		setValue(value * 3600000);
+	}
 }

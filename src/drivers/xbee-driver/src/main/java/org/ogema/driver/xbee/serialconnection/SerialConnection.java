@@ -47,7 +47,7 @@ public class SerialConnection {
 			this.serialPort.setParams(baudrate, databits, stopbits, parity);
 		} catch (SerialPortException e) {
 			logger.error(String.format("Failed to open serial port %s \n %s", port, e.getMessage()));
-			return;
+			throw e;
 		} catch (Throwable e) {
 			e.printStackTrace();
 			return;
@@ -78,6 +78,12 @@ public class SerialConnection {
 	 *            complete frame (including start delimiter and checksum)
 	 */
 	public void sendFrame(byte[] frame) {
+		if (serialPortWriter == null) {
+			logger.warn(
+					String.format("Specified port %s to coordinator hardware couldn't be detected!\nZigBee driver will not work!",
+							serialPort.getPortName()));
+			return;
+		}
 		serialPortWriter.sendData(frame);
 	}
 
@@ -85,7 +91,8 @@ public class SerialConnection {
 	 * Closes the jSSC connection and stops the serialPortWriter Thread
 	 */
 	public void closeConnection() throws SerialPortException {
-		serialPort.closePort();
+		if (serialPort.isOpened())
+			serialPort.closePort();
 		stop();
 	}
 

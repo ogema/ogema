@@ -39,6 +39,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.ogema.core.application.ApplicationManager;
+import org.ogema.core.channelmanager.measurements.LongValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.logging.OgemaLogger;
@@ -49,6 +50,7 @@ import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.model.simple.StringResource;
+import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.recordeddata.RecordedData;
 import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
@@ -93,6 +95,7 @@ import org.ogema.model.sensors.TemperatureSensor;
  * @author cnoelle
  *
  */
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class InfluxFake extends HttpServlet {
 
 	private static final long serialVersionUID = 1L;
@@ -202,7 +205,7 @@ public class InfluxFake extends HttpServlet {
 		this.dataType = dataType;
 		this.restrictions = new HashMap<String, Map<String, Class<? extends Resource>>>();
 		//System.out.println("Created new InfluxFake!!!");
-		//         t= am.getResourceManagement().createResource("auxTempResourceDoNotRemove", TemperatureResource.class); // FIXME this is currently needed in order to get access to the class loader of PhysicalUnitResources
+		//         t= am.getResourceManagement().createResource("auxTempResourceDoNotRemove", TemperatureResource.class); //  this is currently needed in order to get access to the class loader of PhysicalUnitResources
 	}
 
 	/**************** Methods to be overridden  **********/
@@ -311,35 +314,35 @@ public class InfluxFake extends HttpServlet {
 			}
 			else {
 				logger.debug("Received invalid query.");
-				resp.getWriter().write(results.toString());
+                results.write(resp.getWriter());
 				resp.setStatus(500);
 				return;
 			}
 			Resource res = ra.getResource(name);
 			if (res == null) {
 				logger.debug("Resource " + name + " not available");
-				resp.getWriter().write(results.toString());
+                results.write(resp.getWriter());
 				resp.setStatus(200); // important: do not return a server error in this case, since other Grafana graphs will collapse as well
 				return;
 			}
 			ReadOnlyTimeSeries ts = getTimeseries(res, params);
 			if (ts == null) {
 				logger.debug("Received data request for non-loggable resource.");
-				resp.getWriter().write(results.toString());
+                results.write(resp.getWriter());
 				resp.setStatus(200); // important: do not return a server error in this case, since other Grafana graphs will collapse as well
 				return;
 			}
-			Map<Long, Float> values;
+			Map<Long, Double> values;
 			if (res instanceof TemperatureResource || res instanceof TemperatureSensor
 					|| (res instanceof Schedule && res.getParent() instanceof TemperatureResource))
 				values = getValues(ts, startTime, endTime, -273.15F);
 			else
 				values = getValues(ts, startTime, endTime);
-			Iterator<Entry<Long, Float>> it = values.entrySet().iterator();
+			Iterator<Entry<Long, Double>> it = values.entrySet().iterator();
 			JSONArray pointsArray = new JSONArray();
 			int counter = 0;
 			while (it.hasNext()) {
-				Entry<Long, Float> entry = it.next();
+				Entry<Long, Double> entry = it.next();
 				JSONArray newPoint = new JSONArray();
 				newPoint.put(entry.getKey());
 				//newPoint.put(counter);   // sequence_number; required?
@@ -372,7 +375,7 @@ public class InfluxFake extends HttpServlet {
 			if (clazz == null || !Resource.class.isAssignableFrom(clazz)) {
 				logger.warn("Got a request for resources of type " + type
 						+ ", but could not access corresponding class");
-				resp.getWriter().write(results.toString());
+                results.write(resp.getWriter());
 				resp.setStatus(500);
 				return;
 			}
@@ -416,7 +419,7 @@ public class InfluxFake extends HttpServlet {
 			Map<String, Object> list = panels.get(row);
 			if (list == null) {
 				logger.warn("Received request for non-existent row");
-				resp.getWriter().write(results.toString());
+                results.write(resp.getWriter());
 				resp.setStatus(200);
 				return;
 			}
@@ -457,17 +460,17 @@ public class InfluxFake extends HttpServlet {
 			obj1.put("parameters", pr);
 		}
 		results.put(obj1);
-		//		System.out.println(" GET response " + results.toString());  // FIXME
-		resp.getWriter().write(results.toString());
+		//		System.out.println(" GET response " + results.toString());  
+        results.write(resp.getWriter());
 		resp.setStatus(200);
 	}
 
-	private Map<Long, Float> getValues(ReadOnlyTimeSeries ts, long startTime, long endTime) {
+	private Map<Long, Double> getValues(ReadOnlyTimeSeries ts, long startTime, long endTime) {
 		return getValues(ts, startTime, endTime, 0);
 	}
 
-	private Map<Long, Float> getValues(ReadOnlyTimeSeries ts, long startTime, long endTime, float offset) {
-		Map<Long, Float> vals = new LinkedHashMap<Long, Float>();
+	private Map<Long, Double> getValues(ReadOnlyTimeSeries ts, long startTime, long endTime, float offset) {
+		Map<Long, Double> vals = new LinkedHashMap<Long, Double>();
 		if (startTime > 1000)
 			startTime = startTime - 1000; // extend time interval by a second in each direction
 		if (endTime < Long.MAX_VALUE / 2)
@@ -507,7 +510,7 @@ public class InfluxFake extends HttpServlet {
 			if (sv.getQuality() == Quality.BAD) {
 				continue;
 			}
-			vals.put(sv.getTimestamp(), sv.getValue().getFloatValue() + offset);
+			vals.put(sv.getTimestamp(), sv.getValue().getDoubleValue() + offset);
 		}
 		return vals;
 	}
@@ -644,6 +647,21 @@ public class InfluxFake extends HttpServlet {
 				break;
 			}
 		}
+		else if (res instanceof TimeResource) {
+			TimeResource tr = (TimeResource) res;
+			switch (dataType.getDataType()) {
+			case 0:
+				ts = tr.getHistoricalData();
+				break;
+			case 1:
+				ts = tr.forecast();
+				break;
+			case 2:
+				ts = tr.program();
+				break;
+			}
+
+		}
 		else if (res instanceof ReadOnlyTimeSeries) { // e.g. Schedules
 			ts = (ReadOnlyTimeSeries) res;
 		}
@@ -768,7 +786,7 @@ public class InfluxFake extends HttpServlet {
 			scan.close();
 			scanner.close();
 			// assume time in s
-			//System.out.println("Calculated timestamp " + String.valueOf(number*1000l) + " from query " + subquery); // FIXME
+			//System.out.println("Calculated timestamp " + String.valueOf(number*1000l) + " from query " + subquery); 
 			return number * 1000l;
 		}
 		else if (subquery.length() > 4 && subquery.substring(0, 5).equals("now()")) {

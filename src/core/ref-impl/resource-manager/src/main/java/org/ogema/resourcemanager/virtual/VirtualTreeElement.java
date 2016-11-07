@@ -40,6 +40,13 @@ public interface VirtualTreeElement extends TreeElement {
 
 	@Override
 	VirtualTreeElement getChild(String name);
+    
+    /**
+     * Returns only non-virtual subresources, does not create virtual child elements.
+     * @param name
+     * @return a non-virtual child element or null
+     */
+    VirtualTreeElement getExistingChild(String name);
 
 	void delete();
 

@@ -24,7 +24,6 @@ import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
-import org.ogema.core.installationmanager.InstallationManagement;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
@@ -63,9 +62,8 @@ public class FrameworkAdministration implements Application {
 
 	@Reference
 	private ResourceDB resourceDB;
-	private BundleContext bundleContext;
 	private long bundleID;
-	private InstallationManagement installationManager;
+	private BundleContext bundleContext;
 
 	@Override
 	public void start(ApplicationManager appManager) {
@@ -74,29 +72,19 @@ public class FrameworkAdministration implements Application {
 		this.logger = appManager.getLogger();
 		this.resMan = appManager.getResourceManagement();
 		this.resAcc = appManager.getResourceAccess();
+		this.bundleContext = FrameworkUtil.getBundle(getClass()).getBundleContext();
 
 		logger.debug("{} started", getClass().getName());
-
-		bundleContext = FrameworkUtil.getBundle(getClass()).getBundleContext();
 		AccessManager accessManager = permissionManager.getAccessManager();
-
-		bundleContext = FrameworkUtil.getBundle(getClass()).getBundleContext();
-		permissionManager = (PermissionManager) bundleContext.getService(bundleContext
-				.getServiceReference(PermissionManager.class.getName()));
-		installationManager = (InstallationManagement) bundleContext.getService(bundleContext
-				.getServiceReference(InstallationManagement.class.getName()));
-
-		resourceDB = (ResourceDB) bundleContext.getService(bundleContext
-				.getServiceReference(ResourceDB.class.getName()));
 
 		LoggerController.getInstance().setAdministrationManager(administrationManager);
 
 		UserController.getInstance().setAccessManager(accessManager);
 		UserController.getInstance().setPermissionManager(permissionManager);
-		UserController.getInstance().setBundleContext(bundleContext);
+//		UserController.getInstance().setBundleContext(bundleContext);
 		UserController.getInstance().setAdministrationManager(administrationManager);
 		UserController.getInstance().setAppManager(appManager);
-		UserController.getInstance().setUserAdmin(userAdmin);
+//		UserController.getInstance().setUserAdmin(userAdmin);
 
 		bundleID = bundleContext.getBundle().getBundleId();
 
@@ -119,13 +107,26 @@ public class FrameworkAdministration implements Application {
 
 	}
 
+	// release resources
 	@Override
 	public void stop(AppStopReason reason) {
+		if (appMan == null)
+			return;
 		appMan.getWebAccessManager().unregisterWebResource("/ogema/frameworkadminindex");
 		appMan.getWebAccessManager().unregisterWebResource("/apps/ogema/frameworkadmin");
 		appMan.getWebAccessManager().unregisterWebResource("/apps/ogema/frameworkadminuser");
 		appStoreServlet.unregister(appMan.getWebAccessManager());
 		logger.debug("{} stopped", getClass().getName());
+		appMan = null;
+		resAcc = null;
+		resMan = null;
+		logger = null;
+		appStoreServlet = null;
+		UserController.getInstance().setAccessManager(null);
+		UserController.getInstance().setPermissionManager(null);
+//		UserController.getInstance().setBundleContext(bundleContext);
+		UserController.getInstance().setAdministrationManager(null);
+		UserController.getInstance().setAppManager(null);
 	}
 
 }

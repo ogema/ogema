@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="de.iis.graphicaldisplay"
+    package="de.iis.graphicaldisplayREST"
     android:versionCode="1"
     android:versionName="1.0" >
 
@@ -18,7 +18,7 @@
         android:theme="@style/AppTheme" >
         
         <activity
-            android:name=".RESTActivity"
+            android:name="de.iis.graphicaldisplayREST.RESTActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -27,7 +27,7 @@
             </intent-filter>
         </activity>
         
-        <activity android:label="@string/app_name" android:configChanges="orientation" android:name=".MenuActivity">
+        <activity android:label="@string/app_name" android:configChanges="orientation" android:name="de.iis.graphicaldisplayREST.MenuActivity">
         		  <intent-filter>
         		  <action android:name="android.intent.action.VIEW"/>
         		  <category
@@ -36,7 +36,7 @@
         		  </intent-filter>
         </activity>
         
-        <activity android:label="@string/app_name" android:configChanges="orientation" android:name=".MainActivity">
+        <activity android:label="@string/app_name" android:configChanges="orientation" android:name="de.iis.graphicaldisplayREST.MainActivity">
         		  <intent-filter>
         		  <action android:name="android.intent.action.VIEW"/>
         		  <category

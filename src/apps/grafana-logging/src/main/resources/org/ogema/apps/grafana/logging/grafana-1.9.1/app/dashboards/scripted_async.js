@@ -197,6 +197,7 @@ return function(callback) {
 					        pointradius: 3,
 					        linewidth: 2,
 					        lines: lines,
+					        bars: false,
 					        targets: targets,
 					        steppedLine: steps,
 					        datasource: "influxdb",

@@ -29,7 +29,7 @@ import org.ogema.core.tools.SerializationManager;
  * 
  * @author Timo Fischer, Fraunhofer IWES
  */
-public final class SerializationStatus {
+public final class SerializationStatus implements Cloneable {
 
 	private final SerializationManager manager;
 	private int currentDepth = 1;
@@ -76,18 +76,31 @@ public final class SerializationStatus {
 	}
     
     /* include resource only as link. */
-    boolean linkResource(Resource res){
+    public boolean linkResource(Resource res){
         return !parseCurrentDepth()
                 || (Schedule.class.isAssignableFrom(res.getResourceType()) && !serializeSchedules())
                 || (res.isReference(false) && !followReferences())
                 || locationParsed(res.getLocation("/"));
     }
 
+    // why create a new one?
     public SerializationStatus increaseDepth() {
         SerializationStatus s = new SerializationStatus(manager);
         s.currentDepth = currentDepth+1;
         s.parsedLocations = parsedLocations;
         return s;
     }    
+    
+    /**
+     * parsed locations in the new instance will not be reflected in parsed
+     * locations in the old one.
+     */
+    @Override
+	public Object clone() throws CloneNotSupportedException {
+    	SerializationStatus other = new SerializationStatus(manager);
+    	other.currentDepth = currentDepth;
+    	other.parsedLocations = new HashSet<>(parsedLocations);
+    	return other;
+    }
     
 }

@@ -25,6 +25,7 @@ import org.apache.felix.service.command.Descriptor;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.NoSuchDriverException;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
@@ -57,9 +58,9 @@ public class ShellCommands implements HLDriverInterface {
 
 	@Descriptor("Lists the channelLocator String of all created Channels.")
 	public void showCreatedChannels() {
-		for (Map.Entry<String, ChannelLocator> channelMapEntry : driver.channelMap.entrySet()) {
+		for (Map.Entry<String, ChannelConfiguration> channelMapEntry : driver.channelMap.entrySet()) {
 			System.out.print(channelMapEntry.getKey() + ": ");
-			System.out.println(channelMapEntry.getValue().toString());
+			System.out.println(channelMapEntry.getValue().getChannelLocator().toString());
 		}
 	}
 
@@ -106,11 +107,11 @@ public class ShellCommands implements HLDriverInterface {
 
 	@Descriptor("Deletes a channel.")
 	public void deleteChannel(@Descriptor("The resourceId.") String resourceId) {
-		ChannelLocator channelLocator = driver.channelMap.get(resourceId);
+		ChannelConfiguration chConf = driver.channelMap.get(resourceId);
 		Generic_ZbConfig config = new Generic_ZbConfig();
-		config.interfaceId = channelLocator.getDeviceLocator().getInterfaceName();
-		config.deviceAddress = channelLocator.getDeviceLocator().getDeviceAddress().toUpperCase();
-		config.channelAddress = channelLocator.getChannelAddress().toUpperCase();
+		config.interfaceId = chConf.getDeviceLocator().getInterfaceName();
+		config.deviceAddress = chConf.getDeviceLocator().getDeviceAddress().toUpperCase();
+		config.channelAddress = chConf.getChannelLocator().getChannelAddress().toUpperCase();
 		driver.resourceUnavailable(config);
 	}
 
@@ -122,21 +123,21 @@ public class ShellCommands implements HLDriverInterface {
 			@Descriptor("The value as a string with hex characters e. g. 0AFF. Byte order needs to be in Little Endian Byte order") String writeValue) {
 		Generic_ZbDevice device = driver.devices.get(interfaceId + ":"
 				+ ("0000000000000000000" + deviceAddress.toUpperCase()).substring(deviceAddress.length()));
-		ChannelLocator locator = device.attributeChannel.get(channelAddress.toUpperCase());
-		if (locator == null) {
-			locator = device.commandChannel.get(channelAddress.toUpperCase());
+		ChannelConfiguration chConf = device.attributeChannel.get(channelAddress.toUpperCase());
+		if (chConf == null) {
+			chConf = device.commandChannel.get(channelAddress.toUpperCase());
 		}
-		device.writeToChannel(locator, writeValue);
+		device.writeToChannel(chConf, writeValue);
 	}
 
 	@Descriptor("Write to a channel. This can mean overwriting a Attribute or sending a Command.")
 	public void writeChannel(
 			@Descriptor("The resourceId.") String resourceId,
 			@Descriptor("The value as a string with hex characters e. g. 0AFF. Byte order needs to be in Little Endian Byte order") String writeValue) {
-		ChannelLocator channelLocator = driver.channelMap.get(resourceId);
-		Generic_ZbDevice device = driver.devices.get(channelLocator.getDeviceLocator().getInterfaceName() + ":"
-				+ channelLocator.getDeviceLocator().getDeviceAddress().toUpperCase());
-		device.writeToChannel(channelLocator, writeValue);
+		ChannelConfiguration chConf = driver.channelMap.get(resourceId);
+		Generic_ZbDevice device = driver.devices.get(chConf.getDeviceLocator().getInterfaceName() + ":"
+				+ chConf.getDeviceLocator().getDeviceAddress().toUpperCase());
+		device.writeToChannel(chConf, writeValue);
 	}
 
 	@Descriptor("Read from a channel.")
@@ -220,12 +221,12 @@ public class ShellCommands implements HLDriverInterface {
 
 	@Descriptor("Read from a channel.")
 	public void readChannel(@Descriptor("The resourceId.") String resourceId) {
-		ChannelLocator channelLocator = driver.channelMap.get(resourceId);
-		Generic_ZbDevice device = driver.getDevice(channelLocator.getDeviceLocator().getInterfaceName() + ":"
-				+ channelLocator.getDeviceLocator().getDeviceAddress().toUpperCase());
+		ChannelConfiguration chConf = driver.channelMap.get(resourceId);
+		Generic_ZbDevice device = driver.getDevice(chConf.getDeviceLocator().getInterfaceName() + ":"
+				+ chConf.getDeviceLocator().getDeviceAddress().toUpperCase());
 		System.out.print("Channel value: ");
 		// device.readValue(channelLocator.getChannelAddress().toUpperCase());
-		device.printValue(channelLocator.getChannelAddress().toUpperCase());
+		device.printValue(chConf.getChannelLocator().getChannelAddress().toUpperCase());
 	}
 
 	public void deviceScan(@Descriptor("The interface ID/Port name.") String interfaceId) throws Throwable {

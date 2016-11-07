@@ -23,7 +23,7 @@ import org.ogema.core.application.Timer;
 import org.ogema.core.application.TimerListener;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.logging.OgemaLogger;
-import org.ogema.core.model.schedule.DefinitionSchedule;
+import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
@@ -82,7 +82,7 @@ final public class ResourceConsumptionApp implements Application {
 		if (floatRes == null) {
 			floatRes = resMan.createResource(name, FloatResource.class);
 		}
-		final DefinitionSchedule schedule = floatRes.program();
+		final AbsoluteSchedule schedule = floatRes.program();
 		if (!schedule.exists())
 			schedule.create();
 		schedule.addValue(counter, new FloatValue((float) Math.random() * 50.f));

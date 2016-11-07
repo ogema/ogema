@@ -20,6 +20,7 @@ import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.units.ThermalEnergyCapacityResource;
 import org.ogema.model.devices.profiles.ProgramInformation;
+import org.ogema.model.devices.profiles.State;
 import org.ogema.model.locations.PhysicalDimensions;
 import org.ogema.model.locations.Location;
 
@@ -49,9 +50,20 @@ public interface PhysicalElement extends Resource {
 	PhysicalDimensions physDim();
 
 	/**
-	 * Information on available programs, including operating cycles and typical consumption patterns.
+	 * Information on available programs, including operating cycles and typical consumption patterns.<br>
+	 * Note that steady states should not be modeled as programs, but rather as states. See {@link #states()}.
 	 */
 	ResourceList<ProgramInformation> programs();
+
+	/**
+	 * Steady states of this device, such as 'on', 'off', 'standby'.
+	 * Contains consumption/generation profiles, and the like.<br>
+	 * The main difference between states and {@link PhysicalElement#programs()} is, that the latter are usually active
+	 * for a specific time duration, whereas steady states can remain active for a variable duration of time.
+	 * Most states are further characterized by constant measurement values, although there may be exceptions. For
+	 * instance, the 'on' state of a fridge has a non-constant but periodic electric power consumption profile.    
+	 */
+	ResourceList<State> states(); 
 
 	/**
 	 * Human-readable name.

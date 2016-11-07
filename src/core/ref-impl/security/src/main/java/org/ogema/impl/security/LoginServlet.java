@@ -132,7 +132,7 @@ public class LoginServlet extends HttpServlet {
 			User user = (User) ua.getRole(usr);
 			Authorization author = ua.getAuthorization(user);
 			HttpSession session = req.getSession();
-			SessionAuth sauth = new SessionAuth(author, user, session);
+			SessionAuth sauth = new SessionAuth(author,permissionManager.getAccessManager(), session);
 			// check if we had an old req to redirect to the originally requested URL before invalidating
 			String newLocation = "/ogema/index.html";
 			if (session.getAttribute(OLDREQ_ATTR_NAME) != null) {
@@ -143,6 +143,7 @@ public class LoginServlet extends HttpServlet {
 			req.getSession(false).invalidate();
 			session = req.getSession(true);
 			session.setAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME, sauth);
+			session.setAttribute(SessionAuth.USER_CREDENTIAL, pwd);
 
 			/*
 			 * Handle Request which is received before login was sent. This request is responded with the login page,

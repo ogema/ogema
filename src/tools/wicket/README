@@ -1,0 +1,18 @@
+Using Wicket with OGEMA:
+	TODO
+
+Run configuration:
+	<!ENTITY wicket-version "6.23.0">
+
+	<bundle dir="bin/wicket" groupId="org.apache.servicemix.bundles" artifactId="org.apache.servicemix.bundles.cglib" version="2.2_2"/>
+	<bundle dir="bin/wicket" groupId="org.apache.servicemix.bundles" artifactId="org.apache.servicemix.bundles.javax-inject" version="1_1"/>
+	<bundle dir="bin/wicket" groupId="org.apache.servicemix.specs" artifactId="org.apache.servicemix.specs.activation-api-1.1" version="2.7.0"/>
+	<bundle dir="bin/wicket" groupId="org.ops4j.base" artifactId="ops4j-base" version="1.4.0"/>
+	<bundle dir="bin/wicket" groupId="org.ogema.external" artifactId="org.ops4j.pax.wicket.service" version="3.0.4"/>
+	<bundle dir="bin/wicket" groupId="org.apache.wicket" artifactId="wicket-auth-roles" version="&wicket-version;"/>
+	<bundle dir="bin/wicket" groupId="org.apache.wicket" artifactId="wicket-core" version="&wicket-version;"/>
+	<bundle dir="bin/wicket" groupId="org.apache.wicket" artifactId="wicket-extensions" version="&wicket-version;"/>
+	<bundle dir="bin/wicket" groupId="org.apache.wicket" artifactId="wicket-request" version="&wicket-version;" />
+	<bundle dir="bin/wicket" groupId="org.apache.wicket" artifactId="wicket-util" version="&wicket-version;"/>
+	<bundle dir="bin/wicket" groupId="org.ogema.tools" artifactId="wicket-gui" version="&ogema-version;"/> 
+	<bundle dir="bin/wicket" groupId="org.ogema.tools" artifactId="wicket-gui-impl" version="&ogema-version;" /> 

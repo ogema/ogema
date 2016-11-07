@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>wicket-wrapper</artifactId>
+        <groupId>org.ogema.tools</groupId>
+        <version>2.1.0</version>
+    </parent>
+
+    <artifactId>wicket-gui-impl</artifactId>
+    <packaging>bundle</packaging>
+    <name>Wicket GUI</name>
+    <description>Wicket for OGEMA environment.</description>
+    
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <configuration>
+                    <Bundle-SymbolicName>$(maven-symbolicname);singleton:=true</Bundle-SymbolicName>
+                    <instructions>
+                        <Import-Package> *
+<!--                        ,     org.apache.wicket,
+                            org.apache.wicket.util,
+                            org.apache.wicket.event,
+                            org.apache.wicket.page,
+                            org.apache.wicket.request.resource,
+                            org.apache.wicket.request.mapper,
+                            org.apache.wicket.request.cycle,
+                            org.apache.wicket.markup.html,
+                            org.apache.wicket.markup.html.basic,
+                            org.apache.wicket.protocol.http,
+                            org.apache.wicket.request.http,
+                            org.ops4j.pax.wicket.api,
+                            org.ops4j.pax.wicket.spi,
+                            org.osgi.framework,
+                            net.sf.cglib.proxy;version="[2,3)",
+                            net.sf.cglib.core;version="[2,3)",
+                            net.sf.cglib.reflect;version="[2,3)",
+                            javax.servlet,
+                            org.apache.wicket.settings,
+                            org.apache.wicket.session,
+                            org.apache.wicket.util.file,
+                            org.apache.wicket.request,
+                            javax.servlet.http,
+                            org.apache.wicket.ajax,
+                            org.apache.wicket.markup.html.panel,
+                            org.apache.wicket.core.request.mapper -->
+                        </Import-Package>
+                        <DynamicImport-Package>*</DynamicImport-Package>
+                    </instructions>
+                    <unpackBundle>true</unpackBundle>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-scr-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.ogema.core</groupId>
+            <artifactId>api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>internal-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.compendium</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.7.4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.2</version>
+        </dependency>
+
+        <!-- Dependencies for Tests -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.framework</artifactId>
+            <version>4.0.3</version>
+            <scope>test</scope>
+        </dependency>
+
+
+        <!-- Wicket -->
+        <dependency>
+            <groupId>org.apache.wicket</groupId>
+            <artifactId>wicket-auth-roles</artifactId>
+            <version>${wicket.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.wicket</groupId>
+            <artifactId>wicket-core</artifactId>
+            <version>${wicket.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.wicket</groupId>
+            <artifactId>wicket-extensions</artifactId>
+            <version>${wicket.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.wicket</groupId>
+            <artifactId>wicket-request</artifactId>
+            <version>${wicket.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.wicket</groupId>
+            <artifactId>wicket-util</artifactId>
+            <version>${wicket.version}</version>
+        </dependency>
+
+        <!-- PaxWicket -->
+        <!-- at runtime, the modified version must be used-->
+        <dependency>
+            <groupId>org.ops4j.pax.wicket</groupId>
+            <artifactId>org.ops4j.pax.wicket.service</artifactId>
+            <version>3.0.4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.tools</groupId>
+            <artifactId>wicket-gui</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+</project>

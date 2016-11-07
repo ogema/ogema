@@ -24,21 +24,27 @@ public class Activator implements BundleActivator {
 
 	private ServiceRegistration<?> serviceRegistration;
 	private HM_hlDriver driver;
-	public static boolean bundleIsRunning;
+	public static volatile boolean bundleIsRunning;
+	private ShellCommands shellCommands;
 
 	@Override
-	public void start(BundleContext context) throws Exception {
+	public synchronized void start(BundleContext context) throws Exception {
 		bundleIsRunning = true;
 		driver = new HM_hlDriver();
 		Application application = driver;
 		serviceRegistration = context.registerService(Application.class.getName(), application, null);
-		new ShellCommands(driver, context);
+		this.shellCommands = new ShellCommands(driver, context);
 	}
 
 	@Override
-	public void stop(BundleContext context) throws Exception {
-		serviceRegistration.unregister();
+	public synchronized void stop(BundleContext context) throws Exception {
 		bundleIsRunning = false;
+		if (serviceRegistration != null)  
+			serviceRegistration.unregister(); // should cause driver.stop() callback
+		if (shellCommands != null) 
+			shellCommands.close();
+		shellCommands = null;
+		driver = null;
 	}
 
 }

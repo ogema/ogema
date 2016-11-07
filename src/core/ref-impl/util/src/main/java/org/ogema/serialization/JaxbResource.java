@@ -26,9 +26,6 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlSeeAlso;
 import javax.xml.bind.annotation.XmlType;
 
-import org.codehaus.jackson.annotate.JsonSubTypes;
-import org.codehaus.jackson.annotate.JsonTypeInfo;
-import org.codehaus.jackson.map.annotate.JsonRootName;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
 
@@ -40,6 +37,10 @@ import org.ogema.serialization.schedules.FloatSchedule;
 import org.ogema.serialization.schedules.IntegerSchedule;
 import org.ogema.serialization.schedules.StringSchedule;
 import org.ogema.serialization.schedules.TimeSchedule;
+
+import com.fasterxml.jackson.annotation.JsonRootName;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 /**
  *

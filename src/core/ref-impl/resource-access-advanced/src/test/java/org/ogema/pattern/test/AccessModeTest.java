@@ -137,6 +137,8 @@ public class AccessModeTest extends OsgiTestBase {
 		}
 	}
 
+	// FIXME This test is flawed... the exclusive write access on RoomPatternGreedy#name of app2 blocks 
+	// access to the required field #name of RoomPattern
 	@Test
 	@Ignore
 	public void incompleteGreedyPatternDoNotBlockComletion() throws InterruptedException {

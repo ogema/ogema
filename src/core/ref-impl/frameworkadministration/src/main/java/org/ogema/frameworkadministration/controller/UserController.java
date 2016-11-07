@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.codehaus.jackson.map.ObjectMapper;
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.AppPermissionFilter;
 import org.ogema.accesscontrol.PermissionManager;
@@ -54,12 +53,13 @@ import org.ogema.frameworkadministration.json.post.UserJsonCopyUser;
 import org.ogema.frameworkadministration.json.post.UserJsonCreateUser;
 import org.ogema.frameworkadministration.json.post.UserJsonDeleteUser;
 import org.ogema.frameworkadministration.utils.Utils;
-import org.osgi.framework.BundleContext;
+import org.osgi.framework.Version;
 import org.osgi.service.condpermadmin.ConditionInfo;
 import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
 import org.osgi.service.permissionadmin.PermissionInfo;
 import org.osgi.service.useradmin.User;
-import org.osgi.service.useradmin.UserAdmin;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  *
@@ -69,11 +69,9 @@ public class UserController {
 
 	public static UserController instance = null;
 	private AccessManager accessManager;
-	private BundleContext bundleContext;
 	private PermissionManager permissionManager;
 	private AdministrationManager administrationManager;
 	private ApplicationManager appManager;
-	private UserAdmin userAdmin;
 
 	public ApplicationManager getAppManager() {
 		return appManager;
@@ -97,14 +95,6 @@ public class UserController {
 
 	public void setPermissionManager(PermissionManager permissionManager) {
 		this.permissionManager = permissionManager;
-	}
-
-	public BundleContext getBundleContext() {
-		return bundleContext;
-	}
-
-	public void setBundleContext(BundleContext bundleContext) {
-		this.bundleContext = bundleContext;
 	}
 
 	public static UserController getInstance() {
@@ -286,8 +276,9 @@ public class UserController {
 			}
 
 			AppID appID = findAppIdForString(appIdString);
-			AppPermissionFilter props = new AppPermissionFilter(appID.getBundle().getSymbolicName(), appID
-					.getOwnerUser(), appID.getOwnerGroup(), appID.getVersion());
+			AppPermissionFilter props = new AppPermissionFilter(appID.getBundle().getSymbolicName(), "*", "*",
+					Version.emptyVersion
+							.toString()/* appID.getOwnerUser(), appID.getOwnerGroup(), appID.getVersion() */);
 			if (permitted) {
 
 				accessManager.addPermission(user, props);
@@ -380,7 +371,8 @@ public class UserController {
 
 			@SuppressWarnings("deprecation")
 			Map<String, String> registeredResources = appManager.getWebAccessManager().getRegisteredResources(appID);
-			if (registeredResources == null || registeredResources.isEmpty()) { // TODO handle apps that register their start page as a servlet 
+			if (registeredResources == null || registeredResources.isEmpty()) { // TODO handle apps that register their
+																				// start page as a servlet
 				continue;
 			}
 
@@ -443,6 +435,7 @@ public class UserController {
 
 			ConditionalPermissionInfo cond = grantedPermsMap.get(s);
 
+			@SuppressWarnings("unused")
 			ConditionInfo[] conditionInfoArray = cond.getConditionInfos();
 			PermissionInfo[] permissionInfoArray = cond.getPermissionInfos();
 
@@ -631,8 +624,8 @@ public class UserController {
 
 		for (AppID singlePermittedApp : permittedAppList) {
 			AppPermissionFilter filter = new AppPermissionFilter(singlePermittedApp.getBundle().getSymbolicName(),
-					singlePermittedApp.getOwnerGroup(), singlePermittedApp.getOwnerUser(), singlePermittedApp
-							.getVersion());
+					singlePermittedApp.getOwnerGroup(), singlePermittedApp.getOwnerUser(),
+					singlePermittedApp.getVersion());
 			accessManager.addPermission(user, filter);
 		}
 
@@ -656,8 +649,8 @@ public class UserController {
 
 		for (AppID singleUnPermittedApp : unPermittedAppList) {
 			AppPermissionFilter filter = new AppPermissionFilter(singleUnPermittedApp.getBundle().getSymbolicName(),
-					singleUnPermittedApp.getOwnerGroup(), singleUnPermittedApp.getOwnerUser(), singleUnPermittedApp
-							.getVersion());
+					singleUnPermittedApp.getOwnerGroup(), singleUnPermittedApp.getOwnerUser(),
+					singleUnPermittedApp.getVersion());
 			accessManager.removePermission(user, filter);
 		}
 
@@ -857,9 +850,8 @@ public class UserController {
 			return false;
 		}
 
-		accessManager.createUser(user, isNatural);
-		accessManager.setNewPassword(user, pwd);
-
+		accessManager.createUser(user, pwd, isNatural);
+		// accessManager.setNewPassword(user, pwd);
 		return true;
 	}
 
@@ -877,7 +869,10 @@ public class UserController {
 		UserJsonChangePassword userPwd = mapper.readValue(jsonMessage, UserJsonChangePassword.class);
 		String user = userPwd.getUser();
 		String pwd = userPwd.getPwd();
-		accessManager.setNewPassword(user, pwd);
+		String oldpwd = userPwd.getoldpwd();
+
+		// FIXME the old password should be a part of the jsonMessage
+		accessManager.setNewPassword(user, oldpwd, pwd);
 		return true;
 	}
 
@@ -1007,7 +1002,7 @@ public class UserController {
 
 		String result = "{}";
 
-		User user = accessManager.getUser(name);
+		User user = (User) accessManager.getRole(name);
 
 		// TODO: check object type
 		@SuppressWarnings("unchecked")
@@ -1055,10 +1050,6 @@ public class UserController {
 
 	public void setAccessManager(AccessManager accessManager) {
 		this.accessManager = accessManager;
-	}
-
-	public void setUserAdmin(UserAdmin userAdmin) {
-		this.userAdmin = userAdmin;
 	}
 
 }

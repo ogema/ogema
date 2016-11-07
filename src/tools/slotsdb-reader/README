@@ -1,0 +1,11 @@
+This is a standalone tool to read data from a slotsdb database, generated e.g. by logging
+an OGEMA resource value.
+
+Build in Eclipse:
+1) mvn install
+2) run as Java application, choose SlotsDbReader main class (ignore "Filename required" warning)
+3) Right-click on File SlotsDbReader.java, choose Export -> Runnable JAR file (Option: Extract required libraries into generated JAR)
+	Select run configuration corresponding to slotsdb-reader, and choose an output file name <FILENAME>.jar
+
+Run:
+java -jar <FILENAME>.jar path/to/slotsdb/file

@@ -19,6 +19,7 @@ import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
+import org.ogema.model.locations.Building;
 
 @Component(specVersion = "1.1", immediate = true)
 @Service(Application.class)
@@ -27,7 +28,13 @@ public class OTPTest implements Application {
 	@Override
 	public void start(ApplicationManager appManager) {
 		// Register some web resources
-		appManager.getWebAccessManager().registerWebResource("/otp-example", "/web");
+		try {
+			appManager.getWebAccessManager().registerWebResource("/otp-example", "/web");
+			appManager.getResourceAccess().getResources(Building.class);
+			String userhome = System.getProperty("user.home");
+		} catch (Throwable e) {
+			System.out.println("Access to the property \"user.home\" is not permitted.");
+		}
 	}
 
 	@Override

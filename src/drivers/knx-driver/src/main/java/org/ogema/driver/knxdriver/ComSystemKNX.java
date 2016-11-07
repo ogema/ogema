@@ -15,9 +15,7 @@
  */
 package org.ogema.driver.knxdriver;
 
-import java.security.AccessController;
 import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -39,9 +37,7 @@ import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceException;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceManagement;
-import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.communication.CommunicationInformation;
 import org.ogema.model.communication.DeviceAddress;
 import org.ogema.model.communication.IPAddressV4;
@@ -49,6 +45,7 @@ import org.ogema.model.communication.KNXAddress;
 import org.ogema.model.communication.PollingConfiguration;
 import org.ogema.model.devices.buildingtechnology.ElectricDimmer;
 import org.ogema.model.devices.connectiondevices.ThermalValve;
+import org.ogema.model.devices.sensoractordevices.SingleSwitchBox;
 import org.ogema.model.prototypes.PhysicalElement;
 import org.ogema.model.sensors.ElectricPowerSensor;
 import org.ogema.model.sensors.LightSensor;
@@ -68,7 +65,6 @@ import tuwien.auto.calimero.datapoint.StateDP;
 import tuwien.auto.calimero.dptxlator.DPT;
 import tuwien.auto.calimero.dptxlator.DPTXlator2ByteFloat;
 import tuwien.auto.calimero.dptxlator.DPTXlator4ByteUnsigned;
-import tuwien.auto.calimero.exception.KNXException;
 import tuwien.auto.calimero.exception.KNXIllegalArgumentException;
 import tuwien.auto.calimero.link.KNXNetworkLinkIP;
 import tuwien.auto.calimero.process.ProcessCommunicator;
@@ -76,7 +72,7 @@ import tuwien.auto.calimero.process.ProcessCommunicatorImpl;
 import tuwien.auto.calimero.process.ProcessEvent;
 import tuwien.auto.calimero.process.ProcessListener;
 
-@Component(specVersion = "1.1", immediate = true)
+@Component(specVersion = "1.2", immediate = true)
 @Service( { Application.class, KNXdriverI.class })
 public class ComSystemKNX implements KNXdriverI {
 
@@ -202,11 +198,11 @@ public class ComSystemKNX implements KNXdriverI {
 
 			}
 
-			if (conInfo.getType().equals(OnOffSwitch.class.getSimpleName())) {
+			if (conInfo.getType().equals(SingleSwitchBox.class.getSimpleName())) {
 
-				OnOffSwitch device = resMan.createResource(conInfo.getName(), OnOffSwitch.class);
+				SingleSwitchBox device = resMan.createResource(conInfo.getName(), SingleSwitchBox.class);
 
-				device.stateControl().create();
+				device.onOffSwitch().stateControl().create();
 				createReadWriteableComInfo(device, true, false);
 
 				conInfo.setRessource(device);
@@ -388,14 +384,16 @@ public class ComSystemKNX implements KNXdriverI {
 
 	}
 
+    @SuppressWarnings("deprecation")
 	private void addListener(final ConnectionInfo conn) {
 
-		ResourceListener resListen = null;
+        @SuppressWarnings("deprecation")
+		org.ogema.core.resourcemanager.ResourceListener resListen = null;
 		ResourceDemandListener<Resource> resDem = null;
 
 		if (!conn.isSensor()) {
 
-			resListen = new ResourceListener() {
+			resListen = new org.ogema.core.resourcemanager.ResourceListener() {
 				// public class TempChange implements ResourceListener {
 				@Override
 				public void resourceChanged(Resource resource) {
@@ -415,7 +413,7 @@ public class ComSystemKNX implements KNXdriverI {
 
 		else {
 
-			resListen = new ResourceListener() {
+			resListen = new org.ogema.core.resourcemanager.ResourceListener() {
 				@Override
 				public void resourceChanged(Resource resource) {
 					// TODO Auto-generated method stub
@@ -444,10 +442,9 @@ public class ComSystemKNX implements KNXdriverI {
 		aManager.getResourceAccess().addResourceDemand(conn.getRessource().getResourceType(), resDem);
 	}
 
-	private void removeListener(ResourceListener resListener, Resource res) {
-
+    @SuppressWarnings("deprecation")
+	private void removeListener(org.ogema.core.resourcemanager.ResourceListener resListener, Resource res) {
 		res.removeResourceListener(resListener);
-
 	}
 
 	public boolean disconnectResource(String resourceName) {
@@ -685,11 +682,11 @@ public class ComSystemKNX implements KNXdriverI {
 						}
 					}
 
-					if (conn.getRessource() instanceof OnOffSwitch) {
+					if (conn.getRessource() instanceof SingleSwitchBox) {
 
-						OnOffSwitch swtch = (OnOffSwitch) conn.getRessource();
+						SingleSwitchBox swtch = (SingleSwitchBox) conn.getRessource();
 
-						boolean value2 = swtch.stateControl().getValue();
+						boolean value2 = swtch.onOffSwitch().stateControl().getValue();
 
 						if (value2) {
 							setGroupValue(conn, "on");

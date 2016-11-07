@@ -44,6 +44,8 @@ import org.ogema.driver.xbee.manager.zcl.ClusterCommand;
 import org.ogema.driverconfig.LLDriverInterface;
 import org.osgi.framework.BundleContext;
 
+import jssc.SerialPortException;
+
 public class ShellCommands implements LLDriverInterface {
 
 	private XBeeDriver driver;
@@ -53,9 +55,9 @@ public class ShellCommands implements LLDriverInterface {
 	public ShellCommands(XBeeDriver driver, BundleContext context, HardwareManager hardwareManager) {
 		Hashtable<String, Object> props = new Hashtable<String, Object>();
 		props.put("osgi.command.scope", "zbll");
-		props.put("osgi.command.function", new String[] { "sendFrame", "showNetwork", "showCreatedChannels",
-				"showClusterDetails", "addConnection", "showHardware", "addConnectionViaPort", "setNodeJoinTime",
-				"cacheDevices", "listHardware" });
+		props.put("osgi.command.function",
+				new String[] { "sendFrame", "showNetwork", "showCreatedChannels", "showClusterDetails", "addConnection",
+						"showHardware", "addConnectionViaPort", "setNodeJoinTime", "cacheDevices", "listHardware" });
 		this.driver = driver;
 		this.hwMngr = hardwareManager;
 		context.registerService(this.getClass().getName(), this, props);
@@ -133,8 +135,8 @@ public class ShellCommands implements LLDriverInterface {
 				JSONObject deviceArrayElement = new JSONObject();
 
 				try {
-					deviceArrayElement.put("networkAddress", Integer.toHexString((devicesEntry.getValue()
-							.getAddress16Bit()) & 0xffff));
+					deviceArrayElement.put("networkAddress",
+							Integer.toHexString((devicesEntry.getValue().getAddress16Bit()) & 0xffff));
 				} catch (JSONException e) {
 					e.printStackTrace();
 				}
@@ -223,15 +225,15 @@ public class ShellCommands implements LLDriverInterface {
 				JSONObject deviceArrayElement = new JSONObject();
 
 				try {
-					deviceArrayElement.put("networkAddress", Integer.toHexString((devicesEntry.getValue()
-							.getAddress16Bit()) & 0xffff));
+					deviceArrayElement.put("networkAddress",
+							Integer.toHexString((devicesEntry.getValue().getAddress16Bit()) & 0xffff));
 				} catch (JSONException e) {
 					e.printStackTrace();
 				}
 
 				try {
-					deviceArrayElement.put("physicalAddress", Long
-							.toHexString((devicesEntry.getKey() & 0xffffffffffffffffL)));
+					deviceArrayElement.put("physicalAddress",
+							Long.toHexString((devicesEntry.getKey() & 0xffffffffffffffffL)));
 				} catch (JSONException e) {
 					e.printStackTrace();
 				}
@@ -305,8 +307,8 @@ public class ShellCommands implements LLDriverInterface {
 					}
 
 					if (!isXBee) {
-						String deviceId = Integer.toHexString(endpoint.getValue().getSimpleDescriptor()
-								.getApplicationDeviceId() & 0xffff);
+						String deviceId = Integer.toHexString(
+								endpoint.getValue().getSimpleDescriptor().getApplicationDeviceId() & 0xffff);
 						deviceId = ("0000" + deviceId).substring(deviceId.length());
 						try {
 							endpointArrayElement.put("DeviceID", deviceId.toUpperCase());
@@ -354,8 +356,8 @@ public class ShellCommands implements LLDriverInterface {
 				}
 				if (isXBee) {
 					try {
-						deviceArrayElement.put("ChannelAddress", "0011:XBee:"
-								+ ((XBeeDevice) remoteDevice).getNodeIdentifier());
+						deviceArrayElement.put("ChannelAddress",
+								"0011:XBee:" + ((XBeeDevice) remoteDevice).getNodeIdentifier());
 					} catch (JSONException e) {
 						e.printStackTrace();
 					}
@@ -556,8 +558,8 @@ public class ShellCommands implements LLDriverInterface {
 		long deviceId = bb.getLong();
 		byte endpointId = DatatypeConverter.parseHexBinary(endpoint)[0];
 
-		Cluster cluster = driver.findConnection(interfaceId).localDevice.getRemoteDevice(deviceId).getEndpoint(
-				endpointId).getClusters().get(clusterIdShort);
+		Cluster cluster = driver.findConnection(interfaceId).localDevice.getRemoteDevice(deviceId)
+				.getEndpoint(endpointId).getClusters().get(clusterIdShort);
 
 		try {
 			System.out.println(cluster.getName());
@@ -567,14 +569,14 @@ public class ShellCommands implements LLDriverInterface {
 			for (Map.Entry<Short, ClusterAttribute> attributeEntry : cluster.clusterAttributes.entrySet()) {
 				System.out.println("    "
 						+ Constants.bytesToHex(new byte[] { (byte) (attributeEntry.getValue().getIdentifier() >>> 8),
-								(byte) (attributeEntry.getValue().getIdentifier() & 0x00ff) }) + ": "
-						+ attributeEntry.getValue().getAttributeName());
+								(byte) (attributeEntry.getValue().getIdentifier() & 0x00ff) })
+						+ ": " + attributeEntry.getValue().getAttributeName());
 				System.out.println("    Addr: " + attributeEntry.getValue().getChannelAddress());
 
 				tempjsonObject = new JSONObject();
-				tempjsonObject.put("Identifier", Constants.bytesToHex(new byte[] {
-						(byte) (attributeEntry.getValue().getIdentifier() >>> 8),
-						(byte) (attributeEntry.getValue().getIdentifier() & 0x00ff) }));
+				tempjsonObject.put("Identifier",
+						Constants.bytesToHex(new byte[] { (byte) (attributeEntry.getValue().getIdentifier() >>> 8),
+								(byte) (attributeEntry.getValue().getIdentifier() & 0x00ff) }));
 				tempjsonObject.put("Name", attributeEntry.getValue().getAttributeName());
 				tempjsonObject.put("Addr", attributeEntry.getValue().getChannelAddress());
 				attributesArray.put(tempjsonObject);
@@ -604,8 +606,13 @@ public class ShellCommands implements LLDriverInterface {
 
 	@Descriptor("Add a new Connection to the driver via hardware ID.")
 	public void addConnection(@Descriptor("The hardware ID of the XBee.") String identifier) {
-		Connection con = new Connection(getPortName(identifier), driver);
-		driver.addConnection(con);
+		Connection con;
+		try {
+			con = new Connection(getPortName(identifier), driver);
+			driver.addConnection(con);
+		} catch (SerialPortException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private String getPortName(String identifier) {
@@ -626,8 +633,13 @@ public class ShellCommands implements LLDriverInterface {
 
 	@Descriptor("Add a new Connection to the driver via port name.")
 	public void addConnectionViaPort(@Descriptor("The port name.") String interfaceId) {
-		Connection con = new Connection(interfaceId, driver);
-		driver.addConnection(con);
+		Connection con;
+		try {
+			con = new Connection(interfaceId, driver);
+			driver.addConnection(con);
+		} catch (SerialPortException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Descriptor("Set the NJ register of the XBee. This value represents how many seconds the XBee will allow new devices to join.")

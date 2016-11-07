@@ -77,5 +77,13 @@ public interface RecordedData extends ReadOnlyTimeSeries {
 	 * @return A List of value objects or an empty list if now matching object have been found.
 	 */
 	public List<SampledValue> getValues(long startTime, long endTime, long interval, ReductionMode mode);
+	
+	/**
+	 * The resource path of the logged resource.
+	 * 
+	 * @return
+	 * 		The resource path this belongs to.
+	 */
+	public String getPath();
 
 }

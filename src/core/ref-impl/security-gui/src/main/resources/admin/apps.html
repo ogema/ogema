@@ -27,7 +27,7 @@
 <script src="jsApps.js"></script>
 <link rel="stylesheet" href="libs/jstree/themes/default/style.min.css" />
 
-<body id="appsBody">
+<body id="appsBody" onload="loginRequired()">
 	 <div class="container">
         <div class="row">
             <div class="col-sm-12">
@@ -59,7 +59,7 @@
         
 <div class="row">
 <div class="building col-sm-12 well well-sm ng-scope ng-binding">
-			<div id="sysApps"class="part">
+			<div id="sysApps"class="part"style="display: none;">
 				<h1 id="market"></h1>
 
 				<div id="sortableNewApps">
@@ -71,6 +71,37 @@
 					-->
 					<button class="jQueryButton"id="install" type="button" onclick="install()">Install Bundle</button>
 				</div>
+			</div>
+			<div id="appsLogin"class="loginDiv part"style="display: none;">
+				<h1 id="marketLogin"></h1>
+				<div id="loginPanel"class="panel panel-primary">
+					<div class="panel-heading">Login</div>
+					<div id="login_failed_div"style="display: none; padding-top: 10px; text-align: center; color: red;">
+					<!-- the message after a failed login is displayed here -->
+					</div>
+					<div class="panel-body">
+				    <div class="form-group">
+				        <div class="col-md-12">
+				            <input id="user" class="form-control" type="text" placeholder="Your Username?" name="usr"></input>
+				        </div>
+				    </div>
+				    <div class="form-group">
+				        <div class="col-md-12">
+				            <input id="password" class="form-control" type="password" placeholder="Your Password?" name="pwd"></input>
+				        </div>
+				    </div>
+				    <div class="form-group">
+				        <div class="col-md-12">
+				            <button class="btn btn-lg btn-primary btn-block" type="button" onclick="submitLogin()">
+				
+				                Sign in
+				
+				            </button>
+				        </div>
+				    </div>
+				</div>
+				</div>
+				
 			</div>
 
 		</div>

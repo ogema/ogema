@@ -15,12 +15,12 @@
  */
 package org.ogema.accesscontrol;
 
-import static java.lang.System.getProperty;
 import java.util.List;
-import java.util.Map;
 
 import org.ogema.core.application.AppID;
 import org.ogema.core.security.AppPermission;
+import org.osgi.service.useradmin.Group;
+import org.osgi.service.useradmin.Role;
 import org.osgi.service.useradmin.User;
 
 public interface AccessManager {
@@ -28,18 +28,23 @@ public interface AccessManager {
 	/**
 	 * An user is created and and added to the user management. The user could represent an App on any machine or a
 	 * natural person which has to be authenticated on web interface. This property is given by the value of
-	 * {@link isNatural}.
+	 * {@link isNatural}. If isNatrural is false a machine user is created that is able to access the rest interface
+	 * only. The natural users are able to login to the web interface of the system.
+	 * 
+	 * If the given password is null the users name is set as the initial password.
 	 * 
 	 * The added user doesn't be decorated with any app or resource permissions as default at the creation time. They
 	 * could be granted later on the administration interface.
 	 * 
 	 * @param userName
 	 *            name of the entity which is added to the system as user.
+	 * @param password
+	 *            the initial password that is given to the user.
 	 * @param isNatural
 	 *            indicates if the user is a natural one or it represent a machine
 	 * @return true if a new user is created or false if the user is already exists.
 	 */
-	public boolean createUser(String userName, boolean isNatural);
+	public boolean createUser(String userName, String password, boolean isNatural);
 
 	/**
 	 * Removes the user from the user management.
@@ -50,14 +55,23 @@ public interface AccessManager {
 	public void removeUser(String userName);
 
 	/**
-	 * Get the user object from the user management representing the specified user name.
+	 * Create a role of type group by using the underlying user management. If the group already exists its returned.
+	 * 
+	 * @param name
+	 *            Name of the group
+	 * @return The group object matching with the given name.
+	 */
+	public Group createGroup(String name);
+
+	/**
+	 * Get the role object with the specified name from the user administration.
 	 * 
 	 * @param userName
-	 *            Name of the user
-	 * @return The reference to the user object registered with the given name. null if no such user name is known by
+	 *            Name of the role
+	 * @return The reference to the role object registered with the given name. null if no such role name is known by
 	 *         the user management.
 	 */
-	public User getUser(String userName);
+	public Role getRole(String name);
 
 	/**
 	 * Get all natural user registered to the AccessManager. Natural users are entities that can be logged in the system
@@ -107,10 +121,12 @@ public interface AccessManager {
 	 * 
 	 * @param user
 	 *            Users name.
-	 * @param newPassword
+	 * @param oldPwd
+	 *            The old password.
+	 * @param newPwd
 	 *            The new password.
 	 */
-	public void setNewPassword(String user, String newPassword);
+	public void setNewPassword(String user, String oldPwd, String newPwd);
 
 	/**
 	 * Change the persistently stored information of any user registered to the AccessManager.
@@ -160,21 +176,8 @@ public interface AccessManager {
 	boolean isAppPermitted(String user, AppID app);
 
 	/**
-	 * Check if the user has permission to access (web)resources of the application specified by its given bundle
-	 * reference.
-	 * 
-	 * @param user
-	 *            Name of the user.
-	 * @param app
-	 *            bundle reference.
-	 * 
-	 * @return true if the user is permitted to access the resources registered by the application that corresponds to
-	 *         the bundle reference, false otherwise.
-	 */
-	// public boolean isAppPermitted(String user, Bundle bundle);
-
-	/**
-	 * Check if the specified user is permitted to log into the system with the specified password.
+	 * Check if the specified user is permitted to log into the system with the specified password. If the user doesn't
+	 * exist the authentications fails and the method returns false.
 	 * 
 	 * @param remoteUser
 	 *            name of the user.
@@ -185,6 +188,14 @@ public interface AccessManager {
 	 * @return true if the user authentication succeeds false otherwise.
 	 */
 	public boolean authenticate(String remoteUser, String remotePasswd, boolean isNatural);
+
+	/**
+	 * Log out a previously successfully authenticated user.
+	 * 
+	 * @param usrName
+	 *            the users name.
+	 */
+	public void logout(String usrName);
 
 	/**
 	 * Register a new installed app to the user management sub system. This is necessary to set user as permitted to

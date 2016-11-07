@@ -1,16 +1,17 @@
 /**
  * This file is part of OGEMA.
  *
- * OGEMA is free software: you can redistribute it and/or modify it under the
- * terms of the GNU General Public License version 3 as published by the Free
- * Software Foundation.
+ * OGEMA is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
- * OGEMA is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
- * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ * OGEMA is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ogema.rest.tests;
 
@@ -28,8 +29,8 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.transform.stream.StreamSource;
-import org.apache.http.HttpResponse;
 
+import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
@@ -45,7 +46,6 @@ import org.junit.Assert;
 import static org.junit.Assert.*;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.measurements.FloatValue;
@@ -96,7 +96,7 @@ public class RestTest extends OsgiAppTestBase {
         };
 
 	OnOffSwitch sw;
-	final String baseUrl = "http://localhost:" + HTTP_PORT + "/rest/resources";
+	final static String baseUrl = "http://localhost:" + HTTP_PORT + "/rest/resources";
 	// schedule to use in the test.
 	Schedule schedule;
 
@@ -111,9 +111,9 @@ public class RestTest extends OsgiAppTestBase {
 				CoreOptions.composite(super.config()),
 				CoreOptions.wrappedBundle("mvn:org.jooq/joox/1.2.0"),
 				CoreOptions.mavenBundle().groupId("org.apache.httpcomponents").artifactId("httpclient-osgi").version(
-						"4.3").start(),
+						"4.4.1").start(),
 				CoreOptions.mavenBundle().groupId("org.apache.httpcomponents").artifactId("httpcore-osgi").version(
-						"4.3").start(), CoreOptions.mavenBundle("commons-logging", "commons-logging", "1.1.3").start(), };
+						"4.4.1").start(), CoreOptions.mavenBundle("commons-logging", "commons-logging", "1.1.3").start(), };
 	}
 
 	@Before
@@ -259,6 +259,7 @@ public class RestTest extends OsgiAppTestBase {
 	}
     
     @Test
+    @SuppressWarnings("unchecked")
     public void restPutWorksForTopLevelResourceLists() throws Exception {
         waitForServer();
         
@@ -292,7 +293,7 @@ public class RestTest extends OsgiAppTestBase {
 	}
 
 	@Test
-	@Ignore
+//	@Ignore
 	public void restPutWorksForResourceLists_JSON() throws Exception {
 		restPutWorksForResourceLists(ContentType.APPLICATION_JSON);
 	}
@@ -301,6 +302,7 @@ public class RestTest extends OsgiAppTestBase {
 		waitForServer();
 		Room room = getApplicationManager().getResourceManagement().createResource(newResourceName(), Room.class);
 		room.workPlaces().create();
+		@SuppressWarnings("unused")
 		ResourceList<WorkPlace> wps = room.workPlaces();
 		WorkPlace wp1 = room.workPlaces().add();
 		String wpName = wp1.getName();
@@ -553,7 +555,7 @@ public class RestTest extends OsgiAppTestBase {
     @Test
 	public void restDeleteWorksForToplevelResourceLists() throws Exception {
 		waitForServer();
-        
+        @SuppressWarnings("unchecked")
         ResourceList<Resource> l = getApplicationManager().getResourceManagement().createResource(newResourceName(), ResourceList.class);
         l.setElementType(Resource.class);
         String name = l.getName();
@@ -561,7 +563,8 @@ public class RestTest extends OsgiAppTestBase {
         l.add(getApplicationManager().getResourceManagement().createResource(newResourceName(), StringResource.class));
         
         String url = baseUrl + "/" + l.getPath();
-        Response r = Request.Delete(url).execute();
+        @SuppressWarnings("unused")
+		Response r = Request.Delete(url).execute();
         
         //System.out.println(r.returnContent());
         

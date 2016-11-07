@@ -27,6 +27,7 @@ import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceGraphException;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.resourcemanager.VirtualResourceException;
+import org.ogema.core.resourcemanager.ResourceStructureEvent.EventType;
 
 /**
  * Application-specific view on a resource. 
@@ -174,6 +175,17 @@ public interface Resource {
 
 	/**
 	 * Adds a listener that is informed about structural changes on the resource. When a structural change happens the listener is notified via a callback. 
+	 * <br>
+	 * Structure changes reported by this listener include
+	 * <ul>
+	 * 	<li>Creation and deletion of the target resource (types {@link EventType#RESOURCE_CREATED} and {@link EventType#RESOURCE_DELETED})
+	 *  <li>Creation and deletion of direct subresources (types {@link EventType#SUBRESOURCE_ADDED} and {@link EventType#SUBRESOURCE_REMOVED})
+	 *  <li>Activation and deactivation of the target resource (types {@link EventType#RESOURCE_ACTIVATED} and {@link EventType#RESOURCE_DEACTIVATED})
+	 *  <li>Creation and deletion of references to the target resource (types {@link EventType#REFERENCE_ADDED} and {@link EventType#REFERENCE_REMOVED})
+	 * </ul>
+	 * If the target resource is set as a reference, first a RESOURCE_DELETED event will be triggered 
+	 * (if the resource did exist previously), followed a RESOURCE_CREATED event. 
+	 * 
 	 * @param listener reference to the listener receiving the callbacks.
 	 */
 	void addStructureListener(ResourceStructureListener listener);
@@ -218,8 +230,8 @@ public interface Resource {
 	 * with a higher priority. Shared access mode is overwritten when another application
 	 * is granted exclusive write access.
 	 *
-	 * Requesting {@link AccessMode#READ_ONLY} will remove an existing request by the
-	 * same application.
+	 * Requesting {@link AccessMode#READ_ONLY} will remove an existing exclusive request by the
+	 * same application, but it will not remove a shared access.
 	 *
 	 * @param priority The required priority in case that exclusive write access is demanded. 
 	 * Use lowest priority (@link Priority.PRIO_LOWEST) for shared access and read-only access.
@@ -260,6 +272,17 @@ public interface Resource {
 	 * @return list of referencing resources, returns the direct parents of the references (may be empty)
 	 */
 	<T extends Resource> List<T> getReferencingResources(Class<T> parentType);
+	
+	/**
+	 * Get the resources referencing this resource. 
+	 * Contrary to {@link #getReferencingResources(Class)}, this method does not return the parents 
+	 * of the referencing resources, but the resources themselves.
+	 * 
+	 * @param transitive
+	 * 		false: get only direct references; true: get also resources that reference other references to this resource
+	 * @return list of all referencing resources
+	 */
+	List<Resource> getReferencingNodes(boolean transitive);
 
 	/**
 	 * Get all sub-resources including children connected via references
@@ -556,5 +579,12 @@ public interface Resource {
 	 * @throws NoSuchResourceException if the name is not a valid OGEMA resource name.
 	 */
 	<T extends Resource> T getSubResource(String name, Class<T> type) throws NoSuchResourceException;
-
+	
+	/**
+	 * Returns the reference target of this resource, i.e. the resource whose path is equal to the location of this resource. 
+	 * Note that a security exception may be thrown, if the calling application does not have the 
+	 * permission to access the target resource. 
+	 */
+	<T extends Resource> T getLocationResource();
+	
 }

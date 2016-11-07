@@ -19,12 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SubInterval2 {
-
-	private static Logger logger = LoggerFactory.getLogger(SubInterval2.class.getName());
 
 	List<SampledValue> values = new ArrayList<SampledValue>();
 

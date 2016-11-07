@@ -130,6 +130,12 @@ public class VisJsGenerator extends GraphGenerator {
 		addTopLevelDummy(resAcc);
 		return super.generateAllResourcesGraph(resAcc);
 	}
+	
+	@Override
+	public synchronized Object generateResourcesGraph(Class<? extends Resource> topLevelType, ResourceAccess resAcc) {
+		addTopLevelDummy(topLevelType,resAcc);
+		return super.generateResourcesGraph(topLevelType, resAcc);
+	}
 
 	@Override
 	public synchronized Object generateConnectionsGraph(ResourceAccess resAcc) {
@@ -149,11 +155,15 @@ public class VisJsGenerator extends GraphGenerator {
 		
 		return serMan.toJson(new VisJsData(nodes, edges, options));
 	}
-
+	
 	private void addTopLevelDummy(ResourceAccess resAcc) {
+		addTopLevelDummy(Resource.class, resAcc);
+	}
+
+	private void addTopLevelDummy(Class<? extends Resource> resourceType, ResourceAccess resAcc) {
 		TopLevelDummyNode topLevelDummy = new TopLevelDummyNode();
 		addNode(topLevelDummy);
-		List<Resource> toplevelResources = resAcc.getToplevelResources(Resource.class);
+		List<? extends Resource> toplevelResources = resAcc.getToplevelResources(resourceType);
 		for(Resource topLevelResource : toplevelResources) {
 			addEdge(topLevelDummy, topLevelResource);
 		}

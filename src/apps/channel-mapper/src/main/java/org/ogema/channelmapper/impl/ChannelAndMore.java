@@ -15,16 +15,16 @@
  */
 package org.ogema.channelmapper.impl;
 
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 
 public class ChannelAndMore {
 
-	public ChannelLocator channelLocator;
+	public ChannelConfiguration channelConfiguration;
 	public Double valueOffset;
 	public Double scalingFactor;
 
-	public ChannelAndMore(ChannelLocator channelLocator, Double valueOffset, Double scalingFactor) {
-		this.channelLocator = channelLocator;
+	public ChannelAndMore(ChannelConfiguration channelConfiguration, Double valueOffset, Double scalingFactor) {
+		this.channelConfiguration = channelConfiguration;
 		this.valueOffset = valueOffset;
 		this.scalingFactor = scalingFactor;
 

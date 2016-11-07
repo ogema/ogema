@@ -31,7 +31,7 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
  */
 @XmlAccessorType(XmlAccessType.PROPERTY)
 @XmlType(name = "IntegerArrayResource", namespace = NS_OGEMA_REST)
-@XmlRootElement(name = "integerArray", namespace = NS_OGEMA_REST)
+@XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 public class JaxbIntegerArray extends JaxbResource {
 
 	JaxbIntegerArray(IntegerArrayResource r, SerializationStatus serMan) {

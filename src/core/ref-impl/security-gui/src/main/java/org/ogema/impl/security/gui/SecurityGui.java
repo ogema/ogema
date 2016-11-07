@@ -27,6 +27,7 @@ import java.util.List;
 
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.accesscontrol.PermissionManager;
@@ -34,10 +35,12 @@ import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.installationmanager.InstallationManagement;
+import org.ogema.core.installationmanager.SourcesManagement;
 import org.ogema.core.security.WebAccessManager;
 import org.ogema.persistence.ResourceDB;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.service.useradmin.UserAdmin;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -61,7 +64,8 @@ public class SecurityGui implements Application {
 	private PermissionManager pMan;
 	@Reference
 	AdministrationManager admin;
-
+	@Reference
+	UserAdmin ua;
 	@Reference
 	ResourceDB db;
 
@@ -69,6 +73,9 @@ public class SecurityGui implements Application {
 
 	@Reference
 	InstallationManagement instMan;
+	
+	@Reference 
+	SourcesManagement sources;
 
 	ApplicationManager appMngr;
 
@@ -80,6 +87,11 @@ public class SecurityGui implements Application {
 	public void activate(BundleContext bc) {
 		this.osgi = bc;
 		this.bundleID = bc.getBundle().getBundleId();
+	}
+	
+	@Deactivate
+	public void deactivate() {
+		this.osgi = null;
 	}
 
 	@Override
@@ -93,8 +105,13 @@ public class SecurityGui implements Application {
 
 	@Override
 	public void stop(AppStopReason reason) {
+		if (wam == null)
+			return;
 		wam.unregisterWebResource(GUI_ALIAS);
 		wam.unregisterWebResource(GUI_SERVLET_ALIAS);
+		appMngr = null;
+		wam = null;
+		sgs = null;
 	}
 
 	public static List<String> getLocalPerms(Bundle b) {
@@ -169,5 +186,9 @@ public class SecurityGui implements Application {
 			}
 		}
 		return permsArray;
+	}
+
+	UserAdmin getUserAdmin() {
+		return ua;
 	}
 }

@@ -26,7 +26,6 @@ import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.SimpleResource;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceManagement;
@@ -37,13 +36,15 @@ import org.ogema.tools.grafana.base.InfluxFake;
 
 @Component(specVersion = "1.2", immediate = true)
 @Service(Application.class)
-public class GrafanaLogging implements Application, ResourceDemandListener<SimpleResource> {
+@SuppressWarnings("deprecation")
+public class GrafanaLogging implements Application, ResourceDemandListener<org.ogema.core.model.SimpleResource> {
 
 	protected OgemaLogger logger;
 	protected ApplicationManager am;
 	protected ResourceManagement rm;
 	protected ResourceAccess ra;
 	protected List<Class<? extends Resource>> resourceTypes;
+    @SuppressWarnings("rawtypes")
 	protected Map<String, Map> panels;
 	protected long updateInterval = 5000; // 5s
 	protected InfluxFake infl;
@@ -52,6 +53,7 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Simpl
 	private String servletPath;
 
 	@Override
+    @SuppressWarnings("deprecation")
     public void start(ApplicationManager am) {
         this.am = am;
         this.logger = am.getLogger();
@@ -64,20 +66,21 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Simpl
         webResourceBrowserPath = "/ogema/" + appNameLowerCase; 
         am.getWebAccessManager().registerWebResource(webResourceBrowserPath, webResourcePackagePath);
         this.resourceTypes = new ArrayList<>();
-        this.panels = new LinkedHashMap<String,Map>(); 
+        this.panels = new LinkedHashMap<>(); 
         this.infl = new InfluxFake(am,panels,updateInterval);
         this.infl.setStrictMode(true);
         servletPath = "/apps/ogema/" + appNameLowerCase + "/fake_influxdb/series";
         am.getWebAccessManager().registerWebResource(servletPath,infl);
-        ra.addResourceDemand(SimpleResource.class, this);
+        ra.addResourceDemand(org.ogema.core.model.SimpleResource.class, this);
 
     }
 
 	@Override
+    @SuppressWarnings("deprecation")
 	public void stop(AppStopReason reason) {
 		am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
 		am.getWebAccessManager().unregisterWebResource(servletPath);
-		ra.removeResourceDemand(SimpleResource.class, this);
+		ra.removeResourceDemand(org.ogema.core.model.SimpleResource.class, this);
 	}
 
 	public List<Class<? extends Resource>> getResourceTypes() {
@@ -85,7 +88,7 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Simpl
 	}
 
 	@Override
-	public void resourceAvailable(SimpleResource resource) {
+	public void resourceAvailable(org.ogema.core.model.SimpleResource resource) {
 		Resource res = resource.getParent();
 		Class<? extends Resource> type;
 		if (res == null || !(res instanceof Sensor || res instanceof Actor || res instanceof Price)) {
@@ -97,7 +100,7 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Simpl
 		}
 		if (!resourceTypes.contains(type)) {
 			resourceTypes.add(type);
-			Map<String, Class<? extends Resource>> rowPanels = new LinkedHashMap<String, Class<? extends Resource>>();
+			Map<String, Class<? extends Resource>> rowPanels = new LinkedHashMap<>();
 			rowPanels.put(type.getSimpleName(), type);
 			panels.put(type.getSimpleName(), rowPanels);
 			infl.setPanels(panels);
@@ -106,7 +109,7 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Simpl
 	}
 
 	@Override
-	public void resourceUnavailable(SimpleResource resource) {
+	public void resourceUnavailable(org.ogema.core.model.SimpleResource resource) {
 		// TODO
 	}
 

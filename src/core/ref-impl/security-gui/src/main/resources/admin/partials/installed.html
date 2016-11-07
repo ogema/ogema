@@ -1,0 +1,56 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<div class="part" id="sysApps">
+	<form id="filterForm">
+		<h2>Filter Bundles</h2>
+		<label id="namelbl" for="nameFilter" class="filter">Bundlename</label>
+		<input type="text" id="nameFilter" class="filter" onchange="filterSysApps()" title="Bundlename contains"/>
+		<input type="checkbox" id="appFilter" class="filter" onchange="filterSysApps()"/>
+		<label id="applbl" for="appFilter"	class="filter">only show Apps</label>		
+		<br>
+		<label id="levellbl" for="levelFilter" class="filter">Startlevel</label>
+		<input type="text" id="levelFilter"class="filter" onchange="validStartLevel()" title="Minimal startlevel for dispalyed bundles"/>
+		<input type="checkbox" id="driverFilter" class="filter" onchange="filterSysApps()"/>
+		<label id="driverlbl" for="driverFilter"	class="filter">only show Drivers</label>			
+	</form>				
+
+	<h1>Current Bundles on your OGEMA System</h1>
+	<div id="sortableApps">
+		<!-- the system apps come into here, after GET -->
+	</div>
+	<div id="buttonSet">
+		<!--
+		<button id="update" type="button" onclick="updateApp()">Update</button>
+		-->
+		<button class="jQueryButton"id="start" type="button" onclick="startBundle()">Start</button>
+		<button class="jQueryButton"id="stop" type="button" onclick="stopBundle()">Stop</button>
+		<button class="jQueryButton"id="remove" type="button" onclick="removeBundle()">Remove Bundle</button>
+		<button class="jQueryButton"id="setPerms" type="button" onclick="editPerms()">Edit Permissions</button>
+		<button class="jQueryButton"id="listAllPerms" type="button" onclick="listAllPerms()">List Permissions</button>
+			<button class="jQueryButton"id="defaultPerms" type="button" onclick="defaultPerms()">Default Policy</button>
+		<button class="jQueryButton"id="webResources" type="button" onclick="showWebResources()">Webresources</button>
+		<button class="jQueryButton"id="showInfo" type="button" onclick="showAppInfo()">Info</button>
+		<button class="jQueryButton"id="newPolicy" type="button" onclick="createNewPolicy()">New OGEMA Policy</button>
+		<button class="jQueryButton"id="changeDefStart" type="button" onclick="changeDefaultStartLevel()">Default Startlevel</button>
+		<button class="jQueryButton"id="url" type="button" onclick="goToBundleUrl()">Go to page</button>
+	</div>
+
+</div>
+<script type="text/javascript">
+	listSysApps();
+</script>

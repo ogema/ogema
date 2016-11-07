@@ -16,10 +16,21 @@
 		<groupId>org.apache.felix</groupId>
 		<version>1.2.0</version>
 	</parent>
+	
+	<groupId>org.ogema.external</groupId>
 	<artifactId>org.apache.felix.useradmin</artifactId>
 	<version>1.0.3</version>
 	<packaging>bundle</packaging>
 	<description>Provides an implementation for the UserAdmin OSGi compendium service.</description>
+	
+	<distributionManagement>
+		<repository>
+			<id>external-opensource</id>
+			<name>external-opensource</name>
+			<url>https://www.ogema-source.net/artifactory/external-opensource</url>
+		</repository>
+	</distributionManagement>
+	
 	<dependencies>
 		<dependency>
 			<groupId>org.osgi</groupId>

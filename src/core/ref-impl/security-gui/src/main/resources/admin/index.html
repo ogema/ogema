@@ -40,7 +40,7 @@
   <script src="libs/jstree/jstree.js"></script>
 
 </head>
-<body id="GUIBody"onload="listSysApps()">
+<body id="GUIBody"onload="showApps()">
     <div class="container">
         <div class="row">
             <div class="col-sm-12">
@@ -59,10 +59,12 @@
 
     <!-- Collect the nav links, forms, and other content for toggling -->
     <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-      <ul class="nav navbar-nav">
+      <ul id="navbar" class="nav navbar-nav">
        <li id="installed" class="navli">Installed Bundles
        </li>
 	   <li id="newInstall" class="navli hover">Bundle Installation
+	   </li>
+	   <li id="users" class="navli hover">Appstore Users
 	   </li>
       </ul>
        <ul class="nav navbar-nav navbar-right">
@@ -75,75 +77,19 @@
 </div>
         
 <div class="row">
-<div class="building col-sm-12 well well-sm ng-scope ng-binding">
-			<div id="newInstallDiv"class="part" style="display:none">
-				<h1
-					style="position: relative; top: 5px; padding: 5px; font-size: 17px; font-weight: normal; border-bottom: 1px solid #124791; margin-bottom: 0px;">
-					Choose the Way to Install a new Bundle</h1>
-				<br>
-				<h1 style="position: relative; top: 5px; padding: 5px; font-size: 12px; font-weight: normal; margin-bottom: 0px;">
-					&bull; Click the arrow select a marketplace and press RETURN OR &bull; Click to browse and upload your own bundle
-					file</h1>
-				<div id='wrapContents'>
-					<div class="content" id="content1">
-						<div class="innerContent">
-							<form action="apps.html" method="get">
-								<input type="text" id="store" name="store" value="enter an marketplace..." autocomplete="off"
-									onfocus="if (this.value == 'enter an marketplace...') {this.value = '';}"
-									onblur="if (this.value == '') {this.value = 'enter an marketplace...'; changeTextColor(); }"
-									onkeyup="changeTextColor()" style="color: #C2C2C2;"> <img id="button" src="images/button.png">
-							</form>
-							<ul id="menu">
-							</ul>
-						</div>
-					</div>
-					<div class="content" id="content2">
-						<div class="innerContent">
-							<button id='initUp' type='button' onclick="openUploader()">Install a local bundle File ...</button>
-							<div id="diaUpload" title="Uploader">
-								<form action="" method="post" enctype="multipart/form-data">
-									<br>
-									<div id="wrapUpload">
-										<div id="wrapFiles"></div>
-										<input name="file" type="file" id="fileA" onchange="fileChange();" /> <input name="upload" 
-											value="Upload" type="button" onclick="uploadFile();" /> <input name="abort" 
-											value="Stop" type="button"onclick="uploadAbort();" />
-									</div>
-								</form>
-							</div>
-						</div>
-						<div class='uploadDia' id='dialUpload' title='Permissions'></div>
-					</div>
-				</div>
-			</div>
-			<div class="part" id="sysApps">
-				<h1>Current Bundles on your OGEMA System</h1>
-				<div id="sortableApps">
-					<!-- the system apps come into here, after GET -->
-				</div>
-				<div id="buttonSet">
-					<!--
-					<button id="update" type="button" onclick="updateApp()">Update</button>
-					-->
-					<button class="jQueryButton"id="start" type="button" onclick="startBundle()">Start</button>
-					<button class="jQueryButton"id="stop" type="button" onclick="stopBundle()">Stop</button>
-					<button class="jQueryButton"id="remove" type="button" onclick="removeBundle()">Remove Bundle</button>
-					<button class="jQueryButton"id="setPerms" type="button" onclick="editPerms()">Edit Permissions</button>
-					<button class="jQueryButton"id="listAllPerms" type="button" onclick="listAllPerms()">List Permissions</button>
- 					<button class="jQueryButton"id="defaultPerms" type="button" onclick="defaultPerms()">Default Policy</button>
-					<button class="jQueryButton"id="webResources" type="button" onclick="showWebResources()">Webresources</button>
-					<button class="jQueryButton"id="showInfo" type="button" onclick="showAppInfo()">Info</button>
-					<button class="jQueryButton"id="newPolicy" type="button" onclick="createNewPolicy()">New OGEMA Policy</button>
-					<button class="jQueryButton"id="changeDefStart" type="button" onclick="changeDefaultStartLevel()">Default Startlevel</button>
-				</div>
-			</div>
-			<!-- 			Dialog -->
-			<div id="appDisplay" title="App Information"></div>
-			<div id="changeDefStartLevel" title="Change Default Startlevel"></div>
-			<div id="webResourceDisplay" title="Webressourcen">
-				<div id="treeWebRes"></div>
-			</div>
-
+	<div id="content_div" class="building col-sm-12 well well-sm ng-scope ng-binding">
+			<!-- load the content installed Apps / Appstores / Users -->
+	</div>
+	<div id="dialog_div">		
+		<!-- 			Dialog -->
+		<div id="assignUserToAppstore" title="Assign User to Appstore"></div>
+		<div id="appstoreUsers"></div>
+		<div id="userAppstores"></div>
+		<div id="appDisplay" title="App Information"></div>
+		<div id="changeDefStartLevel" title="Change Default Startlevel"></div>
+		<div id="webResourceDisplay" title="Webressourcen">
+			<div id="treeWebRes"></div>
 		</div>
+	</div>	
 </div>
 </div>

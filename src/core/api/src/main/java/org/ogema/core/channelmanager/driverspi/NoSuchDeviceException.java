@@ -16,7 +16,7 @@
 package org.ogema.core.channelmanager.driverspi;
 
 /**
- * A Exception thrown if Device don't exist
+ * An Exception thrown if device doesn't exist
  */
 public class NoSuchDeviceException extends Exception {
 
@@ -25,7 +25,7 @@ public class NoSuchDeviceException extends Exception {
 	private DeviceLocator deviceLocator = null;
 
 	/**
-	 * Constuctor
+	 * Constructor
 	 * 
 	 * @param deviceLocator
 	 */

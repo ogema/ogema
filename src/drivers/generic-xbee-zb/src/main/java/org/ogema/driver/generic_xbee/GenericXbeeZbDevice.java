@@ -21,6 +21,8 @@ import java.util.List;
 import org.json.JSONObject;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccess;
+import org.ogema.core.channelmanager.ChannelAccessException;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.ChannelEventListener;
 import org.ogema.core.channelmanager.EventType;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
@@ -37,7 +39,7 @@ public abstract class GenericXbeeZbDevice implements ChannelEventListener {
 	protected final GenericXbeeZbConfig configurationResource;
 	protected final ApplicationManager appManager;
 
-	protected ChannelLocator channelLocator;
+	protected ChannelConfiguration channelLocator;
 	protected long timeout;
 	protected DeviceLocator deviceLocator;
 	protected ResourceManagement resourceManager;
@@ -45,18 +47,18 @@ public abstract class GenericXbeeZbDevice implements ChannelEventListener {
 	protected GenericXbeeZbDriver driver;
 
 	protected final ChannelAccess channelAccess;
-	private List<ChannelLocator> channelList;
+	private List<ChannelConfiguration> channelList;
 
 	public GenericXbeeZbDevice(GenericXbeeZbDriver driver, ApplicationManager appManager, GenericXbeeZbConfig config) {
 		this.appManager = appManager;
-		channelList = new ArrayList<ChannelLocator>();
+		channelList = new ArrayList<ChannelConfiguration>();
 		channelAccess = appManager.getChannelAccess();
 		resourceManager = appManager.getResourceManagement();
 		configurationResource = config;
 		configurationResource.resourceName = configurationResource.resourceName.replace("-", "");
 		this.driver = driver;
 
-		deviceLocator = channelAccess.getDeviceLocator(config.driverId, config.interfaceId, config.deviceAddress,
+		deviceLocator = new DeviceLocator(config.driverId, config.interfaceId, config.deviceAddress,
 				config.deviceParameters);
 		unifyResourceName(configurationResource);
 	}
@@ -64,7 +66,7 @@ public abstract class GenericXbeeZbDevice implements ChannelEventListener {
 	public GenericXbeeZbDevice(GenericXbeeZbDriver driver, ApplicationManager appManager, DeviceLocator deviceLocator) {
 		this.appManager = appManager;
 		this.channelAccess = appManager.getChannelAccess();
-		channelList = new ArrayList<ChannelLocator>();
+		channelList = new ArrayList<ChannelConfiguration>();
 		this.resourceManager = appManager.getResourceManagement();
 		this.configurationResource = new GenericXbeeZbConfig();
 		this.driver = driver;
@@ -93,22 +95,22 @@ public abstract class GenericXbeeZbDevice implements ChannelEventListener {
 	}
 
 	protected ChannelLocator createChannelLocator(String channelAddress) {
-		return channelAccess.getChannelLocator(channelAddress, deviceLocator);
+		return new ChannelLocator(channelAddress, deviceLocator);
 	}
 
 	public abstract void addChannel(GenericXbeeZbConfig config);
 
 	public abstract void updateValues(Value value);
 
-	protected void addToUpdateListener(ChannelLocator channelLocator) {
-		channelList.add(channelLocator);
+	protected void addToUpdateListener(ChannelConfiguration channelConfiguration) throws ChannelAccessException {
+		channelList.add(channelConfiguration);
 		channelAccess.registerUpdateListener(channelList, this);
 	}
 
-	protected void removeFromUpdateListener(ChannelLocator channelLocator) {
-		channelList.remove(channelLocator);
+	protected void removeFromUpdateListener(ChannelConfiguration channelConfiguration) {
+		channelList.remove(channelConfiguration);
 		logger.debug("channelList size: " + channelList.size());
-		channelAccess.registerUpdateListener(channelList, this);
+		channelAccess.unregisterUpdateListener(channelList, this);
 	}
 
 	public abstract void unifyResourceName(GenericXbeeZbConfig xbeeConfig);

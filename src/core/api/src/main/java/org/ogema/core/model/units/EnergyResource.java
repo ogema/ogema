@@ -45,4 +45,17 @@ public interface EnergyResource extends PhysicalUnitResource {
 	 */
 	@Override
 	PhysicalUnit getUnit();
+	
+	/**
+	 * Get the energy in kWhs.
+	 */
+	float getKWhs();
+	
+	/**
+	 * Set the energy in kWhs. Note that the method 
+	 * {@link #getValue()} will still return the value in J.
+	 * @param value
+	 * 		energy in kWh
+	 */
+	void setKWhs(float value);
 }

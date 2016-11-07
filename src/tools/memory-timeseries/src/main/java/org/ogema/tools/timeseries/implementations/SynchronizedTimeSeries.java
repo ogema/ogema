@@ -75,6 +75,12 @@ public class SynchronizedTimeSeries implements MemoryTimeSeries {
 		m_schedule.read(schedule, from, to);
 		return this;
 	}
+	
+	@Override
+	public synchronized SynchronizedTimeSeries readWithBoundaries(ReadOnlyTimeSeries schedule, long from, long to) {
+		m_schedule.readWithBoundaries(schedule, from, to);
+		return this;
+	}
 
 	@Override
 	public synchronized void addValue(SampledValue value) {
@@ -82,6 +88,7 @@ public class SynchronizedTimeSeries implements MemoryTimeSeries {
 	}
 
 	@Override
+        @Deprecated
 	public Long getTimeOfLatestEntry() {
 		return m_schedule.getTimeOfLatestEntry();
 	}
@@ -183,12 +190,14 @@ public class SynchronizedTimeSeries implements MemoryTimeSeries {
 	}
 
 	@Override
+        @Deprecated
 	public synchronized boolean addValueSchedule(long startTime, long stepSize, List<Value> values) {
 		return m_schedule.replaceValuesFixedStep(startTime, values, stepSize);
 		//		return m_schedule.addValueSchedule(startTime, stepSize, values);
 	}
 
 	@Override
+        @Deprecated
 	public synchronized boolean addValueSchedule(long startTime, long stepSize, List<Value> values,
 			long timeOfCalculation) {
 		return m_schedule.replaceValuesFixedStep(startTime, values, stepSize, timeOfCalculation);

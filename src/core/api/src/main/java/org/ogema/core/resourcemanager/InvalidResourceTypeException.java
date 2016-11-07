@@ -16,8 +16,8 @@
 package org.ogema.core.resourcemanager;
 
 /**
- * This Exception is thrown if a resource access should be done but the specified resource type doesn't match the type
- * of the accessed rersource.
+ * This Exception is thrown if a resource access is requested but the specified resource type doesn't match the type
+ * of the accessed resource.
  * 
  */
 public class InvalidResourceTypeException extends ResourceException {

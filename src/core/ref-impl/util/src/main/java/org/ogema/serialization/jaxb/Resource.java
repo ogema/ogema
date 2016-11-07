@@ -23,6 +23,7 @@ package org.ogema.serialization.jaxb;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
@@ -31,9 +32,11 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlSchemaType;
 import javax.xml.bind.annotation.XmlSeeAlso;
 import javax.xml.bind.annotation.XmlType;
-import org.codehaus.jackson.annotate.JsonSubTypes;
-import org.codehaus.jackson.annotate.JsonTypeInfo;
+
 import org.ogema.serialization.JaxbResource;
+
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 /**
  *
@@ -77,6 +80,8 @@ import org.ogema.serialization.JaxbResource;
 		@JsonSubTypes.Type(IntegerResource.class), @JsonSubTypes.Type(OpaqueResource.class),
 		@JsonSubTypes.Type(StringResource.class), @JsonSubTypes.Type(TimeResource.class),
 		@JsonSubTypes.Type(ScheduleResource.class), @JsonSubTypes.Type(FloatSchedule.class),
+		@JsonSubTypes.Type(IntegerSchedule.class), @JsonSubTypes.Type(TimeSchedule.class),
+		@JsonSubTypes.Type(StringSchedule.class), @JsonSubTypes.Type(BooleanSchedule.class),
 		@JsonSubTypes.Type(ResourceList.class), @JsonSubTypes.Type(BooleanArrayResource.class),
 		@JsonSubTypes.Type(ByteArrayResource.class), @JsonSubTypes.Type(FloatArrayResource.class),
 		@JsonSubTypes.Type(IntegerArrayResource.class), @JsonSubTypes.Type(StringArrayResource.class),

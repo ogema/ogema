@@ -56,8 +56,8 @@ public interface MemoryTimeSeries extends TimeSeries, Cloneable {
 	/**
 	 * Write this to another time series. Overwrites all previous content in the
 	 * schedule.
-	 * @param start - time of the first value in the time series in ms since epoche (inclusive).
-	 * @param end - time of the last value in the time series in ms since epoche (exclusive).
+	 * @param from - time of the first value in the time series in ms since epoche (inclusive).
+	 * @param to - time of the last value in the time series in ms since epoche (exclusive).
 	 */
 	void write(TimeSeries timeSeries, long from, long to);
 
@@ -75,6 +75,19 @@ public interface MemoryTimeSeries extends TimeSeries, Cloneable {
 	 * @return returns a reference to itself after operation.
 	 */
 	MemoryTimeSeries read(ReadOnlyTimeSeries timeSeries, long start, long end);
+	
+	/**
+	 * Like {@link MemoryTimeSeries#read(ReadOnlyTimeSeries, long, long)}, except that two points
+	 * for the boundary values are added, if no explicit values are provided by the schedule. The
+	 * values for the boundary points are determined according to the interpolation mode of the
+	 * provided time series. If no interpolation mode is set, or a boundary timestamp is outside
+	 * the domain of the time series, no point is added for this boundary.  
+	 * @param timeSeries
+	 * @param start - start time
+	 * @param end - end time (inclusive, deviating from {@link #read(ReadOnlyTimeSeries, long, long)}).
+	 * @return this
+	 */
+	MemoryTimeSeries readWithBoundaries(ReadOnlyTimeSeries timeSeries, long start, long end);
 
 	/**
 	 * Adds a copy of a SampledValue to schedule. The value type of the sampled
@@ -82,15 +95,6 @@ public interface MemoryTimeSeries extends TimeSeries, Cloneable {
 	 * @param value new value to add to schedule.
 	 */
 	void addValue(SampledValue value);
-
-	/**
-	 * Memory schedules do not live in an OGEMA resource framework and hence may
-	 * not have a notion of a framework time. Therefore, this returns -1 for memory
-	 * schedules.
-	 * @return Always returns null for memory schedules.
-	 */
-	@Override
-	Long getTimeOfLatestEntry();
 
 	/**
 	 * Shifts the timestamps of all entries by dT.

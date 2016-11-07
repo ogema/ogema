@@ -42,6 +42,7 @@ public class GrafanaScheduleViewer implements Application, ResourceDemandListene
 	protected ResourceAccess ra;
 	protected List<Class<? extends Resource>> forecastScheduleTypes, programScheduleTypes, otherScheduleTypes;
 	protected InfluxFake infl;
+    @SuppressWarnings("rawtypes")
 	protected Map<String, Map> panels;
 	protected Map<String, Map<String, Class<? extends Resource>>> restrictions;
 

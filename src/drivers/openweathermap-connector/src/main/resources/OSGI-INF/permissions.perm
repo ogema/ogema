@@ -1,0 +1,20 @@
+(org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.tools.*" "import")
+
+(org.osgi.framework.PackagePermission "org.joda.time" "import")
+(org.osgi.framework.PackagePermission "org.slf4j" "import")
+(org.osgi.framework.PackagePermission "javax.net.ssl" "import")
+(org.osgi.framework.PackagePermission "javax.net.ssl.*" "import")
+(org.osgi.framework.PackagePermission "org.json" "import")
+(org.osgi.framework.PackagePermission "com.fasterxml.jackson.*" "import")
+
+(org.osgi.framework.ServicePermission "org.ogema.apps.openweathermap.OpenWeatherMapApplicationI" "register")
+(org.osgi.framework.PackagePermission "org.ogema.apps.openweathermap" "exportonly")
+(java.util.PropertyPermission "org.ogema.drivers.openweathermap.stdCity" "read")
+(java.util.PropertyPermission "org.ogema.drivers.openweathermap.stdCountry" "read")
+
+# TODO more specific resource permissions
+(org.ogema.accesscontrol.ResourcePermission "type=*" "*")
+

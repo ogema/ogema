@@ -1,0 +1,6 @@
+This application requires an API key for OpenWeatherMap. Please register: http://openweathermap.org/register
+The key must be set as system property (e.g. in the rundir file config/ogema.properties):
+	org.ogema.drivers.openweathermap.key 
+	
+Further properties that are evaluated:
+	org.ogema.drivers.openweathermap.getWeatherInfoRepeatTime: irradiation schedule calculation period (in ms; default 10 min)

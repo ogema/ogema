@@ -62,9 +62,12 @@ public interface ElectricityStorage extends EnergyStorage {
 	 * factor, etc.), in {@link org.ogema.model.sensors.Sensor#ratedValues()}. 
 	 * For instance, the maximum allowed charge rate (power) is given in 
 	 * {@link org.ogema.model.sensors.Sensor#ratedValues() electricityConnection.powerSensor().ratedValues()}.
+	 * <br>
+	 * If the storage device is a battery with an integrated inverter, this connection shall be interpreted as
+	 * the AC connection of the inverter. The DC connection is modeled in the inverter.
 	 */
 	ElectricityConnection electricityConnection();
-
+	
 	/**
 	 * Number of charge cycles so far.
 	 */

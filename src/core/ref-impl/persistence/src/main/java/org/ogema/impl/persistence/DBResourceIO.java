@@ -18,9 +18,13 @@ package org.ogema.impl.persistence;
 import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Map;
@@ -41,11 +45,6 @@ public class DBResourceIO {
 	/**
 	 * Initial size of buffer the type entry is set up therein.
 	 */
-	static final int ENTRY_MAX_SIZE = 1024;
-
-	private static final int MAGIC1 = 0xFEEDC0DE;
-
-	private static final int MAGIC2 = 0xFEEDFACE;
 
 	private static final int INITIAL_MAP_SIZE = 256;
 
@@ -54,17 +53,15 @@ public class DBResourceIO {
 	PersistentFileSet resDataFiles, dirFiles;
 	int dirFileSuffix;
 
-	ConcurrentHashMap<Integer, Integer> offsetByID;
+	final ConcurrentHashMap<Integer, Integer> offsetByID;
 	int dbFileInitialOffset;
-	MapValueSorter sorter;
+	final MapValueSorter sorter;
 
-	ConcurrentHashMap<Integer, TreeElementImpl> unsortedParents;
-	ConcurrentHashMap<Integer, TreeElementImpl> unsortedRefs;
-	ConcurrentHashMap<Integer, TreeElementImpl> unreachableCusomTypes;
+	final ConcurrentHashMap<Integer, TreeElementImpl> unsortedParents;
+	final ConcurrentHashMap<Integer, TreeElementImpl> unsortedRefs;
+	final ConcurrentHashMap<Integer, TreeElementImpl> unreachableCustomTypes;
 
-	private ResourceDBImpl database;
-
-	private int dirEntryCount;
+	private final ResourceDBImpl database;
 
 	private int maxID;
 
@@ -73,11 +70,11 @@ public class DBResourceIO {
 	 * read from system properties. If the appropriate properties are not set, the default values from DBConstans are
 	 * used.
 	 */
-	String dbPathName;
-	String dbResourcesFileName;
-	String dbDirFileName;
+	final String dbPathName;
+	final String dbResourcesFileName;
+	final String dbDirFileName;
 
-	String currentDataFileName;
+	// String currentDataFileName;
 
 	private static final int CHANGES_BUFFER_SIZE = 1024;
 	private static final int DEFAULT_MIN_COMPACTION_FILE_SIZE = 1020 * 1024; // 1MB
@@ -85,10 +82,18 @@ public class DBResourceIO {
 
 	private int garbage;
 
-	ConcurrentHashMap<Integer, Change> changes;
+	final ConcurrentHashMap<Integer, Change> changes;
 
 	private int minimunCompationFileSize;
 	private float minimumCompationGarbageSize;
+
+	MapFile mapFile;
+
+	DataFile dataFile;
+
+	private boolean parsed;
+
+	private static String currentPath;
 
 	class MapValueSorter implements Comparator<Integer> {
 
@@ -110,7 +115,7 @@ public class DBResourceIO {
 	DBResourceIO(ResourceDBImpl db) {
 		unsortedParents = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
 		unsortedRefs = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
-		unreachableCusomTypes = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
+		unreachableCustomTypes = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
 
 		offsetByID = new ConcurrentHashMap<Integer, Integer>();
 		sorter = new MapValueSorter(offsetByID);
@@ -123,7 +128,7 @@ public class DBResourceIO {
 		if (persDebug.equals("true"))
 			Configuration.LOGGING = true;
 		// check if the minimum compaction file size is set
-		String filesize = System.getProperty(DBConstants.PROP_NAME_PERSISTENCE_COMPACTION_START_SIZE_FILE, null);
+		String filesize = System.getProperty(DBConstants.PROP_NAME_PERSISTENCE_COMPACTION_START_SIZE, null);
 		try {
 			minimunCompationFileSize = Integer.valueOf(filesize) << 10; // KB to Bytes -> * 1024
 		} catch (NumberFormatException e) {
@@ -144,44 +149,215 @@ public class DBResourceIO {
 		 * Get the application specific file locations
 		 */
 		dbPathName = System.getProperty(DBConstants.DB_PATH_PROP, DBConstants.DB_PATH_NAME);
-		dbResourcesFileName = System.getProperty(DBConstants.RESOURCES_FILE_PROP, DBConstants.RESOURCES_ARCHIVE_NAME);
-		dbDirFileName = System.getProperty(DBConstants.DIR_FILE_PROP, DBConstants.DIR_FILE_NAME);
+		currentPath = dbPathName;
+		// dbResourcesFileName = System.getProperty(DBConstants.RESOURCES_FILE_PROP,
+		// DBConstants.RESOURCES_ARCHIVE_NAME);
+		// dbDirFileName = System.getProperty(DBConstants.DIR_FILE_PROP, DBConstants.DIR_FILE_NAME);
+		dbResourcesFileName = DBConstants.RESOURCES_ARCHIVE_NAME;
+		dbDirFileName = DBConstants.DIR_FILE_NAME;
 
-		initFiles();
+		parsed = false;
 	}
 
-	private void initFiles() {
+	void initFiles() {
 		File dir = new File(dbPathName);
 		if (!dir.exists()) {
-			dir.mkdir();
+			dir.mkdirs();
 		}
 		/*
-		 * Init directory file
+		 * Initialize directory file
 		 */
 		dirFiles = new PersistentFileSet();
 		dirFiles.initFiles(dir, dbDirFileName);
 		/*
-		 * Init resource archive file
+		 * Initialize resource archive file
 		 */
 		resDataFiles = new PersistentFileSet();
 		resDataFiles.initFiles(dir, dbResourcesFileName);
 
-		// dbFile = new File(dbPathName, dbResourcesFileName);
+		/*
+		 * Check the integrity of the resource data files
+		 */
+		postInitFiles();
+
+		/*
+		 * If no valid map file is there but some valid data files, the biggest data file is parsed completely without
+		 * map file.
+		 */
+		if (mapFile == null) {
+			File f = resDataFiles.getBiggest();
+			if (f != null) {
+				resDataFiles.fileNew = f;
+				dataFile = new DataFile(f);
+				emergencyParser(dataFile.raf);
+				dataFile.close();
+				dataFile = null;
+			}
+		}
+
+		if (dataFile == null) {
+			resDataFiles.shiftF();
+			dataFile = new DataFile(resDataFiles.fileNew, true);
+		}
+
+		dataFile.initOutput();
+
 		if (resDataFiles.fileNew == null)
 			dbFileInitialOffset = 0;
 		else
 			dbFileInitialOffset = (int) resDataFiles.fileNew.length();
+	}
+
+	private void emergencyParser(RandomAccessFile raf) {
+		logger.debug("EmergencyParser parses Resources...");
+
+		// read the entries
+		this.garbage = 0;
+		try {
+			raf.seek(0);
+			while (true) {
+				int offset = (int) raf.getFilePointer();
+				TreeElementImpl node = readEntry(raf);
+				int key = node.resID;
+				offsetByID.put(key, offset);
+			}
+		} catch (IOException e) {
+			if (Configuration.LOGGING)
+				logger.debug("...Resources parsing aborted with exception");
+		}
+		database.nextresourceID = maxID + 1;
 
 		/*
-		 * if no directory file exists, resource data file is unusable and can be deleted
+		 * Remove sub resources of deleted custom model resources from the unhandled list.
 		 */
-		if (dirFiles.fileOld == null && dirFiles.fileNew == null)
+		handleRemoved(unsortedParents);
+		handleRemoved(unsortedRefs);
+		/*
+		 * Place the unsorted node in the tree.
+		 */
+		handleUnsorted(unsortedParents);
+		handleUnsorted(unsortedRefs);
+		if (Configuration.LOGGING)
+			logger.debug("...Resources parsed");
+		try {
+			if (raf != null)
+				raf.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		parsed = true;
+	}
+
+	private void postInitFiles() {
+		/*
+		 * Case 1: no map file exists. This is the case if its the initial run or the last run was initial run and no
+		 * storage period is successfully terminated. If no directory file exists, resource data file is unusable and
+		 * can be deleted.
+		 */
+		if (dirFiles.fileNew == null && dirFiles.fileOld == null) {
 			resDataFiles.backup();
+		}
+		/*
+		 * Case 2: only one map file exists. This occurs if only one storage period appears after an initial run. The
+		 * map file should be consistent in order to be usable with the appropriate data file.
+		 */
+		else if (dirFiles.fileNew != null && dirFiles.fileOld == null) {
+			File newestMap = dirFiles.fileNew;
+			MapFile mf = new MapFile(newestMap);
+			String dataName = mf.dataFileName;
+			DataFile df = verifyDataFile(mf, dataName);
+			if (!mf.isValid() || df == null) {
+				// No valid file set exist, backup the files and begin an new file set when the storage period starts.
+				mf.close();
+				dirFiles.backup();
+				if (df != null) {
+					df.close();
+					resDataFiles.backup();
+				}
+				return;
+			}
+			else {
+				resDataFiles.setAsCurrentFile(dataName); // This will not make any changes, but for the sake of
+															// completeness.
+				this.mapFile = mf;
+				this.dataFile = df;
+			}
+		}
+		/*
+		 * Case 3: two or more map files exist. This is the most general case. One or two data files could be there.
+		 */
+		else if (dirFiles.fileNew != null && dirFiles.fileOld != null) {
+			File newestMap = dirFiles.fileNew;
+			MapFile mf = new MapFile(newestMap);
+			String dataName = mf.dataFileName;
+			DataFile df = null;
+
+			if (mf.isValid()) {
+				df = verifyDataFile(mf, dataName);
+				if (df != null) {
+					// success
+					resDataFiles.setAsCurrentFile(dataName);
+					this.mapFile = mf;
+					this.dataFile = df;
+					return;
+				}
+			}
+
+			if (!mf.isValid() || df == null) {
+				// The newest map file is invalid, try the older one.
+				mf.close();
+				dirFiles.shiftB();
+				newestMap = dirFiles.fileNew;
+				mf = new MapFile(newestMap);
+				dataName = mf.dataFileName;
+				if (mf.isValid()) {
+					// Valid map file detected, look for its data file
+					df = verifyDataFile(mf, dataName);
+					if (df != null) {
+						// success
+						resDataFiles.setAsCurrentFile(dataName);
+						this.mapFile = mf;
+						this.dataFile = df;
+					}
+				}
+			}
+
+			if (this.mapFile == null) {
+				// Both map files are invalid, backup the files and begin an new file set when the storage
+				// period
+				// starts.
+				// resDataFiles.backup();
+				dirFiles.backup();
+			}
+		}
+	}
+
+	private DataFile verifyDataFile(MapFile map, String dataName) {
+		File dataFile = resDataFiles.getFileByName(dataName);
+		if (dataFile == null)
+			return null;
+		DataFile df = new DataFile(dataFile);
+		this.dataFile = df;
+		@SuppressWarnings("unused")
+		RandomAccessFile ram = map.raf;
+		int offset = map.getLastOffset();
+		int dataFileLength = (int) dataFile.length();
+		if (dataFileLength <= offset)
+			return null;
+		try {
+			df.raf.seek(offset);
+			tryReadEntry(df.raf);
+		} catch (Exception e) {
+			df.close();
+			return null; // In this case resource data file is smaller than it's expected. The resource tree could be
+							// created in part only.
+		}
+		return df;
 	}
 
 	void setChValue(int ch) {
 		try {
-			resDataFiles.out.writeChar(ch);
+			dataFile.out.writeChar(ch);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -193,7 +369,7 @@ public class DBResourceIO {
 	 */
 	void setTypeKey(int typeKey) {
 		try {
-			resDataFiles.out.write(typeKey);
+			dataFile.out.write(typeKey);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -202,7 +378,7 @@ public class DBResourceIO {
 	void setByte(int flags) {
 
 		try {
-			resDataFiles.out.write(flags);
+			dataFile.out.write(flags);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -216,14 +392,14 @@ public class DBResourceIO {
 		try {
 			/*
 			 * If the string is null wrtiteUTF throws an exception. In order to encode this case correctly in the
-			 * database -1 is written instead of the UTF-8 string. During the parse process is this case to be
+			 * database -1 is written instead of the UTF-8 string. During the parse process this case is to be
 			 * evaluated.
 			 */
 			if (name == null) {
-				resDataFiles.out.writeShort(-1);
+				dataFile.out.writeShort(-1);
 				return;
 			}
-			resDataFiles.out.writeUTF(name);
+			dataFile.out.writeUTF(name);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -231,7 +407,7 @@ public class DBResourceIO {
 
 	public void setBValue(boolean b) {
 		try {
-			resDataFiles.out.writeBoolean(b);
+			dataFile.out.writeBoolean(b);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -239,7 +415,7 @@ public class DBResourceIO {
 
 	public void setFValue(float f) {
 		try {
-			resDataFiles.out.writeFloat(f);
+			dataFile.out.writeFloat(f);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -247,7 +423,7 @@ public class DBResourceIO {
 
 	public void setIValue(int i) {
 		try {
-			resDataFiles.out.writeInt(i);
+			dataFile.out.writeInt(i);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -255,7 +431,7 @@ public class DBResourceIO {
 
 	public void setJValue(long l) {
 		try {
-			resDataFiles.out.writeLong(l);
+			dataFile.out.writeLong(l);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -298,13 +474,23 @@ public class DBResourceIO {
 		node.footprint += tmpint;
 	}
 
-	boolean compactionRequired() {
+	boolean check4Compaction() {
 		int currentFileLength = getCurrentOffset();
 		if (currentFileLength == -1)
 			return false;
-		if (currentFileLength > minimunCompationFileSize && (garbage > currentFileLength * minimumCompationGarbageSize))
+		if (currentFileLength > minimunCompationFileSize
+				&& (garbage > currentFileLength * minimumCompationGarbageSize)) {
+			dataFile.close();
+			resDataFiles.shiftF();
+			dataFile = new DataFile(resDataFiles.fileNew, true);
+			dbFileInitialOffset = 0;
+			compact();
 			return true;
-		return false;
+		}
+		else {
+			return false;
+		}
+
 	}
 
 	void compact() {
@@ -455,52 +641,23 @@ public class DBResourceIO {
 	 * 
 	 */
 	public void parseResources() {
+		if (parsed || (mapFile == null))
+			return;
 		/*
 		 * First read the directory structure
 		 */
 		if (Configuration.LOGGING)
 			logger.debug("Parse Resources...");
-		resDataFiles.updateCurrentIn();
-		if (resDataFiles.in == null) {
-			resDataFiles.updateCurrentOut();
-			currentDataFileName = resDataFiles.fileNew.getName();
-			return;
-		}
-		RandomAccessFile dirRaf = null;
-		// is the newer directory file valid
-		if (dirFiles.fileNew != null) {
-			try {
-				dirFiles.updateCurrentIn();
-				dirRaf = dirFiles.in;
-				if (!dirFileValid(dirRaf)) {
-					if (dirRaf != null) {
-						dirRaf.close();
-						dirFiles.deleteNew();
-					}
-					// is the older directory file valid
-					dirFiles.updateCurrentIn();
-					dirRaf = dirFiles.in;
-					if (!dirFileValid(dirRaf)) {
-						if (dirRaf != null) {
-							dirRaf.close();
-							dirFiles.deleteNew();
-						}
-					}
-				}
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
 
+		RandomAccessFile dirRaf = mapFile.raf;
 		// read the entries
-		RandomAccessFile dataRaf = resDataFiles.in;
+		RandomAccessFile dataRaf = dataFile.raf;
 		this.garbage = 0;
 		int endGarbage = 0, beginGarbage = 0;
 		if (dirRaf != null) {
 			try {
 				dirRaf.seek(0);
+				int dirEntryCount = mapFile.entryCount;
 				while (dirEntryCount > 0) {
 					int key = dirRaf.readInt();
 					int value = dirRaf.readInt();
@@ -509,7 +666,7 @@ public class DBResourceIO {
 					int tmpGarbage = endGarbage - beginGarbage;
 					if (tmpGarbage > 0)
 						garbage += tmpGarbage;
-					readEntry();
+					readEntry(dataRaf);
 					beginGarbage = (int) dataRaf.getFilePointer();
 					offsetByID.put(key, value);
 					dirEntryCount--;
@@ -533,15 +690,10 @@ public class DBResourceIO {
 		if (Configuration.LOGGING)
 			logger.debug("...Resources parsed");
 		try {
-
-			/*
-			 * Check if a compaction of the data is required. The policy here is that at least 90% of the data file
-			 * consists of garbage.
-			 */
-			dataRaf.close();
-			resDataFiles.in = null;
-			resDataFiles.updateCurrentOut();
-			currentDataFileName = resDataFiles.fileNew.getName();
+			if (dataRaf != null)
+				dataRaf.close();
+			if (dirRaf != null)
+				dirRaf.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -554,7 +706,7 @@ public class DBResourceIO {
 	 * @param map
 	 */
 	private void handleRemoved(Map<Integer, TreeElementImpl> map) {
-		Set<Entry<Integer, TreeElementImpl>> unreachables = unreachableCusomTypes.entrySet();
+		Set<Entry<Integer, TreeElementImpl>> unreachables = unreachableCustomTypes.entrySet();
 		for (Map.Entry<Integer, TreeElementImpl> entry1 : unreachables) {
 			TreeElementImpl e1 = entry1.getValue();
 			if (database.activatePersistence)
@@ -592,39 +744,10 @@ public class DBResourceIO {
 					map.remove(e.resID);
 			}
 			countAfter = map.size();
-			assert (countBefore != countAfter);
+			if (countBefore == countAfter)
+				break; // This should never happen. It means there are undeleted nodes and they couldn't be sorted into
+						// the tree.
 		} while (countBefore > 0);
-	}
-
-	private boolean dirFileValid(RandomAccessFile raf) {
-		if (raf == null)
-			return false;
-		int fileLen, entryCount = 0, dataFileNameOffset;
-		String dataFileName;
-		try {
-			fileLen = (int) raf.length();
-			raf.seek(fileLen - 12);
-			entryCount = raf.readInt();
-			/*
-			 * Read name of the data archive which is corresponding to the directory file.
-			 */
-			dataFileNameOffset = (entryCount << 3);
-			raf.seek(dataFileNameOffset);
-			dataFileName = raf.readUTF();
-			this.currentDataFileName = dataFileName;
-			// 8 bytes each entry + 4 bytes entry count + 8 bytes magic + utf8
-			// data file name
-			if (((entryCount << 3) + 12 + dataFileName.length() + 2) != fileLen)
-				return false;
-			raf.seek(fileLen - 8);
-			if ((raf.readInt() != MAGIC1) && (raf.readInt() != MAGIC2))
-				return false;
-
-		} catch (IOException e) {
-			return false;
-		}
-		dirEntryCount = entryCount;
-		return true;
 	}
 
 	/**
@@ -634,111 +757,103 @@ public class DBResourceIO {
 	 * @param ifaces
 	 * @return
 	 */
-	void readEntry() throws IOException, EOFException {
+	TreeElementImpl readEntry(RandomAccessFile raf) throws IOException, EOFException {
 		boolean clsLoaded = true;
+		@SuppressWarnings("unused")
 		boolean isSimple = false;
 		// 1. read header of the entry
 		TreeElementImpl node = new TreeElementImpl(database);
-		readHeader(node);
+		readHeader(node, raf);
 		int typeKey = node.typeKey;
-		/*
-		 * prepare data container, so the simple data can be filled in.
-		 */
-
-		// check if the interface is a simple or a complex one
-		RandomAccessFile raf = resDataFiles.in;
-		try {
-			switch (typeKey) {
-			// read simple resource
-			case DBConstants.TYPE_KEY_BOOLEAN:
-				node.initDataContainer();
-				node.type = DBConstants.CLASS_BOOL_TYPE;
-				node.simpleValue.Z = raf.readBoolean();
-				isSimple = true;
-				break;
-			case DBConstants.TYPE_KEY_FLOAT:
-				node.initDataContainer();
-				node.type = DBConstants.CLASS_FLOAT_TYPE;
-				node.simpleValue.F = raf.readFloat();
-				isSimple = true;
-				break;
-			case DBConstants.TYPE_KEY_INT:
-				node.initDataContainer();
-				node.type = DBConstants.CLASS_INT_TYPE;
-				node.simpleValue.I = raf.readInt();
-				isSimple = true;
-				break;
-			case DBConstants.TYPE_KEY_STRING:
-				node.initDataContainer();
-				node.type = DBConstants.CLASS_STRING_TYPE;
-				if (isNullString(raf))
-					node.simpleValue.S = null;
-				else
-					node.simpleValue.S = raf.readUTF();
-				isSimple = true;
-				break;
-			case DBConstants.TYPE_KEY_LONG:
-				node.initDataContainer();
-				node.type = DBConstants.CLASS_TIME_TYPE;
-				node.simpleValue.J = raf.readLong();
-				isSimple = true;
-				break;
-			// read array resource
-			case DBConstants.TYPE_KEY_OPAQUE:
-				node.initDataContainer();
-				node.type = DBConstants.CLASS_OPAQUE_TYPE;
-				readAB(node);
-				isSimple = true;
-				break;
-			case DBConstants.TYPE_KEY_INT_ARR:
-				node.initDataContainer();
-				node.type = DBConstants.CLASS_INT_ARR_TYPE;
-				readAI(node);
-				isSimple = true;
-				break;
-			case DBConstants.TYPE_KEY_LONG_ARR:
-				node.initDataContainer();
-				node.type = DBConstants.CLASS_TIME_ARR_TYPE;
-				readAJ(node);
-				isSimple = true;
-				break;
-			case DBConstants.TYPE_KEY_FLOAT_ARR:
-				node.initDataContainer();
-				node.type = DBConstants.CLASS_FLOAT_ARR_TYPE;
-				readAF(node);
-				isSimple = true;
-				break;
-			case DBConstants.TYPE_KEY_COMPLEX_ARR:
-				node.type = DBConstants.CLASS_COMPLEX_ARR_TYPE;
-				clsLoaded = true;
-				break;
-			case DBConstants.TYPE_KEY_BOOLEAN_ARR:
-				node.initDataContainer();
-				node.type = DBConstants.CLASS_BOOL_ARR_TYPE;
-				readAZ(node);
-				isSimple = true;
-				break;
-			case DBConstants.TYPE_KEY_STRING_ARR:
-				node.initDataContainer();
-				node.type = DBConstants.CLASS_STRING_ARR_TYPE;
-				readAS(node);
-				isSimple = true;
-				break;
-			case DBConstants.TYPE_KEY_COMPLEX:
-				// create complex resource
-				// first register the type of the resource
-				clsLoaded = setTypeFromName(node);
-				break;
-			default:
-				break;
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
+		// check if the resource is a simple or a complex one
+		switch (typeKey) {
+		// read simple resource
+		case DBConstants.TYPE_KEY_BOOLEAN:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_BOOL_TYPE;
+			node.simpleValue.Z = raf.readBoolean();
+			isSimple = true;
+			break;
+		case DBConstants.TYPE_KEY_FLOAT:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_FLOAT_TYPE;
+			node.simpleValue.F = raf.readFloat();
+			isSimple = true;
+			break;
+		case DBConstants.TYPE_KEY_INT:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_INT_TYPE;
+			node.simpleValue.I = raf.readInt();
+			isSimple = true;
+			break;
+		case DBConstants.TYPE_KEY_STRING:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_STRING_TYPE;
+			if (isNullString(raf))
+				node.simpleValue.S = null;
+			else
+				node.simpleValue.S = raf.readUTF();
+			isSimple = true;
+			break;
+		case DBConstants.TYPE_KEY_LONG:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_TIME_TYPE;
+			node.simpleValue.J = raf.readLong();
+			isSimple = true;
+			break;
+		// read array resource
+		case DBConstants.TYPE_KEY_OPAQUE:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_OPAQUE_TYPE;
+			readAB(node);
+			isSimple = true;
+			break;
+		case DBConstants.TYPE_KEY_INT_ARR:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_INT_ARR_TYPE;
+			readAI(node);
+			isSimple = true;
+			break;
+		case DBConstants.TYPE_KEY_LONG_ARR:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_TIME_ARR_TYPE;
+			readAJ(node);
+			isSimple = true;
+			break;
+		case DBConstants.TYPE_KEY_FLOAT_ARR:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_FLOAT_ARR_TYPE;
+			readAF(node);
+			isSimple = true;
+			break;
+		case DBConstants.TYPE_KEY_COMPLEX_ARR:
+			node.type = DBConstants.CLASS_COMPLEX_ARR_TYPE;
+			clsLoaded = true;
+			break;
+		case DBConstants.TYPE_KEY_BOOLEAN_ARR:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_BOOL_ARR_TYPE;
+			readAZ(node);
+			isSimple = true;
+			break;
+		case DBConstants.TYPE_KEY_STRING_ARR:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_STRING_ARR_TYPE;
+			readAS(node);
+			isSimple = true;
+			break;
+		case DBConstants.TYPE_KEY_COMPLEX:
+			// create complex resource
+			// first register the type of the resource
+			clsLoaded = setTypeFromName(node);
+			break;
+		default:
+			break;
 		}
 
 		if (node.type != null) {
 			String clsName = node.type.getName();
-			if (isSimple && !node.typeName.equals(clsName)) {
+			if (!node.typeName.equals(clsName)) {
 				try {
 					clsLoaded = setTypeFromName(node);
 				} catch (Exception e) {
@@ -751,8 +866,88 @@ public class DBResourceIO {
 		if (clsLoaded)
 			putResource(node);
 		else {
-			unreachableCusomTypes.put(node.resID, node);
+			unreachableCustomTypes.put(node.resID, node);
 			logger.debug("Type couldn't be loaded: " + node.typeName);
+		}
+		return node;
+	}
+
+	void tryReadEntry(RandomAccessFile raf) throws IOException, EOFException {
+		// 1. read header of the entry
+		TreeElementImpl node = new TreeElementImpl(database);
+		readHeader(node, raf);
+		int typeKey = node.typeKey;
+		/*
+		 * prepare data container, so the simple data can be filled in.
+		 */
+
+		// check if the interface is a simple or a complex one
+		switch (typeKey) {
+		// read simple resource
+		case DBConstants.TYPE_KEY_BOOLEAN:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_BOOL_TYPE;
+			node.simpleValue.Z = raf.readBoolean();
+			break;
+		case DBConstants.TYPE_KEY_FLOAT:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_FLOAT_TYPE;
+			node.simpleValue.F = raf.readFloat();
+			break;
+		case DBConstants.TYPE_KEY_INT:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_INT_TYPE;
+			node.simpleValue.I = raf.readInt();
+			break;
+		case DBConstants.TYPE_KEY_STRING:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_STRING_TYPE;
+			if (isNullString(raf))
+				node.simpleValue.S = null;
+			else
+				node.simpleValue.S = raf.readUTF();
+			break;
+		case DBConstants.TYPE_KEY_LONG:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_TIME_TYPE;
+			node.simpleValue.J = raf.readLong();
+			break;
+		// read array resource
+		case DBConstants.TYPE_KEY_OPAQUE:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_OPAQUE_TYPE;
+			readAB(node);
+			break;
+		case DBConstants.TYPE_KEY_INT_ARR:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_INT_ARR_TYPE;
+			readAI(node);
+			break;
+		case DBConstants.TYPE_KEY_LONG_ARR:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_TIME_ARR_TYPE;
+			readAJ(node);
+			break;
+		case DBConstants.TYPE_KEY_FLOAT_ARR:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_FLOAT_ARR_TYPE;
+			readAF(node);
+			break;
+		case DBConstants.TYPE_KEY_COMPLEX_ARR:
+			node.type = DBConstants.CLASS_COMPLEX_ARR_TYPE;
+			break;
+		case DBConstants.TYPE_KEY_BOOLEAN_ARR:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_BOOL_ARR_TYPE;
+			readAZ(node);
+			break;
+		case DBConstants.TYPE_KEY_STRING_ARR:
+			node.initDataContainer();
+			node.type = DBConstants.CLASS_STRING_ARR_TYPE;
+			readAS(node);
+			break;
+		default:
+			break;
 		}
 	}
 
@@ -773,8 +968,8 @@ public class DBResourceIO {
 						result = true;
 					}
 					else { // potentially this happens if a custom data model can no longer be loaded, because the
-						// exporter
-						// bundle is not at least installed.
+							// exporter
+							// bundle is not at least installed.
 						logger.warn(String.format("Resouce class %s to the persistent data couldn't be loaded!",
 								node.typeName));
 					}
@@ -801,7 +996,7 @@ public class DBResourceIO {
 				return true;
 			}
 			else { // valid utf-8 string encoded
-				// seek back to the beginning of the string so readUTF can work.
+					// seek back to the beginning of the string so readUTF can work.
 				raf.seek(raf.getFilePointer() - 2);
 			}
 		} catch (IOException e) {
@@ -810,143 +1005,114 @@ public class DBResourceIO {
 		return false;
 	}
 
-	private void readAS(TreeElementImpl node) {
-		RandomAccessFile raf = resDataFiles.in;
-		try {
-			int length = raf.readInt();
-			String sArr[] = new String[length];
-			String val = null;
-			node.simpleValue.aS = sArr;
-			/*
-			 * Reset the number of valid entries to 0
-			 */
-			int arrLength = 0;
-			while (length > 0) {
-				if (isNullString(raf))
-					val = null;
-				else
-					val = raf.readUTF();
-				sArr[arrLength] = val;
-				arrLength++;
-				length--;
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
+	private void readAS(TreeElementImpl node) throws IOException {
+		RandomAccessFile raf = dataFile.raf;
+		int length = raf.readInt();
+		String sArr[] = new String[length];
+		String val = null;
+		node.simpleValue.aS = sArr;
+		/*
+		 * Reset the number of valid entries to 0
+		 */
+		int arrLength = 0;
+		while (length > 0) {
+			if (isNullString(raf))
+				val = null;
+			else
+				val = raf.readUTF();
+			sArr[arrLength] = val;
+			arrLength++;
+			length--;
 		}
 	}
 
-	private void readAZ(TreeElementImpl node) {
-		RandomAccessFile raf = resDataFiles.in;
-		try {
-			int length = raf.readInt();
-			boolean zArr[] = new boolean[length];// node.simpleValue.aZ;
-			boolean val = false;
-			node.simpleValue.aZ = zArr;
-			/*
-			 * Reset the number of valid entries to 0
-			 */
-			int arrLength = 0;
-			while (length > 0) {
-				val = raf.readBoolean();
-				zArr[arrLength] = val;
-				arrLength++;
-				length--;
-			}
-			// node.simpleValue.arrLength = arrLength;
-		} catch (IOException e) {
-			e.printStackTrace();
+	private void readAZ(TreeElementImpl node) throws IOException {
+		RandomAccessFile raf = dataFile.raf;
+		int length = raf.readInt();
+		boolean zArr[] = new boolean[length];// node.simpleValue.aZ;
+		boolean val = false;
+		node.simpleValue.aZ = zArr;
+		/*
+		 * Reset the number of valid entries to 0
+		 */
+		int arrLength = 0;
+		while (length > 0) {
+			val = raf.readBoolean();
+			zArr[arrLength] = val;
+			arrLength++;
+			length--;
 		}
 	}
 
-	private void readAF(TreeElementImpl node) {
-		RandomAccessFile raf = resDataFiles.in;
-		try {
-			int length = raf.readInt();
-			float fArr[] = new float[length];// node.simpleValue.aF;
-			float val = 0;
-			node.simpleValue.aF = fArr;
-			/*
-			 * Reset the number of valid entries to 0
-			 */
-			int arrLength = 0;
-			while (length > 0) {
-				val = raf.readFloat();
-				fArr[arrLength] = val;
-				arrLength++;
-				length--;
-			}
-			// node.simpleValue.arrLength = arrLength;
-		} catch (IOException e) {
-			e.printStackTrace();
+	private void readAF(TreeElementImpl node) throws IOException {
+		RandomAccessFile raf = dataFile.raf;
+		int length = raf.readInt();
+		float fArr[] = new float[length];// node.simpleValue.aF;
+		float val = 0;
+		node.simpleValue.aF = fArr;
+		/*
+		 * Reset the number of valid entries to 0
+		 */
+		int arrLength = 0;
+		while (length > 0) {
+			val = raf.readFloat();
+			fArr[arrLength] = val;
+			arrLength++;
+			length--;
 		}
 	}
 
-	private void readAJ(TreeElementImpl node) {
-		RandomAccessFile raf = resDataFiles.in;
-		try {
-			int length = raf.readInt();
-			long jArr[] = new long[length];// node.simpleValue.aJ;
-			long val = 0;
-			node.simpleValue.aJ = jArr;
-			/*
-			 * Reset the number of valid entries to 0
-			 */
-			int arrLength = 0;
-			while (length > 0) {
-				val = raf.readLong();
-				jArr[arrLength] = val;
-				arrLength++;
-				length--;
-			}
-			// node.simpleValue.arrLength = arrLength;
-		} catch (IOException e) {
-			e.printStackTrace();
+	private void readAJ(TreeElementImpl node) throws IOException {
+		RandomAccessFile raf = dataFile.raf;
+		int length = raf.readInt();
+		long jArr[] = new long[length];// node.simpleValue.aJ;
+		long val = 0;
+		node.simpleValue.aJ = jArr;
+		/*
+		 * Reset the number of valid entries to 0
+		 */
+		int arrLength = 0;
+		while (length > 0) {
+			val = raf.readLong();
+			jArr[arrLength] = val;
+			arrLength++;
+			length--;
 		}
 	}
 
-	private void readAI(TreeElementImpl node) {
-		RandomAccessFile raf = resDataFiles.in;
-		try {
-			int length = raf.readInt();
-			int iArr[] = new int[length];// node.simpleValue.aI;
-			int val = 0;
-			node.simpleValue.aI = iArr;
-			/*
-			 * Reset the number of valid entries to 0
-			 */
-			int arrLength = 0;
-			while (length > 0) {
-				val = raf.readInt();
-				iArr[arrLength] = val;
-				arrLength++;
-				length--;
-			}
-			// node.simpleValue.arrLength = arrLength;
-		} catch (IOException e) {
-			e.printStackTrace();
+	private void readAI(TreeElementImpl node) throws IOException {
+		RandomAccessFile raf = dataFile.raf;
+		int length = raf.readInt();
+		int iArr[] = new int[length];// node.simpleValue.aI;
+		int val = 0;
+		node.simpleValue.aI = iArr;
+		/*
+		 * Reset the number of valid entries to 0
+		 */
+		int arrLength = 0;
+		while (length > 0) {
+			val = raf.readInt();
+			iArr[arrLength] = val;
+			arrLength++;
+			length--;
 		}
 	}
 
-	private void readAB(TreeElementImpl node) {
-		RandomAccessFile raf = resDataFiles.in;
-		try {
-			int length = raf.readInt();
-			byte bArr[] = new byte[length]; // node.simpleValue.aB;
-			int val = 0;
-			node.simpleValue.aB = bArr;
-			/*
-			 * Reset the number of valid entries to 0
-			 */
-			int arrLength = 0;
-			while (length > 0) {
-				val = raf.readByte();
-				bArr[arrLength] = (byte) val;
-				arrLength++;
-				length--;
-			}
-			// node.simpleValue.arrLength = arrLength;
-		} catch (IOException e) {
-			e.printStackTrace();
+	private void readAB(TreeElementImpl node) throws IOException {
+		RandomAccessFile raf = dataFile.raf;
+		int length = raf.readInt();
+		byte bArr[] = new byte[length]; // node.simpleValue.aB;
+		int val = 0;
+		node.simpleValue.aB = bArr;
+		/*
+		 * Reset the number of valid entries to 0
+		 */
+		int arrLength = 0;
+		while (length > 0) {
+			val = raf.readByte();
+			bArr[arrLength] = (byte) val;
+			arrLength++;
+			length--;
 		}
 	}
 
@@ -959,9 +1125,9 @@ public class DBResourceIO {
 		{
 			unsortedParents.put(e.resID, e);
 			unsorted = true;
-		}// temporarily its hold as unsorted
-		// node in order to be sorted in the
-		// resource tree later.
+		} // temporarily its hold as unsorted
+			// node in order to be sorted in the
+			// resource tree later.
 		else if (e.toplevel) {
 			e.parent = null;
 			e.topLevelParent = e;
@@ -1005,15 +1171,14 @@ public class DBResourceIO {
 		if (e.toplevel)
 			database.root.put(e.name, e);
 		else {
-			e.parent.optionals.remove(e.name);
+//			e.parent.optionals.remove(e.name);
 			e.parent.requireds.put(e.name, e);
 		}
 		database.registerRes(e);
 		return true;
 	}
 
-	private void readHeader(TreeElementImpl entry) throws IOException, EOFException {
-		RandomAccessFile raf = resDataFiles.in;
+	private void readHeader(TreeElementImpl entry, RandomAccessFile raf) throws IOException, EOFException {
 		/* 1. Set type ID */
 		entry.typeName = raf.readUTF();
 		// 2. set resource ID
@@ -1049,7 +1214,8 @@ public class DBResourceIO {
 
 	public void writeEntry() {
 		try {
-			resDataFiles.out.flush();
+			dataFile.out.flush();
+			dataFile.fos.getFD().sync();
 		} catch (IOException e) {
 		}
 	}
@@ -1062,13 +1228,15 @@ public class DBResourceIO {
 	 *            the offset the directory is written at.
 	 */
 	void updateDirectory() {
+
 		TreeMap<Integer, Integer> sortedOffsets = new TreeMap<Integer, Integer>(sorter);
 		sortedOffsets.putAll(offsetByID);
 		// Save the previous length of the file.
 		int numOfEntries = sortedOffsets.size();
 		Iterator<Entry<Integer, Integer>> dirEntries = sortedOffsets.entrySet().iterator();
-		dirFiles.updateNextOut();
-		DataOutputStream dos = dirFiles.out;
+		dirFiles.shiftF();
+		mapFile = new MapFile(dirFiles.fileNew, dataFile.fileName);
+		DataOutputStream dos = mapFile.out;
 		while (dirEntries.hasNext()) {
 			Entry<Integer, Integer> currEntry = dirEntries.next();
 			// Put the ID
@@ -1080,11 +1248,12 @@ public class DBResourceIO {
 			}
 		}
 		try {
-			dos.writeUTF(currentDataFileName);
+			dos.writeUTF(mapFile.dataFileName);
 			dos.writeInt(numOfEntries);
-			dos.writeInt(MAGIC1);
-			dos.writeInt(MAGIC2);
+			dos.writeInt(MapFile.MAGIC1);
+			dos.writeInt(MapFile.MAGIC2);
 			dos.flush();
+			mapFile.fos.getFD().sync();
 			dos.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -1093,9 +1262,9 @@ public class DBResourceIO {
 
 	int getCurrentOffset() {
 		int result = -1;
-		if (resDataFiles.out == null)
+		if (dataFile == null || dataFile.out == null)
 			return result;
-		result = dbFileInitialOffset + resDataFiles.out.size();
+		result = dbFileInitialOffset + dataFile.out.size();
 		if (Configuration.LOGGING)
 			logger.debug("Current file offset: " + result);
 		return result;
@@ -1105,8 +1274,9 @@ public class DBResourceIO {
 	 * Used by the tests only
 	 */
 	void reset() {
-		dirFiles.closeAll();
-		resDataFiles.closeAll();
+		// dirFiles.closeAll();
+		// resDataFiles.closeAll();
+		closeAll();
 		System.gc();
 		dirFiles.reset();
 		resDataFiles.reset();
@@ -1114,12 +1284,32 @@ public class DBResourceIO {
 	}
 
 	void closeAll() {
-		dirFiles.closeAll();
-		resDataFiles.closeAll();
-
+		if (mapFile != null)
+			mapFile.close();
+		if (dataFile != null)
+			dataFile.close();
 	}
 
 	protected void finalize() {
 		closeAll();
+	}
+
+	// This method is needed for test purposes only
+	public static void copyFiles() {
+		File dir = new File(currentPath);
+		Path targetDir = FileSystems.getDefault().getPath("./" + System.currentTimeMillis() + "");
+		try {
+			Files.createDirectories(targetDir);
+			String files[] = dir.list();
+			for (String file : files) {
+				Path source = FileSystems.getDefault().getPath(currentPath, file);
+				if (!Files.isDirectory(source, LinkOption.NOFOLLOW_LINKS)) {
+					Path targetFile = FileSystems.getDefault().getPath(currentPath, file);
+					Files.copy(source, targetFile, StandardCopyOption.REPLACE_EXISTING);
+				}
+			}
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 	}
 }

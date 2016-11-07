@@ -29,13 +29,18 @@ import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
+import org.ogema.core.resourcemanager.transaction.ResourceTransaction;
 import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 
 /**
  * Defines a resource transaction. All resources added to this are read and written
  * in a single step with no other resource writes taking place at the same time.
  * Also supports to activate and deactivate resources.
+ * 
+ * @deprecated use {@link ResourceTransaction} instead
  */
+
+@Deprecated 
 public interface Transaction {
 
 	/**
@@ -151,7 +156,6 @@ public interface Transaction {
 	 * @deprecated Type {@link org.ogema.core.model.simple.OpaqueResource} is deprecated. Use {@link ByteArrayResource} instead.
 	 */
 	@Deprecated
-	@SuppressWarnings("deprecation")
 	void setByteArray(org.ogema.core.model.simple.OpaqueResource resource, byte[] values)
 			throws NoSuchResourceException;
 
@@ -160,7 +164,6 @@ public interface Transaction {
 	 * @deprecated Type {@link org.ogema.core.model.simple.OpaqueResource} is deprecated. Use {@link ByteArrayResource} instead.       
 	 */
 	@Deprecated
-	@SuppressWarnings("deprecation")
 	byte[] getByteArray(org.ogema.core.model.simple.OpaqueResource resource) throws NoSuchResourceException;
 
 	/**

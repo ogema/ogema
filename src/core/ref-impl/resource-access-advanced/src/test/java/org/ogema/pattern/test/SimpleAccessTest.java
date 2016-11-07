@@ -18,6 +18,8 @@ package org.ogema.pattern.test;
 import org.ogema.pattern.test.pattern.HeatPumpRad;
 import org.ogema.pattern.test.pattern.UninitializedRad;
 import org.ogema.pattern.test.pattern.SimplisticPattern;
+import org.ogema.pattern.test.pattern.ThermostatPattern;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -30,6 +32,7 @@ import org.junit.Test;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.pattern.PatternListener;
+import org.ogema.exam.ResourceAssertions;
 import org.ogema.model.sensors.ThermalPowerSensor;
 import org.ops4j.pax.exam.ProbeBuilder;
 import org.ops4j.pax.exam.TestProbeBuilder;
@@ -47,8 +50,8 @@ public class SimpleAccessTest extends OsgiTestBase {
 
 	class CountingListener implements PatternListener<HeatPumpRad> {
 
-		public CountDownLatch foundLatch;
-		public CountDownLatch lostLatch;
+		public final CountDownLatch foundLatch;
+		public final CountDownLatch lostLatch;
 
 		public HeatPumpRad lastAvailable = null;
 
@@ -184,6 +187,21 @@ public class SimpleAccessTest extends OsgiTestBase {
 		advAcc.removePatternDemand(HeatPumpRad.class, listener);
 		refSensor.delete();
 		rad.model.delete();
+	}
+	
+	@Test
+	public void createAndActivateComplexPatternInstanceWorks() {
+		ThermostatPattern thermo = getApplicationManager().getResourcePatternAccess().createResource(newResourceName(), ThermostatPattern.class);
+		thermo.setpoint.create();
+		thermo.setpointFB.create();
+		thermo.valvePosition.create();
+		getApplicationManager().getResourcePatternAccess().activatePattern(thermo);
+		ResourceAssertions.assertActive(thermo.model);
+		ResourceAssertions.assertActive(thermo.tempSetting);
+		ResourceAssertions.assertActive(thermo.setpoint);
+		ResourceAssertions.assertActive(thermo.valvePosition);
+		ResourceAssertions.assertActive(thermo.setpointFB);
+		thermo.model.delete();
 	}
 
 }

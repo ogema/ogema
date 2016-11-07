@@ -70,10 +70,10 @@ public class InitialImport {
 			logger.debug("Importing file {}",file.getPath());
 			boolean useJson; 
 			String pth = file.getPath().toLowerCase();
-			if (pth.endsWith(".xml")) {  
+			if (pth.endsWith(".xml") || pth.endsWith(".ogx")) {  
 				useJson = false;
 			} 
-			else if (pth.endsWith(".json")) {
+			else if (pth.endsWith(".json") || pth.endsWith(".ogj")) {
 				useJson = true;
 			} 
 			else {

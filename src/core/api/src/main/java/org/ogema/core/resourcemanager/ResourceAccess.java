@@ -19,6 +19,7 @@ import java.util.List;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
+import org.ogema.core.resourcemanager.transaction.ResourceTransaction;
 
 /**
  * ResourceManager API for Apps
@@ -85,6 +86,16 @@ public interface ResourceAccess {
 	/**
 	 * Creates and returns a new transaction object that can be used to perform multiple changes to the resource graph as an
 	 * atomic operation.
+	 * @deprecated
 	 */
+	@Deprecated
 	Transaction createTransaction();
+	
+	/**
+	 * Creates and returns a new transaction object that can be used to perform multiple changes to the resource graph as an
+	 * atomic operation.
+	 * @return
+	 */
+	ResourceTransaction createResourceTransaction();
+	
 }

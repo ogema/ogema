@@ -27,8 +27,8 @@ import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
-import org.ogema.tools.resourcemanipulator.implementation.CountDownTimer;
 import org.ogema.tools.resourcemanipulator.model.SumModel;
+import org.ogema.tools.resourcemanipulator.timer.CountDownTimer;
 
 /**
  * Controls a single value summation rule. As in most rules it is assumed

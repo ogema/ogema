@@ -27,30 +27,29 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.ogema.core.application.ApplicationManager;
-import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.SimpleResource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
+import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.model.simple.StringResource;
+import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.recordeddata.RecordedData;
 import org.ogema.core.recordeddata.RecordedDataConfiguration;
 import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
 import org.ogema.core.resourcemanager.ResourceAccess;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.json.*;
 
 public class LoggingAppServlet extends HttpServlet {
 
 	private static final long serialVersionUID = -623919478854332527L;
-	private final ApplicationManager am;
-	private final OgemaLogger logger;
+	private final static Logger logger = LoggerFactory.getLogger(LoggingApp.class);
 	private final ResourceAccess ra;
 
 	public LoggingAppServlet(ApplicationManager am) {
-		this.am = am;
 		this.ra = am.getResourceAccess();
-		this.logger = am.getLogger();
 	}
 
 	@Override
@@ -69,16 +68,18 @@ public class LoggingAppServlet extends HttpServlet {
 		}
 		String request = sb.toString();
 		String response = "";
+		int status;
 		try {
 			JSONObject json = new JSONObject(request);
-			logger.debug("  JSON object: " + json.toString());
+			logger.debug("  JSON object: {}",json);
 			String location = json.getString("resource");
 			boolean record = json.getBoolean("record");
-			String interval = json.getString("interval");
+//			String interval = String.valueOf(json.getInt("interval"));
 			String logType = json.getString("logType");
 			long intv = 30000l;
 			try {
-				intv = Long.parseLong(interval) * 1000l;
+//				intv = Long.parseLong(interval) * 1000l;
+				intv = json.getLong("interval") * 1000l;
 			} catch (Exception ee) {
 			}
 
@@ -106,12 +107,13 @@ public class LoggingAppServlet extends HttpServlet {
 			} catch (Exception ee) {
 				response = response + " not logging.";
 			}
+			status = HttpServletResponse.SC_OK;
 		} catch (Exception e) {
 			response = response + "An error occurred. Could not change log settings: " + e.toString();
+			status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 		}
 		resp.getWriter().write(response);
-		resp.setStatus(200);
-
+		resp.setStatus(status);
 	}
 
 	private RecordedData getRecordedData(Resource res) {
@@ -128,6 +130,12 @@ public class LoggingAppServlet extends HttpServlet {
 			BooleanResource fl = (BooleanResource) res;
 			rd = fl.getHistoricalData();
 		}
+		else if (res instanceof TimeResource) {
+			TimeResource tr = (TimeResource) res;
+			rd = tr.getHistoricalData();
+		}
+		else
+			throw new IllegalArgumentException("Resource type not admissible: " + res.getResourceType());
 		return rd;
 	}
 
@@ -135,27 +143,31 @@ public class LoggingAppServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		//		System.out.println("  Processing GET request " + req.toString());
 		//		System.out.println("  Sensors: " + sensors.toString());
-		String response = "[";
-		List<SimpleResource> resources = ra.getResources(SimpleResource.class);
+//		String response = "[";
+		JSONArray array = new JSONArray();
+		List<SingleValueResource> resources = ra.getResources(SingleValueResource.class);
 		Collections.sort(resources, new ResourcesComparator());
-		int nr = resources.size();
-		int cnt = 0;
+//		int nr = resources.size();
+//		int cnt = 0;
 		for (Resource res : resources) {
+			if (res instanceof StringResource)
+				continue;
 			try {
-				cnt++;
+				array.put(getResourceObject(res));
+/*				cnt++;
 				if (cnt == nr) {
 					response = response + getResString2(res);
 				}
 				else {
 					response = response + getResString2(res) + ",";
-				}
+				} */
 			} catch (Exception e) {
 				logger.warn("  Exception caught during request: " + e.toString());
 			}
 		}
-		response = response + "]";
-		logger.debug("  Answer: " + response);
-		resp.getWriter().write(response);
+//		response = response + "]";
+		logger.debug("  Answer: {}", array);
+		resp.getWriter().write(array.toString());
 		resp.setStatus(200);
 	}
 
@@ -167,12 +179,31 @@ public class LoggingAppServlet extends HttpServlet {
 		}
 
 	}
+	
+	private static JSONObject getResourceObject(Resource resource) {
+		JSONObject object = new JSONObject();
+		object.put("Location", resource.getLocation());
+		object.put("Type", resource.getResourceType().getSimpleName());
+		object.put("active", String.valueOf(resource.isActive()));
+		if (resource instanceof SingleValueResource) {
+			String[] valueLog = getSimpleResString2(resource);
+			object.put("value",  valueLog[0]);
+			boolean logg = !(valueLog[1].equals(""));
+			object.put("logging", String.valueOf(logg));
+			if (logg) {
+				object.put("log interval/s", valueLog[2]);
+				object.put("logging type", valueLog[1]);
+			}
+		}
+		
+		return object;
+	}
 
-	private String getResString2(Resource resource) {
+/*	private String getResString2(Resource resource) {
 		String result = "{\"Location\":\"" + resource.getLocation() + "\"";
 		result = result + ",\"Type\":\"" + resource.getResourceType().getSimpleName() + "\"";
 		result = result + ",\"active\":\"" + String.valueOf(resource.isActive()) + "\"";
-		if (resource instanceof SimpleResource) {
+		if (resource instanceof SingleValueResource) {
 			String[] valueLog = getSimpleResString2(resource);
 			result = result + ",\"value\":\"" + valueLog[0] + "\"";
 			//boolean logg = Boolean.parseBoolean(valueLog[3]);
@@ -185,9 +216,9 @@ public class LoggingAppServlet extends HttpServlet {
 		}
 		result = result + "}";
 		return result;
-	}
+	} */
 
-	private String[] getSimpleResString2(Resource sres) {
+	private static String[] getSimpleResString2(Resource sres) {
 		String value = "";
 		String loggingType = "";
 		String loggingDur = "";
@@ -222,6 +253,14 @@ public class LoggingAppServlet extends HttpServlet {
 				} catch (Exception e) {
 				}
 			}
+			else if (sres instanceof TimeResource) {
+				TimeResource timeRes = (TimeResource) sres;
+				value = String.valueOf(timeRes.getValue());
+				try {
+					config = timeRes.getHistoricalData().getConfiguration();
+				} catch (Exception e) {
+				}
+			}
 			try {
 				loggingType = config.getStorageType().name();
 				loggingDur = String.valueOf(config.getFixedInterval() / 1000);
@@ -241,5 +280,4 @@ public class LoggingAppServlet extends HttpServlet {
 		String[] result = { value, loggingType, loggingDur, String.valueOf(logging) };
 		return result;
 	}
-
 }

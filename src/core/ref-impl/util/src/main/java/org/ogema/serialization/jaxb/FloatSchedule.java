@@ -56,7 +56,6 @@ import javax.xml.bind.annotation.XmlType;
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "FloatSchedule")
-@XmlRootElement(name = "float-schedule")
 public class FloatSchedule extends ScheduleResource {
 
 }

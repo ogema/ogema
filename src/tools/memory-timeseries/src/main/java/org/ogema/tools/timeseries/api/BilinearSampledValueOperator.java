@@ -18,7 +18,7 @@ package org.ogema.tools.timeseries.api;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 
 /**
- * An operation V x V -> V over SampledValues V that is linear in both arguments. Examples
+ * An operation V x V -&gt; V over SampledValues V that is linear in both arguments. Examples
  * are addition and multiplication of two values.
  */
 public interface BilinearSampledValueOperator {

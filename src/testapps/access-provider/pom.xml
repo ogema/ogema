@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.ogema.tests</groupId>
 		<artifactId>ogema-tests</artifactId>
-		<version>2.0.4</version>
+		<version>2.1.0</version>
 	</parent>
 
 	<artifactId>access-provider</artifactId>
@@ -44,17 +44,17 @@
 		<dependency>
 			<groupId>org.ogema.ref-impl</groupId>
 			<artifactId>security</artifactId>
-			<version>2.0.4</version>
+			<version>2.1.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.ogema.ref-impl</groupId>
 			<artifactId>administration</artifactId>
-			<version>2.0.4</version>
+			<version>2.1.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.ogema.tests</groupId>
 			<artifactId>access-provider-restricted</artifactId>
-			<version>2.0.4</version>
+			<version>2.1.0</version>
 		</dependency>
 	</dependencies>
 

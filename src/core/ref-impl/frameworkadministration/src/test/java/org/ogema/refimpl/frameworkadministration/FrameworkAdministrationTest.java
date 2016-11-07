@@ -18,9 +18,11 @@ package org.ogema.refimpl.frameworkadministration;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -82,6 +84,7 @@ public class FrameworkAdministrationTest {
 		return response;
 	}
 
+	@SuppressWarnings("unused")
 	private void doGet(HttpServletRequest request, HttpServletResponse response) {
 
 		try {

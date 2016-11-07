@@ -26,14 +26,19 @@ import org.ogema.driver.homematic.manager.messages.CmdMessage;
 import org.ogema.driver.homematic.tools.Converter;
 
 public class ThreeStateSensor extends SubDevice {
+	
+	// otherwise we assume it is a water sensor
+	private final boolean isDoorWindowSensor;
 
-	public ThreeStateSensor(RemoteDevice rd) {
+	public ThreeStateSensor(RemoteDevice rd, boolean isDoorWindowSensor) {
 		super(rd);
+		this.isDoorWindowSensor = isDoorWindowSensor;
 	}
 
 	@Override
 	protected void addMandatoryChannels() {
-		deviceAttributes.put((short) 0x0001, new DeviceAttribute((short) 0x0001, "HighWater", true, true));
+		String statusName = isDoorWindowSensor ? "WindowStatus" : "HighWater";
+		deviceAttributes.put((short) 0x0001, new DeviceAttribute((short) 0x0001, statusName, true, true));
 		deviceAttributes.put((short) 0x0002, new DeviceAttribute((short) 0x0002, "BatteryStatus", true, true));
 	}
 
@@ -58,14 +63,15 @@ public class ThreeStateSensor extends SubDevice {
 		String err_str = ((err & 0x80) > 0) ? "low" : "ok";
 		batt = ((err & 0x80) > 0) ? 5 : 95;
 
+		
 		if (state == 0x00)
-			state_str = "dry";
+			state_str = isDoorWindowSensor ? "closed" : "dry";
 		else if (state == 0x64)
-			state_str = "damp";
+			state_str =  isDoorWindowSensor ? "unknown" : "damp";  // FIXME 
 		else if (state == 0xC8)
-			state_str = "wet";
+			state_str = isDoorWindowSensor ? "open" :  "wet";
 
-		System.out.println("State of HighWater: " + state_str);
+		System.out.println("State of " + (isDoorWindowSensor ? "WindowStatus" : "HighWater") + ":" + state_str);
 		System.out.println("State of Battery: " + err_str);
 		deviceAttributes.get((short) 0x0001).setValue(new StringValue(state_str));
 		deviceAttributes.get((short) 0x0002).setValue(new FloatValue(batt));

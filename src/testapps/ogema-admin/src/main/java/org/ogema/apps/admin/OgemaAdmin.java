@@ -15,13 +15,6 @@
  */
 package org.ogema.apps.admin;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-
 import org.ogema.accesscontrol.AppPermissionFilter;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.core.administration.AdministrationManager;
@@ -30,6 +23,7 @@ import org.ogema.core.application.AppID;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.installationmanager.InstallationManagement;
+import org.ogema.core.installationmanager.SourcesManagement;
 import org.ogema.core.security.WebAccessManager;
 import org.ogema.persistence.ResourceDB;
 import org.osgi.framework.BundleActivator;
@@ -56,6 +50,7 @@ public class OgemaAdmin implements Application, BundleActivator, UserAdminListen
 	long bundleID;
 
 	InstallationManagement instMan;
+	volatile SourcesManagement sources;
 
 	ApplicationManager appMngr;
 
@@ -72,6 +67,7 @@ public class OgemaAdmin implements Application, BundleActivator, UserAdminListen
 		instMan = (InstallationManagement) bc
 				.getService(bc.getServiceReference(InstallationManagement.class.getName()));
 		db = (ResourceDB) bc.getService(bc.getServiceReference(ResourceDB.class.getName()));
+		sources= admin.getSources();
 
 		bc.registerService(UserAdminListener.class.getName(), this, null);
 

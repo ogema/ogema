@@ -31,15 +31,11 @@ public class ControllableMultiPatternListener implements PatternListener<Control
 
 	@Override
 	public void patternAvailable(ControllableMultiPattern pattern) {
-		// FIXME
-		System.out.println("ControllablePattern available: " + pattern.model.getLocation());
 		list.add(pattern);
 	}
 
 	@Override
 	public void patternUnavailable(ControllableMultiPattern pattern) {
-		// FIXME
-		System.out.println("ControllablePattern unavailable: " + pattern.model.getLocation());
 		try {
 			list.remove(pattern);
 		} catch (Exception e) {

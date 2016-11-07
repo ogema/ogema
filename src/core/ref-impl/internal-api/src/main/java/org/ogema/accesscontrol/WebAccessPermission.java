@@ -45,7 +45,7 @@ public class WebAccessPermission extends Permission {
 	}
 
 	public WebAccessPermission(String path, String actions) {
-		super((path == null) ? path = "*" : path);
+		super((path == null) ? path = "name=*,user=*,group=*,version=*" : path);
 		try {
 			parseFilter(path);
 		} catch (Throwable e) {

@@ -27,15 +27,17 @@ import javax.xml.bind.annotation.XmlElements;
 import javax.xml.bind.annotation.XmlSeeAlso;
 import javax.xml.bind.annotation.XmlType;
 
-import org.codehaus.jackson.annotate.JsonTypeInfo;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.tools.SerializationManager;
 import org.ogema.serialization.jaxb.SampledFloat;
+import org.ogema.serialization.jaxb.SampledInteger;
 import org.ogema.serialization.jaxb.SampledValue;
 import org.ogema.serialization.JaxbResource;
+
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
 
@@ -51,6 +53,7 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
 // @XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 @XmlType(name = "ScheduleResource", namespace = NS_OGEMA_REST, propOrder = { "interpolationMode", "lastUpdateTime",
 		"lastCalculationTime", "start", "end", "entry" })
+// FIXME SampledInteger, etc.?
 @XmlSeeAlso( { ScheduleEntry.class, BooleanSchedule.class, FloatSchedule.class, IntegerSchedule.class,
 		OpaqueSchedule.class, StringSchedule.class, TimeSchedule.class, SampledValue.class, SampledFloat.class })
 public abstract class JaxbSchedule<T> extends JaxbResource {

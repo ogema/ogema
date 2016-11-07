@@ -18,6 +18,7 @@ package org.ogema.driver.hmhl.devices;
 import static org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType.FIXED_INTERVAL;
 
 import org.ogema.core.application.ApplicationManager;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.BooleanValue;
@@ -43,7 +44,6 @@ import org.ogema.model.sensors.ElectricFrequencySensor;
 import org.ogema.model.sensors.ElectricPowerSensor;
 import org.ogema.model.sensors.ElectricVoltageSensor;
 import org.ogema.model.sensors.EnergyAccumulatedSensor;
-import org.ogema.model.sensors.PowerSensor;
 import org.ogema.tools.resource.util.ResourceUtils;
 
 public class PowerMeter extends HM_hlDevice implements ResourceValueListener<BooleanResource> {
@@ -94,7 +94,6 @@ public class PowerMeter extends HM_hlDevice implements ResourceValueListener<Boo
 			break;
 		case "COMMAND:01":
 			onOff.setValue(value.getBooleanValue());
-			onOff.activate(true);
 			break;
 		}
 	}
@@ -170,7 +169,6 @@ public class PowerMeter extends HM_hlDevice implements ResourceValueListener<Boo
 		// The on/off switch
 		powerMeter.onOffSwitch().create();
 		onOff = (BooleanResource) powerMeter.onOffSwitch().stateControl().create();
-		// onOff.activate(true);
 		onOff.requestAccessMode(AccessMode.SHARED, AccessPriority.PRIO_HIGHEST);
 
 		isOn = (BooleanResource) powerMeter.onOffSwitch().stateFeedback().create();
@@ -216,9 +214,11 @@ public class PowerMeter extends HM_hlDevice implements ResourceValueListener<Boo
 		// eRes.activate(true);
 		// eRes.setValue(0);
 		eRes.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
+		// powerMeter.activate(true);
+
 		// do not activate value resources, since they do not contain sensible values yet
 		ResourceUtils.activateComplexResources(powerMeter, true, appManager.getResourceAccess());
-		// powerMeter.activate(true);
+		onOff.activate(true);
 
 		// Add listener to register on/off commands
 		onOff.addValueListener(this, true);
@@ -249,7 +249,7 @@ public class PowerMeter extends HM_hlDevice implements ResourceValueListener<Boo
 	public void resourceChanged(BooleanResource resource) {
 		// Here the on/off command channel should be written
 		// Currently only 1 channel for everything
-		ChannelLocator locator = this.commandChannel.get("COMMAND:01");
+		ChannelConfiguration locator = this.commandChannel.get("COMMAND:01");
 		BooleanValue onOff = new BooleanValue(resource.getValue());
 		if (isOn.getValue() != resource.getValue()) {
 			// Toggle

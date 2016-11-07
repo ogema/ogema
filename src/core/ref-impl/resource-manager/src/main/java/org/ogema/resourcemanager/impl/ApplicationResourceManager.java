@@ -15,19 +15,22 @@
  */
 package org.ogema.resourcemanager.impl;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import org.ogema.resourcemanager.impl.transaction.ResourceTransactionImpl;
 import org.ogema.resourcemanager.impl.transaction.TransactionImpl;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import org.ogema.accesscontrol.AdminPermission;
 
+import org.ogema.accesscontrol.AdminPermission;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.ResourceAccessRights;
 import org.ogema.core.administration.RegisteredAccessModeRequest;
@@ -48,9 +51,12 @@ import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceException;
 import org.ogema.core.resourcemanager.ResourceManagement;
-import org.ogema.core.resourcemanager.Transaction;
+import org.ogema.core.resourcemanager.transaction.ResourceTransaction;
 import org.ogema.resourcemanager.impl.model.ResourceFactory;
 import org.ogema.resourcetree.TreeElement;
+import org.ogema.resourcetree.listeners.InternalStructureListenerRegistration;
+import org.ogema.resourcetree.listeners.InternalValueChangedListenerRegistration;
+import org.ogema.resourcetree.listeners.ResourceLock;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 import org.slf4j.Logger;
 
@@ -58,7 +64,7 @@ import org.slf4j.Logger;
  * Implementation of {@link ResourceManagement} and {@link ResourceAccess}. Instances are created for each
  * application/user. The ApplicationResourceManager also holds all result instances requested by that application.
  */
-public class ApplicationResourceManager implements ResourceManagement, ResourceAccess {
+public class ApplicationResourceManager implements ResourceManagement, ResourceAccess, ResourceLock {
 
 	protected final Logger logger;
 	private final ApplicationManager appMan;
@@ -67,17 +73,18 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	protected final Application app;
 	protected final PermissionManager permissionManager;
 	// contains all listenerregistrations performed by this app
-	protected final Map<ResourceListenerRegistration, Object> registeredListeners;
+//	 key is either of type ResourceListenerRegistration or InternalValueChangedListenerRegistration
+	protected final Map<RegisteredResourceListener, Object> registeredListeners;
+	protected final Map<InternalValueChangedListenerRegistration, Object> registeredValueListeners;
 	// contains Resources for which this app has requested an AccessMode != READ_ONLY
 	protected final Collection<AccessModeRequest> accessedResources;
 	// structure listeners registered by this app
-	protected final Collection<StructureListenerRegistration> structureListeners;
+	private final Collection<InternalStructureListenerRegistration> structureListeners;
 	// resource demands registered by this app
 	private final Collection<ResourceDemandListenerRegistration> resourceDemands;
-	private final Map<TreeElement, ResourceAccessRights> accessRights;
+	private final Cache<String, ResourceAccessRights> accessRights;
 
-	public ApplicationResourceManager(ApplicationManager appMan, Application app, ResourceDBManager dbMan,
-			PermissionManager pManager) {
+	public ApplicationResourceManager(ApplicationManager appMan, Application app, ResourceDBManager dbMan,	PermissionManager pManager) {
 		Objects.requireNonNull(appMan);
 		Objects.requireNonNull(app);
 		Objects.requireNonNull(dbMan);
@@ -87,20 +94,43 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		this.factory = new ResourceFactory(appMan, this, dbMan);
 		this.app = app;
 		this.permissionManager = pManager;
-		this.registeredListeners = new HashMap<>();
+		this.registeredListeners = new ConcurrentHashMap<>();
+		this.registeredValueListeners = new ConcurrentHashMap<>();
 		this.accessedResources = new HashSet<>();
 		this.structureListeners = new HashSet<>();
 		this.resourceDemands = new HashSet<>();
-        this.accessRights = new ConcurrentHashMap<>();
+        this.accessRights = CacheBuilder.newBuilder().weakKeys().weakValues().build();//new ConcurrentHashMap<>();
 		logger = org.slf4j.LoggerFactory.getLogger("org.ogema.core.resourcemanager-" + app.getClass().getName());
 	}
 
+	/*
+	 * Since we cannot guarantee that the application manager is not leaked by the application,
+	 * we better remove all existing references, as far as possible
+	 */
 	public void close() {
 		// unregister all access demands
-		synchronized (accessedResources) {
-			for (AccessModeRequest amr : accessedResources.toArray(new AccessModeRequest[accessedResources.size()])) {
-				amr.getResource().requestAccessMode(AccessMode.READ_ONLY, AccessPriority.PRIO_LOWEST);
+		// must be closed before dbMan is invalidated
+		dbMan.lockRead();
+		try {
+			synchronized (accessedResources) {
+				for (AccessModeRequest amr : accessedResources.toArray(new AccessModeRequest[accessedResources.size()])) {
+					amr.getResource().requestAccessMode(AccessMode.READ_ONLY, AccessPriority.PRIO_LOWEST);
+				}
+				accessedResources.clear();
 			}
+		} finally {
+			dbMan.unlockRead();
+		}
+		registeredListeners.clear();
+		registeredValueListeners.clear();
+		synchronized (structureListeners) {
+			structureListeners.clear();
+		}
+		synchronized (resourceDemands) {
+			resourceDemands.clear();
+		}
+		synchronized (accessRights) {
+			accessRights.invalidateAll();
 		}
 	}
 
@@ -115,14 +145,26 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		return appMan.getAppID().getIDString();
 	}
 
-	@SuppressWarnings("unchecked")
 	protected <T extends Resource> T findResource(String path) {
-		ResourceBase result;
 		VirtualTreeElement el = findTreeElement(path);
 		if (el == null) {
 			return null;
 		}
-		/*
+		return createResourceObject(el, path);
+	}
+    
+    protected <T extends Resource> T findExistingResource(String path) {
+		VirtualTreeElement el = findExistingTreeElement(path);
+		if (el == null) {
+			return null;
+		}
+		return createResourceObject(el, path);
+	}
+    
+    @SuppressWarnings("unchecked")
+	private <T extends Resource> T createResourceObject(VirtualTreeElement el, String path) {
+        ResourceBase result;
+        /*
 		 * @Security: Create ResourceAccessRights instance which is injected into the proxy object.
 		 */
 		ResourceAccessRights access = getAccessRights(el);
@@ -140,14 +182,18 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		}
 
 		Class<? extends Resource> type = el.getType();
-		if (type != null && type.equals(FloatResource.class)) {
+        if (type == null) {
+            throw new IllegalStateException("TreeElement " + el.getPath() + " has type null");
+        }
+		if (type.equals(FloatResource.class)) {
 			type = determineUnitResourceType(el);
 		}
 		result = factory.createResource(type, el, path);
 		result.accessRights = access;
-
-		return (T) result;
-	}
+        
+        T typedResult = (T) result;
+		return typedResult;
+    }
 
 	protected Class<? extends FloatResource> determineUnitResourceType(TreeElement el) {
 		while (el.isReference()) {
@@ -160,16 +206,18 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		@SuppressWarnings("unchecked")
 		Class<? extends FloatResource> realResourceType = (Class<? extends FloatResource>) ResourceBase
 				.getOptionalElementTypeOfType(parent.getType(), el.getName());
-		assert FloatResource.class.isAssignableFrom(realResourceType);
+		if (!FloatResource.class.isAssignableFrom(realResourceType)) {
+			return FloatResource.class;
+		}
 		return realResourceType;
 	}
 
 	protected ResourceAccessRights getAccessRights(TreeElement el) {
 		TreeElement location = getLocationElement(el);
-		ResourceAccessRights r = accessRights.get(el);
+		ResourceAccessRights r = accessRights.getIfPresent(location.getPath()); //XXX use cache loader
 		if (r == null) {
 			r = permissionManager.getAccessRights(app, location);
-			accessRights.put(location, r);
+			accessRights.put(location.getPath(), r);
 		}
 		return r;
 
@@ -183,7 +231,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	}
 
 	protected VirtualTreeElement findTreeElement(String path) {
-		assert path.startsWith("/") : path;
+		assert path.startsWith("/") : "illegal path: " + path;
 		String[] names = path.split("/");
 		assert names[0].isEmpty();
 		if (names.length == 1) {
@@ -195,8 +243,27 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		}
 		return el;
 	}
+    
+    // return null or a non-virtual element
+    protected VirtualTreeElement findExistingTreeElement(String path) {
+		assert path.startsWith("/") : "illegal path: " + path;
+		String[] names = path.split("/");
+		assert names[0].isEmpty();
+		if (names.length == 1) {
+			return null;
+		}
+		VirtualTreeElement el = dbMan.getToplevelResource(names[1]);
+		for (int i = 2; i < names.length && el != null; i++) {
+			el = el.getExistingChild(names[i]);
+            if (el == null) {
+                return null;
+            }
+		}
+		return el;
+	}
 
 	protected <T extends Resource> T findResource(final TreeElement el) {
+        Objects.requireNonNull(el);
 		Deque<String> nameStack = new ArrayDeque<>();
 		for (TreeElement p = el; p != null; p = p.getParent()) {
 			nameStack.push(p.getName());
@@ -226,7 +293,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 					"Permission to create resource '%s' of type '%s'is denied!", name, type)));
 		}
 
-		if (!dbMan.hasResourceType(type.getCanonicalName())) {
+		if (!dbMan.hasResourceType(type.getCanonicalName()) || !factory.hasResourceType(type)) {
 			throw raiseException(new ResourceException("missing resource type: " + type));
 		}
 
@@ -281,7 +348,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 
 	@Override
 	public String getUniqueResourceName(String appResourceName) {
-		return dbMan.getUniqueResourceName(appResourceName, app);
+		return dbMan.getUniqueResourceName(appResourceName, getAppId());
 	}
 
 	/*
@@ -381,7 +448,8 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	}
 
 	@Override
-	public Transaction createTransaction() {
+    @Deprecated
+	public org.ogema.core.resourcemanager.Transaction createTransaction() {
 		return new TransactionImpl(dbMan, appMan);
 	}
 
@@ -418,14 +486,11 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 
 	public List<RegisteredValueListener> getValueListeners() {
 		checkAdminPermission();
-		List<RegisteredValueListener> registeredResourceListeners = new ArrayList<>(registeredListeners.size());
-		for (ResourceListenerRegistration rlr : registeredListeners.keySet().toArray(
-				new ResourceListenerRegistration[registeredListeners.keySet().size()])) {
-			if (rlr instanceof RegisteredValueListener) {
-				registeredResourceListeners.add((RegisteredValueListener) rlr);
-			}
+		List<RegisteredValueListener> list = new ArrayList<>();
+		for (InternalValueChangedListenerRegistration l: registeredValueListeners.keySet()) {
+			list.add(l);
 		}
-		return registeredResourceListeners;
+		return list;
 	}
 
 	public List<RegisteredAccessModeRequest> getAccessRequests() {
@@ -445,6 +510,18 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 			return rval;
 		}
 	}
+    
+    protected void addStructureListenerRegistration(InternalStructureListenerRegistration slr) {
+        synchronized (structureListeners) {
+            structureListeners.add(slr);
+        }
+    }
+    
+    protected boolean removeStructureListenerRegistration(InternalStructureListenerRegistration slr) {
+        synchronized (structureListeners) {
+            return structureListeners.remove(slr);
+        }
+    }
 
 	public List<RegisteredResourceDemand> getResourceDemands() {
 		checkAdminPermission();
@@ -454,4 +531,20 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 			return rval;
 		}
 	}
+	
+	@Override
+	public ResourceTransaction createResourceTransaction() {
+		return new ResourceTransactionImpl(dbMan, appMan);
+	}
+	
+	public void lockRead() {
+		dbMan.lockRead();
+		dbMan.lockStructureRead();
+	}
+	
+	public void unlockRead() {
+		dbMan.unlockStructureRead();
+		dbMan.unlockRead();
+	}
+	
 }

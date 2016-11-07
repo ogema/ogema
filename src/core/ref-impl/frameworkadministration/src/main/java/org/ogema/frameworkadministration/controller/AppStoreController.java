@@ -31,7 +31,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -48,7 +47,6 @@ import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -59,7 +57,6 @@ import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.AppID;
 import org.ogema.core.installationmanager.ApplicationSource;
 import org.ogema.core.installationmanager.InstallableApplication;
-import org.ogema.core.installationmanager.InstallationManagement;
 import org.ogema.core.security.AppPermission;
 import org.ogema.frameworkadministration.json.AppsJsonAppFile;
 import org.ogema.frameworkadministration.json.AppsJsonGetAppFiles;
@@ -77,6 +74,8 @@ import org.osgi.service.permissionadmin.PermissionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /**
  * 
  * @author tgries
@@ -85,15 +84,13 @@ import org.slf4j.LoggerFactory;
 @Service(AppStoreController.class)
 public class AppStoreController {
 
-	private static AppStoreController instance = null;
-	private static final String DONT_APPEND = "no_index_html";
+//	private static AppStoreController instance = null;
+//	private static final String DONT_APPEND = "no_index_html";
 
 	@Reference
 	private AdministrationManager administrationManager;
 	@Reference
 	private PermissionManager permissionManager;
-	@Reference
-	private InstallationManagement installationManager;
 	@Reference
 	private ResourceDB resourceDB;
 
@@ -113,13 +110,14 @@ public class AppStoreController {
 
 	@Deactivate
 	protected void deactivate(BundleContext ctx) {
+		this.bundleContext = null;
 	}
 
 	public void startAppInstall(HttpServletRequest req, HttpServletResponse resp, String address, String name)
 			throws IOException {
 		if (!permissionManager.handleSecurity(new AdminPermission(AdminPermission.APP)))
 			throw new SecurityException("Permission to install Application denied!" + address + name);
-		InstallableApplication app = installationManager.createInstallableApp(address, name);
+		InstallableApplication app = administrationManager.getInstallationManager().createInstallableApp(address, name);
 		req.getSession().setAttribute(AppStoreUtils.INSTALLATION_STATE_ATTR_NAME, app);
 		// In this case an app is chosen for the installation
 		// Start the state machine for the installation process
@@ -156,7 +154,6 @@ public class AppStoreController {
 			String fileName = entry.getID().getBundle().getLocation();
 			int lastSeperator = fileName.lastIndexOf("/");
 			fileName = fileName.substring(lastSeperator + 1, fileName.length());
-
 			boolean needFilter = false;
 			for (String filter : AppStoreUtils.FILTERED_APPS) {
 				if (name.contains(filter)) {
@@ -288,7 +285,7 @@ public class AppStoreController {
 		StringBuffer sb;
 		sb = new StringBuffer();
 		if (path.equals("#")) {
-			AppID appid = permissionManager.getAdminManager().getAppByBundle(bundleContext.getBundle(id));
+			AppID appid = administrationManager.getAppByBundle(bundleContext.getBundle(id));
 
 			String baseUrl = permissionManager.getWebAccess(appid).getStartUrl();
 			Map<String, String> entries = new HashMap<String, String>();
@@ -332,7 +329,7 @@ public class AppStoreController {
 		// path = "/";
 		Bundle b = bundleContext.getBundle(id);
 		Enumeration<URL> entries = b.findEntries(path, null, false);
-		String replace = path + "/";
+//		String replace = path + "/";
 		if (entries != null) {
 			// permObj.put("webResources", permsArray);
 			sb.append('[');
@@ -382,7 +379,7 @@ public class AppStoreController {
 		sb.append(id);
 		sb.append("\",\"policies\":[");
 		Bundle b = bundleContext.getBundle(id);
-		AppID aid = permissionManager.getAdminManager().getAppByBundle(b);
+		AppID aid = administrationManager.getAppByBundle(b);
 		AppPermission ap = permissionManager.getPolicies(aid);
 		/*
 		 * Put policies info
@@ -506,31 +503,31 @@ public class AppStoreController {
 				// appStoresData.put(index++, name);
 				AppsJsonAppFile singleAppJson = new AppsJsonAppFile();
 				singleAppJson.setName(name);
-				// find icon from jar
-				ZipFile zipFile = new ZipFile(file);
 				ZipEntry zipEntry = null;
-
-				if (zipFile.getEntry("icon.svg") != null) {
-					singleAppJson.setType("svg+xml");
-					zipEntry = zipFile.getEntry("icon.svg");
-				}
-				else if (zipFile.getEntry("icon.png") != null) {
-					singleAppJson.setType("png");
-					zipEntry = zipFile.getEntry("icon.png");
-				}
-				else if (zipFile.getEntry("icon.jpg") != null) {
-					singleAppJson.setType("jpg");
-					zipEntry = zipFile.getEntry("icon.jpg");
-				}
-
-				if (zipEntry != null) {
-					InputStream inputStream = zipFile.getInputStream(zipEntry);
-					byte[] byteArray = IOUtils.toByteArray(inputStream);
-					byte[] unformattedBase64byteArray = Base64.encodeBase64(byteArray);
-					String utf8Base64 = new String(unformattedBase64byteArray, "UTF-8");
-					singleAppJson.setIconBase64(utf8Base64);
+				// find icon from jar
+				try (ZipFile zipFile = new ZipFile(file)) {
+					if (zipFile.getEntry("icon.svg") != null) {
+						singleAppJson.setType("svg+xml");
+						zipEntry = zipFile.getEntry("icon.svg");
+					}
+					else if (zipFile.getEntry("icon.png") != null) {
+						singleAppJson.setType("png");
+						zipEntry = zipFile.getEntry("icon.png");
+					}
+					else if (zipFile.getEntry("icon.jpg") != null) {
+						singleAppJson.setType("jpg");
+						zipEntry = zipFile.getEntry("icon.jpg");
+					}
+					if (zipEntry != null) {
+						InputStream inputStream = zipFile.getInputStream(zipEntry);
+						byte[] byteArray = IOUtils.toByteArray(inputStream);
+						byte[] unformattedBase64byteArray = Base64.encodeBase64(byteArray);
+						String utf8Base64 = new String(unformattedBase64byteArray, "UTF-8");
+						singleAppJson.setIconBase64(utf8Base64);
+					}
 				}
 				appListJson.getApps().add(singleAppJson);
+				
 			}
 
 		}
@@ -547,7 +544,7 @@ public class AppStoreController {
 		int i = 0;
 		JSONObject json = new JSONObject();
 		// Set<Entry<String, AppStore>> appstrs = appStores.entrySet();
-		List<ApplicationSource> appstrs = installationManager.getConnectedAppSources();
+		List<ApplicationSource> appstrs = administrationManager.getSources().getConnectedAppSources();
 		for (ApplicationSource entry : appstrs) {
 			appStoresData.put(i++, entry.getName());
 		}
@@ -559,9 +556,6 @@ public class AppStoreController {
 	public File receiveFile(HttpServletRequest req, HttpServletResponse resp) {
 
 		String path = "./temp";
-		path = administrationManager.getInstallationManager().getDefaultAppStore().getAddress();
-
-		// String filePath = req.getParameter("filename");
 		boolean isMultipart;
 		int maxFileSize = MAX_FILE_SIZE;
 		int maxMemSize = 16 * 1024;
@@ -634,36 +628,15 @@ public class AppStoreController {
 		return administrationManager;
 	}
 
-	public void setAdministrationManager(AdministrationManager administrationManager) {
-		this.administrationManager = administrationManager;
-	}
-
 	public PermissionManager getPermissionManager() {
 		return permissionManager;
-	}
-
-	public void setPermissionManager(PermissionManager permissionManager) {
-		this.permissionManager = permissionManager;
 	}
 
 	public ResourceDB getResourceDB() {
 		return resourceDB;
 	}
 
-	public void setResourceDB(ResourceDB resourceDB) {
-		this.resourceDB = resourceDB;
-	}
-
 	public BundleContext getBundleContext() {
 		return bundleContext;
 	}
-
-	public void setBundleContext(BundleContext bundleContext) {
-		this.bundleContext = bundleContext;
-	}
-
-	public void setInstallationManager(InstallationManagement instMan) {
-		this.installationManager = instMan;
-	}
-
 }

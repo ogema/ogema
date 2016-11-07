@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
@@ -52,12 +51,9 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 
 	private final Object connectionLock = new Object();
 
-	protected ChannelAccess channelAccess;
-
-	public HMDriver(ChannelAccess ca) {
+	public HMDriver() {
 		connectionsMap = new HashMap<>();
 		listenerMap = new HashMap<>();
-		this.channelAccess = ca;
 	}
 
 	protected void removeConnection(String interfaceId) {
@@ -99,8 +95,8 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 				RemoteDevice remoteDevice = deviceEntry.getValue();
 				if (remoteDevice.getInitState() == InitStates.PAIRED) {
 					String parameters = remoteDevice.getDeviceType();
-					DeviceLocator deviceLocator = channelAccess.getDeviceLocator(driverId, interfaceId, remoteDevice
-							.getAddress(), parameters);
+					DeviceLocator deviceLocator = new DeviceLocator(driverId, interfaceId, remoteDevice.getAddress(),
+							parameters);
 					logger.debug("\nDevice found:\nAddress = " + deviceLocator.getDeviceAddress() + "\nDeviceType = "
 							+ deviceLocator.getParameters());
 					listener.deviceFound(deviceLocator);
@@ -162,8 +158,8 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 			ChannelLocator channelLocator = container.getChannelLocator();
 
 			try {
-				Channel channel = findConnection(channelLocator.getDeviceLocator().getInterfaceName()).findDevice(
-						channelLocator.getDeviceLocator()).findChannel(channelLocator);
+				Channel channel = findConnection(channelLocator.getDeviceLocator().getInterfaceName())
+						.findDevice(channelLocator.getDeviceLocator()).findChannel(channelLocator);
 				channel.setEventListener(container, listener);
 				channelList.add(channel);
 
@@ -175,8 +171,8 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 	}
 
 	@Override
-	public void writeChannels(List<ValueContainer> channels) throws UnsupportedOperationException, IOException,
-			NoSuchDeviceException, NoSuchChannelException {
+	public void writeChannels(List<ValueContainer> channels)
+			throws UnsupportedOperationException, IOException, NoSuchDeviceException, NoSuchChannelException {
 		for (ValueContainer container : channels) {
 			ChannelLocator channelLocator = container.getChannelLocator();
 
@@ -234,8 +230,14 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 	@Override
 	public void channelRemoved(ChannelLocator channel) {
 		DeviceLocator device = channel.getDeviceLocator();
+		if (device == null)
+			return;
 		Connection con = findConnection(device.getInterfaceName());
+		if (con == null)
+			return;
 		Device dev = con.findDevice(device);
+		if (dev == null)
+			return;
 		Channel chan = null;
 		chan = dev.findChannel(channel);
 		if (chan != null)
@@ -258,8 +260,10 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 		logger.debug("hardware removed: " + descriptor.getIdentifier().toString());
 	}
 
+	volatile Thread pairing = null;
+
 	public void enablePairing(final String iface) {
-		Thread pairing = new Thread() {
+		pairing = new Thread() {
 			@Override
 			public void run() {
 				try {
@@ -271,7 +275,7 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 					connection.localDevice.setPairing(null);
 					logger.info("Pairing disabled.");
 				} catch (InterruptedException e) {
-					e.printStackTrace();
+					// e.printStackTrace();
 				}
 			}
 		};
@@ -291,12 +295,15 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 
 	}
 
+	volatile Thread connectThread;
+
 	public void establishConnection() {
 		final String portname = Connection.getPortName();
 		Connection con = connectionsMap.get(portname);
 		if (con == null) {
 			final HMDriver driver = this;
-			Thread connectThread = new Thread() {
+			// FIXME this thread stays alive after a framework shutdown
+			connectThread = new Thread() {
 				@Override
 				public void run() {
 
@@ -305,11 +312,13 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 						while (!con.hasConnection() && Activator.bundleIsRunning) {
 							try {
 								connectionLock.wait();
-							} catch (InterruptedException ex) {
-								ex.printStackTrace();
+							} catch (InterruptedException ex) { // interrupt is used to terminate the thread
+								// ex.printStackTrace();
 							}
 						}
 					}
+					if (!Activator.bundleIsRunning)
+						return;
 					addConnection(con);
 					driver.enablePairing("USB");
 				}
@@ -323,8 +332,8 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 	}
 
 	@Override
-	public void writeChannel(ChannelLocator channelLocator, Value value) throws UnsupportedOperationException,
-			IOException, NoSuchDeviceException, NoSuchChannelException {
+	public void writeChannel(ChannelLocator channelLocator, Value value)
+			throws UnsupportedOperationException, IOException, NoSuchDeviceException, NoSuchChannelException {
 		try {
 			Connection con = findConnection(channelLocator.getDeviceLocator().getInterfaceName());
 			Device dev = con.findDevice(channelLocator.getDeviceLocator());

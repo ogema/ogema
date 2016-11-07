@@ -104,7 +104,7 @@ public class DefaultFilter {
 			} catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InstantiationException
 					| IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 				success = false;
-				logger.error("Filter file forbiddens.perm could not be prosecced. Fall back to default filter.");
+				logger.warn("Filter file forbiddens.perm could not be prosecced. Fall back to default filter.");
 				break;
 			}
 		}

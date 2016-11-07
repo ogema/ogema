@@ -3,10 +3,11 @@
 	<parent>
 		<groupId>org.ogema.tools</groupId>
 		<artifactId>ogema-tools</artifactId>
-		<version>2.0.4</version>
+		<version>2.1.0</version>
 		<relativePath>../../tools</relativePath>
 	</parent>
 
+	<groupId>org.ogema.external</groupId>
 	<artifactId>rxtx</artifactId>
 	<packaging>bundle</packaging>
 	<description>OSGi wrapper for gnu.io.rxtx</description>
@@ -34,10 +35,10 @@
 							osname=linux;
 							processor=arm,
 							lib/win-x64/rxtxSerial.dll;
-							osname=windows;
+							osname=windows7;osname=windows10;
 							processor=x86-64,
 							lib/win-x86/rxtxSerial.dll;
-							osname=windows;
+							osname=windows7;osname=windows10;
 							processor=x86
 						</Bundle-NativeCode>
 						<Bundle-ClassPath>.;RXTXcomm.jar</Bundle-ClassPath>

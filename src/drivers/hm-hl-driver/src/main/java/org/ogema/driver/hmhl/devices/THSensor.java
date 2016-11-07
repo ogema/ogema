@@ -125,7 +125,7 @@ public class THSensor extends HM_hlDevice {
 		thDevice.sensors().create();
 		// thDevice.sensors().activate(true);
 
-		TemperatureSensor tSensor = thDevice.sensors().addDecorator("temperature", TemperatureSensor.class);
+		TemperatureSensor tSensor = thDevice.sensors().addDecorator("temperatureSensor", TemperatureSensor.class);
 		temperature = tSensor.reading().create();
 		// temperature.activate(true);
 		//		temperature.setCelsius(0);
@@ -149,7 +149,7 @@ public class THSensor extends HM_hlDevice {
 
 	private void enableHumidity() {
 		humidityEnabled = Status_hum.ENABLED;
-		HumiditySensor hSensor = thDevice.sensors().addDecorator("humidity", HumiditySensor.class);
+		HumiditySensor hSensor = thDevice.sensors().addDecorator("humiditySensor", HumiditySensor.class);
 		humidity = hSensor.reading().create();
 		//		humidity.activate(true);
 		humidity.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);

@@ -26,7 +26,6 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.model.schedule.Schedule;
-import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;

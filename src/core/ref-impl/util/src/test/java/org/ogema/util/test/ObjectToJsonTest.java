@@ -22,10 +22,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.JsonParser;
-import org.codehaus.jackson.JsonToken;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -34,6 +30,11 @@ import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.tools.SerializationManager;
 import org.ogema.exam.OsgiAppTestBase;
 import org.ogema.model.sensors.FlowSensor;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class ObjectToJsonTest extends OsgiAppTestBase {
 
@@ -52,6 +53,7 @@ public class ObjectToJsonTest extends OsgiAppTestBase {
 		assertTrue("Invalid JSON string:\n" + json, isJsonValid(json));
 
 		try {
+            @SuppressWarnings("deprecation")
 			final JsonParser parser = new ObjectMapper().getJsonFactory()
 					.createJsonParser(json);
 			Class<? extends TestObjectWithoutResourceAttribute> testObjClass = testObj.getClass();
@@ -89,6 +91,7 @@ public class ObjectToJsonTest extends OsgiAppTestBase {
 	private boolean isJsonValid(String json) {
 		boolean valid = false;
 		try {
+            @SuppressWarnings("deprecation")
 			final JsonParser parser = new ObjectMapper().getJsonFactory().createJsonParser(json);
 			while (parser.nextToken() != null) {
 			}

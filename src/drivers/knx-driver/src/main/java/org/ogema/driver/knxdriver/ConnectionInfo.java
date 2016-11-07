@@ -17,7 +17,6 @@ package org.ogema.driver.knxdriver;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
-import org.ogema.core.resourcemanager.ResourceListener;
 
 public class ConnectionInfo {
 
@@ -31,7 +30,8 @@ public class ConnectionInfo {
 	private Resource ressource;
 	private long timeStep;
 	private ResourceDemandListener<Resource> resDemandListener;
-	private ResourceListener resListener;
+    @SuppressWarnings("deprecation")
+	private org.ogema.core.resourcemanager.ResourceListener resListener;
 	private String value;
 	private boolean statusListener;
 	private long lastAccess;
@@ -132,11 +132,12 @@ public class ConnectionInfo {
 		this.resDemandListener = resDemandListener;
 	}
 
-	public ResourceListener getResListener() {
+    @SuppressWarnings("deprecation")
+	public org.ogema.core.resourcemanager.ResourceListener getResListener() {
 		return resListener;
 	}
 
-	public void setResListener(ResourceListener resListener) {
+	public void setResListener(@SuppressWarnings("deprecation") org.ogema.core.resourcemanager.ResourceListener resListener) {
 		this.resListener = resListener;
 	}
 

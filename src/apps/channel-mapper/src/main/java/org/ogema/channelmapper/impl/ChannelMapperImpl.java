@@ -33,7 +33,6 @@ import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
-import org.ogema.core.channelmanager.ChannelConfigurationException;
 import org.ogema.core.channelmanager.ChannelEventListener;
 import org.ogema.core.channelmanager.EventType;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
@@ -51,11 +50,9 @@ import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
-import org.ogema.core.model.simple.OpaqueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.ResourceAccess;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceManagement;
 
 /**
@@ -63,10 +60,11 @@ import org.ogema.core.resourcemanager.ResourceManagement;
  */
 @Component(immediate = true)
 @Service( { Application.class, ChannelMapper.class })
-public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEventListener, ResourceListener {
+@SuppressWarnings("deprecation")
+public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEventListener, org.ogema.core.resourcemanager.ResourceListener {
 
-	private static Map<ChannelLocator, ResourceAndMore> resourceMapping = new HashMap<ChannelLocator, ResourceAndMore>();
-	private static Map<Resource, ChannelAndMore> channelMapping = new HashMap<Resource, ChannelAndMore>();
+	private static final Map<ChannelLocator, ResourceAndMore> resourceMapping = new HashMap<ChannelLocator, ResourceAndMore>();
+	private static final Map<Resource, ChannelAndMore> channelMapping = new HashMap<Resource, ChannelAndMore>();
 
 	protected OgemaLogger logger;
 	private boolean available = false;
@@ -84,7 +82,7 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 
 		MappedElement mappedElemente;
 		Resource resource;
-		List<ChannelLocator> channels = new LinkedList<ChannelLocator>();
+		List<ChannelConfiguration> channels = new LinkedList<ChannelConfiguration>();
 
 		public Task(MappedElement mappedElemente, Resource resource) {
 			this.mappedElemente = mappedElemente;
@@ -97,7 +95,7 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 
 			try {
 				addMappedElements(mappedElemente, resource, channels);
-			} catch (ChannelConfigurationException e) {
+			} catch (ChannelAccessException e) {
 				// TODO Auto-generated catch block
 				logger.info(" Driver doesn't exist will try again in 5min");
 				timer.schedule(new Task(mappedElemente, resource), 300000);
@@ -109,33 +107,24 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 
 	}
 
-	public void addMappedElements(MappedElement mappedElement, Resource resource, List<ChannelLocator> channels)
-			throws ChannelConfigurationException {
+	public void addMappedElements(MappedElement mappedElement, Resource resource, List<ChannelConfiguration> channels)
+			throws ChannelAccessException {
 
 		ChannelDescription channelDescription = mappedElement.getChannelDescription();
-		DeviceLocator deviceLocator = channelAccess.getDeviceLocator(channelDescription.getDriverId(),
+		DeviceLocator deviceLocator = new DeviceLocator(channelDescription.getDriverId(),
 				channelDescription.getInterfaceId(), channelDescription.getDeviceAddress(), channelDescription
 						.getParameters());
-		ChannelLocator channelLocator = channelAccess.getChannelLocator(channelDescription.getChannelAddress(),
+		ChannelLocator channelLocator = new ChannelLocator(channelDescription.getChannelAddress(),
 				deviceLocator);
-		ChannelConfiguration channelConfiguration = channelAccess.getChannelConfiguration(channelLocator);
-
-		if (channelDescription.getSamplingPeriod() == null) {
-			channelConfiguration.setSamplingPeriod(1000);
-		}
-		else {
-			channelConfiguration.setSamplingPeriod(channelDescription.getSamplingPeriod());
-		}
-		try {
-			channelAccess.addChannel(channelConfiguration);
+		
+		long samplingPeriod = channelDescription.getSamplingPeriod() == null ? 1000 : channelDescription.getSamplingPeriod();
+		
+			ChannelConfiguration channelConfiguration = channelAccess.addChannel(channelLocator, channelDescription.getDirection(), samplingPeriod);
+			
 			if (channelDescription.getDirection() == Direction.DIRECTION_INOUT
 					|| channelDescription.getDirection() == Direction.DIRECTION_INPUT) {
-				channels.add(channelLocator);
+				channels.add(channelConfiguration);
 			}
-		} catch (ChannelConfigurationException e) {
-			throw new ChannelConfigurationException("Configuration of channel " + channelLocator.getChannelAddress()
-					+ "failed, check if all drivers are installed!", e);
-		}
 
 		if (resource != null) {
 			int count = 0;
@@ -180,7 +169,7 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 					ResourceAndMore resourceAndMore = new ResourceAndMore(subResource, channelDescription
 							.getValueOffset(), channelDescription.getScalingFactor());
 					resourceMapping.put(channelLocator, resourceAndMore);
-					ChannelAndMore channelAndMore = new ChannelAndMore(channelLocator, channelDescription
+					ChannelAndMore channelAndMore = new ChannelAndMore(channelConfiguration, channelDescription
 							.getValueOffset(), channelDescription.getScalingFactor());
 					channelMapping.put(subResource, channelAndMore);
 				}
@@ -221,7 +210,7 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 			long samplingPeriod, double scalingFactor, double valueOffset) throws ResourceMappingException {
 
 		StringTokenizer tokenizer = new StringTokenizer(resourceElementPath, ".");
-		List<ChannelLocator> channels = new LinkedList<ChannelLocator>();
+		List<ChannelConfiguration> channels = new LinkedList<ChannelConfiguration>();
 		if (tokenizer.countTokens() < 1) {
 			throw new ResourceMappingException("Channel cannot be mapped to model root or top level resource!");
 		}
@@ -258,9 +247,8 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 
 		}
 		if (!exist) {
-			ChannelConfiguration channelConfiguration = channelAccess.getChannelConfiguration(channel);
-
 			DeviceLocator deviceLocator = channel.getDeviceLocator();
+			ChannelConfiguration chConf = null;
 			ChannelDescription channelDescription = new ChannelDescription(deviceLocator.getDriverName(), deviceLocator
 					.getInterfaceName(), deviceLocator.getDeviceAddress(), deviceLocator.getParameters(), channel
 					.getChannelAddress(), samplingPeriod, scalingFactor, valueOffset);
@@ -271,9 +259,9 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 			mappingConfiguration.getMappedResource(topLevelResourceName).addMappedChannel(mappedElement);
 
 			try {
-				channelAccess.addChannel(channelConfiguration);
-				channels.add(channel);
-			} catch (ChannelConfigurationException e) {
+				chConf = channelAccess.addChannel(channel, direction, samplingPeriod);
+				channels.add(chConf);
+			} catch (ChannelAccessException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -285,10 +273,14 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 			ResourceAndMore resourceAndMore = new ResourceAndMore(subResource, channelDescription.getValueOffset(),
 					channelDescription.getScalingFactor());
 			resourceMapping.put(channel, resourceAndMore);
-			ChannelAndMore channelAndMore = new ChannelAndMore(channel, channelDescription.getValueOffset(),
+			ChannelAndMore channelAndMore = new ChannelAndMore(chConf, channelDescription.getValueOffset(),
 					channelDescription.getScalingFactor());
 			channelMapping.put(subResource, channelAndMore);
-			channelAccess.registerUpdateListener(channels, this);
+			try {
+				channelAccess.registerUpdateListener(channels, this);
+			} catch (ChannelAccessException e) {
+				e.printStackTrace();
+			}
 			configuration.write();
 		}
 
@@ -324,8 +316,8 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 		MappedResource mappedResource = mappingConfiguration.getMappedResource(resourceName);
 		List<MappedElement> list = mappedResource.getMappedElements();
 		for (MappedElement mappedElement : list) {
-			unmapChannel(channelAccess.getChannelLocator(mappedElement.getChannelDescription().getChannelAddress(),
-					channelAccess.getDeviceLocator(mappedElement.getChannelDescription().getDriverId(), mappedElement
+			unmapChannel(new ChannelLocator(mappedElement.getChannelDescription().getChannelAddress(),
+					new DeviceLocator(mappedElement.getChannelDescription().getDriverId(), mappedElement
 							.getChannelDescription().getInterfaceId(), mappedElement.getChannelDescription()
 							.getDeviceAddress(), mappedElement.getChannelDescription().getParameters())));
 		}
@@ -423,7 +415,7 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 		List<MappedResource> mappedResources = mappingConfiguration.getMappedResources();
 		logger.info("Amount of resources:  " + Integer.toString(mappedResources.size()) + "\n");
 
-		List<ChannelLocator> channels = new LinkedList<ChannelLocator>();
+		List<ChannelConfiguration> channels = new LinkedList<ChannelConfiguration>();
 
 		for (MappedResource mappedResource : mappedResources) {
 			Resource resource = resourceAccess.getResource(mappedResource.getResourceName());
@@ -454,7 +446,7 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 				for (MappedElement mappedElemente : mappedElements) {
 					try {
 						addMappedElements(mappedElemente, resource, channels);
-					} catch (ChannelConfigurationException e) {
+					} catch (ChannelAccessException e) {
 						logger.info("Driver doesn't exist, wait 30 sec", e);
 						timer.schedule(new Task(mappedElemente, resource), 30000);
 					}
@@ -467,7 +459,7 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 				for (MappedElement mappedElemente : mappedElements) {
 					try {
 						addMappedElements(mappedElemente, resource, channels);
-					} catch (ChannelConfigurationException e) {
+					} catch (ChannelAccessException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 						logger.info("Driver doesn't exist, wait 30 sec");
@@ -529,8 +521,8 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 							((StringResource) resource).setValue(value.getStringValue());
 
 						}
-						else if (resource instanceof OpaqueResource) {
-							((OpaqueResource) resource).setValue(value.getByteArrayValue());
+						else if (resource instanceof org.ogema.core.model.simple.OpaqueResource) {
+							((org.ogema.core.model.simple.OpaqueResource) resource).setValue(value.getByteArrayValue());
 
 						}
 						else if (resource instanceof BooleanResource) {
@@ -563,7 +555,7 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 				if (resource instanceof FloatResource) {
 
 					ChannelAndMore channelAndMore = channelMapping.get(resource);
-					ChannelLocator channel = channelAndMore.channelLocator;
+					ChannelConfiguration channel = channelAndMore.channelConfiguration;
 					float floatValue = (float) ((((FloatResource) resource).getValue() / channelAndMore.scalingFactor) - channelAndMore.valueOffset);
 					Value value = new FloatValue(floatValue);
 					try {
@@ -574,7 +566,7 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 				}
 				else if (resource instanceof IntegerResource) {
 					ChannelAndMore channelAndMore = channelMapping.get(resource);
-					ChannelLocator channel = channelAndMore.channelLocator;
+					ChannelConfiguration channel = channelAndMore.channelConfiguration;
 					int intValue = (int) ((((IntegerResource) resource).getValue() / channelAndMore.scalingFactor) - channelAndMore.valueOffset);
 					Value value = new IntegerValue(intValue);
 					try {
@@ -586,7 +578,7 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 				else if (resource instanceof StringResource) {
 					Value value = new StringValue(((StringResource) resource).getValue());
 					ChannelAndMore channelAndMore = channelMapping.get(resource);
-					ChannelLocator channel = channelAndMore.channelLocator;
+					ChannelConfiguration channel = channelAndMore.channelConfiguration;
 					try {
 						channelAccess.setChannelValue(channel, value);
 					} catch (ChannelAccessException e) {
@@ -597,7 +589,7 @@ public class ChannelMapperImpl implements Application, ChannelMapper, ChannelEve
 				else if (resource instanceof BooleanResource) {
 					Value booleValue = new BooleanValue(((BooleanResource) resource).getValue());
 					ChannelAndMore channelAndMore = channelMapping.get(resource);
-					ChannelLocator channel = channelAndMore.channelLocator;
+					ChannelConfiguration channel = channelAndMore.channelConfiguration;
 					try {
 						channelAccess.setChannelValue(channel, booleValue);
 					} catch (ChannelAccessException e) {

@@ -3,28 +3,36 @@ The project artifacts will probably only be present in binary distributions.
 Find the full text of the Apache 2.0 license under licenses/apache-license-2.0.txt
 
 
-This product includes software developed at
-The OSGi Alliance (http://www.osgi.org/).
 Copyright (c) OSGi Alliance (2000, 2012).
 Licensed under the Apache License 2.0.
 
+This product includes software developed at
+The OSGi Alliance (http://www.osgi.org/).
+
 
 Apache Felix Configuration Admin Service
-Copyright 2006-2012 The Apache Software Foundation
+Copyright 2006-2016 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
 
 Apache Felix EventAdmin
-Copyright 2006-2012 The Apache Software Foundation
+Copyright 2006-2016 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+
+Apache Felix User Admin & User Admin Fileinstall
+Copyright 2006-2016 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
 
 Apache Felix File Install
-Copyright 2006-2012 The Apache Software Foundation
+Copyright 2006-2016 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
@@ -101,18 +109,68 @@ Copyright 2010 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
+
+
+Apache Groovy
+Copyright The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+
+Apache Commons Lang
+Copyright 2002-2016 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+
+Apache Webservices Common Utils
+Copyright 2007 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+
+Apache XML-RPC Common, Client and Server
+Copyright 2005-2010 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+
+Jackson JSON-processor
+Copyright (c) 2007-2016 Tatu Saloranta, tatu.saloranta@iki.fi
+Licensed under the Apache License 2.0.
+
+This product includes software developed by Tatu Saloranta
+
+
+This product includes jamod-Library developed by
+jamod development team Copyright 2002-2010 
 Licensed under the Apache License 2.0.
 
 
-Apache MINA Core
-Copyright 2004-2012 Apache MINA Project
-
-This product includes software developed at
-The Apache Software Foundation (http://www.apache.org/).
+This product includes j2mod developed by
+j2mod development team Copyright 2012-2016 
+Licensed under the Apache License 2.0.
 
 
-Apache MINA SSHD
-Copyright 2008-2014 The Apache Software Foundation
+This product uses software developed by Google, Inc.
+guava-libraries
+Licensed under the Apache License 2.0.
 
-This product includes software developed at
-The Apache Software Foundation (http://www.apache.org/).
+
+This product uses 
+Joda-Time, Copyright (c) joda.org 
+Licensed under the Apache License 2.0.
+
+
+This product uses 
+OPS4J Pax URL, Copyright (c) OPS4J
+Licensed under the Apache License 2.0.
+
+
+This product includes code-prettify developed by
+Copyright 2011 Mike Samuel et al, mikesamuel@gmail.com
+Licensed under the Apache License 2.0

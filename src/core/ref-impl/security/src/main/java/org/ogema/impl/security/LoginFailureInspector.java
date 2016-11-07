@@ -20,8 +20,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.ogema.impl.security.LoginFailureInspector.IpLoginFailureInfo;
-
 public class LoginFailureInspector {
 	// used to block IPs when multiple logins failed ... preventing brute force attacks.
 	// ordinary the blocking should be done in a Filter but unfortunately using 

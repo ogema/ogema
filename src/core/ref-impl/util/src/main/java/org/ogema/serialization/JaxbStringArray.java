@@ -30,7 +30,7 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
  */
 @XmlAccessorType(XmlAccessType.PROPERTY)
 @XmlType(name = "StringArrayResource", namespace = NS_OGEMA_REST)
-@XmlRootElement(name = "stringArray", namespace = NS_OGEMA_REST)
+@XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 public class JaxbStringArray extends JaxbResource {
 
 	JaxbStringArray(StringArrayResource r, SerializationStatus serMan) {

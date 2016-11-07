@@ -116,7 +116,7 @@ public class Device {
 		configurationModel.addOptionalElement("timeout");
 		configurationModel.addOptionalElement("resourceName");
 
-		configurationModel.interfaceId().setValue("COM6");
+		configurationModel.interfaceId().setValue("COM7");
 		configurationModel.deviceAddress().setValue("1");
 		configurationModel.deviceParameters().setValue(getParameterString(interfaceParams));
 		configurationModel.timeout().setValue(1000);
@@ -195,7 +195,7 @@ public class Device {
 		result += ":" + prop.getProperty(KEY_FLOWCONTROL);
 		result += ":" + prop.getProperty(KEY_FLOWCONTROL);
 		result += ":" + prop.getProperty(KEY_ECHO);
-		result += ":" + prop.getProperty(KEY_TIMEOUT);
+		//result += ":" + prop.getProperty(KEY_TIMEOUT);
 
 		return result;
 	}
@@ -211,7 +211,7 @@ public class Device {
 		prop.setProperty(KEY_FLOWCONTROL, split[4]);
 		// prop.setProperty(KEY_FLOWCONTROL, split[5]);
 		prop.setProperty(KEY_ECHO, split[6]);
-		prop.setProperty(KEY_TIMEOUT, split[7]);
+		//prop.setProperty(KEY_TIMEOUT, split[7]);
 
 	}
 

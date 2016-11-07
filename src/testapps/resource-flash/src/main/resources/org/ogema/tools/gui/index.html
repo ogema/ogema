@@ -1,0 +1,143 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html>
+<html ng-app="ResourceFlashModule">
+    <head>
+        <script src="jquery-1.11.1.min.js"></script>
+        <link href="bootstrap.min.css" rel="stylesheet" type="text/css"/> 
+
+        <title>Resource Flash</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+    <div class="container-fluid">
+    <div ng-controller="ResourceFlashCtrl">		
+        <h2>Resources overview</h2>
+        <div class="row">
+        	<div class="col col-sm-1"><button class="btn btn-success" ng-click="update()">Update</button></div>
+        	<div class="col col-sm-2"># resources to create:
+    		   <select ng-model="selectedNr">
+		        <option ng-repeat="nr in numbers" value="{{nr}}">{{nr}}</option>
+		      </select>
+        	</div>
+        	<div class="col col-sm-1">Last duration: <div>{{getLastDuration()}}</div>ms</div>
+        </div><br>
+        <!--  Resources -->
+        <div class="table table-striped table-hover">
+        	<div class="row">
+        		<div class="col col-sm-2"><h4>Resource type</h4></div>
+        		<div class="col col-sm-1"><h4># resources</h4></div>
+        		<div class="col col-sm-1"><h4>Create</h4></div>
+        		<div class="col col-sm-1"><h4>Delete</h4></div>
+        	</div>
+        	<div class="row" ng-repeat="type in getResourceTypes()">
+        	 	<div class="col col-sm-2">
+        	 		{{getShortTypeName(type)}}
+        	 	</div>
+        	 	<div class="col col-sm-1">
+        	 		{{getNumber(type)}}
+        	 	</div>
+        	 	<div class="col col-sm-1">
+        	 		<!--  <button ng-Click="create(type,selectedNr)" class="btn btn-primary">{{'Create ' + getShortTypeName(type) + 's'}}</button> -->
+        	 		<button ng-Click="create(type,selectedNr)" class="btn btn-primary">Create</button> 
+        	 	</div>
+        	 	<div class="col col-sm-1">
+        	 <!--		<button ng-Click="delete(type)" class="btn btn-primary">{{'Delete ' + getShortTypeName(type) + 's'}}</button>-->
+        			 <button ng-Click="delete(type)" class="btn btn-danger">Delete</button>
+        	 	</div>
+        	</div>
+        </div>
+        <!--  Schedules -->
+         <div class="table table-striped table-hover">
+        	<div class="row">
+        		<div class="col col-sm-2"><h4>Schedule type (float)</h4></div>
+        		<div class="col col-sm-1"><h4># values</h4></div>
+        		<div class="col col-sm-1"><h4>Create</h4></div>
+        		<div class="col col-sm-1"><h4>Delete</h4></div>
+        	</div>
+        	<div class="row" ng-repeat="type in getScheduleTypes()">
+        	 	<div class="col col-sm-2">
+        	 		{{getShortScheduleName(type)}}
+        	 	</div>
+        	 	<div class="col col-sm-1">
+        	 		{{getValNumber(type)}}
+        	 	</div>
+        	 	<div class="col col-sm-1">
+        	 		<button ng-Click="create(type,selectedNr)" class="btn btn-primary">Create</button> 
+        	 	</div>
+        	 	<div class="col col-sm-1">
+        			 <button ng-Click="delete(type)" class="btn btn-danger">Delete</button>
+        	 	</div>
+        	</div>
+        </div>
+         <!--  Objects -->
+        <div class="table table-striped table-hover">
+        	<div class="row">
+        		<div class="col col-sm-2"><h4>Class</h4></div>
+        		<div class="col col-sm-1"><h4># objects</h4></div>
+        		<div class="col col-sm-1"><h4>Create</h4></div>
+        		<div class="col col-sm-1"><h4>Delete</h4></div>
+        	</div>
+        	<div class="row" ng-repeat="clazz in getClasses()">
+        	 	<div class="col col-sm-2">
+        	 		{{getShortClassName(clazz)}}
+        	 	</div>
+        	 	<div class="col col-sm-1">
+        	 		{{getObjNumber(clazz)}}
+        	 	</div>
+        	 	<div class="col col-sm-1">
+        	 		<button ng-Click="create(clazz,selectedNr)" class="btn btn-primary">Create</button> 
+        	 	</div>
+        	 	<div class="col col-sm-1">
+        			 <button ng-Click="delete(clazz)" class="btn btn-danger">Delete</button>
+        	 	</div>
+        	</div>
+        </div>
+		<div class="table table-striped table-hover">
+        	<div class="row">
+        		<div class="col col-sm-2"><h4>Type</h4></div>
+        		<div class="col col-sm-1"><h4># objects</h4></div>
+        		<div class="col col-sm-1"><h4>Listeners</h4></div>
+        		<div class="col col-sm-1"><h4>Create</h4></div>
+        		<div class="col col-sm-1"><h4>Delete</h4></div>
+        	</div>
+        	<div>
+        		<div class="col col-sm-2">Complex tree (15 subresources)</div>
+        		<div class="col col-sm-1">
+        			{{getTreeNumber()}}
+        		</div>
+        		<div class="col col-sm-1">
+        			<input type="checkbox" ng-model="createWithListeners"/> <!-- TODO set value to some angular variable, pass it to createTree -->
+        		</div>
+        		<div class="col col-sm-1">
+        	 		<button ng-Click="createTree(selectedNr,createWithListeners)" class="btn btn-primary">Create</button> 
+        	 	</div>
+        	 	<div class="col col-sm-1">
+        			 <button ng-Click="deleteTree(clazz)" class="btn btn-danger">Delete</button>
+        	 	</div>
+        	</div>
+        </div>
+    
+    	<script src="angular-1.3.8.js"></script>
+	    <script src="communication.js"></script>
+	    
+    </div>
+    </body>
+</html>
+</html>

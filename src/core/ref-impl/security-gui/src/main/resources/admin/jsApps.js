@@ -15,8 +15,9 @@ $(function() {
 				primary : "ui-icon-arrowthickstop-1-s"
 			}
 		});
-		
+		$("#store").html(curStore);
 		$("#market").html("Bundles in the Marketplace "+curStore);
+		$("#marketLogin").html("Marketplace "+curStore);
 		/**
 		 * get json data (apps for the current store) and put them in dialog
 		 * 
@@ -50,8 +51,14 @@ $(function() {
 
 					$("div.portlet-header>span").removeClass("ui-icon");
 
-					// Select an appPortlet, when
-					// dblClick
+					$("div#sortableNewApps").append("<ul id='contextMenu'><li onclick='install()'>Install Bundle</li></ul>")
+					
+					$("#contextMenu").menu({
+						select: function(event, ui){
+						$("#contextMenu").hide();
+						}
+					});
+						
 					$("div.portlet-header").dblclick(function() {
 						$("div.portlet-header").removeClass("selectedPortlet");
 						$(this).addClass("selectedPortlet");
@@ -66,6 +73,26 @@ $(function() {
 					$("#sortableNewApps").click(function() {
 						$("div.portlet-header").removeClass("selectedPortlet");
 						selectedApp = "";
+						$("#contextMenu").hide();
+						$("#contextMenu").removeData();
+					});
+					
+
+					$(".portlet-header").on("contextmenu", function (event) {
+						$("div.portlet-header").removeClass("selectedPortlet");
+						$("#contextMenu").show();
+						$("#contextMenu").data('originalElement', this);
+				        $("#contextMenu").position({
+				        	collision: "none",
+				            my: "left top",
+				            of: event
+				        });	        	        
+				        return false;	       
+				    });
+
+					$("#sysApps").click(function() {
+						$("#contextMenu").hide();
+						$("#contextMenu").removeData();
 					});
 
 					
@@ -81,6 +108,44 @@ $(function() {
 
 // --------------------------------- F U N C T I O N S
 // -------------------------------------
+
+function loginRequired(){
+	if (curStore!="localAppDirectory"){
+		$("#sysApps").hide();
+		$("#appsLogin").show();
+	}else{
+		/*$("#sysApps").show();
+		$("#appsLogin").hide();*/
+		$("#sysApps").hide();
+		$("#appsLogin").show();
+	}
+}
+
+function submitLogin(){
+	var user = $("#user").val();
+	var pwd = $("#password").val();
+	
+	$.post("/security/config/appstorelogin?user="+user+"&store="+curStore+"&pwd="+pwd,{
+		
+	}, function(data, status){
+		if(data=="Success"){
+			$("#sysApps").show();
+			$("#appsLogin").hide();
+		}else{
+			$("#login_failed_div").html(data);
+			$("#login_failed_div").show();
+		}
+		}).fail(function(xhr, textStatus, errorThrown) {
+		// if http-post fails
+		if (textStatus != "" && errorThrown != "") {
+			alert("Somthing went wrong: " + textStatus + "\nError: " + errorThrown);
+		} else {
+			alert("Error.");
+		}
+	});
+	
+}
+
 
 function emptyDia(obj) {
 	$(obj).find("form").empty();
@@ -197,8 +262,13 @@ function getPermMethod(permStr) {
 	}
 }
 function install(){
-	if ($(".selectedPortlet")[0]) {		
-		var portlet = $(".selectedPortlet")[0];
+	if ($(".selectedPortlet")[0] || $("#contextMenu").data('originalElement')!=undefined) {
+		if($(".selectedPortlet")[0]){
+			var portlet = $(".selectedPortlet")[0];
+		} else {
+			var portlet = $("#contextMenu").data('originalElement');
+			$("#contextMenu").removeData();
+		}
 		var portletName =$(portlet).next().html();
 		openDia(curStore, portletName);
 	} else {

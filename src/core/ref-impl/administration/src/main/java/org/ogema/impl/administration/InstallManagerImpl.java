@@ -17,85 +17,70 @@ package org.ogema.impl.administration;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.Map;
 
+import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.accesscontrol.AdminPermission;
 import org.ogema.accesscontrol.PermissionManager;
-import org.ogema.core.administration.AdministrationManager;
+import org.ogema.applicationregistry.ApplicationRegistry;
 import org.ogema.core.application.AppID;
-import org.ogema.core.installationmanager.ApplicationSource;
 import org.ogema.core.installationmanager.InstallableApplication;
 import org.ogema.core.installationmanager.InstallationManagement;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
-import org.osgi.framework.ServiceReference;
-import org.osgi.util.tracker.ServiceTracker;
-import org.osgi.util.tracker.ServiceTrackerCustomizer;
 import org.slf4j.Logger;
 
-@Component(specVersion = "1.1")
+@Component(specVersion = "1.2")
 @Service(InstallationManagement.class)
 public class InstallManagerImpl implements InstallationManagement {
 
-	HashMap<String, ApplicationSource> appStores;
 
-	static final String LOCAL_APPSTORE_NAME = "localAppDirectory";
-	static final String LOCAL_APPSTORE_LOCATION = "./appstore/";
-	static final String PROP_NAME_LOCAL_APPSTORE_LOCATION = "org.ogema.local.appstore";
+	private static final Logger logger = org.slf4j.LoggerFactory.getLogger("ogema.administration");
 
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger("ogema.administration");
-
+	@Reference
 	private PermissionManager pMan;
 
-	AdministrationManager admin;
+	// TODO synchronization... volatile fields?
+	private ApplicationRegistry appReg;
 
-	ServiceTracker<ApplicationSource, ApplicationSource> tracker;
+//	private ServiceTracker<ApplicationSource, ApplicationSource> tracker;
 
-	BundleContext osgi;
+	private BundleContext osgi;
 
-	String localAppStore;
+	@Activate
+	protected void activate(final BundleContext ctx, Map<String, Object> config) {
+		this.osgi = ctx;
+		this.appReg = pMan.getApplicationRegistry();
 
-	public InstallManagerImpl() {
-		localAppStore = System.getProperty(PROP_NAME_LOCAL_APPSTORE_LOCATION, LOCAL_APPSTORE_LOCATION);
-		appStores = new HashMap<>();
-		appStores.put("localAppDirectory", new AppStore("localAppDirectory", localAppStore, true));
-	}
+//		ServiceTrackerCustomizer<ApplicationSource, ApplicationSource> trackerCustomizer = new ServiceTrackerCustomizer<ApplicationSource, ApplicationSource>() {
+//
+//			@Override
+//			public ApplicationSource addingService(ServiceReference<ApplicationSource> sr) {
+//				ApplicationSource app = osgi.getService(sr);
+//				if (app == null) {
+//					logger.warn("got a null service object from service reference {}, bundle {}", sr, sr.getBundle());
+//					return null;
+//				}
+//				appStores.put(app.getName(), app);
+//				return app;
+//			}
+//
+//			@Override
+//			public void modifiedService(ServiceReference<ApplicationSource> sr, ApplicationSource t) {
+//			}
+//
+//			@Override
+//			public void removedService(ServiceReference<ApplicationSource> sr, ApplicationSource t) {
+//				appStores.remove(t.getName());
+//			}
+//		};
 
-	public void start(BundleContext bc, PermissionManager pm) {
-		this.pMan = pm;
-		this.admin = pm.getAdminManager();
-		this.osgi = bc;
-
-		ServiceTrackerCustomizer<ApplicationSource, ApplicationSource> trackerCustomizer = new ServiceTrackerCustomizer<ApplicationSource, ApplicationSource>() {
-
-			@Override
-			public ApplicationSource addingService(ServiceReference<ApplicationSource> sr) {
-				ApplicationSource app = osgi.getService(sr);
-				if (app == null) {
-					logger.warn("got a null service object from service reference {}, bundle {}", sr, sr.getBundle());
-					return null;
-				}
-				appStores.put(app.getName(), app);
-				return app;
-			}
-
-			@Override
-			public void modifiedService(ServiceReference<ApplicationSource> sr, ApplicationSource t) {
-			}
-
-			@Override
-			public void removedService(ServiceReference<ApplicationSource> sr, ApplicationSource t) {
-				appStores.remove(t.getName());
-			}
-		};
-
-		tracker = new ServiceTracker<>(osgi, ApplicationSource.class, trackerCustomizer);
-		tracker.open();
+//		tracker = new ServiceTracker<>(osgi, ApplicationSource.class, trackerCustomizer);
+//		tracker.open();
 	}
 
 	@Override
@@ -167,7 +152,7 @@ public class InstallManagerImpl implements InstallationManagement {
 			int tries = 20;
 			AppID appid = null;
 			while (appid == null && tries-- > 0) {
-				appid = admin.getAppByBundle(iapp.getBundle());
+				appid = appReg.getAppByBundle(iapp.getBundle());
 				if (appid == null)
 					try {
 						Thread.sleep(100);
@@ -179,7 +164,7 @@ public class InstallManagerImpl implements InstallationManagement {
 			}
 			else {
 				iapp.setState(InstallableApplication.InstallState.ABORTED);
-				logger.info("App installation failed! Installed bundle is probably not an Application: "
+				logger.info("App installation failed! Installed bundle is probably not an OGEMA Application: "
 						+ b.getLocation());
 				return false;
 			}
@@ -187,29 +172,6 @@ public class InstallManagerImpl implements InstallationManagement {
 		return true;
 	}
 
-	@Override
-	public ApplicationSource connectAppSource(String address) {
-		if (!pMan.handleSecurity(new AdminPermission(AdminPermission.APP)))
-			throw new SecurityException("Permission to connect to marketplace is denied: " + address);
-		ApplicationSource src = appStores.get(address);
-		if (src != null)
-			src.connect();
-		return src;
-	}
-
-	@Override
-	public void disconnectAppSource(String address) {
-		if (!pMan.handleSecurity(new AdminPermission(AdminPermission.APP)))
-			throw new SecurityException("Permission to disconnect from marketplace is denied: " + address);
-		ApplicationSource src = appStores.get(address);
-		if (src != null)
-			src.disconnect();
-	}
-
-	@Override
-	public List<ApplicationSource> getConnectedAppSources() {
-		return new ArrayList<ApplicationSource>(appStores.values());
-	}
 
 	@Override
 	public InstallableApplication createInstallableApp(String address, String name) {
@@ -220,17 +182,14 @@ public class InstallManagerImpl implements InstallationManagement {
 	@Override
 	public InstallableApplication createInstallableApp(Bundle b) {
 		InstallableApplication app = new InstallableApp(b);
-		app.setAppid(admin.getAppByBundle(b));
+		app.setAppid(appReg.getAppByBundle(b));
 		return app;
 	}
 
-	@Override
-	public ApplicationSource getDefaultAppStore() {
-		return appStores.get(LOCAL_APPSTORE_NAME);
-	}
 
 	@Override
-	public ApplicationSource getLocalStore() {
-		return appStores.get(LOCAL_APPSTORE_NAME);
+	public String getCurrentInstallStoragePath() {
+		InstallableApp insApp = InstallableApp.currentInstallThreadLocale.get();
+		return insApp.bundle.getDataFile("").getPath();
 	}
 }

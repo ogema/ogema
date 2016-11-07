@@ -1,0 +1,85 @@
+package org.ogema.impl.wago;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.ogema.core.channelmanager.ChannelAccess;
+import org.ogema.core.channelmanager.ChannelAccessException;
+import org.ogema.core.channelmanager.ChannelConfigurationException;
+import org.ogema.core.channelmanager.driverspi.ChannelLocator;
+import org.ogema.core.channelmanager.driverspi.ValueContainer;
+import org.ogema.core.channelmanager.measurements.IntegerValue;
+import org.ogema.core.model.Resource;
+import org.ogema.core.model.simple.BooleanResource;
+import org.ogema.core.resourcemanager.ResourceValueListener;
+import org.ogema.wago.DigitalOut;
+
+public class DigitalOutImpl implements DigitalOut {
+	int wordOffset;
+	int bitOffset;
+	short pmask, nmask;
+	private ChannelLocator channel;
+	private ChannelAccess channelAccess;
+	public BusCoupler pi;
+	private BooleanResource resource;
+	private List<ValueContainer> channels = new ArrayList<>();
+	ValueContainer svc;
+
+	@Override
+	public void setChannel(ChannelAccess ca, final ChannelLocator cl, Resource res) {
+		if (!(res instanceof BooleanResource)) {
+			throw new RuntimeException("Wrong resource type assigned to DigitalOut device");
+		}
+		this.channel = cl;
+		this.channelAccess = ca;
+		this.resource = (BooleanResource) res;
+
+		svc = new ValueContainer(cl, new IntegerValue(0));
+		this.channels.add(svc);
+
+		ResourceValueListener<BooleanResource> rvl = new ResourceValueListener<BooleanResource>() {
+
+			@Override
+			public void resourceChanged(BooleanResource resource) {
+				boolean val = resource.getValue();
+				setValue(val);
+			}
+		};
+		res.addValueListener(rvl);
+		setValue(this.resource.getValue());
+	}
+
+	private void setValue(boolean b) {
+		/*
+		 * Get the current status stored in BusCoupler before
+		 */
+		int word = pi.getOutWord(wordOffset);
+
+		if (b)
+			word |= pmask;
+		else
+			word &= nmask;
+		svc.setValue(new IntegerValue(word));
+		try {
+			channelAccess.writeUnconfiguredChannels(channels);
+		} catch (ChannelAccessException e) {
+			e.printStackTrace();
+		}
+		pi.setOutWord(wordOffset, word);
+	}
+
+	@Override
+	public int getWordOffset() {
+		return wordOffset;
+	}
+
+	@Override
+	public void shutdown() {
+		resource.setValue(false);
+		try {
+			channelAccess.deleteChannel(channel);
+		} catch (ChannelConfigurationException e) {
+			e.printStackTrace();
+		}
+	}
+}

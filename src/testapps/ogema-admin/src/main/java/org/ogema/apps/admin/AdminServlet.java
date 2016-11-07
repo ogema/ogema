@@ -42,6 +42,7 @@ import org.json.JSONObject;
 import org.ogema.accesscontrol.AdminPermission;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.core.administration.AdminApplication;
+import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.AppID;
 import org.ogema.core.installationmanager.ApplicationSource;
 import org.ogema.core.installationmanager.InstallableApplication;
@@ -92,6 +93,8 @@ public class AdminServlet extends HttpServlet {
 	private PermissionManager pman;
 
 	private OgemaAdmin admin;
+	
+	private AdministrationManager adminMan;
 
 	ResourceDB db;
 
@@ -105,6 +108,7 @@ public class AdminServlet extends HttpServlet {
 		wam.registerWebResource("/testadmin", "/admin");
 		wam.registerWebResource("/testservice", this);
 		db = adminapp.db;
+		adminMan = admin.admin;
 		// localAppStore = System.getProperty(PROP_NAME_LOCAL_APPSTORE_LOCATION, LOCAL_APPSTORE_LOCATION);
 		tmpFileUpload = new AppUploadDir("localTempDirectory", "./temp/", true);
 	}
@@ -113,7 +117,7 @@ public class AdminServlet extends HttpServlet {
 		JSONArray appStoresData = new JSONArray();
 		int i = 0;
 		JSONObject json = new JSONObject();
-		List<ApplicationSource> appStores = admin.instMan.getConnectedAppSources();
+		List<ApplicationSource> appStores = admin.sources.getConnectedAppSources();
 		for (ApplicationSource entry : appStores) {
 			appStoresData.put(i++, entry.getName());
 		}
@@ -170,7 +174,7 @@ public class AdminServlet extends HttpServlet {
 		 */
 		case "/apps": // The path is in this case /serletName/path1
 			String appStore = req.getParameter("name");
-			ApplicationSource appSource = admin.instMan.connectAppSource(appStore);
+			ApplicationSource appSource = admin.sources.connectAppSource(appStore);
 			if (DEBUG)
 				logger.info("Get Apps in " + appSource.getAddress());
 			if (appStore.equals(LOCAL_APPSTORE_NAME)) {
@@ -188,7 +192,7 @@ public class AdminServlet extends HttpServlet {
 		case "/app":
 			String name = req.getParameter("name");
 			appStore = req.getParameter("appstore");
-			appSource = admin.instMan.connectAppSource(appStore);
+			appSource = admin.sources.connectAppSource(appStore);
 			if (appStore == null || name == null) {
 				printResponse(resp, "No appstore or app is selected.");
 				;
@@ -353,7 +357,7 @@ public class AdminServlet extends HttpServlet {
 		sb.append(id);
 		sb.append("\",\"policies\":[");
 		Bundle b = admin.osgi.getBundle(id);
-		AppID aid = pman.getAdminManager().getAppByBundle(b);
+		AppID aid = adminMan.getAppByBundle(b);
 		AppPermission ap = pman.getPolicies(aid);
 		/*
 		 * Put policies info
@@ -436,7 +440,7 @@ public class AdminServlet extends HttpServlet {
 
 	private StringBuffer appsList2JSON() {
 		StringBuffer sb = new StringBuffer();
-		ArrayList<AdminApplication> apps = (ArrayList<AdminApplication>) pman.getAdminManager().getAllApps();
+		ArrayList<AdminApplication> apps = (ArrayList<AdminApplication>) adminMan.getAllApps();
 		sb.append('[');
 		int index = 0;
 		for (AdminApplication entry : apps) {
@@ -730,7 +734,7 @@ public class AdminServlet extends HttpServlet {
 		StringBuffer sb;
 		sb = new StringBuffer();
 		if (path.equals("#")) {
-			AppID appid = pman.getAdminManager().getAppByBundle(admin.osgi.getBundle(id));
+			AppID appid = adminMan.getAppByBundle(admin.osgi.getBundle(id));
 			@SuppressWarnings("deprecation")
 			Map<String, String> entries = pman.getWebAccess().getRegisteredResources(appid);
 			if (entries == null) {
@@ -853,7 +857,7 @@ public class AdminServlet extends HttpServlet {
 			if (appStore.equals("localTempDirectory"))
 				appSource = tmpFileUpload;
 			else
-				appSource = admin.instMan.connectAppSource(appStore);
+				appSource = admin.sources.connectAppSource(appStore);
 
 			InstallableApplication installingApp = (InstallableApplication) req.getSession().getAttribute(
 					INSTALLATION_STATE_ATTR_NAME);
@@ -925,7 +929,7 @@ public class AdminServlet extends HttpServlet {
 							break;
 						}
 						installingApp.setGrantedPermissions(ap);
-						pman.getAdminManager().getInstallationManager().install(installingApp);
+						adminMan.getInstallationManager().install(installingApp);
 					}
 				}
 				break;

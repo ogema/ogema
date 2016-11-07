@@ -17,6 +17,7 @@ package org.ogema.frameworkgui;
 
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.accesscontrol.AccessManager;
@@ -86,9 +87,23 @@ public class FrameworkGUI implements Application {
 	 */
 	@Override
 	public void stop(AppStopReason reason) {
+		if (appMan == null)
+			return;
 		appMan.getWebAccessManager().unregisterWebResource("/ogema");
 		appMan.getWebAccessManager().unregisterWebResource("/apps/ogema/framework/gui");
 		logger.debug("{} stopped", getClass().getName());
+		appMan = null;
+		resAcc = null;
+		resMan = null;
+		logger = null;
+	}
+	
+	@Deactivate
+	public void deactivate() {
+		this.bundleContext = null;
+		try {
+			stop(null);
+		} catch (Exception e) {}
 	}
 
 }

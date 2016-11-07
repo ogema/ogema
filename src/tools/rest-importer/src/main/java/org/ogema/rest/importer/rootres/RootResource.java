@@ -267,4 +267,15 @@ public class RootResource implements Resource {
 		throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
 	}
 
+	@SuppressWarnings("unchecked")
+	@Override
+	public <T extends Resource> T getLocationResource() {
+		return (T) this;
+	}
+
+	@Override
+	public List<Resource> getReferencingNodes(boolean transitive) {
+		throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+	}
+
 }

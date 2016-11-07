@@ -60,6 +60,9 @@ public interface BooleanArrayResource extends ArrayResource {
 	 */
 	void setElementValue(boolean value, int index);
 
-	/** Returns the number of entries in the array. */
+	/** 
+	 * Returns the number of entries in the array. 
+	 * @return
+	 */
 	int size();
 }

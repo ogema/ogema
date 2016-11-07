@@ -11,7 +11,7 @@ rundirs/knopflerfish5.0/
 rundirs/kf5.0-osgi/
 rundirs/default/Californium.properties
 rundirs/default/database/
-rundirs/felix-native-conf/felix-cache/
+rundirs/*/felix-cache/
 rundirs/felix-native-conf/bundle/jetty-7.6.13-sources/
 rundirs/OgemaRunnerNetBeans/dist/
 rundirs/*/config/zwave_cache/OZW_Log.txt
@@ -49,3 +49,6 @@ java-simple-serial-connector-2.8.0/
 jssc/
 bin/
 power-plug-controller/
+src/core/ref-impl/persistence/src/test/resources/compaction/
+src/core/ref-impl/persistence/src/test/resources/scenario*
+

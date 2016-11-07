@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<components xmlns:scr="http://www.osgi.org/xmlns/scr/v1.2.0">
+    <scr:component name="org.ogema.security.QoSFilter">
+        <implementation class="org.eclipse.jetty.servlets.QoSFilter"/>
+        <service servicefactory="false">
+            <provide interface="javax.servlet.Filter"/>
+        </service>
+        <property name="service.pid" value="org.eclipse.jetty.servlets.QoSFilter"/>
+        <!-- property definitions differ between http whiteboard versions (OSGi R6 vs felix), use both -->
+        <property name="osgi.http.whiteboard.filter.regex" value=".*" />
+        <property name="pattern" value=".*" />
+        <!--
+        <property name="filter.init.maxRequests" value="8"/>
+        <property name="init.maxRequests" value="8"/>
+        -->
+    </scr:component>
+</components>

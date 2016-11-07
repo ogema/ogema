@@ -17,20 +17,38 @@ package org.ogema.pattern.test;
 
 import org.ogema.pattern.test.pattern.HeaterPattern;
 import org.ogema.pattern.test.pattern.RoomPattern;
+import org.ogema.pattern.test.pattern.RoomPatternGreedy;
 
 import static org.junit.Assert.assertEquals;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.junit.Ignore;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
+import org.ogema.core.administration.AdminApplication;
+import org.ogema.core.administration.PatternCondition;
+import org.ogema.core.administration.RegisteredPatternListener;
+import org.ogema.core.logging.LogLevel;
+import org.ogema.core.logging.LogOutput;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.StringResource;
+import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.AccessPriority;
+import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.pattern.PatternListener;
+import org.ogema.core.resourcemanager.pattern.ResourcePattern;
+import org.ogema.exam.PatternTestListener;
+import org.ogema.exam.ResourceAssertions;
+
+import static org.ogema.exam.ResourceAssertions.assertActive;
+import static org.ogema.exam.ResourceAssertions.assertExists;
+import org.ogema.exam.StructureTestListener;
 import org.ogema.model.devices.buildingtechnology.Thermostat;
 import org.ogema.model.devices.generators.ElectricHeater;
 import org.ogema.model.locations.Room;
@@ -180,68 +198,126 @@ public class ReferencesCallbackTest extends OsgiTestBase {
 		@Override
 		public void patternAvailable(HeaterPattern rm) {
 			// FIXME
-			System.out.println("  Double reference pattern available");
+			//System.out.println("  Double reference pattern available");
+            getApplicationManager().getLogger().info("double reference pattern available");
 			foundLatch.countDown();
 		}
 
 		@Override
 		public void patternUnavailable(HeaterPattern rm) {
 			// FIXME
-			System.out.println("  Double reference pattern unavailable");
+			//System.out.println("  Double reference pattern unavailable");
+            getApplicationManager().getLogger().info("double reference pattern unavailable");
 			lostLatch.countDown();
 		}
 	}
-
-	@Ignore
-	// fails due to ResourceStructureListenerTest#doubleReferencesWork failure
+    
+    @Test
+	public void doubleReferences_Loop() throws InterruptedException {
+        for (int i = 0; i < 5000; i++) {
+            doubleReferences();
+            System.out.printf("-------------- %d -----------------%n", i++);
+        }
+    }
+    
+    //@Ignore("callback missing")
 	@Test
 	public void doubleReferences() throws InterruptedException {
-		HeaterListener listener = new HeaterListener();
-		advAcc.addPatternDemand(HeaterPattern.class, listener, AccessPriority.PRIO_LOWEST);
-		ElectricHeater a = resMan.createResource("a", ElectricHeater.class);
-		Room b = resMan.createResource("b", Room.class);
-		TemperatureSensor c = resMan.createResource("c", TemperatureSensor.class);
-		a.activate(true);
-		b.activate(true);
-		c.activate(true);
-		a.location().room().setAsReference(b);
-		b.temperatureSensor().setAsReference(c);
-		c.reading().create();
-		c.reading().activate(false);
-		listener.foundLatch.await(5, TimeUnit.SECONDS);
-		assertEquals("Missing patternAvailable callback;", 0, listener.foundLatch.getCount());
-		c.delete();
-		listener.lostLatch.await(5, TimeUnit.SECONDS);
-		assertEquals("Missing patternUnvailable callback;", 0, listener.lostLatch.getCount());
-		b.delete();
-		a.delete();
-		advAcc.removePatternDemand(HeaterPattern.class, listener);
-	}
+        getApplicationManager().getLogger().setMaximumLogLevel(LogOutput.CONSOLE, LogLevel.TRACE);
+        HeaterListener listener = new HeaterListener();
+        advAcc.addPatternDemand(HeaterPattern.class, listener, AccessPriority.PRIO_LOWEST);
+        ElectricHeater a = resMan.createResource(newResourceName(), ElectricHeater.class);
+        Room b = resMan.createResource(newResourceName(), Room.class);
+        TemperatureSensor c = resMan.createResource(newResourceName(), TemperatureSensor.class);
+        a.activate(true);
+        b.activate(true);
+        c.activate(true);
+        a.location().room().setAsReference(b);
+        b.temperatureSensor().setAsReference(c);
+        c.reading().create();
+        c.reading().activate(false);
+        assertActive(c.reading());
+        AdminApplication aa = getApplicationManager().getAdministrationManager().getAppById(getApplicationManager().getAppID().toString());
+        assertTrue("pattern listener registered", !aa.getPatternListeners().isEmpty());
+        for (RegisteredPatternListener l : aa.getPatternListeners()) {
+            for (ResourcePattern<?> p : l.getIncompletePatterns()) {
+                for (PatternCondition pc : l.getConditions(p)) {
+                    System.out.printf("unmet condition: %s (%s)%n", pc.getFieldName(), pc.getPath());
+                }
+            }
+            System.out.println("completed patterns: " + l.getCompletedPatterns());
+        }
+        assertExists(a.location().room().temperatureSensor().reading());
+        assertActive(a.location().room().temperatureSensor().reading());
+        assertTrue("receive patternAvailable callback", listener.foundLatch.await(5, TimeUnit.SECONDS));
+        //assertEquals("Missing patternAvailable callback;", 0, listener.foundLatch.getCount());
+        c.delete();
+        assertTrue("receive patternUnavailable callback", listener.lostLatch.await(5, TimeUnit.SECONDS));
+        //assertEquals("Missing patternUnvailable callback;", 0, listener.lostLatch.getCount());
+        b.delete();
+        a.delete();
+        advAcc.removePatternDemand(HeaterPattern.class, listener);
+    }
 
-	@Ignore
+//	@Ignore("'failure' is actually consistent with defined behaviour: callbacks only run after changes are complete")
+//    //see AssemblerBase#patternUnavailable
+//	@Test
+//	public void deleteSubresourceAndSetAsReference() throws InterruptedException {
+//		String subRoom = "subRoom";
+//		String topRoom = "topRoom";
+//		Thermostat thermo = resMan.createResource("randomThermostat", Thermostat.class);
+//		thermo.location().room().name().create();
+//		thermo.location().room().name().setValue(subRoom);
+//		Room room = resMan.createResource(topRoom, Room.class);
+//		room.name().create();
+//		room.name().setValue(topRoom);
+//		RoomListener listener = new RoomListener();
+//		advAcc.addPatternDemand(RoomPattern.class, listener, AccessPriority.PRIO_LOWEST);
+//		thermo.activate(true);
+//		listener.foundLatch.await(5, TimeUnit.SECONDS);
+//		assertEquals(subRoom, listener.lastAvailable);
+//		listener.resetLatches();
+//		room.activate(true);
+//		listener.foundLatch.await(5, TimeUnit.SECONDS);
+//		assertEquals(topRoom, listener.lastAvailable);
+//		listener.resetLatches();
+//        listener.lastUnavailable = null;
+//		thermo.location().room().setAsReference(room);
+//		assertTrue("expecting patternUnavailable callback", listener.lostLatch.await(5, TimeUnit.SECONDS));
+//		assertEquals(subRoom, listener.lastUnavailable); // make sure the new reference is not set before the callback has been executed
+//	}
+	
 	@Test
 	public void deleteSubresourceAndSetAsReference() throws InterruptedException {
-		String subRoom = "subRoom";
-		String topRoom = "topRoom";
-		Thermostat thermo = resMan.createResource("randomThermostat", Thermostat.class);
-		thermo.location().room().name().create();
-		thermo.location().room().name().setValue(subRoom);
-		Room room = resMan.createResource(topRoom, Room.class);
+		
+		PatternTestListener<RoomPatternGreedy> listener = new PatternTestListener<>();
+		advAcc.addPatternDemand(RoomPatternGreedy.class, listener, AccessPriority.PRIO_LOWEST);
+		Room room = resMan.createResource(newResourceName(), Room.class);
+		TemperatureSensor ts = resMan.createResource(newResourceName(), TemperatureSensor.class);
 		room.name().create();
-		room.name().setValue(topRoom);
-		RoomListener listener = new RoomListener();
-		advAcc.addPatternDemand(RoomPattern.class, listener, AccessPriority.PRIO_LOWEST);
-		thermo.activate(true);
-		listener.foundLatch.await(5, TimeUnit.SECONDS);
-		assertEquals(subRoom, listener.lastAvailable);
-		listener.resetLatches();
+		room.temperatureSensor().create();
 		room.activate(true);
-		listener.foundLatch.await(5, TimeUnit.SECONDS);
-		assertEquals(topRoom, listener.lastAvailable);
-		listener.resetLatches();
-		thermo.location().room().setAsReference(room);
-		listener.lostLatch.await(5, TimeUnit.SECONDS);
-		assertEquals(subRoom, listener.lastUnavailable); // make sure the new reference is not set before the callback has been executed
+		ts.activate(true);
+		assertTrue(listener.awaitFoundEvent(5, TimeUnit.SECONDS));
+		final RoomPatternGreedy pattern = listener.lastAvailable;
+		listener.reset();
+		pattern.temperatureSensor.setAsReference(ts);
+		assertTrue(listener.awaitLostEvent(5, TimeUnit.SECONDS));
+		assertTrue(listener.awaitFoundEvent(5, TimeUnit.SECONDS));
+		TemperatureResource tr = AccessController.doPrivileged(new PrivilegedAction<TemperatureResource>() {
+
+			@Override
+			public TemperatureResource run() {
+				return pattern.temperatureSensor.reading();
+			}
+		});
+		tr.create();
+		ResourceAssertions.assertExists(tr);
+		ResourceAssertions.assertLocationsEqual(tr, ts.reading());
+		
+		room.delete();
+		ts.delete();
 	}
+	
 
 }

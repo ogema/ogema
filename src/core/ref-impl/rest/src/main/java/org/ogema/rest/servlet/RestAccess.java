@@ -15,11 +15,15 @@
  */
 package org.ogema.rest.servlet;
 
+import java.io.IOException;
 import java.security.AccessControlContext;
 import java.security.ProtectionDomain;
+import java.util.Objects;
 
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.ogema.accesscontrol.AccessManager;
@@ -35,10 +39,10 @@ import static org.ogema.accesscontrol.Constants.*;
  * @author Zekeriya Mansuroglu
  *
  */
+// FIXME why extends HttpServlet?
 public class RestAccess extends HttpServlet {
 
 	private static final boolean DEBUG = true;
-
 	private static final long serialVersionUID = 3258753513240214977L;
 
 	/*
@@ -57,6 +61,8 @@ public class RestAccess extends HttpServlet {
 	private final AdministrationManager adminMan;
 
 	public RestAccess(PermissionManager permMan, AdministrationManager adminMan) {
+        Objects.requireNonNull(permMan);
+        Objects.requireNonNull(adminMan);
 		this.permMan = permMan;
 		this.adminMan = adminMan;
 		this.domainCombiner = new AppDomainCombiner();
@@ -152,4 +158,17 @@ public class RestAccess extends HttpServlet {
 		return permMan.getAccessManager().authenticate(usr, pwd, false);
 
 	}
+	
+    protected boolean setAccessContext(HttpServletRequest req, HttpServletResponse resp, boolean securityEnabled) throws ServletException,
+		    IOException {
+		if (!securityEnabled) {
+		    return true;
+		}
+		if (!checkAccess(req)) {
+		    resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+		    return false;
+		} else {
+		    return true;
+		}
+    }
 }

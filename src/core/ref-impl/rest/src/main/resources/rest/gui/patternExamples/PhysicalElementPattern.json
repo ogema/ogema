@@ -1,0 +1,14 @@
+{ 
+    "@type": "Pattern",
+    "modelClass": "org.ogema.model.prototypes.PhysicalElement",
+    "resourceFields" : [{
+             "field": {
+                 "name": "name",
+                 "relativePath": "name",
+                 "type": "org.ogema.core.model.simple.StringResource",
+                 "optional": true,
+                 "accessMode": "READ_ONLY"
+            }   
+        }
+    ]
+}

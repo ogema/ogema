@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.ogema.tools</groupId>
         <artifactId>ogema-tools</artifactId>
-        <version>2.0.4</version>
+        <version>2.1.0</version>
     </parent>
 
     <artifactId>ogema-console-scripting</artifactId>
@@ -88,6 +88,8 @@
                         <DynamicImport-Package>*</DynamicImport-Package>
                         <Import-Package>org.eclipse.osgi.framework.console;resolution:=optional,
                             org.apache.felix.service.command;resolution:=optional,
+                            groovy.lang;resolution:=optional,
+                            groovy.ui;resolution:=optional,
                             *
                         </Import-Package>
                     </instructions>

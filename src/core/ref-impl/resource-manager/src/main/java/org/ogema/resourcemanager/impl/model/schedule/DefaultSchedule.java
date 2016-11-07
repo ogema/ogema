@@ -67,6 +67,14 @@ public class DefaultSchedule extends ResourceBase implements org.ogema.core.mode
 		}
 	}
 
+    @Override
+    protected void deleteTreeElement() {
+        getSchedule().deleteValues();
+        getSchedule().setLastModified(-1);
+        m_scheduleElement.getScheduleElement().delete();
+        super.deleteTreeElement();
+    }
+
 	@Override
 	public boolean addValue(long timestamp, Value value) {
 		if (!exists() || !hasWriteAccess()) {

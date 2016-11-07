@@ -1,0 +1,223 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : 09.07.2014, 11:59:00
+    Author     : spogacar
+*/
+
+
+/* Navigation */
+
+#logo{
+
+    height: 40px;
+    margin: 5px 20px 0px 0px;
+}
+
+.well{
+    -webkit-box-shadow: 3px 3px 5px 0px rgba(0,0,0,0.35);
+    -moz-box-shadow: 3px 3px 5px 0px rgba(0,0,0,0.35);
+    box-shadow: 3px 3px 5px 0px rgba(0,0,0,0.35);
+}
+
+.navbar-default {
+    background-color: #eeeeee;
+    border-color: #3399CC;
+}
+
+.navbar-default .navbar-brand{
+    color: #fff;
+    background-color: transparent;
+}
+
+.navbar-default .navbar-brand:hover, 
+.navbar-default .navbar-brand:focus {
+    color: #cfc;
+    background-color: transparent;
+}
+
+.navbar-default .navbar-nav > .active > a, 
+.navbar-default .navbar-nav > .active > a:hover, 
+.navbar-default .navbar-nav > .active > a:focus {
+    color: #fff;
+    background-color: #3399CC;
+}
+
+.navbar-default .navbar-nav > li > a:hover, 
+.navbar-default .navbar-nav > li > a:focus {
+    color: #3399CC;
+    background-color: transparent;
+}
+
+.navbar-default .navbar-nav > li > a {
+    color: #999999;
+    background-color: transparent;
+}
+
+.building{
+    margin-top: 60px;
+}
+
+.btn-success {
+    color: #fff;
+    background-color: #3399CC;
+    border-color: #007ecc;
+}
+
+.btn-success:hover, .btn-success:focus, .btn-success:active, .btn-success.active, .open .dropdown-toggle.btn-success {
+    color: #fff;
+    background-color: #007ecc;
+    border-color: #3399CC;
+}
+
+
+
+table .table{
+    width: 100%;
+}
+
+table.table span.info{
+    font-size: 8px;
+    color: #999999;
+}
+
+.configslider{
+    display: block;
+    width: 50%;
+    float:left;
+}
+
+.configvalue{
+    display: block;
+    width: 50%;
+    float:left;
+}
+
+.editable-click, a.editable-click {
+    border-bottom-color: #3399CC;
+    color: #3399CC;
+    text-decoration: none;
+}
+
+.editable-click:hover, a.editable-click:hover {
+    border-bottom-color: #3399CC;
+    color: #3399CC;
+    text-decoration: none;
+}
+
+.scrollContainer{
+    margin:0px;
+    height:620px;
+    overflow-x:auto;
+}
+
+.appContainer{
+    position:relative;
+    background-color: #EEEEEE;
+    float: left;
+    width: 212px;
+    border: #999999 thin solid;
+    border-radius: 10px;
+    margin: 5px;
+    height: 300px;
+    padding: 10px;
+    -webkit-box-shadow: 2px 2px 2px 0px rgba(0, 0, 0, 0.2); /* WebKit */
+    -moz-box-shadow: 2px 2px 2px 0px rgba(0, 0, 0, 0.2); /* Firefox */
+    box-shadow: 2px 2px 2px 0px rgba(0, 0, 0, 0.2); /* Standard */ 
+    filter: progid:DXImageTransform.Microsoft.Shadow(color='#00FF00', Direction=90, Strength=3) ;
+}
+
+.applogoarea{
+    text-align: center;
+    height: 100px;
+}
+
+img.applogo {
+    height: 76px;
+    width: 76px;
+}
+
+.bundleShortInfos{
+    font-weight: bold;
+    height: 150px !important; 
+    overflow: hidden;
+    /*  border-bottom: 1px #999999 solid;*/
+}
+
+.appversion{
+    height: 30px;
+    font-size: 8px;
+    overflow-x: auto;
+    line-height: 8px;
+}
+
+.appdescription{
+    height: 125px;
+    overflow-x:auto;
+    font-weight: normal;
+    font-size:12px;
+}
+
+.appbuttons{
+    position:absolute;    
+    text-align: center;
+    height: 30px;
+    top:260px;
+    left:0px;
+    width: 100%;
+    background-color: rgba(255,255,255,.7);
+}
+
+.appbuttons button{
+    margin:5px;
+}
+
+.addApp{
+    background-color: #eeeeee;
+}
+
+.hoverAddApp{
+    background-color: #eeeeee;
+}
+
+.addappbuttons{
+    position: absolute;
+    text-align: center;
+    height: 70px;
+    top: 220px;
+    left: 0px;
+    width: 100%;
+    background-color: rgba(255,255,255,.7);
+    padding-top: 10px;
+}
+
+.fileListItem {
+    text-align:left;
+    width: 100%;
+}
+
+.fileListItemLogo {
+    width: 40px;
+    height: 40px;
+}
+
+.showCache{
+    width: 100%;
+    height: 500px;
+}
+
+.col-md-12 {
+    width: 100%;
+}
+.col-md-1, .col-md-2, .col-md-3, .col-md-4, .col-md-5, .col-md-6, .col-md-7, .col-md-8, .col-md-9, .col-md-10, .col-md-11, .col-md-12 {
+    float: left;
+}
+.col-xs-1, .col-sm-1, .col-md-1, .col-lg-1, .col-xs-2, .col-sm-2, .col-md-2, .col-lg-2, .col-xs-3, .col-sm-3, .col-md-3, .col-lg-3, .col-xs-4, .col-sm-4, .col-md-4, .col-lg-4, .col-xs-5, .col-sm-5, .col-md-5, .col-lg-5, .col-xs-6, .col-sm-6, .col-md-6, .col-lg-6, .col-xs-7, .col-sm-7, .col-md-7, .col-lg-7, .col-xs-8, .col-sm-8, .col-md-8, .col-lg-8, .col-xs-9, .col-sm-9, .col-md-9, .col-lg-9, .col-xs-10, .col-sm-10, .col-md-10, .col-lg-10, .col-xs-11, .col-sm-11, .col-md-11, .col-lg-11, .col-xs-12, .col-sm-12, .col-md-12, .col-lg-12 {
+    min-height: 1px;
+    padding-left: 15px;
+    padding-right: 15px;
+    position: relative;
+}

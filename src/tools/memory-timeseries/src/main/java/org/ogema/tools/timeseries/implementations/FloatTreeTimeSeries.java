@@ -36,6 +36,7 @@ import org.ogema.tools.timeseries.api.InterpolationFunction;
 import org.ogema.tools.timeseries.api.LinearSampledValueOperator;
 import org.ogema.tools.memoryschedules.tools.TimeSeriesMerger;
 import org.ogema.tools.timeseries.api.TimeInterval;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation for the FloatTimeSeries internally using a tree structure for
@@ -410,4 +411,174 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 	public void optimizeRepresentation() {
 	}
 
+	@Override
+	public float getAverage(long t0, long t1) {
+		if (t1 == t0) {
+			SampledValue sv = getValue(t0);
+			if (sv == null || sv.getQuality() == Quality.BAD)
+				return Float.NaN;
+			else 
+				return sv.getValue().getFloatValue();
+		}
+		if (getInterpolationMode() == InterpolationMode.NONE) {
+			int count = 0;
+			float val = 0;
+			List<SampledValue> values;
+			if (t0 < t1)
+				values = getValues(t0, t1);
+			else 
+				values = getValues(t1, t0);
+			for (SampledValue sv: values) {
+				if (sv.getQuality() != Quality.BAD) {
+					count++;
+					val += sv.getValue().getFloatValue();
+				}
+			}
+			if (count == 0)
+				return Float.NaN;
+			else 
+				return val / count; 
+		}
+		return integrate(t0,t1) / (t1 - t0);
+	}
+
+	@Override
+	public List<SampledValue> downsample(long t0, long t1, long minimumInterval) {	
+		List<SampledValue> newValues = new ArrayList<SampledValue>();
+		if (t1 < t0) 
+			return newValues;
+		List<SampledValue> values = getValues(t0, t1);
+//		List<SampledValue> oldValues = new ArrayList<SampledValue>();
+//		if (values.isEmpty() || t0 < values.get(0).getTimestamp()) {
+//			SampledValue sv = getValue(t0);
+//			if (sv != null)
+//				oldValues.add(sv);
+//		}
+//		oldValues.addAll(values);
+//		SampledValue sv = getValue(t1);
+//		if (t1 > t0 && sv != null) 
+//			oldValues.add(sv);
+//		// split into sub intervals
+//		long lastT = Long.MIN_VALUE;
+//		Quality lastQuality = Quality.GOOD;
+//		InterpolationMode mode = getInterpolationMode();
+//		List<SampledValue> currentList = new ArrayList<SampledValue>();
+//		for (int i = 0;i<oldValues.size(); i++) {
+//			SampledValue sv0 = oldValues.get(i);
+//			long ta = sv.getTimestamp();
+//			Quality qual = sv.getQuality();
+//			if (qual != lastQuality || (qual == Quality.GOOD && t0 - lastT >= minimumInterval)) {
+		InterpolationMode mode = getInterpolationMode();
+		return downsample(t0, t1, minimumInterval, values, getValue(t0), getValue(t1),mode);
+	}
+	
+	static List<SampledValue> downsample(long t0, long t1, long minimumInterval, List<SampledValue> values, SampledValue sv0, SampledValue sv1, InterpolationMode mode) {
+		List<SampledValue> newValues = new ArrayList<SampledValue>();
+		if (t1 < t0) 
+			return newValues;
+		List<SampledValue> oldValues = new ArrayList<SampledValue>();
+		if (mode != InterpolationMode.NONE && (values.isEmpty() || t0 < values.get(0).getTimestamp())) {  // we need the boundary points for the integration
+			if (sv0 != null)
+				oldValues.add(sv0);
+		}
+		oldValues.addAll(values);
+		if (t1 > t0 && sv1 != null) 
+			oldValues.add(sv1);
+		// split into sub intervals
+		long lastT = Long.MIN_VALUE;
+		Quality lastQuality = Quality.GOOD;
+		List<SampledValue> currentList = new ArrayList<SampledValue>();
+		for (int i = 0;i<oldValues.size(); i++) {
+			SampledValue sv = oldValues.get(i);
+			long ta = sv.getTimestamp();
+			Quality qual = sv.getQuality();
+			if (qual != lastQuality || (qual == Quality.GOOD && ta - lastT >= minimumInterval)) {
+				downsample(currentList, newValues, minimumInterval, mode);
+				currentList.clear();
+			}
+			currentList.add(sv);
+			lastQuality = qual;
+			lastT = ta;
+		}
+		downsample(currentList, newValues, minimumInterval, mode);
+		return newValues;
+	}
+	
+	private static void downsample(List<SampledValue> oldSubset, List<SampledValue> newValues, long minInterval, InterpolationMode mode) {
+		if (oldSubset.isEmpty())
+			return;
+		else if (oldSubset.size() == 1) {
+			newValues.add(oldSubset.get(0));
+			return;
+		}
+		if (mode == InterpolationMode.NONE) {
+			downsampleNaive(oldSubset, newValues, minInterval);
+		} else {
+			downsample(oldSubset, newValues, minInterval);
+		}
+	}
+
+	/**
+	 * Downsampling based on the integration function in memory-timeseries... taking into account the interpolation mode
+	 * We can assume that there are at least two data points in oldSubset
+	 * 
+	 * We always take the last data point equal to the last old one... such that in case of NEAREST or STEPS
+	 * interpolation mode, the error introduced by downsampling is minimized.
+	 * @param oldSubset
+	 * @param newValues
+	 */
+	private static void downsample(List<SampledValue> oldSubset, List<SampledValue> newValues, long minInterval) {
+		long t0 = oldSubset.get(0).getTimestamp();
+		long t1 = oldSubset.get(oldSubset.size()-2).getTimestamp();
+		Quality quality = oldSubset.get(0).getQuality(); // const
+		long delta = t1-t0;
+		int nr = (int) (delta/minInterval); 
+		if (nr == 0)  
+			nr = 1;  // in this case, the distance between the first and second (=last) point may be smaller than minInterval
+		FloatTimeSeries fts = new FloatTreeTimeSeries();
+		fts.addValues(oldSubset);
+		for (int i=0;i<nr-1;i++) {
+			float value = fts.integrate(t0 + i*minInterval, t0 + (i+1)*minInterval) / minInterval;
+			if (Float.isNaN(value) || Float.isInfinite(value))
+				LoggerFactory.getLogger(FloatTreeTimeSeries.class).warn("Downsampling led to a non-finite value: " + value + "; this may cause problems");
+			newValues.add(new SampledValue(new FloatValue(value), t0 + i*minInterval, quality));
+		}
+		float value = fts.integrate(t0 + (nr-1)*minInterval, t1) / (t1 - t0 - (nr-1)*minInterval);
+		newValues.add(new SampledValue(new FloatValue(value), t0 + (nr-1)*minInterval, quality));
+		newValues.add(new SampledValue(oldSubset.get(oldSubset.size()-1)));
+	}
+	
+	/**
+	 * Subdivide the interval into parts of equal length, and simply take the average of all points in the
+	 * target intervals, to calculate the new values. In this case, there is no interpolation information.
+	 * @param oldSubset
+	 * @param newValues
+	 */
+	private static void downsampleNaive(List<SampledValue> oldSubset, List<SampledValue> newValues, long minInterval) {
+		float currentValue = 0;
+		int nrCurrentElements = 0;
+		SampledValue sv = oldSubset.get(0);
+		long lastTs = sv.getTimestamp();
+		for (int i = 0;i<oldSubset.size();i++) {
+			sv = oldSubset.get(i);
+			long t = sv.getTimestamp();
+			if (t < lastTs + minInterval) { 
+				currentValue += sv.getValue().getFloatValue();
+				nrCurrentElements++;
+			}
+			else {
+				currentValue = currentValue/nrCurrentElements;
+				newValues.add(new SampledValue(new FloatValue(currentValue), lastTs, sv.getQuality()));
+				lastTs = t;
+				
+				currentValue = sv.getValue().getFloatValue();
+				nrCurrentElements = 1;
+			}
+			
+		}
+		currentValue = currentValue/nrCurrentElements;
+		newValues.add(new SampledValue(new FloatValue(currentValue), lastTs, sv.getQuality()));
+		
+	}
+	
 }

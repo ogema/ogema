@@ -19,9 +19,7 @@ import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
-import org.ogema.core.resourcemanager.pattern.ResourcePattern.Equals;
 import org.ogema.model.actors.MultiSwitch;
-import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.prototypes.PhysicalElement;
 
 @SuppressWarnings("unused")
@@ -33,14 +31,14 @@ public class ControllableMultiPattern extends ResourcePattern<MultiSwitch> {
 		super(match);
 	}
 
-	@Existence(required = CreateMode.OPTIONAL)
-	private FloatResource stateControl = model.stateControl();
+	private final FloatResource stateControl = model.stateControl();
 
 	@Existence(required = CreateMode.OPTIONAL)
-	private FloatResource stateFeedback = model.stateFeedback();
+	private final FloatResource stateFeedback = model.stateFeedback();
 
-	@Equals(value = 1)
-	private BooleanResource controllable = model.controllable();
+//	@Equals(value = 1)
+//    @SuppressWarnings("deprecation")
+//	private final BooleanResource controllable = model.controllable();
 
 	public Resource getUppermostParent() {
 		Resource res = model;

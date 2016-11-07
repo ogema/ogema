@@ -93,7 +93,7 @@ public class DeviceConfigurator implements Application {
 		ServiceTrackerCustomizer<LLDriverInterface, LLDriverInterface> ll_tracker_customizer = new ServiceTrackerCustomizer<LLDriverInterface, LLDriverInterface>() {
 			@Override
 			public LLDriverInterface addingService(ServiceReference<LLDriverInterface> sr) {
-				LLDriverInterface ll_interface = (LLDriverInterface) context.getService(sr);
+				LLDriverInterface ll_interface = context.getService(sr);
 				ll_map.put(ll_interface.whichID(), ll_interface);
 
 				return ll_interface;

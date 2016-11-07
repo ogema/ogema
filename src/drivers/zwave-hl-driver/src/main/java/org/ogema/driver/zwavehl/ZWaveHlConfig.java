@@ -15,7 +15,7 @@
  */
 package org.ogema.driver.zwavehl;
 
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 
 /**
  * 
@@ -29,5 +29,5 @@ public class ZWaveHlConfig {
 	public String deviceParameters;
 	public String channelAddress;
 	public String resourceName;
-	public ChannelLocator chLocator;
+	public ChannelConfiguration chConfiguration;
 }

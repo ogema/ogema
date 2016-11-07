@@ -19,11 +19,11 @@ import java.util.Hashtable;
 import java.util.Map;
 
 import org.apache.felix.service.command.Descriptor;
-import org.ogema.core.channelmanager.NoSuchDriverException;
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
-import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
+import org.ogema.core.channelmanager.ChannelAccessException;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceRegistration;
 
 /**
  * 
@@ -32,6 +32,7 @@ import org.osgi.framework.BundleContext;
  */
 public class ShellCommands {
 	private ZWaveHlDriver driver = null;
+	private final ServiceRegistration<ShellCommands> srCommands;
 
 	public ShellCommands(ZWaveHlDriver driver, BundleContext context) {
 		Hashtable<String, Object> props = new Hashtable<String, Object>();
@@ -39,13 +40,19 @@ public class ShellCommands {
 		props.put("osgi.command.function", new String[] { "showCreatedChannels", "createChannel", "deleteChannel",
 				"readChannel", "writeChannel", "deviceScan" });
 		this.driver = driver;
-		context.registerService(this.getClass().getName(), this, props);
+		srCommands = context.registerService(ShellCommands.class, this, props);
+	}
+	
+	void close() {
+		try {
+			srCommands.unregister();
+		} catch (Exception e) {}
 	}
 
 	@Descriptor("Lists the channelLocator String of all created Channels.")
 	public void showCreatedChannels() {
 		for (Map.Entry<String, ZWaveHlDevice> deviceEntry : driver.devices.entrySet()) {
-			for (Map.Entry<String, ChannelLocator> attributeChannelEntry : deviceEntry.getValue().valueChannel
+			for (Map.Entry<String, ChannelConfiguration> attributeChannelEntry : deviceEntry.getValue().valueChannel
 					.entrySet()) {
 				System.out.println(attributeChannelEntry.getKey());
 			}
@@ -81,11 +88,11 @@ public class ShellCommands {
 
 	@Descriptor("Deletes a channel.")
 	public void deleteChannel(@Descriptor("The resourceId.") String resourceId) {
-		ChannelLocator channelLocator = driver.getChannel(resourceId);
+		ChannelConfiguration chConf = driver.getChannel(resourceId);
 		ZWaveHlConfig config = new ZWaveHlConfig();
-		config.interfaceId = channelLocator.getDeviceLocator().getInterfaceName();
-		config.deviceAddress = channelLocator.getDeviceLocator().getDeviceAddress().toUpperCase();
-		config.channelAddress = channelLocator.getChannelAddress().toUpperCase();
+		config.interfaceId = chConf.getDeviceLocator().getInterfaceName();
+		config.deviceAddress = chConf.getDeviceLocator().getDeviceAddress().toUpperCase();
+		config.channelAddress = chConf.getChannelLocator().getChannelAddress().toUpperCase();
 		driver.resourceUnavailable(config);
 	}
 
@@ -96,7 +103,7 @@ public class ShellCommands {
 			@Descriptor("The channel address in form of Type:Id e. g. Commandclassid:Instanceid:valueid.") String channelAddress,
 			@Descriptor("The value as a string with hex characters e. g. 0AFF. Byte order needs to be in Little Endian Byte order") Value writeValue) {
 		ZWaveHlDevice device = driver.devices.get(interfaceId + ":" + deviceAddress.toUpperCase());
-		ChannelLocator locator = device.valueChannel.get(channelAddress.toUpperCase());
+		ChannelConfiguration locator = device.valueChannel.get(channelAddress.toUpperCase());
 		device.writeToChannel(locator, writeValue);
 	}
 
@@ -104,16 +111,16 @@ public class ShellCommands {
 	public void writeChannel(
 			@Descriptor("The resourceId.") String resourceId,
 			@Descriptor("The value as a string with hex characters e. g. 0AFF. Byte order needs to be in Little Endian Byte order") Value writeValue) {
-		ChannelLocator channelLocator = driver.getChannel(resourceId);
-		ZWaveHlDevice device = driver.devices.get(channelLocator.getDeviceLocator().getInterfaceName() + ":"
-				+ channelLocator.getDeviceLocator().getDeviceAddress().toUpperCase());
-		device.writeToChannel(channelLocator, writeValue);
+		ChannelConfiguration chConf = driver.getChannel(resourceId);
+		ZWaveHlDevice device = driver.devices.get(chConf.getDeviceLocator().getInterfaceName() + ":"
+				+ chConf.getDeviceLocator().getDeviceAddress().toUpperCase());
+		device.writeToChannel(chConf, writeValue);
 	}
 
 	@Descriptor("Read from a channel.")
 	public void readChannel(@Descriptor("The interface ID/Port name.") String interfaceId,
 			@Descriptor("The device address in form of DeviceId e. g. 000000.") String deviceAddress,
-			@Descriptor("The channel address in form of Type:Id e. g. Type:Attribute:0000.") String channelAddress) {
+			@Descriptor("The channel address in form of Type:Id e. g. Type:Attribute:0000.") String channelAddress) throws ChannelAccessException {
 		ZWaveHlDevice device = driver.getDevice(interfaceId + ":" + deviceAddress.toUpperCase());
 		System.out.print("Channel value: ");
 		device.readValue(channelAddress.toUpperCase());
@@ -122,26 +129,20 @@ public class ShellCommands {
 
 	@Descriptor("Read from a channel.")
 	public void readChannel(@Descriptor("The resourceId.") String resourceId) {
-		ChannelLocator channelLocator = driver.getChannel(resourceId);
-		ZWaveHlDevice device = driver.getDevice(channelLocator.getDeviceLocator().getInterfaceName() + ":"
-				+ channelLocator.getDeviceLocator().getDeviceAddress().toUpperCase());
+		ChannelConfiguration chConf = driver.getChannel(resourceId);
+		ZWaveHlDevice device = driver.getDevice(chConf.getDeviceLocator().getInterfaceName() + ":"
+				+ chConf.getDeviceLocator().getDeviceAddress().toUpperCase());
 		System.out.print("Channel value: ");
 		// device.readValue(channelLocator.getChannelAddress().toUpperCase());
-		device.printValue(channelLocator.getChannelAddress().toUpperCase());
+		device.printValue(chConf.getChannelLocator().getChannelAddress().toUpperCase());
 	}
 
 	public void deviceScan(@Descriptor("The interface ID/Port name (COM3, /dev/ttyUSB0, etc.).") String interfaceId) {
 		try {
 			driver.appManager.getChannelAccess().discoverDevices("zwave-driver", interfaceId, null, driver);
-		} catch (UnsupportedOperationException e) {
+		} catch (ChannelAccessException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (NoSuchInterfaceException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSuchDriverException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		} 
 	}
 }

@@ -1,0 +1,5 @@
+This app connects to a remote OGEMA gateway via its REST interface.
+It reads a remote resource and writes its value and subresources to the local gateway, and/or pushes 
+local resources to the remote gateway. To configure a resource for the rest-connector,
+append a decorator of type RestConnection (custom type of the Remote REST connector), 
+with the relevant configuration subresources. See the tests for an example.

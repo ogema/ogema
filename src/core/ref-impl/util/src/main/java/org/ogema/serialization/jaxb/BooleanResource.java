@@ -53,8 +53,8 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
  * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "BooleanResource", propOrder = { "value" })
-@XmlRootElement(name = "boolean", namespace = NS_OGEMA_REST)
+@XmlType(name = "BooleanResource", namespace = NS_OGEMA_REST, propOrder = { "value" })
+//@XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 public class BooleanResource extends Resource {
 
 	protected boolean value;

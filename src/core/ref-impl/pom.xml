@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.ogema.core</groupId>
         <artifactId>ogema-core</artifactId>
-        <version>2.0.4</version>
+        <version>2.1.0</version>
     </parent>
 
     <groupId>org.ogema.ref-impl</groupId>
@@ -34,23 +34,25 @@
         <module>administration</module>
         <module>app-manager</module>
         <module>channel-manager</module>
-        <module>frameworkadministration</module>
         <module>framework-gui</module>
+        <module>frameworkadministration</module>
         <module>hardware-manager</module>
         <module>hardware-manager-rpi</module>
         <module>internal-api</module>
+        <module>non-secure-apploader</module>
         <module>ogema-exam-base</module>
         <module>ogema-logger</module>
         <module>permission-admin</module>
         <module>persistence</module>
+        <module>recordeddata-slotsdb</module>
         <module>resource-access-advanced</module>
         <module>resource-manager</module>
+		<module>resource-manager-test-addons</module>
         <module>rest</module>
         <module>security</module>
+        <module>security-gui</module>
         <module>security-tests/ogema-exam-security</module>
-        <module>recordeddata-slotsdb</module>
         <module>util</module>
         <module>user-rights-proxy</module>
-        <module>security-gui</module>
     </modules>
 </project>

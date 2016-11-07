@@ -56,7 +56,7 @@ import org.ogema.app.resource.management.gui.ResManagementGuiActivator;
  * @author cnoelle
  * 
  */
-@SuppressWarnings("rawtypes")
+@SuppressWarnings({ "rawtypes", "deprecation" })
 public class Util implements Serializable {
 
 	private static final long serialVersionUID = 5011083043755073318L;
@@ -739,7 +739,7 @@ public class Util implements Serializable {
 		if (res == null) {
 			return list;
 		}
-		Class clazz = res.getResourceType();
+		//Class clazz = res.getResourceType();
 		//		for (Method meth : getOptionalElements(clazz)) {
 		//			list.add(meth.getName());
 		//		}
@@ -760,7 +760,7 @@ public class Util implements Serializable {
 		return list;
 	}
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"unchecked"})
 	private List<Method> getOptionalElements(Class<? extends Resource> clazz) {
 		List<Method> list = new ArrayList<Method>();
 		if (clazz == null || clazz.equals(Resource.class)) {

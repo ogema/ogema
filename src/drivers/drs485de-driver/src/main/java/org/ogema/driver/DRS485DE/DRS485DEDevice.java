@@ -22,18 +22,18 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.ChannelConfiguration;
-import org.ogema.core.channelmanager.ChannelConfigurationException;
+import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
 import org.ogema.core.channelmanager.ChannelEventListener;
 import org.ogema.core.channelmanager.EventType;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.measurements.IllegalConversionException;
+import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
 import org.ogema.core.resourcemanager.ResourceException;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceManagement;
 
 /**
@@ -45,13 +45,14 @@ import org.ogema.core.resourcemanager.ResourceManagement;
  * @author pau
  * 
  */
-public class DRS485DEDevice implements ChannelEventListener, ResourceListener {
+@SuppressWarnings("deprecation")
+public class DRS485DEDevice implements ChannelEventListener, org.ogema.core.resourcemanager.ResourceListener {
 
 	/** use the modbus-rtu driver */
-	private static final String DRIVER_ID = "modbus-rtu";
+	private static final String DRIVER_ID = "modbus-combined";
 
 	/** hard coded channel address. Read 3 16bit registers starting from address 0 */
-	private static final String CHANNEL_ADDRESS = "multi:3:0";
+	private static final String CHANNEL_ADDRESS = "HOLDING_REGISTERS:0:3";
 
 	private final ApplicationManager appManager;
 	private final ChannelAccess channelAccess;
@@ -60,12 +61,13 @@ public class DRS485DEDevice implements ChannelEventListener, ResourceListener {
 	private DRS485DEResource dataResource;
 	private final DRS485DEConfigurationModel configurationResource;
 
-	private ChannelLocator channelLocator;
-
+	//private ChannelLocator channelLocator;
+	private ChannelConfiguration channelConfiguration;
+	
 	public DRS485DEDevice(ApplicationManager appManager, DRS485DEConfigurationModel configurationResource) {
 
 		String dataResourceName;
-		List<ChannelLocator> list = new ArrayList<ChannelLocator>();
+		
 
 		this.appManager = appManager;
 		this.channelAccess = appManager.getChannelAccess();
@@ -82,19 +84,20 @@ public class DRS485DEDevice implements ChannelEventListener, ResourceListener {
 		// arbitrary amount of performance.
 		configurationResource.addResourceListener(this, true);
 
-		channelLocator = createChannelLocator(configurationResource);
-		list.add(channelLocator);
+		ChannelLocator channelLocator = createChannelLocator(configurationResource);
 
 		dataResourceName = configurationResource.resourceName().getValue();
 
 		// create channel
 		try {
-			ChannelConfiguration chConf = channelAccess.getChannelConfiguration(channelLocator);
-			chConf.setSamplingPeriod(150);
-			channelAccess.addChannel(chConf);
+			List<ChannelConfiguration> list = new ArrayList<ChannelConfiguration>();
+			
+			channelConfiguration = channelAccess.addChannel(channelLocator, Direction.DIRECTION_INPUT, 1000);
+			
+			list.add(channelConfiguration);			
 			channelAccess.registerUpdateListener(list, this);
-		} catch (ChannelConfigurationException e) {
-			logger.error(null, e);
+		} catch (ChannelAccessException e) {
+			e.printStackTrace();
 		}
 
 		// create the named ElectricityMeter instance and sub elements
@@ -113,7 +116,7 @@ public class DRS485DEDevice implements ChannelEventListener, ResourceListener {
 			SampledValue value;
 
 			// read latest cached value from channel
-			value = channelAccess.getChannelValue(channelLocator);
+			value = channelAccess.getChannelValue(channelConfiguration);
 
 			// write received value to model
 			setModel(dataResource, value);
@@ -133,9 +136,9 @@ public class DRS485DEDevice implements ChannelEventListener, ResourceListener {
 		String deviceAddress = configuration.deviceAddress().getValue();
 		String deviceParameters = configuration.deviceParameters().getValue();
 
-		deviceLocator = channelAccess.getDeviceLocator(DRIVER_ID, interfaceId, deviceAddress, deviceParameters);
+		deviceLocator = new DeviceLocator(DRIVER_ID, interfaceId, "", deviceParameters);
 
-		return channelAccess.getChannelLocator(CHANNEL_ADDRESS, deviceLocator);
+		return new ChannelLocator(deviceAddress + ":" + CHANNEL_ADDRESS, deviceLocator);
 	}
 
 	private void setModel(DRS485DEResource model, SampledValue value) {
@@ -143,20 +146,23 @@ public class DRS485DEDevice implements ChannelEventListener, ResourceListener {
 		int[] values;
 		long result;
 
-		// the response has one integer value per 16bit modbus register
-		values = (int[]) value.getValue().getObjectValue();
-
-		// result is in Wh * 10 (two fractional digits)
-
-		// upper 8bit of the result registers are unused
-		result = ((long) values[0] & 0xFF) << 16;
-		result += ((long) values[1] & 0xFF) << 8;
-		result += (long) values[2] & 0xFF;
-
-		result *= 10; // Wh
-		result *= 3600; // Joule
-
-		model.totalEnergy.setValue((float) result);
+		if (value.getQuality() == Quality.GOOD && value.getValue() != null)
+		{
+			// the response has one integer value per 16bit modbus register
+			values = (int[]) value.getValue().getObjectValue();
+	
+			// result is in Wh * 10 (two fractional digits)
+	
+			// upper 8bit of the result registers are unused
+			result = ((long) values[0] & 0xFF) << 16;
+			result += ((long) values[1] & 0xFF) << 8;
+			result += (long) values[2] & 0xFF;
+	
+			result *= 10; // Wh
+			result *= 3600; // Joule
+	
+			model.totalEnergy.setValue((float) result);
+		}
 	}
 
 	public void close() {
@@ -169,59 +175,33 @@ public class DRS485DEDevice implements ChannelEventListener, ResourceListener {
 		}
 
 		dataResource.deactivate(true);
-		try {
-			channelAccess.deleteChannel(channelLocator);
-		} catch (Throwable t) {
-			appManager.getLogger().error("channelAccess.deleteChannel({})", channelLocator, t);
-		}
+		channelAccess.deleteChannel(channelConfiguration);
 	}
 
 	@Override
 	public void resourceChanged(Resource resource) {
 
+		boolean update = false;
+		
 		// did the channel layout change?
 		ChannelLocator newChan = createChannelLocator(configurationResource);
-		if (!channelLocator.equals(newChan)) {
+		
+		update = channelConfiguration == null;
+		
+		if (update == false)
+			update = !channelConfiguration.getChannelLocator().equals(newChan);
+		
+		if (update == false)
+			update = channelConfiguration.getSamplingPeriod() != configurationResource.timeout().getValue();
+		
+		if (update) {
+			channelAccess.deleteChannel(channelConfiguration);
 
 			try {
-				channelAccess.deleteChannel(channelLocator);
-			} catch (ChannelConfigurationException e1) {
-				// ignore if channel does not exist
+				channelConfiguration = channelAccess.addChannel(newChan, Direction.DIRECTION_INPUT, configurationResource.timeout().getValue());
+			} catch (ChannelAccessException e) {
+				appManager.getLogger().error("channelAccess.addChannel({})", newChan, e);
 			}
-
-			channelLocator = newChan;
-			try {
-				channelAccess.addChannel(channelAccess.getChannelConfiguration(channelLocator));
-			} catch (ChannelConfigurationException e) {
-				appManager.getLogger().error("channelAccess.addChannel({})", channelLocator, e);
-			}
-		}
-		else {
-			String currentParameter = channelLocator.getDeviceLocator().getParameters();
-			String newParameter = configurationResource.deviceParameters().getValue();
-
-			if (!currentParameter.equals(newParameter)) {
-				channelLocator.getDeviceLocator().setParameters(newParameter);
-
-				try {
-					channelAccess.deleteChannel(channelLocator);
-				} catch (ChannelConfigurationException e1) {
-					// ignore if channel does not exist
-				}
-
-				try {
-					channelAccess.addChannel(channelAccess.getChannelConfiguration(channelLocator));
-				} catch (ChannelConfigurationException e) {
-					appManager.getLogger().error("channelAccess.addChannel({})", channelLocator, e);
-				}
-			}
-		}
-
-		// did the timeout change?
-		long newTimeout = configurationResource.timeout().getValue();
-		long oldTimeout = channelAccess.getChannelConfiguration(channelLocator).getSamplingPeriod();
-		if (oldTimeout != newTimeout) {
-			channelAccess.getChannelConfiguration(channelLocator).setSamplingPeriod(newTimeout);
 		}
 
 		// did the name change?

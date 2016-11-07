@@ -17,6 +17,7 @@ package org.ogema.core.rads.listening;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
@@ -40,11 +41,11 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 
 	private final ApplicationManager m_appMan;
 	private final OgemaLogger m_logger;
-	private final P m_rad;
+	public final P m_rad;
 	// List of required fields
-	private final List<ConnectedResource> m_required = new ArrayList<>();
+	private final List<ConnectedResource> m_required;  
 	// List of optional fields
-	private final List<ConnectedResource> m_optional = new ArrayList<>();
+	private final List<ConnectedResource> m_optional;
 	// List of fields that are to be created
 	// private final List<ConnectedResource> m_create = new ArrayList<>();
 
@@ -60,7 +61,7 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 	/*
 	 * Gets all the fields annotated in the RAD, irrespective of their existence requirements.
 	 */
-	private List<ConnectedResource> getAllConnectedResources() {
+	public List<ConnectedResource> getAllConnectedResources() {
 		final List<ConnectedResource> result = new ArrayList<>(m_required.size() + m_optional.size());
 		result.addAll(m_required);
 		result.addAll(m_optional);
@@ -77,17 +78,20 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 		m_logger = appMan.getLogger();
 		m_rad = rad;
 		m_container = container;
+		m_required = new ArrayList<>();
+		m_optional = new ArrayList<>();
 		for (ResourceFieldInfo info : fields) {
 			final Resource resource = RadFactory.getResource(info.getField(), rad);
 			final CreateMode mode = info.getCreateMode();
+			String name = info.getField().getName();
 			if (resource == null) {
 				continue;   // ignore uninitialized resources
 			}
 			if (mode == CreateMode.MUST_EXIST) {
-				m_required.add(new ConnectedResource(resource, info, this, m_logger));
+				m_required.add(new ConnectedResource(resource, info, this, m_logger,name,false));
 			}
 			else if (mode == CreateMode.OPTIONAL) {
-				m_optional.add(new ConnectedResource(resource, info, this, m_logger));
+				m_optional.add(new ConnectedResource(resource, info, this, m_logger,name,true));
 			}
 			else {
 				throw new RuntimeException("Unsupported create mode " + mode);
@@ -115,7 +119,8 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 
 	private void checkCompletion() {
 		for (ConnectedResource conRes : m_required) {
-			if (!conRes.isComplete()) {
+			if (!conRes.isSatisfied()) {
+                m_logger.trace("pattern unsatisfied: {}", conRes);
 				m_completed = false;
 				init_satisfied = false;
 				return;
@@ -135,18 +140,22 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 	}
 
 	public void resourceAvailable(ConnectedResource conRes) {
+        m_logger.trace("connected resource available: {}", conRes);
 		//if (conRes.isRequired() && !m_completed)
 		checkCompletion();
 	}
 
 	public void resourceUnavailable(ConnectedResource conRes, boolean isDeleted) {		
 		//System.out.println("  res unavailable callback " + conRes.toString());
+        m_logger.trace("connected resource unavailable: {}, deleted={}", conRes, isDeleted);
+        m_logger.trace("pattern state: completed={}, init satisfied={}", m_completed, init_satisfied);
 		if (!conRes.isRequired()) {
 			if (m_completed) checkInitRequirement();
 			return;
 		}
 		if (m_completed && init_satisfied) {
-			m_listener.patternUnavailable(m_rad);
+			//m_listener.patternUnavailable(m_rad);
+            reportPatternUnavailable(m_rad);
 		}
 		m_completed = false;	
 		init_satisfied = false;
@@ -181,15 +190,50 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 			}
 //			((ResourcePatternExtended) m_rad).setContainer(m_container);
 		}
-		if (m_rad.accept()) {
+		boolean result = false;
+		try {
+			result = m_rad.accept();
+		} catch (Exception e) {
+			LoggerFactory.getLogger(m_rad.getClass()).error("Pattern accept method has thrown an exception.",e);
+		}
+		if (result) {
 			if (init_satisfied) return;
 			init_satisfied = true;
-			m_listener.patternAvailable(m_rad);
+			//m_listener.patternAvailable(m_rad);
+            reportPatternAvailable(m_rad);
 		}
 		else {
 			if (!init_satisfied) return;
 			init_satisfied = false;
-			m_listener.patternUnavailable(m_rad);
+			//m_listener.patternUnavailable(m_rad);
+            reportPatternUnavailable(m_rad);
 		}
 	}
+    
+    private void reportPatternAvailable(final P pattern) {
+        m_appMan.submitEvent(new Callable<Void>() {
+
+            @Override
+            public Void call() throws Exception {
+                m_listener.patternAvailable(pattern);
+                return null;
+            }
+
+        }
+        );
+    }
+    
+    private void reportPatternUnavailable(final P pattern) {
+        m_appMan.submitEvent(new Callable<Void>() {
+
+            @Override
+            public Void call() throws Exception {
+                m_listener.patternUnavailable(pattern);
+                return null;
+            }
+
+        }
+        );
+    }
+	
 }

@@ -21,7 +21,6 @@ import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
-import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.hardwaremanager.HardwareManager;
 import org.osgi.framework.BundleContext;
@@ -33,34 +32,40 @@ public class Activator {
 	private ServiceRegistration<?> registration;
 	@Reference
 	private HardwareManager hardwareManager;
-	@Reference(bind = "setChannelAccess")
-	protected ChannelAccess channelAccess;
-	public static boolean bundleIsRunning;
+	public static volatile boolean bundleIsRunning;
+	private ShellCommands sc;
 
 	@Activate
-	public void activate(final BundleContext context, Map<String, Object> config) throws Exception {
+	public synchronized void activate(final BundleContext context, Map<String, Object> config) throws Exception {
 		bundleIsRunning = true;
-		driver = new HMDriver(channelAccess);
+		driver = new HMDriver();
 		driver.establishConnection();
 		registration = context.registerService(ChannelDriver.class, driver, null);
 
-		new ShellCommands(driver, context);
+		sc = new ShellCommands(driver, context);
 	}
 
 	@Deactivate
-	public void deactivate(Map<String, Object> config) throws Exception {
+	public synchronized void deactivate(Map<String, Object> config) throws Exception {
 		bundleIsRunning = false;
-		hardwareManager.removeListener(driver);
-
-		for (Map.Entry<String, Connection> entry : driver.getConnections().entrySet()) {
-			entry.getValue().close();
+		if (driver != null) {
+			hardwareManager.removeListener(driver);
+			for (Map.Entry<String, Connection> entry : driver.getConnections().entrySet()) {
+				entry.getValue().close();
+			}
+			driver.getConnections().clear();
+			if (driver.connectThread != null)
+				driver.connectThread.interrupt(); // thread does not stop otherwise
+			if (driver.pairing != null)
+				driver.pairing.interrupt();
 		}
-
 		if (registration != null)
 			registration.unregister();
+		registration = null;
+		if (sc != null)
+			sc.close();
+		sc = null;
+		driver = null;
 	}
 
-	protected void setChannelAccess(ChannelAccess ca) {
-		this.channelAccess = ca;
-	}
 }

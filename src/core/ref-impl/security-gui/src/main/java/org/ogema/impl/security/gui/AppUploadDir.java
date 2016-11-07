@@ -19,6 +19,7 @@ import java.util.List;
 
 import org.ogema.core.installationmanager.ApplicationSource;
 import org.ogema.core.installationmanager.InstallableApplication;
+import org.osgi.framework.Bundle;
 
 public class AppUploadDir implements ApplicationSource {
 
@@ -57,4 +58,23 @@ public class AppUploadDir implements ApplicationSource {
 		return true;
 	}
 
+	@Override
+	public List<InstallableApplication> getAppsAvailable(String dir) {
+		return null;
+	}
+
+	@Override
+	public Bundle installApp(String name,String user) {
+		return null;
+	}
+
+	@Override
+	public boolean addStoreUser(String gwUsrName, String mpUsrName, String gwPWD, String mpPWD) {
+		return false;
+	}
+
+	@Override
+	public boolean removeStoreUser(String storeUserName) {
+		return false;
+	}
 }

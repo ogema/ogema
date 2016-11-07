@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
@@ -57,7 +56,6 @@ public class ZWaveDriver implements ChannelDriver, HardwareListener {
 	private final Map<ChannelUpdateListener, List<Channel>> listenerMap;
 	private final String driverId = "zwave-driver";
 	private final String description = "OGEMA ZWave Driver";
-	public final ChannelAccess channelAccess;
 
 	ArrayList<DeviceListener> devListeners;
 	private LocalDevice mainLocal;
@@ -65,11 +63,10 @@ public class ZWaveDriver implements ChannelDriver, HardwareListener {
 	private final Object connectionLock = new Object();
 	private HardwareManager hwMngr;
 
-	public ZWaveDriver(ChannelAccess channelAccess, HardwareManager hwMngr) {
+	public ZWaveDriver(HardwareManager hwMngr) {
 		this.connectionsMap = new HashMap<>();
 		this.listenerMap = new HashMap<>();
 		this.devListeners = new ArrayList<>();
-		this.channelAccess = channelAccess;
 		this.hwMngr = hwMngr;
 		hwMngr.addListener(this);
 	}
@@ -114,7 +111,7 @@ public class ZWaveDriver implements ChannelDriver, HardwareListener {
 					Node node = deviceEntry.getValue();
 					if (node.isReady() && node.getNodeId() != connection.getLocalDevice().getNodeId()) {
 						String parameters = node.getProductString() + ":" + node.getProductName();
-						DeviceLocator deviceLocator = channelAccess.getDeviceLocator(driverId, interfaceId, node
+						DeviceLocator deviceLocator = new DeviceLocator(driverId, interfaceId, node
 								.getNodeName(), parameters);
 						logger.debug("\nDevice found:\nAddress = " + deviceLocator.getDeviceAddress()
 								+ "\nDeviceParameters = " + deviceLocator.getParameters());
@@ -135,7 +132,7 @@ public class ZWaveDriver implements ChannelDriver, HardwareListener {
 							Node node = deviceEntry.getValue();
 							if (node.isReady() && node.getNodeId() != con.getValue().getLocalDevice().getNodeId()) {
 								String parameters = node.getProductString() + ":" + node.getProductName();
-								DeviceLocator deviceLocator = channelAccess.getDeviceLocator(driverId, con.getValue()
+								DeviceLocator deviceLocator = new DeviceLocator(driverId, con.getValue()
 										.getInterfaceId(), node.getNodeName(), parameters);
 								logger.debug("\nDevice found:\nAddress = " + deviceLocator.getDeviceAddress()
 										+ "\nDeviceParameters = " + deviceLocator.getParameters());
@@ -345,7 +342,7 @@ public class ZWaveDriver implements ChannelDriver, HardwareListener {
 		if (prodName.equals("") || prodName == null)
 			return null;
 		String parameters = prodString + ":" + prodName + ":" + node.getNodeId();
-		DeviceLocator deviceLocator = channelAccess.getDeviceLocator(driverId, ifaceName, nodeName, parameters);
+		DeviceLocator deviceLocator = new DeviceLocator(driverId, ifaceName, nodeName, parameters);
 		return deviceLocator;
 	}
 
@@ -386,7 +383,7 @@ public class ZWaveDriver implements ChannelDriver, HardwareListener {
 		String portName = System.getProperty(Constants.STATIC_IF_NAME);
 		if (portName == null) {
 			String hardwareDesriptors = System.getProperty(Constants.HARDWARE_DESCRIPTOR,
-					Constants.DEFAULT_HW_DESCRIPTOR);
+					Constants.SIGMA_ACC_UZB_EU);
 			logger.info(String.format(
 					"No device file specified on the command line. The Hardware descriptor %s is used instead.",
 					hardwareDesriptors));

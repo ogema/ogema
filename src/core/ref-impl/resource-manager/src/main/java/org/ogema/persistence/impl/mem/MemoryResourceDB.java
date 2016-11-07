@@ -34,13 +34,14 @@ import org.slf4j.Logger;
  * 
  * @author jlapp
  */
+// FIXME unsynchronized access to types and resources variables?
 public class MemoryResourceDB implements ResourceDB {
 
 	final AtomicInteger TYPE_IDS = new AtomicInteger(0);
 	final Map<Class<? extends Resource>, Integer> types = new HashMap<>();
 	final Map<String, MemoryTreeElement> resources = new HashMap<>();
 	final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
-
+	
 	@Override
 	public Class<? extends Resource> addOrUpdateResourceType(Class<? extends Resource> type)
 			throws ResourceAlreadyExistsException, InvalidResourceTypeException {
@@ -80,7 +81,9 @@ public class MemoryResourceDB implements ResourceDB {
 			if (!Resource.class.isAssignableFrom(type)) {
 				return false;
 			}
-			return types.containsKey((Class<? extends Resource>) type);
+            synchronized(types) {
+                return types.containsKey((Class<? extends Resource>) type);
+            }
 		} catch (ClassNotFoundException cnfe) {
 			return false;
 		}
@@ -88,21 +91,25 @@ public class MemoryResourceDB implements ResourceDB {
 
 	@Override
 	public List<Class<? extends Resource>> getAllResourceTypesInstalled() {
-		List<Class<? extends Resource>> rval = new ArrayList<>(types.size());
-		rval.addAll(types.keySet());
-		return rval;
+        synchronized(types) {
+            List<Class<? extends Resource>> rval = new ArrayList<>(types.size());
+            rval.addAll(types.keySet());
+            return rval;
+        }
 	}
 
 	@Override
 	public TreeElement addResource(String name, Class<? extends Resource> type, String appID)
 			throws ResourceAlreadyExistsException, InvalidResourceTypeException {
-		if (resources.containsKey(name)) {
-			throw new ResourceAlreadyExistsException("resource '" + name + "' already exists");
-		}
-		MemoryTreeElement el = new MemoryTreeElement(name, type, null);
-		el.setAppID(appID);
-		resources.put(name, el);
-		return el;
+        synchronized (resources) {
+            if (resources.containsKey(name)) {
+                throw new ResourceAlreadyExistsException("resource '" + name + "' already exists");
+            }
+            MemoryTreeElement el = new MemoryTreeElement(name, type, null);
+            el.setAppID(appID);
+            resources.put(name, el);        
+            return el;
+        }
 	}
 
 	@Override
@@ -122,19 +129,23 @@ public class MemoryResourceDB implements ResourceDB {
 
 	@Override
 	public boolean hasResource(String name) {
-		return resources.containsKey(name);
+        synchronized (resources) {
+            return resources.containsKey(name);
+        }
 	}
 
 	@Override
 	public TreeElement getToplevelResource(String name) throws InvalidResourceTypeException {
-		TreeElement el = resources.get(name);
-		return el;
+        synchronized(resources) {
+            TreeElement el = resources.get(name);
+            return el;
+        }
 	}
 
 	@Override
 	public List<TreeElement> getAllToplevelResources() {
-		List<TreeElement> rval = new ArrayList<>(resources.size());
-		synchronized (resources) {
+        synchronized (resources) {
+    		List<TreeElement> rval = new ArrayList<>(resources.size());
             rval.addAll(resources.values());
 			return rval;
 		}
@@ -164,6 +175,24 @@ public class MemoryResourceDB implements ResourceDB {
 
 	@Override
 	public Collection<TreeElement> getFilteredNodes(Map<String, String> dict) {
+		return null;
+	}
+
+	@Override
+	public TreeElement getFilteredNodesByPath(String path, boolean isRoot) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Map<String, Class<?>> getModelDeclaredChildren(String name) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public List<Class<? extends Resource>> getResourceTypesInstalled(Class<? extends Resource> cls) {
+		// TODO Auto-generated method stub
 		return null;
 	}
 }

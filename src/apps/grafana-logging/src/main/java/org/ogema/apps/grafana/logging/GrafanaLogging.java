@@ -25,17 +25,11 @@ import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
-import org.ogema.core.model.Resource;
-import org.ogema.core.model.SimpleResource;
-import org.ogema.core.model.simple.OpaqueResource;
 import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceManagement;
-import org.ogema.model.actors.Actor;
-import org.ogema.model.sensors.Sensor;
-import org.ogema.model.smartgriddata.Price;
 import org.ogema.tools.grafana.base.InfluxFake;
 
 @Component(specVersion = "1.2", immediate = true)
@@ -47,6 +41,7 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Singl
 	protected ResourceManagement rm;
 	protected ResourceAccess ra;
 	protected List<Class<? extends SingleValueResource>> resourceTypes;
+    @SuppressWarnings("rawtypes")
 	protected Map<String, Map> panels;
 	protected long updateInterval = 5000; // 5s
 	protected InfluxFake infl;
@@ -67,7 +62,7 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Singl
         webResourceBrowserPath = "/ogema/" + appNameLowerCase; 
         am.getWebAccessManager().registerWebResource(webResourceBrowserPath, webResourcePackagePath);
         this.resourceTypes = new ArrayList<>();
-        this.panels = new LinkedHashMap<String,Map>(); 
+        this.panels = new LinkedHashMap<>(); 
         this.infl = new InfluxFake(am,panels,updateInterval);
         this.infl.setStrictMode(true);
         servletPath = "/apps/ogema/" + appNameLowerCase + "/fake_influxdb/series";
@@ -89,12 +84,12 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Singl
 
 	@Override
 	public void resourceAvailable(SingleValueResource resource) {
-		Class<? extends SingleValueResource> type = (Class<? extends SingleValueResource>) resource.getResourceType();
+		Class<? extends SingleValueResource> type = resource.getResourceType().asSubclass(SingleValueResource.class);
 		if (StringResource.class.isAssignableFrom(type))
 			return;
 		if (!resourceTypes.contains(type)) {
 			resourceTypes.add(type);
-			Map<String, Class<? extends SingleValueResource>> rowPanels = new LinkedHashMap<String, Class<? extends SingleValueResource>>();
+			Map<String, Class<? extends SingleValueResource>> rowPanels = new LinkedHashMap<>();
 			rowPanels.put(type.getSimpleName(), type);
 			panels.put(type.getSimpleName(), rowPanels);
 			infl.setPanels(panels);

@@ -53,6 +53,7 @@ import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.pattern.ResourcePatternAccess;
 import org.ogema.core.security.WebAccessManager;
 import org.ogema.core.tools.SerializationManager;
+import org.ogema.patternaccess.AdministrationPatternAccess;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.timer.TimerScheduler;
 import org.ogema.tools.impl.SerializationManagerImpl;
@@ -74,10 +75,10 @@ public class ApplicationManagerImpl implements ApplicationManager {
 	private final ApplicationThreadFactory tfac;
 
 	private final Application application;
-	private ApplicationTracker tracker;
+	ApplicationTracker tracker;
 	protected final Logger logger;
 	final ApplicationResourceManager resMan;
-	private ResourcePatternAccess advAcc;
+	AdministrationPatternAccess advAcc;
 	private final AppID appID;
 	private final List<ExceptionListener> exceptionListeners = new ArrayList<>();
 
@@ -155,7 +156,11 @@ public class ApplicationManagerImpl implements ApplicationManager {
 	protected boolean stopApplication() {
 		boolean stopped = false;
 		if (isApplicationThread()) {
-			application.stop(Application.AppStopReason.APP_STOP);
+			try {
+				application.stop(Application.AppStopReason.APP_STOP);
+			} catch (Throwable e) { // user implemented code, better catch everything
+				logger.error("Error stopping application " + appID.getIDString(),e);
+			}
 			stopped = true;
 		}
 		else {
@@ -266,10 +271,11 @@ public class ApplicationManagerImpl implements ApplicationManager {
 		return tracker.getWebAccessManager(appID);
 	}
 
+	// FIXME class AdvancedAccessImpl should not be accessible 
 	@Override
-	public ResourcePatternAccess getResourcePatternAccess() {
+	public synchronized ResourcePatternAccess getResourcePatternAccess() {
 		if (advAcc == null) {
-			advAcc = new AdvancedAccessImpl(this);
+			advAcc = new AdvancedAccessImpl(this, tracker.getPermissionManager());
 		}
 		return advAcc;
 	}
@@ -304,10 +310,25 @@ public class ApplicationManagerImpl implements ApplicationManager {
 				it.remove();
 			}
 		}
+		workQueue.clear();
 		executor.shutdown();
+		try {
+			boolean shutdown = executor.awaitTermination(2, TimeUnit.SECONDS);
+			if (!shutdown) {
+				executor.shutdownNow();
+				executor.awaitTermination(2, TimeUnit.SECONDS);
+			}
+		} catch (InterruptedException e) { /* ignore */}
+		synchronized (this) {
+			if (advAcc != null)
+				advAcc.close();
+			advAcc = null;
+		}
 		resMan.close();
-		advAcc = null;
-		logger.debug("shut down application manager for app '{}'", appID.getIDString());
+		if (!executor.isTerminated()) 
+			logger.error("App {} did not shut down properly, there are still running tasks",appID.getIDString());
+		else
+			logger.debug("shut down application manager for app '{}'", appID.getIDString());
 	}
 
 	@Override
@@ -329,12 +350,12 @@ public class ApplicationManagerImpl implements ApplicationManager {
 	 * Removes completed futures from the workqueue and logs all exceptions as warnings.
 	 */
 	protected void drainWorkQueue() {
-		int done = 0;
+//		int done = 0;
 		while (!workQueue.isEmpty() && workQueue.peek().isDone()) {
 			Future<?> f = workQueue.remove();
 			try {
 				f.get();
-				done++;
+//				done++;
 			} catch (ExecutionException ee) {
 				reportException(ee.getCause());
 			} catch (InterruptedException ie) {
@@ -394,14 +415,9 @@ public class ApplicationManagerImpl implements ApplicationManager {
 	public void reportException(Throwable exception) {
 
 		if (exceptionListeners.isEmpty()) {
-			if (exception instanceof RuntimeException) {
-				throw (RuntimeException) exception;
-			}
-			else {
-				getLogger().error(
-						"Non-runtime exception was reported but no ExceptionListener was registered to handle it",
-						exception);
-			}
+			getLogger().error(
+					"Exception was reported but no ExceptionListener was registered to handle it",
+					exception);
 		}
 		for (ExceptionListener listener : exceptionListeners) {
 			listener.exceptionOccured(exception);

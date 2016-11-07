@@ -28,12 +28,10 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Ignore;
 
 import static org.junit.Assert.*;
 
 import org.junit.Test;
-import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.measurements.BooleanValue;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.IntegerValue;
@@ -43,11 +41,8 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.AbsoluteSchedule;
-import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.timeseries.InterpolationMode;
-import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
@@ -379,6 +374,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 	public void testAddValueSchedule() {
 		Schedule schedule = getEmptySchedule(FloatResource.class);
 		final long N = 73; // must be an even number for this test.
+		@SuppressWarnings("unused")
 		final long min = 0, delta = 100000, max = min + N * delta;
 
 		final List<Value> values = new ArrayList<>();
@@ -601,7 +597,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		fr2.delete();
 	}
 	
-	@Ignore  // FIXME logging problem? Sometimes fr.historicalData().getValue() does not get access to logged data
+//	@Ignore  // FIXME logging problem? Sometimes fr.historicalData().getValue() does not get access to logged data
 	@Test
 	public void historicalScheduleInterpolationModeWorks() throws InterruptedException {
 		FloatResource fr = resMan.createResource("testFloat1", FloatResource.class);
@@ -649,5 +645,46 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		fr.delete();		
 	}
 	
+	@Test 
+	public void deletedScheduleDoesNotRetainValues() {
+		String path = newResourceName();
+		FloatResource fr = resMan.createResource(path, FloatResource.class);
+		fr.program().create();
+		long t0 = System.currentTimeMillis();
+		List<SampledValue> values = new ArrayList<>();
+		for (int i=0;i<50;i++) {
+			SampledValue sv = new SampledValue(new FloatValue((float) Math.random()), t0 + i*100, Quality.GOOD);
+			values.add(sv);
+		}
+		fr.program().addValues(values);
+		fr.delete();
+		fr = resMan.createResource(path, FloatResource.class);
+		fr.program().create();
+		Assert.assertEquals("Zombie schedule survived deletion.",0, fr.program().getValues(0).size());
+		fr.delete();
+	}
 	
+	@Test 
+	public void historicalScheduleValuesSurviveDeletion() throws InterruptedException {
+		// this test has a problem with persistent log data that is not cleaned up between tests -> use random path postfix to make it unique
+		String path = newResourceName() + ((int) (Math.random() * 100000)); 
+		FloatResource fr = resMan.createResource(path, FloatResource.class);
+		fr.historicalData().create();
+		fr.activate(true);
+		RecordedData rc = fr.getHistoricalData();
+		RecordedDataConfiguration rcd = new RecordedDataConfiguration();
+		rcd.setFixedInterval(10);
+		rcd.setStorageType(StorageType.FIXED_INTERVAL);
+		rc.setConfiguration(rcd);
+		Thread.sleep(1000); // wait for some log data to be generated
+		int nr = fr.historicalData().getValues(0).size();
+		Assert.assertTrue("Unexpectedly low number of log data points: " + nr + ", expected: " + 100,nr > 3); 
+		fr.historicalData().delete();
+		fr.historicalData().create();
+		int newNr = fr.historicalData().getValues(0).size();
+		Assert.assertTrue("Seems like deleting historicalData schedule removed log actual data; old size: " + nr + ", new size: " + newNr,newNr*1.5 > nr);
+		System.out.println("Old log data points: " + nr + ", new: " + newNr);
+		fr.delete();
+	}
+
 }

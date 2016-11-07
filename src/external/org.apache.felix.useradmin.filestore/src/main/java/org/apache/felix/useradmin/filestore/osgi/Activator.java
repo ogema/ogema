@@ -16,6 +16,7 @@
  */
 package org.apache.felix.useradmin.filestore.osgi;
 
+import java.io.File;
 import java.util.Properties;
 
 import org.apache.felix.useradmin.RoleRepositoryStore;
@@ -31,24 +32,27 @@ import org.osgi.service.useradmin.UserAdminListener;
  */
 public class Activator implements BundleActivator {
 
-    private RoleRepositoryFileStore m_store;
+	private RoleRepositoryFileStore m_store;
 
-    public void start(BundleContext context) throws Exception {
-        m_store = new RoleRepositoryFileStore(context.getDataFile(""));
-        m_store.start();
-        
-        String[] interfaces = { RoleRepositoryStore.class.getName(), UserAdminListener.class.getName(), ManagedService.class.getName() };
-        
-        Properties props = new Properties();
-        props.put(Constants.SERVICE_PID, RoleRepositoryFileStore.PID);
+	public void start(BundleContext context) throws Exception {
+		File dir = new File("./security/users");
+		dir.mkdirs();
+		m_store = new RoleRepositoryFileStore(dir);
+		m_store.start();
 
-        context.registerService(interfaces, m_store, props);
-    }
+		String[] interfaces = { RoleRepositoryStore.class.getName(), UserAdminListener.class.getName(),
+				ManagedService.class.getName() };
 
-    public void stop(BundleContext context) throws Exception {
-        if (m_store != null) {
-            m_store.stop();
-            m_store = null;
-        }
-    }
+		Properties props = new Properties();
+		props.put(Constants.SERVICE_PID, RoleRepositoryFileStore.PID);
+
+		context.registerService(interfaces, m_store, props);
+	}
+
+	public void stop(BundleContext context) throws Exception {
+		if (m_store != null) {
+			m_store.stop();
+			m_store = null;
+		}
+	}
 }

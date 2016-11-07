@@ -19,7 +19,7 @@ import java.util.List;
 
 /**
  * 
- * Monitor registrated channels
+ * Monitor registered channels
  */
 public interface ChannelUpdateListener {
 	/**

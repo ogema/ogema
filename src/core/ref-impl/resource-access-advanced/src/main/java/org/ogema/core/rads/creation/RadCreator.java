@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory;
  */
 public class RadCreator<T extends Resource, P extends ResourcePattern<T>> {
 
-	public static final boolean DEBUG = false;
 	final ApplicationManager m_appMan;
 	final OgemaLogger m_logger;
 	final ResourceManagement m_resMan;
@@ -131,20 +130,20 @@ public class RadCreator<T extends Resource, P extends ResourcePattern<T>> {
 
 			final Resource resource = RadFactory.getResource(info.getField(), m_result);
 			if (resource == null) {
-				if (DEBUG)
+				if (m_logger.isDebugEnabled())
 					m_logger.debug("Field with name " + info.getField().getName()
 							+ " was not initialized by user: Ignoring it.");
 				continue; // do not care about fields that were not initialized by user.
 			}
 			if (resource.exists()) {
-				if (DEBUG)
+				if (m_logger.isDebugEnabled())
 					m_logger.debug("Resource at " + resource.getPath() + " already exists. Skipping it.");
 				continue;
 			}
 
 			final boolean created;
 			try {
-				if (DEBUG)
+				if (m_logger.isDebugEnabled())
 					m_logger.debug("Creating resource at " + resource.getPath());
 				created = resource.create().exists();
 			} catch (Exception e) {

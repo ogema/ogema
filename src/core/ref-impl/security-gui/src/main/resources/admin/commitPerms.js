@@ -252,6 +252,21 @@ function getGrantedBack(obj) {
 				
 				pMethod = divLastChild.find("input[type='text']").next().next().next().val();
 			}
+			
+			if(divLastChild.find("input.newActionsInput[type='text']").length>0){
+				var addActions =divLastChild.find("input.newActionsInput[type='text']");
+				if ($(addActions).val().length>0){
+					var addpMethod = methodsToArray($(addActions).val());
+					if (typeof(addpMethod == "String")){
+						pMethod.push(addpMethod);
+					}else{
+						for (var i=0; i<addpMethod.length; i++){
+							pMethod.push(addpMethod[i]);
+						}
+					}
+				}
+			}
+			if (divLastChild.find("input.newActionsInput").val())
 			if (parentNextDivConds.length == 1) {
 				pCondition = parentNextDivConds.find("input[type='text']").val();
 				pCondArgs = parentNextDivConds.find("input:last-child").val();

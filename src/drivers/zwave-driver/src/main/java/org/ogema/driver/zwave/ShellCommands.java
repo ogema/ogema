@@ -31,6 +31,7 @@ import org.ogema.driver.zwave.manager.Node;
 import org.ogema.driver.zwave.manager.NodeValue;
 import org.ogema.driverconfig.LLDriverInterface;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceRegistration;
 import org.slf4j.Logger;
 import org.zwave4j.Manager;
 import org.zwave4j.ValueGenre;
@@ -44,6 +45,8 @@ import org.zwave4j.ValueType;
 public class ShellCommands implements LLDriverInterface {
 	private ZWaveDriver driver;
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("zwave-driver");
+	private final ServiceRegistration<LLDriverInterface> srLLDriver;
+	private final ServiceRegistration<ShellCommands> srCommands;
 
 	public ShellCommands(ZWaveDriver driver, BundleContext context) {
 		Hashtable<String, Object> props = new Hashtable<String, Object>();
@@ -53,8 +56,17 @@ public class ShellCommands implements LLDriverInterface {
 				"enableInclusion", "enableExclusion", "resetController", "sendFrame", "cacheDevices", "readDevConfig",
 				"setDevConfig", "listSupportedConfigs", "showConfigs", "writeConfig" });
 		this.driver = driver;
-		context.registerService(this.getClass().getName(), this, props);
-		context.registerService(LLDriverInterface.class, this, null);
+		srCommands = context.registerService(ShellCommands.class, this, props);
+		srLLDriver = context.registerService(LLDriverInterface.class, this, null);
+	}
+	
+	void close() {
+		try {
+			srCommands.unregister();
+		} catch (Exception e) {}
+		try {
+			srLLDriver.unregister();
+		} catch (Exception e) {}
 	}
 
 	@Descriptor("Enables Inclusion.")

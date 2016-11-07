@@ -17,6 +17,7 @@ package org.ogema.persistence;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
+import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.array.BooleanArrayResource;
 import org.ogema.core.model.array.ByteArrayResource;
 import org.ogema.core.model.array.FloatArrayResource;
@@ -26,7 +27,6 @@ import org.ogema.core.model.array.TimeArrayResource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
-import org.ogema.core.model.simple.OpaqueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 
@@ -36,7 +36,7 @@ import org.ogema.core.model.simple.TimeResource;
  * @author mns
  * 
  */
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked", "deprecation"})
 public class DBConstants {
 
 	/*
@@ -49,6 +49,7 @@ public class DBConstants {
 	public static final int RES_TOPLEVEL = 1 << 4;
 	public static final int RES_DECORATOR = 1 << 5;
 	public static final int RES_REFERENCE = 1 << 6;
+	public static final int RES_ISCHILD = 1 << 7;
 
 	/*
 	 * Type keys to be stored persistently in order to parse values properly. Only basic types have different type keys
@@ -67,12 +68,14 @@ public class DBConstants {
 	static final public int TYPE_KEY_COMPLEX_ARR = 10;
 	static final public int TYPE_KEY_COMPLEX = 11;
 	static final public int TYPE_KEY_OPAQUE = 12;
+	public static final int NONSPECIFIC_VALUE = 15;
+	static final public int TYPE_KEY_INVALID = -1;
 
 	/*
 	 * Default path and file name informations for the archives containing the persistent data. The default values can
 	 * be overwritten be setting of the properties DB_PATH_PROP RESOURCES_FILE_PROP DIR_FILE_PROP.
 	 */
-	public static final String DB_PATH_NAME = "./database/";
+	public static final String DB_PATH_NAME = "./data/persistence/";
 	public static final String RESOURCES_ARCHIVE_NAME = "resData";
 	public static final String DIR_FILE_NAME = "resMap";
 
@@ -89,7 +92,7 @@ public class DBConstants {
 	public static final String PROP_VALUE_PERSISTENCE_INACTIVE = "inactive";
 
 	public static final String PROP_NAME_PERSISTENCE_DEBUG = "org.ogema.persistence.debug";
-	public static final String PROP_NAME_PERSISTENCE_COMPACTION_START_SIZE_FILE = "org.ogema.persistence.compaction.start.size.file";
+	public static final String PROP_NAME_PERSISTENCE_COMPACTION_START_SIZE = "org.ogema.persistence.compaction.start.size.file";
 	public static final String PROP_NAME_PERSISTENCE_COMPACTION_START_SIZE_GARBAGE = "org.ogema.persistence.compaction.start.size.garbage";
 	public static final String PROP_NAME_TIMEDPERSISTENCE_PERIOD = "org.ogema.timedpersistence.period";
 
@@ -114,7 +117,7 @@ public class DBConstants {
 	public static Class<IntegerResource> CLASS_INT_TYPE;
 	public static Class<TimeResource> CLASS_TIME_TYPE;
 	public static Class<StringResource> CLASS_STRING_TYPE;
-	public static Class<OpaqueResource> CLASS_OPAQUE_TYPE;
+	public static Class<org.ogema.core.model.simple.OpaqueResource> CLASS_OPAQUE_TYPE;
 	public static Class<BooleanArrayResource> CLASS_BOOL_ARR_TYPE;
 	public static Class<ByteArrayResource> CLASS_BYTE_ARR_TYPE;
 	public static Class<FloatArrayResource> CLASS_FLOAT_ARR_TYPE;
@@ -136,6 +139,7 @@ public class DBConstants {
 	public static Class<int[]> CLASS_INT_ARR_VALUE;
 	public static Class<float[]> CLASS_FLOAT_ARR_VALUE;
 	public static Class<String[]> CLASS_STRING_ARR_VALUE;
+	public static Class<?> CLASS_VALUE_RESOURCE;
 
 	static {
 		try {
@@ -164,7 +168,10 @@ public class DBConstants {
 			CLASS_INT_ARR_VALUE = (Class<int[]>) Class.forName("[I");
 			CLASS_FLOAT_ARR_VALUE = (Class<float[]>) Class.forName("[F");
 			CLASS_STRING_ARR_VALUE = (Class<String[]>) Class.forName("[Ljava.lang.String;");
-		} catch (ClassNotFoundException e) {
+			CLASS_VALUE_RESOURCE = ValueResource.class;
+		} catch (ClassNotFoundException e)
+
+		{
 			throw new RuntimeException(e);
 		}
 	}

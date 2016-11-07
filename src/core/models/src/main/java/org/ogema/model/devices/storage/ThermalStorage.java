@@ -16,9 +16,7 @@
 package org.ogema.model.devices.storage;
 
 import org.ogema.core.model.ResourceList;
-import org.ogema.model.devices.connectiondevices.ThermalValve;
 import org.ogema.model.connections.ThermalConnection;
-import org.ogema.model.prototypes.Connection;
 import org.ogema.model.sensors.TemperatureSensor;
 import org.ogema.model.sensors.VolumeAccumulatedSensor;
 

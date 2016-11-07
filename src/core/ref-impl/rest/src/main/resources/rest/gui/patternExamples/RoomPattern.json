@@ -1,0 +1,23 @@
+{ 
+    "@type": "Pattern",
+    "modelClass": "org.ogema.model.locations.Room",
+    "resourceFields" : [{
+             "field": {
+                 "name": "name",
+                 "relativePath": "name",
+                 "type": "org.ogema.core.model.simple.StringResource",
+                 "optional": false,
+                 "accessMode": "READ_ONLY"
+            }   
+        },
+       {
+             "field": {
+                 "name": "roomType",
+                 "relativePath": "type",
+                 "type": "org.ogema.core.model.simple.IntegerResource",
+                 "optional": true,
+                 "accessMode": "READ_ONLY"
+            }   
+        }
+    ]
+}

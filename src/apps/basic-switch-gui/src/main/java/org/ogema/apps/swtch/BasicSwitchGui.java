@@ -92,18 +92,21 @@ public class BasicSwitchGui implements Application, ResourceValueListener<Single
         rpa.addPatternDemand(ControllableMultiPattern.class, multiListener, AccessPriority.PRIO_LOWEST);
         rpa.addPatternDemand(ThermostatPattern.class, thermoListener, AccessPriority.PRIO_LOWEST);
         
-        generateTestResource();
-        // FIXME
-        createTestThermostat();
+        Boolean testRes = Boolean.getBoolean("org.ogema.apps.createtestresources");
+        if (testRes) {
+	        generateTestResource();
+	        createTestThermostat();
+        }
 	}
 
 	@Override
 	public void stop(AppStopReason reason) {
 		am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
 		am.getWebAccessManager().unregisterWebResource(servletPath);
-		ctrl.removeValueListener(this);
 		rpa.removePatternDemand(ControllableOnOffPattern.class, deviceListener);
 		rpa.removePatternDemand(ControllableMultiPattern.class, multiListener);
+		if (ctrl != null)
+			ctrl.removeValueListener(this);
 	}
 
 	/**** generate test resources ********/
@@ -173,6 +176,7 @@ public class BasicSwitchGui implements Application, ResourceValueListener<Single
 		else if (control instanceof TemperatureResource) {
 			TemperatureResource temp = (TemperatureResource) control;
 			remoteDesiredTemp.setValue(temp.getValue());
+			
 		}
 	}
 

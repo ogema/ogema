@@ -47,7 +47,7 @@ public class PersistentConfigurationTest extends SlotsDbTest {
 		deleteTestFiles();
 
 		SlotsDb sdb = new SlotsDb();
-
+		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(INTERVAL_1);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);
@@ -66,6 +66,7 @@ public class PersistentConfigurationTest extends SlotsDbTest {
 	public void testGetAllRecordedDataStorageIDs() throws DataRecorderException {
 
 		SlotsDb sdb = new SlotsDb();
+		sdb.activate(null, null);
 		List<String> ids = sdb.getAllRecordedDataStorageIDs();
 
 		if (ids.size() != 2) {
@@ -79,6 +80,7 @@ public class PersistentConfigurationTest extends SlotsDbTest {
 	@Test
 	public void testGetRecordedDataStorage() {
 		SlotsDb sdb = new SlotsDb();
+		sdb.activate(null, null);
 		RecordedDataStorage rds = sdb.getRecordedDataStorage(TEST_ID_1);
 		RecordedDataConfiguration rdc = rds.getConfiguration();
 		Assert.assertEquals(rdc.getFixedInterval(), INTERVAL_1);
@@ -88,6 +90,7 @@ public class PersistentConfigurationTest extends SlotsDbTest {
 	public void testUpdateConfiguration() throws DataRecorderException {
 		// update config
 		SlotsDb sdb = new SlotsDb();
+		sdb.activate(null, null);
 		RecordedDataStorage rds = sdb.getRecordedDataStorage(TEST_ID_2);
 		RecordedDataConfiguration rdc = rds.getConfiguration();
 		rdc.setFixedInterval(INTERVAL_2_UPDATED);
@@ -96,6 +99,7 @@ public class PersistentConfigurationTest extends SlotsDbTest {
 
 		//read back config
 		SlotsDb sdb2 = new SlotsDb();
+		sdb2.activate(null, null);
 		RecordedDataStorage rds2 = sdb2.getRecordedDataStorage(TEST_ID_2);
 		RecordedDataConfiguration rdc2 = rds2.getConfiguration();
 		Assert.assertEquals(rdc2.getFixedInterval(), INTERVAL_2_UPDATED);

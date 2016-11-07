@@ -1,0 +1,41 @@
+{ 
+    "@type": "Pattern",
+    "modelClass": "org.ogema.model.devices.sensoractordevices.SingleSwitchBox",
+    "resourceFields" : [{
+             "field": {
+                 "name": "onOffSwitch",
+                 "relativePath": "onOffSwitch",
+                 "type": "org.ogema.model.actors.OnOffSwitch",
+                 "optional": false,
+                 "accessMode": "READ_ONLY"
+            }   
+        },
+       {
+             "field": {
+                 "name": "stateControl",
+                 "relativePath": "onOffSwitch/stateControl",
+                 "type": "org.ogema.core.model.simple.BooleanResource",
+                 "optional": false,
+                 "accessMode": "SHARED"
+            }   
+        },
+       {
+             "field": {
+                 "name": "stateFeedback",
+                 "relativePath": "onOffSwitch/stateFeedback",
+                 "type": "org.ogema.core.model.simple.BooleanResource",
+                 "optional": true,
+                 "accessMode": "READ_ONLY"
+            }   
+        },
+       {
+             "field": {
+                 "name": "power",
+                 "relativePath": "electricityConnection/powerSensor/reading",
+                 "type": "org.ogema.core.model.units.PowerResource",
+                 "optional": true,
+                 "accessMode": "READ_ONLY"
+            }   
+        }
+    ]
+}

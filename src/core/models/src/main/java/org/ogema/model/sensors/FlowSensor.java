@@ -24,6 +24,7 @@ import org.ogema.model.targetranges.FlowTargetRange;
  * Flow sensor
  */
 public interface FlowSensor extends GenericFloatSensor {
+	
 	@NonPersistent
 	@Override
 	FlowResource reading();

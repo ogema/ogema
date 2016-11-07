@@ -15,20 +15,23 @@
  */
 package org.ogema.impl.security;
 
+import java.io.IOException;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Dictionary;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.AppPermissionFilter;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.UserRightsProxy;
 import org.ogema.accesscontrol.WebAccessPermission;
+import org.ogema.applicationregistry.ApplicationRegistry;
 import org.ogema.core.administration.AdminApplication;
+import org.ogema.core.administration.CredentialStore;
 import org.ogema.core.application.AppID;
 import org.ogema.core.security.AppPermission;
 import org.ogema.staticpolicy.StaticPolicies;
@@ -85,13 +88,6 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	static final String GUEST_NAME = "guest";
 	private static final String REST_NAME = "rest";
 
-	private static final String ADMIN_DEFAULT_PASSWORD = "master";
-
-	private static final String GUEST_DEFAULT_PASSWORD = "guest";
-
-	private static final String REST_DEFAULT_PASSWORD = "rest";
-
-	static final String PASSWORD_NAME = "password";
 	static final String OGEMA_ROLE_NAME = "ogemaRole";
 
 	static final String OGEMA_NATURAL_USER = "naturalUser";
@@ -100,9 +96,6 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	static final String OGEMA_RESOURCES = "resourcesGroup";
 
 	UserAdmin usrAdmin;
-	User admin, guest;
-	// TODO Does it make sense to have these roles for better performance?
-	Group allApps, noApps, allResources;
 
 	private BundleContext osgi;
 
@@ -113,21 +106,23 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 
 	private ServiceTracker<UserRightsProxy, UserRightsProxy> urpTracker;
 
-	HashMap<String, UserRightsProxy> urpMap;
-	PermissionManager permMan;
+	final ConcurrentHashMap<String, UserRightsProxy> urpMap;
+	final PermissionManager permMan;
+	final ApplicationRegistry appReg;
+	final CredentialStore cStore;
 
-	static final String WEB_ACCESS_PERMISSION_CLASS = WebAccessPermission.class.getName();
-
-	public AccessManagerImpl() {
-	}
+	static final String WEB_ACCESS_PERMISSION_CLASS_NAME = WebAccessPermission.class.getName();
 
 	@SuppressWarnings("unchecked")
 	// no generics in UserAdmin
-	AccessManagerImpl(UserAdmin ua, BundleContext osgi, PermissionManager pm) {
+	AccessManagerImpl(UserAdmin ua, BundleContext osgi, CredentialStore cs, PermissionManager pm,
+			StaticPolicies stPol) {
+		this.cStore = cs;
 		this.usrAdmin = ua;
 		this.osgi = osgi;
-		this.urpMap = new HashMap<>();
+		this.urpMap = new ConcurrentHashMap<>();
 		this.permMan = pm;
+		this.appReg = permMan.getApplicationRegistry();
 
 		Dictionary<String, Object> dict = null;
 		Role role = ua.getRole(ALLAPPS);
@@ -136,7 +131,6 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 			dict = role.getProperties();
 			dict.put(OGEMA_ROLE_NAME, OGEMA_APPLICATION);
 		}
-		this.allApps = (Group) role;
 
 		role = ua.getRole(NOAPPS);
 		if (role == null) {
@@ -144,7 +138,6 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 			dict = role.getProperties();
 			dict.put(OGEMA_ROLE_NAME, OGEMA_APPLICATION);
 		}
-		this.noApps = (Group) role;
 
 		role = ua.getRole(ALLRESOURCES);
 		if (role == null) {
@@ -152,50 +145,37 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 			dict = role.getProperties();
 			dict.put(OGEMA_ROLE_NAME, OGEMA_RESOURCES);
 		}
-		this.allResources = (Group) role;
 
 		initURPTracker();
 		/*
 		 * Create the statically configured users and their roles
 		 */
-		StaticPolicies stPol;
-		ServiceReference<?> sRef = osgi.getServiceReference(StaticPolicies.class);
-		if (sRef != null) {
-			stPol = (StaticPolicies) osgi.getService(sRef);
-			List<StaticUser> users = stPol.getUsers();
-			if (users != null) // if users is null non-clean start is performed, so no new users are to be created.
-				for (StaticUser user : users) {
-					String name = user.getName();
-					boolean natural = user.isNatural();
-					if (createUser(name, natural))
-						setCredential(name, PASSWORD_NAME, name);
-				}
-		}
+		// StaticPolicies stPol;
+		// ServiceReference<?> sRef = osgi.getServiceReference(StaticPolicies.class);
+		// if (sRef != null) {
+		// stPol = (StaticPolicies) osgi.getService(sRef);
+		List<StaticUser> users = stPol.getUsers();
+		if (users != null) // if users is null non-clean start is performed, so no new users are to be created.
+			for (StaticUser user : users) {
+				String name = user.getName();
+				boolean natural = user.isNatural();
+				createUser(name, name, natural);
+			}
+		// }
 		/*
 		 * Create standard user admin
 		 */
-		if (createUser(ADMIN_NAME, true))
-			setCredential(ADMIN_NAME, PASSWORD_NAME, ADMIN_DEFAULT_PASSWORD);
-		this.admin = getUser(ADMIN_NAME);
-		// Set the admin user as a member of ALLAPPS
-		allApps.addMember(this.admin);
-		// Set the admin user as a member of ALLRESOURCES
-		allResources.addMember(this.admin);
+		createUser(ADMIN_NAME, ADMIN_NAME, true);
 
 		/*
 		 * Create standard user guest
 		 */
-		if (createUser(GUEST_NAME, true))
-			setCredential(GUEST_NAME, PASSWORD_NAME, GUEST_DEFAULT_PASSWORD);
-		this.guest = getUser(GUEST_NAME);
-		// Set the guest user as a member of NOAPPS
-		noApps.addMember(this.guest);
+		createUser(GUEST_NAME, GUEST_NAME, true);
 
 		/*
 		 * Create standard rest user
 		 */
-		if (createUser(REST_NAME, false))
-			setCredential(REST_NAME, PASSWORD_NAME, REST_DEFAULT_PASSWORD);
+		createUser(REST_NAME, REST_NAME, false);
 
 		if (Configuration.DEBUG) {
 			try {
@@ -222,6 +202,13 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	void close() {
+		if (urpTracker != null)
+			urpTracker.close();
+		urpTracker = null;
+		urpMap.clear();
 	}
 
 	private void initURPTracker() {
@@ -273,36 +260,50 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	 * @return true, if a new user was created successfully or false if the user already exist or the creation failed.
 	 */
 	@Override
-	public boolean createUser(final String user, final boolean natural) {
-		Role role = usrAdmin.getRole(user);
-		if (role == null) {
-			Bundle b = AccessController.doPrivileged(new PrivilegedAction<Bundle>() {
-				public Bundle run() {
-					Bundle result = installURPBundle(user);
+	public boolean createUser(final String user, final String pwd, final boolean natural) {
+
+		Bundle b = AccessController.doPrivileged(new PrivilegedAction<Bundle>() {
+			public Bundle run() {
+				Role role = usrAdmin.getRole(user);
+				Bundle result = null;
+				if (role == null) {
+					role = usrAdmin.createRole(user, Role.USER);
+					// add to credential store
+					try {
+						cStore.createUser(user, pwd, null, null);
+					} catch (IOException e) {
+						logger.error("Credential store reported exception during user crreation. User is not crated.",
+								e);
+						usrAdmin.removeRole(user);
+						return null;
+					}
+
+					@SuppressWarnings("unchecked")
+					Dictionary<String, Object> dict = role.getProperties();
+					if (natural)
+						dict.put(OGEMA_ROLE_NAME, OGEMA_NATURAL_USER);
+					else
+						dict.put(OGEMA_ROLE_NAME, OGEMA_MACHINE_USER);
+				}
+				if (role != null) {
+					UserRightsProxy urp = urpMap.get(user);
+					if (urp == null)
+						result = installURPBundle(user);
 					if (result != null) {
-						Role r = usrAdmin.createRole(user, Role.USER);
 						@SuppressWarnings("unchecked")
-						Dictionary<String, Object> dict = r.getProperties();
-						if (natural)
-							dict.put(OGEMA_ROLE_NAME, OGEMA_NATURAL_USER);
-						else
-							dict.put(OGEMA_ROLE_NAME, OGEMA_MACHINE_USER);
+						Dictionary<String, Object> dict = role.getProperties();
 						dict.put(USER_URP_ID_NAME, Long.toString(result.getBundleId()));
 					}
 					else
-						logger.info("User couldn't be created.");
-					return result;
+						logger.info("User couldn't be created due to failure of URP bundle installation.");
 				}
-			});
-			if (b == null)
-				return false;
-			else
-				return true;
-		}
-		else if (Configuration.DEBUG) {
-			logger.debug("User already exist: " + user);
-		}
-		return false;
+				return result;
+			}
+		});
+		if (b == null)
+			return false;
+		else
+			return true;
 	}
 
 	private Bundle installURPBundle(String userName) {
@@ -328,16 +329,18 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 		boolean b = usrAdmin.removeRole(userName);
 		if (!b && Configuration.DEBUG)
 			logger.debug("User couldn't be removed: " + userName);
+		cStore.logout(userName);
+		cStore.removeUser(userName);
 	}
 
 	@Override
 	public void addPermission(String user, AppPermissionFilter props) {
 		UserRightsProxy urp = urpMap.get(user);
 		if (urp == null)
-			throw new RuntimeException(String.format(
-					"User rights proxy installation for the user %s not yet completed.", user));
+			throw new RuntimeException(
+					String.format("User rights proxy installation for the user %s not yet completed.", user));
 		Bundle b = urp.getBundle();
-		AppID appid = permMan.getAdminManager().getAppByBundle(b);
+		AppID appid = appReg.getAppByBundle(b);
 
 		addPerm(appid, props);
 	}
@@ -346,7 +349,7 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	public void addPermission(String user, List<AppPermissionFilter> props) {
 		UserRightsProxy urp = urpMap.get(user);
 		Bundle b = urp.getBundle();
-		AppID appid = permMan.getAdminManager().getAppByBundle(b);
+		AppID appid = appReg.getAppByBundle(b);
 
 		addPermList(appid, props);
 	}
@@ -361,7 +364,7 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 			if (args[0] == null)
 				args[0] = "*";
 			{
-				ap.addPermission(WEB_ACCESS_PERMISSION_CLASS, args, null);
+				ap.addPermission(WEB_ACCESS_PERMISSION_CLASS_NAME, args, null);
 			}
 		}
 		// To commit the made changes the following is needed.
@@ -378,7 +381,7 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 
 		AppPermission ap = permMan.getPolicies(appid);
 		{
-			ap.addPermission(WEB_ACCESS_PERMISSION_CLASS, args, null);
+			ap.addPermission(WEB_ACCESS_PERMISSION_CLASS_NAME, args, null);
 		}
 		// To commit the made changes the following is needed.
 		permMan.installPerms(ap);
@@ -386,40 +389,14 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	}
 
 	@Override
-	public void setNewPassword(String user, final String newPassword) {
-		Role role = usrAdmin.getRole(user);
-		final User usr = (User) role;
-
-		if (role == null) {
-			throw new IllegalArgumentException("User doesn't exist: " + user);
-		}
-		else {
-			// Set users default password
-			Boolean hasCred = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
-				@Override
-				public Boolean run() {
-					@SuppressWarnings("unchecked")
-					Dictionary<String, Object> dict = usr.getCredentials();
-					dict.put(PASSWORD_NAME, newPassword);
-					return usr.hasCredential(PASSWORD_NAME, newPassword);
-				}
-			});
-
-			if (hasCred) {
-				if (Configuration.DEBUG)
-					logger.debug("Set new password succeeded.");
-			}
-			else {
-				if (Configuration.DEBUG)
-					logger.debug("Set new password failed.");
-			}
-		}
+	public void setNewPassword(String user, String oldPwd, String newPwd) {
+		cStore.setGWPassword(user, oldPwd, newPwd);
 	}
 
 	@Override
-	public User getUser(String userName) {
-		User usr = (User) usrAdmin.getRole(userName);
-		return usr;
+	public Role getRole(String name) {
+		Role r = usrAdmin.getRole(name);
+		return r;
 	}
 
 	@Override
@@ -445,7 +422,7 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 		/*
 		 * Get the all groups that represent installed apps
 		 */
-		List<AdminApplication> laa = permMan.getAdminManager().getAllApps();
+		List<AdminApplication> laa = appReg.getAllApps();
 
 		for (AdminApplication aa : laa) {
 			AppID id = aa.getID();
@@ -476,38 +453,27 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 			logger.error("Unknown user " + username);
 			return false;
 		}
-		Bundle userBundle = urp.getBundle();
 		AccessControlContext acc = permMan.getBundleAccessControlContext(urp.getClass());
 		return permMan.handleSecurity(wap, acc);
 	}
 
 	@Override
-	public boolean authenticate(String userName, final String password, boolean isnatural) {
-		if (!permMan.isSecure())
-			return true;
-		Role role = usrAdmin.getRole(userName);
-		if (role == null)
+	public boolean authenticate(String usrName, final String pwd, boolean isnatural) {
+		// not compatible with user management in CredentialStore
+		// if (!permMan.isSecure())
+		// return true;
+		boolean userProp = isNatural(usrName);
+		if (permMan.isSecure() && (isnatural && !userProp) || (!isnatural && userProp))
 			return false;
-		final User admin = (User) role;
-		Boolean hasCred = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
-			public Boolean run() {
-				return admin.hasCredential(PASSWORD_NAME, password);
-			}
-		});
-		if (!hasCred)
-			return false;
-		boolean userProp = isNatural(userName);
-		if ((isnatural && !userProp) || (!isnatural && userProp))
-			return false;
-		return true;
+		return cStore.login(usrName, pwd);
 	}
 
 	@Override
 	public void removePermission(String user, AppPermissionFilter props) {
 		Bundle urpbundle = urpMap.get(user).getBundle();
-		AppID urpapp = permMan.getAdminManager().getAppByBundle(urpbundle);
+		AppID urpapp = appReg.getAppByBundle(urpbundle);
 
-		permMan.removePermission(urpapp.getBundle(), WEB_ACCESS_PERMISSION_CLASS, props.getFilterString(), null);
+		permMan.removePermission(urpapp.getBundle(), WEB_ACCESS_PERMISSION_CLASS_NAME, props.getFilterString(), null);
 	}
 
 	@Override
@@ -527,33 +493,8 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 				logger.debug("User credential is set correctly");
 	}
 
-	// @Override
-	// public boolean checkPermission(String userName, AppPermissionFilter appprops) {
-	//
-	// User user = (User) usrAdmin.getRole(userName);
-	// // Is NO_APPS permitted?
-	// Authorization auth = usrAdmin.getAuthorization(user);
-	// if (auth.hasRole(NOAPPS))
-	// return false;
-	// // Is the permission granted explicitly for ALL_APPS
-	// if (auth.hasRole(ALLAPPS))
-	// return true;
-	// // Is the permission granted explicitly for this app
-	// if (auth.hasRole(roleName))
-	// return true;
-	// else
-	// return false;
-	// }
-
 	@Override
 	public void registerApp(AppID id) {
-		// Role r = usrAdmin.getRole(id.getIDString());
-		// if (r == null) {
-		// r = usrAdmin.createRole(id.getIDString(), Role.GROUP);
-		// }
-		// @SuppressWarnings("unchecked")
-		// Dictionary<String, Object> dict = r.getProperties();
-		// dict.put(OGEMA_ROLE_NAME, OGEMA_APPLICATION);
 	}
 
 	@Override
@@ -564,7 +505,7 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	public AppPermission getPolicies(String user) {
 		AppPermission ap;
 		UserRightsProxy urp = urpMap.get(user);
-		AppID appid = permMan.getAdminManager().getAppByBundle(urp.getBundle());
+		AppID appid = appReg.getAppByBundle(urp.getBundle());
 		ap = permMan.getPolicies(appid);
 		return ap;
 	}
@@ -572,6 +513,8 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	@Override
 	public void setProperty(String user, String propName, String propValue) {
 		Role role = usrAdmin.getRole(user);
+		if (role == null)
+			return;
 		@SuppressWarnings("unchecked")
 		Dictionary<String, Object> dict = role.getProperties();
 		dict.put(propName, propValue);
@@ -580,6 +523,8 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 	@Override
 	public String getProperty(String user, String propName) {
 		Role role = usrAdmin.getRole(user);
+		if (role == null)
+			return null;
 		@SuppressWarnings("unchecked")
 		Dictionary<String, Object> dict = role.getProperties();
 		return (String) dict.get(propName);
@@ -587,7 +532,11 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 
 	@Override
 	public boolean isNatural(String user) {
-		return getProperty(user, OGEMA_ROLE_NAME).equals(OGEMA_NATURAL_USER);
+		Role r = getRole(user);
+		if (r == null)
+			throw new RuntimeException(String.format("User %s doesn't exist!", user));
+		String userType = getProperty(user, OGEMA_ROLE_NAME);
+		return userType.equals(OGEMA_NATURAL_USER);
 	}
 
 	/*
@@ -598,7 +547,7 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 		if (event.getType() != BundleEvent.UNINSTALLED)
 			return;
 		Bundle b = event.getBundle();
-		AppID appid = permMan.getAdminManager().getAppByBundle(b);
+		AppID appid = appReg.getAppByBundle(b);
 		if (appid != null)
 			usrAdmin.removeRole(appid.getIDString());
 	}
@@ -619,5 +568,19 @@ public class AccessManagerImpl implements AccessManager, BundleListener {
 			return false;
 		Authorization auth = usrAdmin.getAuthorization(usr);
 		return auth.hasRole(NOAPPS);
+	}
+
+	@Override
+	public Group createGroup(String name) {
+		Role role = usrAdmin.getRole(name);
+		if (role == null) {
+			role = usrAdmin.createRole(name, Role.GROUP);
+		}
+		return (Group) role;
+	}
+
+	@Override
+	public void logout(String usrName) {
+		cStore.logout(usrName);
 	}
 }

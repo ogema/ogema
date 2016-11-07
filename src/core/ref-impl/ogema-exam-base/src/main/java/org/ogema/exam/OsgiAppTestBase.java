@@ -29,6 +29,8 @@ import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
+import org.ogema.core.logging.LogLevel;
+import org.ogema.core.logging.LogOutput;
 import org.ops4j.pax.exam.Configuration;
 import org.ops4j.pax.exam.CoreOptions;
 import org.ops4j.pax.exam.MavenUtils;
@@ -53,9 +55,9 @@ public abstract class OsgiAppTestBase {
 	private volatile ApplicationManager appMan;
 	private ServiceRegistration<Application> registration;
 
-	String ogemaVersion = MavenUtils.asInProject().getVersion("org.ogema.core", "api");
+	protected final String ogemaVersion = MavenUtils.asInProject().getVersion("org.ogema.core", "api");
 
-	protected int HTTP_PORT = 4712;
+	protected static int HTTP_PORT = 4712;
 	protected final boolean includeTestBundle;
 
 	static final AtomicInteger resourceCounter = new AtomicInteger(0);
@@ -74,59 +76,64 @@ public abstract class OsgiAppTestBase {
 
 	@Configuration
 	public Option[] config() {
-		return new Option[] {
-				CoreOptions.systemProperty("ogema.resources.useByteCodeGeneration").value("true"),
+		return new Option[] { CoreOptions.systemProperty("ogema.resources.useByteCodeGeneration").value("true"),
 				CoreOptions.frameworkProperty("osgi.console").value("true"),
 				CoreOptions.frameworkProperty("osgi.console.enable.builtin").value("true"),
 				CoreOptions.frameworkProperty("org.osgi.service.http.port").value(Integer.toString(HTTP_PORT)),
 				CoreOptions.frameworkProperty("org.osgi.framework.bsnversion").value("multiple"),
-				CoreOptions.systemProperty("org.ogema.security").value("on"),
+				// CoreOptions.systemProperty("org.ogema.security").value("on"),
 				CoreOptions.junitBundles(),
 				// load the bundle of the extending class directly from maven build dir:
-				CoreOptions.when(includeTestBundle).useOptions(
-						CoreOptions.bundle("reference:file:target/classes/").start()),
+				CoreOptions.when(includeTestBundle)
+						.useOptions(CoreOptions.bundle("reference:file:target/classes/").start()),
 				CoreOptions.composite(frameworkBundles()),
-		// ogemaWebFrontentOption(),
-		// wicketGuiOption(),
-		// webConsoleOption(),
-		// felixGogoShellOption(),
+				// ogemaWebFrontentOption(),
+				// wicketGuiOption(),
+				// webConsoleOption(),
+				// felixGogoShellOption(),
 		};
 	}
 
 	public Option[] frameworkBundles() {
 		return new Option[] {
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.framework.security", "2.2.0").noStart(),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.framework.security", "2.4.0").start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "permission-admin").version(ogemaVersion).startLevel(1)
 						.start(),
 
 				CoreOptions.mavenBundle("org.ops4j.pax.exam", "pax-exam-junit4", "4.6.0").start(),
 
-				CoreOptions.mavenBundle("org.ow2.asm", "asm-all", "5.0.3").start(),
+				CoreOptions.mavenBundle("org.ow2.asm", "asm-all", "5.1").start(),
 
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.scr", "1.6.2").start(),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.eventadmin", "1.3.2").start(),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.scr", "1.8.2").start(),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.eventadmin", "1.4.6").start(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin.filestore", "1.0.2").start(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin", "1.0.3").start(),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.configadmin", "1.6.0").start(),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.api", "2.3.0").start(),
+				// not using latest version 1.8.8, since it causes problems with security
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.configadmin", "1.6.0").start(), 
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.api", "2.3.2").start(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.jetty", "3.0.2").start(),
+                CoreOptions.mavenBundle("org.eclipse.jetty", "jetty-servlets", "9.2.11.v20150529"),
+                CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.whiteboard", "2.3.2"),
 				CoreOptions.mavenBundle("javax.servlet", "javax.servlet-api", "3.1.0"),
-				CoreOptions.mavenBundle("org.eclipse.jetty", "jetty-servlets", "9.2.11.v20150529"),
 
-				CoreOptions.mavenBundle("org.slf4j", "slf4j-api", "1.7.2"),
-				CoreOptions.mavenBundle("joda-time", "joda-time", "2.2"),
+				CoreOptions.mavenBundle("org.slf4j", "slf4j-api", "1.7.21"),
+				CoreOptions.mavenBundle("joda-time", "joda-time", "2.9.3"),
 
 				// jackson (for serialization manager) -->
-				CoreOptions.mavenBundle("org.codehaus.jackson", "jackson-core-lgpl", "1.9.13"),
-				CoreOptions.mavenBundle("org.codehaus.jackson", "jackson-mapper-lgpl", "1.9.13"),
-				CoreOptions.mavenBundle("org.codehaus.jackson", "jackson-xc", "1.9.11"),
+				CoreOptions.mavenBundle("com.fasterxml.jackson.core", "jackson-core", "2.7.4"),
+				CoreOptions.mavenBundle("com.fasterxml.jackson.core", "jackson-annotations", "2.7.4"),
+				CoreOptions.mavenBundle("com.fasterxml.jackson.core", "jackson-databind", "2.7.4"),
+				CoreOptions.mavenBundle("com.fasterxml.jackson.module", "jackson-module-jaxb-annotations", "2.7.4"),
 				// <-- jackson
 
 				// apache commons (for recordeddata-storage and framework-administration)-->
-				CoreOptions.mavenBundle("org.apache.commons", "commons-math3", "3.3"),
-				CoreOptions.mavenBundle("commons-io", "commons-io", "2.4"),
-				CoreOptions.mavenBundle("commons-codec", "commons-codec", "1.9"),
+				CoreOptions.mavenBundle("org.apache.commons", "commons-math3", "3.6.1"),
+				CoreOptions.mavenBundle("commons-io", "commons-io", "2.5"),
+				CoreOptions.mavenBundle("commons-codec", "commons-codec", "1.10"),
+				CoreOptions.mavenBundle("org.json", "json", "20160212"),
 				// <-- apache commons
+                
+                CoreOptions.mavenBundle("com.google.guava", "guava", "19.0"),
 
 				CoreOptions.mavenBundle("org.ogema.core", "models").version(ogemaVersion).startLevel(1).start(),
 				CoreOptions.mavenBundle("org.ogema.core", "api").version(ogemaVersion).startLevel(1).start(),
@@ -134,6 +141,7 @@ public abstract class OsgiAppTestBase {
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "administration").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "ogema-exam-base").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "internal-api").version(ogemaVersion).start(),
+				CoreOptions.mavenBundle("org.ogema.ref-impl", "non-secure-apploader").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "ogema-logger").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "app-manager").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "resource-manager").version(ogemaVersion).start(),
@@ -144,45 +152,55 @@ public abstract class OsgiAppTestBase {
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "hardware-manager").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "recordeddata-slotsdb").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "util").version(ogemaVersion).start(),
-				CoreOptions.mavenBundle("org.ogema.ref-impl", "rest").version(ogemaVersion).start(), };
+				CoreOptions.mavenBundle("org.ogema.ref-impl", "rest").version(ogemaVersion).start(),
+				CoreOptions.mavenBundle("org.ogema.tools", "resource-utils").version(ogemaVersion).start(), };
 	}
 
 	public Option wicketGuiOption() {
-		return CoreOptions.composite(CoreOptions.mavenBundle("org.apache.servicemix.bundles",
-				"org.apache.servicemix.bundles.cglib", "2.2_2").start(), CoreOptions.mavenBundle(
-				"org.apache.servicemix.bundles", "org.apache.servicemix.bundles.javax-inject", "1_1").start(),
-				CoreOptions.mavenBundle("org.apache.wicket", "wicket-util", "6.11.0"), CoreOptions.mavenBundle(
-						"org.apache.wicket", "wicket-request", "6.11.0"), CoreOptions.mavenBundle("org.apache.wicket",
-						"wicket-core", "6.11.0"), CoreOptions.mavenBundle("org.ogema.service", "ogema-gui").version(
-						ogemaVersion).start());
+		return CoreOptions.composite(
+				CoreOptions.mavenBundle("org.apache.servicemix.bundles", "org.apache.servicemix.bundles.cglib", "2.2_2")
+						.start(),
+				CoreOptions.mavenBundle("org.apache.servicemix.bundles", "org.apache.servicemix.bundles.javax-inject",
+						"1_1").start(),
+				CoreOptions.mavenBundle("org.apache.wicket", "wicket-util", "6.23.0"),
+				CoreOptions.mavenBundle("org.apache.wicket", "wicket-request", "6.23.0"),
+				CoreOptions.mavenBundle("org.apache.wicket", "wicket-core", "6.23.0"),
+				CoreOptions.mavenBundle("org.ogema.tools", "wicket-gui").version(ogemaVersion),
+				CoreOptions.mavenBundle("org.ogema.tools", "wicket-gui-impl").version(ogemaVersion).start());
 	}
 
 	/**
 	 * return composite Option containing bundles for felix webconsole
 	 */
 	public Option webConsoleOption() {
-		return CoreOptions.composite(CoreOptions
-				.mavenBundle("org.apache.felix", "org.apache.felix.webconsole", "4.2.0"), CoreOptions.mavenBundle(
-				"org.apache.servicemix.bundles", "org.apache.servicemix.bundles.commons-io", "1.4_3"), CoreOptions
-				.mavenBundle("org.apache.felix", "org.apache.felix.webconsole.plugins.event", "1.0.2"), CoreOptions
-				.mavenBundle("org.apache.felix", "org.apache.felix.webconsole.plugins.ds", "1.0.0"), CoreOptions
-				.mavenBundle("de.twentyeleven.skysail", "org.json-osgi", "20080701"), CoreOptions.mavenBundle(
-				"commons-fileupload", "commons-fileupload", "1.3.1"), CoreOptions.mavenBundle("org.apache.felix",
-				"org.apache.felix.webconsole.plugins.obr", "1.0.0"), CoreOptions.mavenBundle("org.apache.felix",
-				"org.apache.felix.webconsole.plugins.memoryusage", "1.0.4"));
+		return CoreOptions.composite(
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.webconsole", "4.2.14"),
+				CoreOptions.mavenBundle("org.apache.servicemix.bundles", "org.apache.servicemix.bundles.commons-io",
+						"1.4_3"),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.webconsole.plugins.event", "1.1.4"),
+				// CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.inventory", "1.0.4"), // required with
+				// newer version of plugins.ds
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.webconsole.plugins.ds", "1.0.0"),
+				CoreOptions.mavenBundle("commons-fileupload", "commons-fileupload", "1.3.1"),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.webconsole.plugins.obr", "1.0.2"),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.webconsole.plugins.memoryusage",
+						"1.0.6"));
 	}
 
 	public Option felixGogoShellOption() {
-		return CoreOptions.composite(CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.runtime",
-				"0.10.0"), CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.shell", "0.10.0"),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.command", "0.12.0"));
+		return CoreOptions.composite(
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.runtime", "0.16.2"),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.shell", "0.12.0"),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.command", "0.16.0"));
 	}
 
 	public Option ogemaWebFrontentOption() {
-		return CoreOptions.composite(CoreOptions.mavenBundle("de.twentyeleven.skysail", "org.json-osgi", "20080701"),
-				CoreOptions.mavenBundle("commons-fileupload", "commons-fileupload", "1.3.1"), CoreOptions.mavenBundle(
-						"org.ogema.ref-impl", "framework-administration").version(ogemaVersion).start(), CoreOptions
-						.mavenBundle("commons-codec", "commons-codec").version("1.9").start());
+		return CoreOptions.composite(
+				// CoreOptions.mavenBundle("de.twentyeleven.skysail", "org.json-osgi", "20080701"),
+//				CoreOptions.mavenBundle("org.json", "json", "20160212"),
+				CoreOptions.mavenBundle("commons-fileupload", "commons-fileupload", "1.3.1"),
+				CoreOptions.mavenBundle("org.ogema.ref-impl", "framework-administration").version(ogemaVersion).start());
+//				CoreOptions.mavenBundle("commons-codec", "commons-codec").version("1.10").start());
 	}
 
 	protected Application app = new Application() {
@@ -198,6 +216,7 @@ public abstract class OsgiAppTestBase {
 		public void stop(AppStopReason whatever) {
 			doStop();
 			stopLatch.countDown();
+			appMan = null;
 		}
 	};
 
@@ -239,6 +258,7 @@ public abstract class OsgiAppTestBase {
 		registration = ctx.registerService(Application.class, app, null);
 		assertTrue("app not started", startLatch.await(3, TimeUnit.SECONDS));
 		assertNotNull(appMan);
+        appMan.getLogger().setMaximumLogLevel(LogOutput.CONSOLE, LogLevel.TRACE);
 		doBefore();
 	}
 
@@ -246,6 +266,7 @@ public abstract class OsgiAppTestBase {
 	public void after() throws InterruptedException {
 		doAfter();
 		registration.unregister();
+		registration = null;
 		assertTrue("app not stopped", stopLatch.await(3, TimeUnit.SECONDS));
 	}
 }

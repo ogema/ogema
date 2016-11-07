@@ -27,21 +27,29 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
-import org.ogema.core.channelmanager.driverspi.ChannelDriver;
+import org.ogema.core.administration.FrameworkClock;
 import org.ogema.core.recordeddata.RecordedDataConfiguration;
 import org.ogema.recordeddata.DataRecorder;
 import org.ogema.recordeddata.DataRecorderException;
 import org.ogema.recordeddata.RecordedDataStorage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.osgi.framework.BundleContext;
 
+/*
+ * Timers: 
+ * Whereas the timers responsible for removing old or bulky log data,
+ * and for flushing, run on system time, the criterion when to remove 
+ * old data is based on framework time.
+ */
 @Component(immediate = true)
 @Service(DataRecorder.class)
 public class SlotsDb implements DataRecorder {
 
-	private final static Logger logger = LoggerFactory.getLogger(SlotsDb.class);
+//	private final static Logger logger = LoggerFactory.getLogger(SlotsDb.class);
 
 	/*
 	 * File extension for SlotsDB files. Only these Files will be loaded.
@@ -114,20 +122,34 @@ public class SlotsDb implements DataRecorder {
 	 */
 	public static int DATA_EXPIRATION_CHECK_INTERVAL = 5000;
 
-	final FileObjectProxy proxy;
-	private Map<String, SlotsDbStorage> slotsDbStorages = new HashMap<String, SlotsDbStorage>();
+	FileObjectProxy proxy; // quasi-final
+	private final Map<String, SlotsDbStorage> slotsDbStorages = new HashMap<String, SlotsDbStorage>();
+	
+	@Reference
+	FrameworkClock clock;  
 
-	public SlotsDb() {
+//	public SlotsDb() {
+	@Activate
+    protected synchronized void activate(BundleContext ctx, Map<String, Object> config) {
 		if (DB_ROOT_FOLDER == null) {
-			proxy = new FileObjectProxy(DEFAULT_DB_ROOT_FOLDER);
+			proxy = new FileObjectProxy(DEFAULT_DB_ROOT_FOLDER, clock);
 		}
 		else {
-			proxy = new FileObjectProxy(DB_ROOT_FOLDER);
+			proxy = new FileObjectProxy(DB_ROOT_FOLDER, clock);
 		}
-
 		readPersistedSlotsDbStorages();
 	}
 
+	@Deactivate
+	protected synchronized void deactivate(Map<String, Object> config) {
+		if (proxy != null)
+			proxy.close();
+		proxy = null;
+		synchronized (slotsDbStorages) {
+			slotsDbStorages.clear();
+		}
+	}
+	
 	/**
 	 * Persist the all SlotsDbStorage objects
 	 */
@@ -135,9 +157,11 @@ public class SlotsDb implements DataRecorder {
 
 		Map<String, RecordedDataConfiguration> configurations = new HashMap<String, RecordedDataConfiguration>();
 
-		for (Iterator<String> iterator = slotsDbStorages.keySet().iterator(); iterator.hasNext();) {
-			String id = iterator.next();
-			configurations.put(id, slotsDbStorages.get(id).getConfiguration());
+		synchronized (slotsDbStorages) {
+			for (Iterator<String> iterator = slotsDbStorages.keySet().iterator(); iterator.hasNext();) {
+				String id = iterator.next();
+				configurations.put(id, slotsDbStorages.get(id).getConfiguration());
+			}
 		}
 
 		ObjectOutputStream oos = null;
@@ -173,9 +197,11 @@ public class SlotsDb implements DataRecorder {
 				ois = new ObjectInputStream(new FileInputStream(SLOTS_DB_STORAGE_ID_PATH));
 
 				configurations = (Map<String, RecordedDataConfiguration>) ois.readObject();
-				for (Iterator<String> iterator = configurations.keySet().iterator(); iterator.hasNext();) {
-					String id = iterator.next();
-					slotsDbStorages.put(id, new SlotsDbStorage(id, configurations.get(id), this));
+				synchronized (slotsDbStorages) {
+					for (Iterator<String> iterator = configurations.keySet().iterator(); iterator.hasNext();) {
+						String id = iterator.next();
+						slotsDbStorages.put(id, new SlotsDbStorage(id, configurations.get(id), this));
+					}
 				}
 
 			} catch (Exception e) {
@@ -191,43 +217,49 @@ public class SlotsDb implements DataRecorder {
 		}
 	}
 
+	// FIXME
+	// caller must synchronize -> not any more
 	@Override
 	public RecordedDataStorage createRecordedDataStorage(String id, RecordedDataConfiguration configuration)
 			throws DataRecorderException {
-
-		if (slotsDbStorages.containsKey(id)) {
-			throw new DataRecorderException("Storage with given ID exists already");
+		SlotsDbStorage storage;
+		synchronized (slotsDbStorages) {
+			if (slotsDbStorages.containsKey(id)) {
+				throw new DataRecorderException("Storage with given ID exists already");
+			}
+	
+			storage = new SlotsDbStorage(id, configuration, this);
+			slotsDbStorages.put(id, storage);
 		}
-
-		SlotsDbStorage storage = new SlotsDbStorage(id, configuration, this);
-		slotsDbStorages.put(id, storage);
 		persistSlotsDbStorages();
-
 		return storage;
 	}
 
 	@Override
 	public RecordedDataStorage getRecordedDataStorage(String recDataID) {
-		return slotsDbStorages.get(recDataID);
+		synchronized (slotsDbStorages) {
+			return slotsDbStorages.get(recDataID);
+		}
 	}
 
 	@Override
 	public boolean deleteRecordedDataStorage(String id) {
-
-		if (slotsDbStorages.remove(id) == null) {
-			return false;
+		synchronized (slotsDbStorages) {
+			if (slotsDbStorages.remove(id) == null) {
+				return false;
+			}
 		}
-		else {
-			persistSlotsDbStorages();
-			return true;
-		}
+		persistSlotsDbStorages();
+		return true;
 	}
 
 	@Override
 	public List<String> getAllRecordedDataStorageIDs() {
 		List<String> ids = new ArrayList<String>();
-		for (Iterator<String> iterator = slotsDbStorages.keySet().iterator(); iterator.hasNext();) {
-			ids.add(iterator.next());
+		synchronized (slotsDbStorages) {
+			for (Iterator<String> iterator = slotsDbStorages.keySet().iterator(); iterator.hasNext();) {
+				ids.add(iterator.next());
+			}
 		}
 		return ids;
 	}

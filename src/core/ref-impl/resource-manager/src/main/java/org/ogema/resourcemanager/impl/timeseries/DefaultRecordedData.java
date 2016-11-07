@@ -89,6 +89,11 @@ public class DefaultRecordedData implements RecordedData {
 			setConfiguration(config);
 		}
 	}
+	
+	@Override
+	public String getPath() {
+		return id;
+	}
 
 	public static String createId(TreeElement el) {
 		List<String> elements = new ArrayList<>();

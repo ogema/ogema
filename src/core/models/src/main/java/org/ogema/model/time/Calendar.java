@@ -20,7 +20,9 @@ import org.ogema.model.prototypes.Data;
 
 /** Calendar for a person or any resource in shared use */
 public interface Calendar extends Data {
-	/** Persons/Institutions invited to the event (if sent by email meaning To:) */
 
+	/**
+	 * Calendar entries
+	 */
 	ResourceList<CalendarEntry> entries();
 }

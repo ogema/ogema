@@ -15,8 +15,6 @@
  */
 package org.ogema.model.connections;
 
-import org.ogema.model.sensors.TemperatureSensor;
-
 /** 
  * A circuit element representing circuits whose purpose is the transfer of
  * heat. Note that the thermal circuit has a heat capacity by virtue of being

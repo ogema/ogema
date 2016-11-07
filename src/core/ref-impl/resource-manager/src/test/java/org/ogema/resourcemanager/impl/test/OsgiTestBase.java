@@ -41,5 +41,11 @@ public class OsgiTestBase extends OsgiAppTestBase {
 		resAcc = appMan.getResourceAccess();
 		resMan = appMan.getResourceManagement();
 	}
+	
+	@Override
+	public void doStop() {
+		resAcc = null;
+		resMan = null;
+	}
 
 }

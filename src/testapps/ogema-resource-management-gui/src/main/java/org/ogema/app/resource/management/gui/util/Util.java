@@ -37,12 +37,15 @@ import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.model.time.CalendarEntry;
 
+@SuppressWarnings("deprecation")
 public class Util implements ResourceListener, ResourceDemandListener<Resource>, Serializable {
 
         private static final long serialVersionUID = 5011583043755073388L;
 	final boolean debug = false;
+	@SuppressWarnings("unused")
 	private final ApplicationManager appMan;
 	private final OgemaLogger logger;
+	@SuppressWarnings("unused")
 	private final ResourceManagement resMan;
 	private final ResourceAccess resAcc;
 	/**

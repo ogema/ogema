@@ -15,16 +15,15 @@
  */
 package org.ogema.core.channelmanager;
 
-import java.io.IOException;
 import java.util.List;
 
+import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
 import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
 import org.ogema.core.channelmanager.driverspi.DeviceListener;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
-import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.driverspi.ValueContainer;
 import org.ogema.core.channelmanager.measurements.SampledValue;
@@ -32,126 +31,172 @@ import org.ogema.core.channelmanager.measurements.Value;
 
 /**
  * 
- * The ChannelAccess is the Interface between ChannelManager and Application You can get the ChannelAccess Object from
- * the Application Manager.
+ * ChannelAccess is the Interface between ChannelManager and Application.<br>
+ * You can get the ChannelAccess Object from the Application Manager.
  * 
  */
 public interface ChannelAccess {
 
 	/**
-	 * Get the list of active channels
-	 * 
+	 * Get the list of active channels.
+	 *
 	 * @return list of active configured channels
 	 */
 	public List<ChannelLocator> getAllConfiguredChannels();
 
 	/**
-	 * Set the value of a single channel
+	 * Set the value of a single channel.<br>
 	 * 
-	 * This will cause a write access to the underlying low-level driver.
+	 * This will cause a write access to the underlying low-level driver.<br>
 	 * 
-	 * If the channel has not a direction property Direction.OUT or Direction.IN_OUT a ChannelAccessException will be
-	 * thrown.
+	 * If the channel has not a direction property Direction.DIRECTION_INOUT or Direction.DIRECTION_OUTPUT a
+	 * ChannelAccessException will be thrown.<br>
 	 * 
-	 * @param channelLocator
-	 *            the ChannelLocator object describing the channel to access
+	 * Writing a channel is completely decoupled from reading. Values written to the channel will be visible for reading
+	 * after the channelManager queries the driver. This might be instant if the samplingPeriod is set to
+	 * NO_READ_NO_LISTEN, after the completion of the current samplingPeriodInMs has elapsed or when a new value is
+	 * available if the sampling Period is set to LISTEN_FOR_UPDATE.
+	 * 
+	 * @param configuration
+	 *            the ChannelConfiguration object describing the channel to access
 	 * @param value
 	 *            the value that is used to update the channel.
 	 * 
 	 * @throws ChannelAccessException
 	 *             if set value failed (e.g. the channel does not exist)
 	 */
-	public void setChannelValue(ChannelLocator channelLocator, Value value) throws ChannelAccessException;
+	public void setChannelValue(ChannelConfiguration configuration, Value value) throws ChannelAccessException;
 
 	/**
-	 * Set the values of multiple channels at once.
+	 * Set the values of multiple channels at once.<br>
 	 * 
 	 * Same as setChannelValue but for multiple channels at once. The application (high-level driver) has to provide an
 	 * instance of Value for each channel to write to. The ChannelLocator and Value instances are related by their
 	 * positions in the list. Both lists have to be of the same size. Otherwise an IllegalArgumentException will be
 	 * thrown.
 	 * 
-	 * @param channelLocators
-	 *            a list of ChannelLocator objects describing the channels to access
+	 * @param configurations
+	 *            a list of {@link ChannelConfiguration} objects describing the channels to access
 	 * @param values
 	 *            a list of Values
 	 * @throws ChannelAccessException
 	 *             if set value failed (e.g. the channel does not exist)
 	 */
-	public void setMultipleChannelValues(List<ChannelLocator> channelLocators, List<Value> values)
+	public void setMultipleChannelValues(List<ChannelConfiguration> configurations, List<Value> values)
 			throws ChannelAccessException;
 
 	/**
 	 * Get the last value received on a single channel. Note that polling / subscription is organized by the
-	 * ChannelManger independently of read operations on the ChannelManager interface.
+	 * ChannelManger independently of read operations on the ChannelManager interface.<br>
 	 * 
-	 * @param channelLocator
-	 *            the ChannelLocator object describing the channel to access
+	 * Writing a channel is completely decoupled from reading. Values written to the channel will be visible for reading
+	 * after the channelManager queries the driver. This might be instant if the samplingPeriod is set to
+	 * NO_READ_NO_LISTEN, after the completion of the current samplingPeriodInMs has elapsed or when a new value is
+	 * available if the sampling Period is set to LISTEN_FOR_UPDATE.<br>
+	 * 
+	 * If the channel value has not yet been updated after creation (i.e. for listening channels), the channel returns a
+	 * SampledValue with no Value, Quality.BAD and the timestamp of channel creation.
+	 * 
+	 * @param configuration
+	 *            the ChannelConfiguration object describing the channel to access
 	 * @return the value of the channel
 	 * @throws ChannelAccessException
 	 *             if get value failed (e.g. the channel does not exist)
 	 */
-	public SampledValue getChannelValue(ChannelLocator channelLocator) throws ChannelAccessException;
+	public SampledValue getChannelValue(ChannelConfiguration configuration) throws ChannelAccessException;
 
 	/**
-	 * Get the values of multiple channels
-	 * 
-	 * @param channelLocators
-	 *            a list of ChannelLocator objects describing the channels to access
+	 * Get the values of multiple channels.
+	 *
+	 * @param configurations
+	 *            a list of ChannelConfiguration objects describing the channels to access
 	 * @return List of values
+	 * @throws ChannelAccessException
+	 *             the channel access exception
 	 */
-	public List<SampledValue> getMultipleChannelValues(List<ChannelLocator> channelLocators);
+	public List<SampledValue> getMultipleChannelValues(List<ChannelConfiguration> configurations)
+			throws ChannelAccessException;
 
 	/**
 	 * Register a listener that will be called if the value is updated.
-	 * 
-	 * @param channelLocator
-	 *            channelLocator of the channel to register listener to
+	 *
+	 * @param configuration
+	 *            ChannelConfiguration of the channel to register listener to
 	 * @param listener
 	 *            listener will be called when the value was updated
+	 * @throws ChannelAccessException
+	 *             the channel access exception
 	 */
-	public void registerUpdateListener(List<ChannelLocator> channelLocator, ChannelEventListener listener);
+	public void registerUpdateListener(List<ChannelConfiguration> configuration, ChannelEventListener listener)
+			throws ChannelAccessException;
+
+	/**
+	 * Unregister update listener.
+	 *
+	 * @param configuration
+	 *            the configuration
+	 * @param listener
+	 *            the listener
+	 */
+	public void unregisterUpdateListener(List<ChannelConfiguration> configuration, ChannelEventListener listener);
 
 	/**
 	 * Register a listener that will be called when the value or quality of the channel changes.
 	 * 
-	 * @param channelLocator
-	 *            channelLocator of the channel to register listener to
+	 * @param configuration
+	 *            ChannelConfiguration of the channel to register listener to
 	 * @param listener
 	 *            listener will be called when the value or quality has changed
+	 * @throws ChannelAccessException
+	 *             the channel access exception
 	 */
-	public void registerChangedListener(List<ChannelLocator> channelLocator, ChannelEventListener listener);
+	public void registerChangedListener(List<ChannelConfiguration> configuration, ChannelEventListener listener)
+			throws ChannelAccessException;
 
 	/**
-	 * Get the configuration object for a channel. If the channel is already configured an existing configuration object
-	 * will be returned. Otherwise a new ChannelConfiguration instance will be created.
-	 * 
-	 * @param channelLocator
-	 *            channelLocator of the channel to get configuration from
-	 * @return unique ChannelConfiguration object for the channel specified by ChannelLocator.
-	 */
-	public ChannelConfiguration getChannelConfiguration(ChannelLocator channelLocator);
-
-	/**
-	 * Add a new channel to the channel manager configuration. The value for the channel will be polled by the
-	 * ChannelManager or a subscription to the value will be generated.
-	 * 
+	 * Unregister changed listener.
+	 *
 	 * @param configuration
-	 *            configuration of the channel to be added
-	 * @throws ChannelConfigurationException
-	 *             if the channel has already been configured
+	 *            the configuration
+	 * @param listener
+	 *            the listener
 	 */
-	public void addChannel(ChannelConfiguration configuration) throws ChannelConfigurationException;
+	public void unregisterChangedListener(List<ChannelConfiguration> configuration, ChannelEventListener listener);
+
+	/**
+	 * Add a new channel to the channel manager configuration. <br>
+	 * 
+	 * Adding a channel twice will return the previously created configuration. <br>
+	 * 
+	 * A separate ChannelConfiguration will be created for each different OGEMA Application. <br>
+	 * 
+	 * The value for the channel will be polled by the ChannelManager or a subscription to the value will be generated.
+	 *
+	 * @param locator
+	 *            configuration of the channel to be added
+	 * @param direction
+	 *            the direction
+	 * @param samplingPeriodInMs
+	 *            the sampling period in ms
+	 * @return the channel configuration
+	 * @throws ChannelAccessException
+	 *             if anything goes wrong
+	 */
+	public ChannelConfiguration addChannel(ChannelLocator locator, Direction direction, long samplingPeriodInMs)
+			throws ChannelAccessException;
 
 	/**
 	 * Delete an existing (configured) channel.
+	 * <p>
 	 * 
-	 * @param channelLocator
-	 *            channelLocator of the channel to delete.
-	 * @throws ChannelConfigurationException
-	 *             if the channel is not configured
+	 * As clean-up code is often unreliable, this method does not throw exceptions. An error is only reported through
+	 * the return value.
+	 * 
+	 * @param configuration
+	 *            ChannelConfiguration of the channel to delete.
+	 * @return true if the delete call succeeded.
 	 */
-	public void deleteChannel(ChannelLocator channelLocator) throws ChannelConfigurationException;
+	public boolean deleteChannel(ChannelConfiguration configuration);
 
 	/**
 	 * One time readout of device data that has not yet been configured as a channel. This is intended to be used by
@@ -159,8 +204,11 @@ public interface ChannelAccess {
 	 * 
 	 * @param channelList
 	 *            List of SampledValueContainer addressing channels to read. All channels must target the same driver.
+	 * 
+	 * @throws ChannelAccessException
+	 *             if get value failed (e.g. the channel does not exist)
 	 */
-	public void readUnconfiguredChannels(List<SampledValueContainer> channelList);
+	public void readUnconfiguredChannels(List<SampledValueContainer> channelList) throws ChannelAccessException;
 
 	/**
 	 * One time write of device data that has not yet been configured as a channel. This is intended to be used by
@@ -168,41 +216,11 @@ public interface ChannelAccess {
 	 * 
 	 * @param channelList
 	 *            List of SampledValueContainer addressing channels to write. All channels must target the same driver.
-
+	 * 
 	 * @throws ChannelAccessException
 	 *             if set value failed (e.g. the channel does not exist)
 	 */
 	public void writeUnconfiguredChannels(List<ValueContainer> channelList) throws ChannelAccessException;
-
-	/**
-	 * Get an instance of DeviceLocator with the specified properties. The framework ensures that there exists only one
-	 * DeviceLocator instance with the same properties (
-	 * 
-	 * @param driverId
-	 *            the unique name (id) of the driver
-	 * @param interfaceId
-	 *            the unique name (id) of the driver (from Hardware Manager?)
-	 * @param deviceAddress
-	 *            the address of the device. The syntax of the address is driver specific.
-	 * @param parameters
-	 *            communication parameter for the device. The syntax is driver specific.
-	 * 
-	 * @return Instance of DeviceLocator
-	 */
-	public DeviceLocator getDeviceLocator(String driverId, String interfaceId, String deviceAddress, String parameters);
-
-	/**
-	 * Get an instance of ChannelLocator with the specified channelAddress for the device specified by deviceLocator.
-	 * The framework enforces that there exists only a single instance of ChannelLocator with the specified address and
-	 * DeviceLocator.
-	 * 
-	 * @param channelAddress
-	 *            the address of the channel. The syntax is driver specific.
-	 * @param deviceLocator
-	 *            reference to the device that contains the channel.
-	 * @return Instance of ChannelLocator
-	 */
-	public ChannelLocator getChannelLocator(String channelAddress, DeviceLocator deviceLocator);
 
 	/**
 	 * Get the list of unique driver IDs of all registered drivers. A driver ID is a simple text string.
@@ -212,8 +230,8 @@ public interface ChannelAccess {
 	public List<String> getDriverIds();
 
 	/**
-	 * Discover devices connected to a local (or remote?) interface
-	 * 
+	 * Discover devices connected to a local (or remote?) interface.
+	 *
 	 * @param driverId
 	 *            The unique ID that identifies the driver to handle this interface (see getDriverIds)
 	 * @param interfaceId
@@ -222,22 +240,15 @@ public interface ChannelAccess {
 	 *            set a filter to specify the scope of the search (driver specific - eg. address range, search method,
 	 *            device type ...)
 	 * @return list of connected devices.
-	 * 
-	 * @throws UnsupportedOperationException
-	 *             if this operation is not supported by the driver
-	 * @throws NoSuchInterfaceException
-	 *             if the interface does not exist
-	 * @throws NoSuchDriverException
-	 *             thrown when the driverId doesn't exist
-	 * @throws IOException
-	 *             if an error occurs during the device scan
+	 * @throws ChannelAccessException
+	 *             wraps all lower level errors (see Throwable.getCause())
 	 */
 	public List<DeviceLocator> discoverDevices(String driverId, String interfaceId, String filter)
-			throws UnsupportedOperationException, NoSuchInterfaceException, NoSuchDriverException, IOException;
+			throws ChannelAccessException;
 
 	/**
-	 * Asynchronous version of discoverDevices
-	 * 
+	 * Asynchronous version of discoverDevices.
+	 *
 	 * @param driverId
 	 *            The unique ID that identifies the driver to handle this interface (see getDriverIds)
 	 * @param interfaceId
@@ -247,15 +258,25 @@ public interface ChannelAccess {
 	 *            device type ...)
 	 * @param listener
 	 *            is called when a device was found or the scan has finished
-	 * @throws UnsupportedOperationException
-	 *             if this operation is not supported by the driver
-	 * @throws NoSuchInterfaceException
-	 *             if the interface does not exist
-	 * @throws NoSuchDriverException
-	 *             thrown when the driverId doesn't exist
+	 * @throws ChannelAccessException
+	 *             wraps all lower level errors (see Throwable.getCause())
 	 */
 	public void discoverDevices(String driverId, String interfaceId, String filter, DeviceScanListener listener)
-			throws UnsupportedOperationException, NoSuchInterfaceException, NoSuchDriverException;
+			throws ChannelAccessException;
+
+	/**
+	 * Abort running discoverDevices. Terminates the synchronous and asynchronous version. Supply the same parameters as
+	 * the to-be-terminated scan.
+	 *
+	 * @param driverId
+	 *            the driver id
+	 * @param interfaceId
+	 *            the interface id
+	 * @param filter
+	 *            the filter
+	 * @return true, if successful
+	 */
+	public boolean abortDiscoverDevices(String driverId, String interfaceId, String filter);
 
 	/**
 	 * Discover available channels of a device. If the channels found shall be used for read/write they must be
@@ -265,34 +286,28 @@ public interface ChannelAccess {
 	 *            the device locator of the device to discover
 	 * @return List of ChannelLocator instances that describe the discovered channels
 	 * 
-	 * @throws UnsupportedOperationException
-	 *             if this operation is not supported by the driver
-	 * @throws NoSuchInterfaceException
-	 *             if the interface does not exist
-	 * @throws NoSuchDriverException
-	 *             thrown when the driverId doesn't exist
-	 * @throws IOException
-	 *             if an error occurs during the device scan
+	 * @throws ChannelAccessException
+	 *             wraps all lower level errors (see Throwable.getCause())
 	 */
-	public List<ChannelLocator> discoverChannels(DeviceLocator device) throws UnsupportedOperationException,
-			NoSuchInterfaceException, NoSuchDriverException, IOException;
+	public List<ChannelLocator> discoverChannels(DeviceLocator device) throws ChannelAccessException;
 
 	/**
-	 * Asynchronous version of discoverChannels
-	 * 
+	 * Asynchronous version of discoverChannels.
+	 *
 	 * @param device
 	 *            the device locator of the device to discover
 	 * @param listener
 	 *            is called when a channel was found or the scan has finished
+	 * @throws ChannelAccessException
+	 *             wraps all lower level errors (see Throwable.getCause())
 	 */
-	public void discoverChannels(DeviceLocator device, ChannelScanListener listener);
+	public void discoverChannels(DeviceLocator device, ChannelScanListener listener) throws ChannelAccessException;
 
 	/**
-	 * Returns the description of the specified driver
-	 * 
+	 * Returns the description of the specified driver.
+	 *
 	 * @param driverId
 	 *            Id of the driver
-	 * 
 	 * @return Description of driver on success, empty string else
 	 */
 	public String getDriverDescription(String driverId);
@@ -304,10 +319,10 @@ public interface ChannelAccess {
 	 *            device to get the known channels form
 	 * @return Returns a list of known channels of the device
 	 * 
-	 * @throws UnsupportedOperationException
-	 *             if this operation is not supported by the driver
+	 * @throws ChannelAccessException
+	 *             wraps all lower level errors (see Throwable.getCause())
 	 */
-	public List<ChannelLocator> getChannelList(DeviceLocator deviceLocator) throws UnsupportedOperationException;
+	public List<ChannelLocator> getChannelList(DeviceLocator deviceLocator) throws ChannelAccessException;
 
 	/**
 	 * Wrapper method that calls the driver method with same name (see
@@ -317,8 +332,10 @@ public interface ChannelAccess {
 	 *            The driver id string
 	 * @param listener
 	 *            The DeviceListener object.
+	 * @throws ChannelAccessException
+	 *             wraps all lower level errors (see Throwable.getCause())
 	 */
-	public void addDeviceListener(String driverId, DeviceListener listener);
+	public void addDeviceListener(String driverId, DeviceListener listener) throws ChannelAccessException;
 
 	/**
 	 * Wrapper method that calls the driver method with same name (see

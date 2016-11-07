@@ -65,7 +65,7 @@ public class FrameworkGUIServlet extends HttpServlet {
 		SessionAuth sesAuth = (SessionAuth) req.getSession().getAttribute("ogemaAuth");
 		String user = null;
 		if (sesAuth != null) // if security is disabled sesAuth is null
-			user = sesAuth.getUsr().getName();
+			user = sesAuth.getName();
 
 		if ("/installedapps".equals(path)) {
 			if ("listAll".equals(action)) {

@@ -43,6 +43,7 @@ $.widget("ui.dialog", $.ui.dialog, {
 
 });
 
+var isInit = false;
 var client = null;
 var selectedApp;
 var permContentToSend = "";
@@ -117,8 +118,74 @@ $(function() {
 		},
 		minWidth : 300,
 		minHeight : 100,
-		height : 250,
+		height : 300,
 		width: $("div#sysApps").width(),		
+		
+	});
+	
+	$("#assignUserToAppstore").dialog({
+		autoOpen : false,
+		resizeable : true,
+		draggable : true,
+		close : function() {
+			$(this).html("");
+			$('div#wrap').css('opacity', '1.0');
+			$('div#footer').css('opacity', '1.0');
+			$('div#header').css('opacity', '1.0');
+		},
+		open : function() {
+			$('div#wrap').css('opacity', '0.3');
+			$('div#footer').css('opacity', '0.3');
+			$('div#header').css('opacity', '0.3');
+		},
+		minWidth : 300,
+		minHeight : 100,
+		height : 250,
+		width: $("div#userDiv").width(),		
+		
+	});
+	
+	$("#userAppstores").dialog({
+		autoOpen : false,
+		resizeable : true,
+		draggable : true,
+		close : function() {
+			$(this).html("");
+			$('div#wrap').css('opacity', '1.0');
+			$('div#footer').css('opacity', '1.0');
+			$('div#header').css('opacity', '1.0');
+		},
+		open : function() {
+			$('div#wrap').css('opacity', '0.3');
+			$('div#footer').css('opacity', '0.3');
+			$('div#header').css('opacity', '0.3');
+		},
+		minWidth : 300,
+		minHeight : 100,
+		height : 250,
+		width: $("div#userDiv").width(),		
+		
+	});
+	
+	$("#appstoreUsers").dialog({
+		autoOpen : false,
+		resizeable : true,
+		draggable : true,
+		close : function() {
+			$(this).html("");
+			$('div#wrap').css('opacity', '1.0');
+			$('div#footer').css('opacity', '1.0');
+			$('div#header').css('opacity', '1.0');
+		},
+		open : function() {
+			$('div#wrap').css('opacity', '0.3');
+			$('div#footer').css('opacity', '0.3');
+			$('div#header').css('opacity', '0.3');
+		},
+		minWidth : 300,
+		minHeight : 100,
+		height : 250,
+		width: $("div#userDiv").width(),		
 		
 	});
 
@@ -130,153 +197,110 @@ $(function() {
 		disabled : true
 	});
 
-	$("#initUp").button({
-		icons : {
-			primary : "ui-icon-arrowthickstop-1-n"
-		}
-	});
-	$("#diaUpload").dialog({
-		autoOpen : false,
-		resizable : false,
-		draggable : true,
-		minWidth : 513,
-		minHeight : 300,
-		close : function() {
-			$('div#wrap').css('opacity', '1.0');
-			$('div#footer').css('opacity', '1.0');
-			$('div#header').css('opacity', '1.0');
-		},
-		open : function() {
-			$('div#wrap').css('opacity', '0.3');
-			$('div#footer').css('opacity', '0.3');
-			$('div#header').css('opacity', '0.3');
-		}
-	});
-	// ------------------------------------ SYSTEM APPS
-	// ------------------------------------ //
-	$("#installed").click(function() {
-		$("#newInstallDiv").hide();	
-		if($("#sysApps").is(":hidden")){
-			listSysApps();
-			$("#sysApps").show();
-			$("#installed").toggleClass("hover");
-			$("#newInstall").toggleClass("hover");			
-		}
-	});
 
 	// ------------ APP MANAGEMENT
-	$("#store").val(appstoreListHint);
-	changeTextColor();
-	$('input:text').button().css({
-		'text-align' : 'left',
-		'outline' : 'none',
-		'cursor' : 'text',
-		'padding' : '2.5px',
-		'padding-left' : '10px',
-		'margin-left' : '10px'
-	});
-
-	$('input[type="submit"]').each(function() {
-		$(this).hide().after('<button>').next().button({
-			icons : {
-				primary : 'ui-icon-search'
-			},
-			label : $(this).val()
-		}).click(function(event) {
-			event.preventDefault();
-			$(this).prev().click();
-		});
-	});
-	$('input[type="button"]').each(function() {
-		$(this).hide().after('<button>').next().button({
-			label : $(this).val()
-		}).click(function(event) {
-			event.preventDefault();
-			$(this).prev().click();
-		});
-	});
-	$('input[type="file"]').each(function() {
-		$(this).hide().after('<button id="uploadButton">').next().button({
-			icons : {
-				primary : 'ui-icon-plus'
-			},
-			label : "Select File"
-		}).click(function(event) {
-			event.preventDefault();
-			$(this).prev().click();
-		});
-	});
-
-	$("#menu").menu();
-
-	function showAppstores() {
-		$("#menu").html("");
-		$.getJSON("/security/config/appstores", function(json) {
-			for (var i = 0; i < json.appstores.length; i++) {
-				$("#menu").append("<li id='" + i + "'>" + json.appstores[i] + "</li>");
-			}
-			// click on <li> puts name as val
-			$("li").click(function() {
-				$("input#store").val(json.appstores[this.id]).focus();
-				changeTextColor();
-				$("ul#menu").toggle("slide", {
-					direction : "up"
-				});
-			});
-		});
-	}
-
-	// toggle menu when button clicked
-	$("img#button").click(function() {
-		var displayAppstores = $("#menu").css("display");
-
-		if (displayAppstores == "none") {
-			showAppstores();
-			$("#menu").css("display", "block");
-		} else {
-			$("#menu").html("");
-			$("#menu").css("display", "none");
-		}
-	});
 	
-	$("#store").click(function() {
-		var displayAppstores = $("#menu").css("display");
+	$("#installed").click(function() {
 
-		if (displayAppstores == "none") {
-			showAppstores();
-			$("#menu").css("display", "block");
-		} else {
-			$("#menu").html("");
-			$("#menu").css("display", "none");
+		if($("#installed").hasClass("hover")){
+			$("#content_div").load("partials/installed.html");		
+			$("ul#navbar li").not(".hover").toggleClass("hover");
+			$("#installed").toggleClass("hover");
 		}
+		
 	});
 
-	// click on head toggles its part
 	$("#newInstall").click(function() {
 		
-		if($("#newInstallDiv").is(":hidden")){
-			$("#sysApps").hide();
-			$("#newInstallDiv").show();
-			$("#installed").toggleClass("hover");
-			$("#newInstall").toggleClass("hover");			
-		}else{
-			$("#newInstallDiv").hide();
-			$("#sysApps").show();
-			$("#installed").toggleClass("hover");
-			$("#newInstall").toggleClass("hover");			
+		if($("#newInstall").hasClass("hover")){
+			$("#content_div").load("partials/appstores.html");			
+			$("ul#navbar li").not(".hover").toggleClass("hover");
+			$("#newInstall").toggleClass("hover");
 		}
+		
+	});
+	
+	$("#users").click(function() {
+		
+		if($("#users").hasClass("hover")){
+			$("#content_div").load("partials/users.html");			
+			$("ul#navbar li").not(".hover").toggleClass("hover");
+			$("#users").toggleClass("hover");
+		}
+		
 	});
 });
 
 // ------------------------------ FUNCTIONS ---------------------------- //
 
 // ------------------ SYSTEM APPS //
-function listSysApps() {
+function diaAppstores(){
+	if (isInit!=true){
+		$('input[type="button"]').each(function() {
+			$(this).hide().after('<button>').next().button({
+				label : $(this).val()
+			}).click(function(event) {
+				event.preventDefault();
+				$(this).prev().click();
+			});
+		});
+		$('input[type="file"]').each(function() {
+			$(this).hide().after('<button id="uploadButton">').next().button({
+				icons : {
+					primary : 'ui-icon-plus'
+				},
+				label : "Select File"
+			}).click(function(event) {
+				event.preventDefault();
+				$(this).prev().click();
+			});
+		});	
+		isInit = true;
+	}
+	$("#initUp").button({
+		icons : {
+			primary : "ui-icon-arrowthickstop-1-n"
+		}
+		});
+	$("#diaUpload").dialog({
+			autoOpen : false,
+			resizable : false,
+			draggable : true,
+			minWidth : 513,
+			minHeight : 300,
+			close : function() {
+				$('div#wrap').css('opacity', '1.0');
+				$('div#footer').css('opacity', '1.0');
+				$('div#header').css('opacity', '1.0');
+			},
+			open : function() {
+				$('div#wrap').css('opacity', '0.3');
+				$('div#footer').css('opacity', '0.3');
+				$('div#header').css('opacity', '0.3');
+			}
+		});
+
+}
+
+
+function showApps(){
 	
+	$("#content_div").load("partials/installed.html");
+	
+}
+
+
+function listSysApps() {
+
 	$("div#buttonSet > button").button();
 	$("button#showInfo").button({
 		icons : {
 			primary : "ui-icon-info"
+		}
+	});
+	$("button#url").button({
+		icons : {
+			primary : "ui-icon-extlink"
 		}
 	});
 	$("button#update").button({
@@ -329,10 +353,9 @@ function listSysApps() {
 			primary : "ui-icon-wrench"
 		}
 	});
-		
-	var jsonArr = [];
+	
 	$("div#sortableApps").html("");
-	$.getJSON("/security/config/installedapps?action=listAll", function(json) {
+	$.getJSON("/security/config/installedapps?action=list", function(json) {
 		for (var v = 0; v < json.length; v++) {
 			$("div#sortableApps").append(
 					"<div class='column'> <div class='portlet'> <div class='portlet-header' id='" + json[v].id + "' title='" + json[v].description + "'>" +
@@ -360,7 +383,17 @@ function listSysApps() {
 
 		// Select an appPortlet, when
 		// dblClick
+		$("div#sortableApps").append("<ul id='contextMenu'><li onclick='startBundle()'>Start</li><li onclick='stopBundle()'>Stop</li>" +
+				 "<li onclick='removeBundle()'>Remove Bundle</li><li onclick='editPerms()'>Edit Permissions</li>" +
+				 "<li onclick='listAllPerms()'>List Permissions</li><li onclick='showWebResources()'>Webresources</li>" +
+				 "<li onclick='showAppInfo()'>Info</li><li onclick='goToBundleUrl()'>Go to Page</li></ul>")
 		
+		$("#contextMenu").menu({
+			select: function(event, ui){
+			$("#contextMenu").hide();
+			}
+		});
+			
 		$("div.portlet-header").dblclick(function() {
 			$("div.portlet-header").removeClass("selectedPortlet");
 			$(this).addClass("selectedPortlet");
@@ -375,57 +408,82 @@ function listSysApps() {
 		$("#sortableApps").click(function() {
 			$("div.portlet-header").removeClass("selectedPortlet");
 			selectedApp = "";
+			$("#contextMenu").hide();
+			$("#contextMenu").removeData();
 		});
-
 		
+
+		$(".portlet-header").on("contextmenu", function (event) {
+			$("div.portlet-header").removeClass("selectedPortlet");
+			$("#contextMenu").show();
+			$("#contextMenu").data('originalElement', this);
+	        $("#contextMenu").position({
+	        	collision: "none",
+	            my: "left top",
+	            of: event
+	        });	        	        
+	        return false;	       
+	    });
+		
+		if($("#nameFilter").val().length > 0 || $("#levelFilter").val().length > 0 || $("#appFilter").is(":checked") || $("#driverFilter").is(":checked")){
+			filterSysApps();
+		}	
 	});
 
 }
+
+
+/**
+ * Sends a request to the Server to get the IDs of the Bundles that are to be shown after applying the filter.
+ * If the ID is not in the response the bundle is hidden, else it is displayed
+ */
+function filterSysApps(){
+	
+	var filter = "";	
+	if($("#nameFilter").val().length > 0){
+		filter = filter + "&name="+$("#nameFilter").val();
+	}
+	if($("#levelFilter").val().length > 0){
+		filter = filter + "&minlvl="+$("#levelFilter").val();
+	}
+	if($("#appFilter").is(":checked")){
+		filter = filter + "&apps";
+	}
+	if($("#driverFilter").is(":checked")){
+		filter = filter + "&drivers";
+	}
+		
+	$.getJSON("/security/config/installedapps?action=filter"+filter, function(json) {
+		var headers = $(".portlet-header")
+		
+		for(i=0; i<headers.length; i++){
+			if(json.indexOf(parseInt(headers[i].id)) == -1){
+				$(headers[i].parentNode.parentNode).hide();
+			}else{
+				$(headers[i].parentNode.parentNode).show();
+			}
+		}	
+	});
+}
+
+
 /**
  * fills the display for the chosen system-app with app-information
  * 
  * @param {String}
  *            appName Specific appname of the current chosen app
  */
-function fillAppDisplay(appName, policyArr) {
+function fillInfoDisplay(appName, json) {
 	$("#appDisplay").html("");
-	$("#appDisplay").append("<p class='appNamePol'>" + appName + "</p> <br>");
-
-	for (var i = 0; i < policyArr.length; i++) { // Anzahl POLICIES
-		if (policyArr[i].mode == "allow") {
-			$("#appDisplay").append(
-					"<div class='wrapPolicies' id='wrapPol" + i + "'> <strong>Mode:</strong> <span class='GRANTPol'> " + policyArr[i].mode
-							+ "</span><br> </div><br>");
-
-			$("#wrapPol" + i).append(
-					"<div class='permissions' id='perm" + i + "'><strong>Permissions:</strong> <br> </div> <div class='conditions' id='cond" + i
-							+ "'><strong>Conditions:</strong> <br> </div>");
-		} else {
-			$("#appDisplay").append(
-					"<div class='wrapPolicies' id='wrapPol" + i + "'> <strong>Mode:</strong> <span class='DENYPol'> " + policyArr[i].mode
-							+ "</span><br> </div><br>");
-
-			$("#wrapPol" + i).append(
-					"<div class='permissions' id='perm" + i + "'><strong>Permissions:</strong> <br> </div> <div class='conditions' id='cond" + i
-							+ "'><strong>Conditions:</strong> <br> </div>");
-
-		}
-		for (var j = 0; j < policyArr[i].permissions.length; j++) { // Zu jeder
-			// Policy
-			// Anzahl
-			// PERMISSIONS
-
-			$("#perm" + i).append(
-					"<div class='wrapOnePerm' id='wrapOnePerm" + i + j + "'>Actions: " + policyArr[i].permissions[j].actions + "<br>Filter: "
-							+ policyArr[i].permissions[j].filter + "<br>Type: " + policyArr[i].permissions[j].type + "<br></div>");
-
-		}
-		for (var k = 0; k < policyArr[i].conditions.length; k++) {
-			$("#cond" + i).append(
-					"<div class='wrapOneCond' id='wrapOneCond" + i + k + "'>Type: " + policyArr[i].conditions[k].type + "<br>Arg1: "
-							+ policyArr[i].conditions[k].arg1 + "<br>Arg2: " + policyArr[i].conditions[k].arg2 + "<br></div>");
-		}
-	}
+	
+	for(var i=0; i<json.length; i++){
+		var entry = json[i];
+		var keys = Object.keys(entry);
+		var key = keys[0];
+		
+		$("#appDisplay").append("<div id='prop"+i+"' class='prop'>"+key+": "+entry[key]);
+	}	
+	
 	if ($("#appDisplay").html() != "") {
 		$("#appDisplay").dialog("open");
 	}
@@ -435,13 +493,71 @@ function clearAppDisplay() { // if not hover
 	$("#appDisplay").html("");
 }
 
+function listUsersAndAppstores() {
+	$("#userTable").html=("");
+	$("#selectableUsers").html("");
+	$("#appstoreSelect").html("");
+	$("#appstoreSelect").selectmenu();
+	$.getJSON("/security/config/users", function(json){
+		for (var i=0; i<json.length; i++){
+			$('#selectableUsers').append('<li class="userEntry entryHover">'+json[i]+'</li>');
+		} 
+		$(".userEntry").click(function() {
+			$(this).toggleClass("selected").siblings().removeClass("selected");
+		});
+	});
+	$.getJSON("/security/config/appstores", function(json) {
+		for (var i = 0; i < json.appstores.length; i++) {
+			$("#appstoreSelect").append("<option value='"+json.appstores[i]+"'>"+json.appstores[i]+"</option>").selectmenu("refresh");
+		}
+	});
+	
+	$("button#getUserInfo").button({
+		icons : {
+			primary : "ui-icon-info"
+		}
+	});
+	$("button#getAppstoreInfo").button({
+		icons : {
+			primary : "ui-icon-info"
+		}
+	});
+	$("button#assignUser").button({
+		icons : {
+			primary : "	ui-icon-person"
+		}
+	});
+
+}
+
+function listAppstores(){
+	$("#installStore").html("");
+	$("#installStore").selectmenu();
+	$.getJSON("/security/config/appstores", function(json) {
+		for (var i = 0; i < json.appstores.length; i++) {
+			$("#installStore").append("<option value='"+json.appstores[i]+"'>"+json.appstores[i]+"</option>").selectmenu("refresh");
+		}
+	});
+	$("input#openStore").button({
+		icons : {
+			//not working for input:submit
+			primary : "ui-icon-extlink"
+		}
+	});
+}
+
 // Info-Button clicked starts this
 function showAppInfo() {
 	// Only if an appPortlet is selected
-	if ($(".selectedPortlet")[0]) {
-		var portletID = $(".selectedPortlet")[0].id;
+	if ($(".selectedPortlet")[0] || $("#contextMenu").data('originalElement')!=undefined) {
+		if ($(".selectedPortlet")[0]){
+			var portletID = $(".selectedPortlet")[0].id;
+		}else{
+			var portletID = $("#contextMenu").data('originalElement').id;
+			$("#contextMenu").removeData();
+		}
 		$.getJSON("/security/config/installedapps?action=getInfo&app=" + portletID, function(json, xhr) {
-			fillAppDisplay(selectedApp, json.policies);
+			fillInfoDisplay(selectedApp, json);
 		}).fail(function(xhr, textStatus, errorThrown) {
 			console.log("FAIL : " + textStatus);
 		});
@@ -458,6 +574,124 @@ function changeDefaultStartLevel(){
 		console.log("FAIL : " + textStatus);
 	});
 	
+}
+function appstoreUsersDlg(){
+	var appstore = $("#appstoreSelect").val();
+	
+	$("#appstoreUsers").html("");
+	$("#appstoreUsers").dialog({
+		title: "Users assigned to the appstore "+appstore
+		});
+	
+	$.getJSON("/security/config/appstoreusers?store="+appstore, function(json){
+		if((json[0]!=false)){
+			$("#appstoreUsers").append("<ul id='appstoreUserList' class='users-list'></ul>")
+			
+			for (var i = 0; i<json.length; i++){
+				$("#appstoreUserList").append("<li class='userEntry dialogEntry'>"+json[i]+"</li>");
+			}
+		}else{
+			$("#appstoreUsers").append("<p class='nothingFound'>The appstore "+appstore+" has no users assigned.</p>");
+		}
+		
+		$("#appstoreUsers").dialog("open");
+
+	});
+}
+function userAppstoresDlg(){
+	var user = $(".selected").text();
+	
+	$("#userAppstores").html("");
+	$("#userAppstores").dialog({
+		title: "Appstores assigned to the user "+user
+	});
+			
+	$.getJSON("/security/config/userappstores?user="+user, function(json){		
+		if(json[0]!=false){
+			$("#userAppstores").append("<ul id='userAppstoreList' class='users-list'></ul>");
+			
+			for (var i = 0; i<json.length; i++){
+				$("#userAppstoreList").append("<li class='userEntry dialogEntry'>"+json[i]+"</li>");
+			}
+		}else{
+			$("#userAppstores").append("<p class='nothingFound'>The user "+user+" is not assigned to any appstores.</p>");
+		}
+	});
+	
+	$("#userAppstores").dialog("open");
+	
+}
+
+function assignUserDlg(){
+	if(!($(".selected").length)){
+		alert("Please select an user");
+		return;
+	}
+	var user = $(".selected").text();
+	var appstore = $("#appstoreSelect").val();
+	
+	$("#assignUserToAppstore").html("");
+	
+	$("#assignUserToAppstore").append("<p>Choose the Password for the User:</p><p id='thisUserName'>"+user+"</p>" +
+			"<p> and Appstore:</p><p id='thisAppstore'>"+appstore+"</p>");
+	$("#assignUserToAppstore").append("<input id='pwd1' type='password'></input>");
+	$("#assignUserToAppstore").append("<input id='pwd2' type='password'></input>");
+	$("#assignUserToAppstore").append("<button id='applyAssign' type='button' onclick='applyAssignUser()'>Apply</button>");
+	
+	$("button#applyAssign").button({
+		icons : {
+			primary : "	ui-icon-check"
+		}
+	});
+	if($("#assignUserToAppstore").html()!=""){
+		$("#assignUserToAppstore").dialog("open");
+	}
+}
+
+function applyAssignUser(){
+	var user = $("#thisUserName").text();
+	var appstore = $("#thisAppstore").text();
+	if ( $("#pwd1").val() == $("#pwd2").val()){
+		if($("#pwd1").val().length){
+			var pwd = $("#pwd1").val();
+		}else{
+			alert("The passwords can not be empty");
+			return;
+		}
+	}else{
+		alert("The passwords can not be identical");
+		$("#pwd1").val("");
+		$("#pwd2").val("");
+		return;
+	}
+	$.getJSON("/security/config/hasappstoreaccess?user="+user+"&store="+appstore, function(json){
+		if (json[0]==true){
+			var conf = confirm("The user "+user+" already has access to the appstore "+appstore+"\n " +
+			"Do you want to change the password?")
+			if (conf!=true){
+				return;
+			}
+		}
+		
+		$.post("/security/config/appstoreuser?user="+user+"&store="+appstore+"&pwd="+pwd,{
+			
+		}, function(data, status){
+			alert("Data send to server: Response: " + data);
+			if(data.indexOf("successfull")>-1){
+				$("#assignUserToAppstore").dialog("close");
+			}else{
+				$("#pwd1").val("");
+				$("#pwd2").val("");
+			}
+		}).fail(function(xhr, textStatus, errorThrown) {
+			// if http-post fails
+			if (textStatus != "" && errorThrown != "") {
+				alert("Somthing went wrong: " + textStatus + "\nError: " + errorThrown);
+			} else {
+				alert("Error.");
+			}
+		});
+	});
 }
 
 function fillStartLevelDialog(defaultlvl, currentlvl){
@@ -519,8 +753,13 @@ function updateApp() {
 
 function removeBundle(){
 	
-	if ($(".selectedPortlet")[0]) {
-		var portletID = $(".selectedPortlet")[0].id;
+	if ($(".selectedPortlet")[0] || $("#contextMenu").data('originalElement')!=undefined) {
+		if ($(".selectedPortlet")[0]){
+			var portletID = $(".selectedPortlet")[0].id;
+		}else{
+			var portletID = $("#contextMenu").data('originalElement').id;
+			$("#contextMenu").removeData();
+		}
 		$.getJSON("/security/config/startlevel?id="+portletID, function(json) {
 			if (json.editable == false){
 				alert("Bundles that are a part of Ogema Core can not be removed.");
@@ -538,10 +777,37 @@ function removeBundle(){
 	
 }
 
+function goToBundleUrl(){
+	if ($(".selectedPortlet")[0] || $("#contextMenu").data('originalElement')!=undefined) {
+		if ($(".selectedPortlet")[0]){
+			var portletID = $(".selectedPortlet")[0].id;
+		}else{
+			var portletID = $("#contextMenu").data('originalElement').id;
+			$("#contextMenu").removeData();
+		}
+		$.getJSON("/security/config/installedapps?action=getURL&app=" + portletID, function(json) {
+			if(json.url == null || json.url == "null"){
+				alert("Es ist keine Startseite für die App vorhanden!")
+			}else{
+				var win = window.open(json.url, "_blank");
+				win.focus();
+			}
+			
+		});
+	} else {
+		alert("Wählen Sie ein Bundle!");
+	}
+}
+
 function startBundle() {
 
-	if ($(".selectedPortlet")[0]) {
-		var portletID = $(".selectedPortlet")[0].id;
+	if ($(".selectedPortlet")[0] || $("#contextMenu").data('originalElement')!=undefined) {
+		if ($(".selectedPortlet")[0]){
+			var portletID = $(".selectedPortlet")[0].id;
+		}else{
+			var portletID = $("#contextMenu").data('originalElement').id;
+			$("#contextMenu").removeData();
+		}
 		$.getJSON("/security/config/installedapps?action=start&app=" + portletID, function(json) {
 			alert(json.statusInfo);
 		});
@@ -552,8 +818,13 @@ function startBundle() {
 
 function stopBundle() {
 
-	if ($(".selectedPortlet")[0]) {
-		var portletID = $(".selectedPortlet")[0].id;
+	if ($(".selectedPortlet")[0] || $("#contextMenu").data('originalElement')!=undefined) {
+		if ($(".selectedPortlet")[0]){
+			var portletID = $(".selectedPortlet")[0].id;
+		}else{
+			var portletID = $("#contextMenu").data('originalElement').id;
+			$("#contextMenu").removeData();
+		}
 		$.getJSON("/security/config/installedapps?action=stop&app=" + portletID, function(json) {
 			alert(json.statusInfo);
 		});
@@ -564,8 +835,13 @@ function stopBundle() {
 
 function editPerms() {
 	
-	if ($(".selectedPortlet")[0]) {
-		var portletID = $(".selectedPortlet")[0].id;
+	if ($(".selectedPortlet")[0] || $("#contextMenu").data('originalElement')!=undefined) {
+		if ($(".selectedPortlet")[0]){
+			var portletID = $(".selectedPortlet")[0].id;
+		}else{
+			var portletID = $("#contextMenu").data('originalElement').id;
+			$("#contextMenu").removeData();
+		}
 		$.getJSON("/security/config/startlevel?id="+portletID, function(json) {
 			if (json.editable == false){
 				alert("Bundles that are a part of Ogema Core can not be edited.");
@@ -582,8 +858,13 @@ function editPerms() {
 }
 
 function listAllPerms() {
-	if ($(".selectedPortlet")[0]) {
-		var portletID = $(".selectedPortlet")[0].id;
+	if ($(".selectedPortlet")[0] || $("#contextMenu").data('originalElement')!=undefined) {
+		if ($(".selectedPortlet")[0]){
+			var portletID = $(".selectedPortlet")[0].id;
+		}else{
+			var portletID = $("#contextMenu").data('originalElement').id;
+			$("#contextMenu").removeData();
+		}
 		var url = "/security-gui/editperms.html?action=listperms&id=" + portletID;
 		var win = window.open(url, '_blank');
 		win.focus();
@@ -622,8 +903,13 @@ function createNewPolicy(){
 }
 
 function showWebResources() {
-	if ($(".selectedPortlet")[0]) {
-		var portletID = $(".selectedPortlet")[0].id;
+	if ($(".selectedPortlet")[0] || $("#contextMenu").data('originalElement')!=undefined) {
+		if ($(".selectedPortlet")[0]){
+			var portletID = $(".selectedPortlet")[0].id;
+		}else{
+			var portletID = $("#contextMenu").data('originalElement').id;
+			$("#contextMenu").removeData();
+		}
 		$("#treeWebRes").jstree("destroy");
 		if (!($("#treeWebRes").hasClass("jstree"))) {
 			$("#treeWebRes").jstree({
@@ -672,19 +958,6 @@ function showWebResources() {
 		}
 
 		$("#webResourceDisplay").dialog("open");
-	} else {
-		alert("Wählen Sie ein Bundle!");
-	}
-}
-
-function deleteApp() {
-	if ($(".selectedPortlet")[0]) {
-		var portletID = $(".selectedPortlet")[0].id;
-		$.getJSON("/security/config/installedapps?action=delete&app=" + portletID, function(json) {
-			var bundleName = $("#sortableApps").find(".selectedPortlet").parent().find(".portlet-content").text();
-			alert(bundleName + " deleted.");
-			listSysApps();
-		});
 	} else {
 		alert("Wählen Sie ein Bundle!");
 	}
@@ -848,4 +1121,15 @@ function setFile(num) {
 	var arrPos = num - 1;
 	fileNew = fileArr[arrPos];
 	number = num;
+}
+function validStartLevel(){
+	var startlevel = $("#levelFilter").val();
+	if (startlevel.length == 0){
+		filterSysApps();
+	}else if (isNaN(Number(startlevel))){
+		$("#levelFilter").val("");
+		return;
+	}else{
+		filterSysApps();
+	}	
 }

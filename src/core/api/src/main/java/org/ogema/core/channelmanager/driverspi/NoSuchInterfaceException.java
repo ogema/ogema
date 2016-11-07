@@ -16,7 +16,7 @@
 package org.ogema.core.channelmanager.driverspi;
 
 /**
- * A Exception thrown if Interface don't exist
+ * An Exception thrown if interface doesn't exist
  */
 public class NoSuchInterfaceException extends Exception {
 
@@ -34,10 +34,10 @@ public class NoSuchInterfaceException extends Exception {
 	}
 
 	/**
-	 * Constructor
+	 * Constructor 
 	 * 
 	 * @param interfaceId
-	 *            ,message
+	 * @param message
 	 */
 	public NoSuchInterfaceException(String interfaceId, String message) {
 		super(message);

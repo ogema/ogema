@@ -26,14 +26,18 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
+import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.units.PowerResource;
 import org.ogema.core.model.units.ThermalEnergyCapacityResource;
+import org.ogema.exam.ValueTestListener;
 import org.ogema.model.actors.OnOffSwitch;
+import org.ogema.model.devices.sensoractordevices.SensorDevice;
 import org.ogema.model.devices.whitegoods.CoolingDevice;
+import org.ogema.model.sensors.PowerSensor;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 
@@ -320,7 +324,102 @@ public class ResourceListenerTest extends OsgiTestBase {
 
 		pwr2.setValue(2);
 		assertTrue(l.await());
+        
+        l.reset();
+        
+        pwr.setValue(3);
+		assertTrue(l.await());
 	}
+    
+    @Test
+	public void listenersSurviveReferenceChanges2() throws InterruptedException {
+		CoolingDevice cooler = resMan.createResource(newResourceName(), CoolingDevice.class);
+		CoolingDevice cooler2 = resMan.createResource(newResourceName(), CoolingDevice.class);
+		PowerResource pwr = cooler.electricityConnection().powerSensor().reading().create();
+		PowerResource pwr2 = cooler2.electricityConnection().powerSensor().reading().create();
+
+		cooler.activate(true);
+		cooler2.activate(true);
+        
+		ValueTestListener<PowerResource> l = new ValueTestListener<>(getApplicationManager());
+		pwr.addValueListener(l, false);
+		pwr.setValue(1);
+		assertTrue(l.await());
+
+		l.reset();
+
+		cooler.electricityConnection().setAsReference(cooler2.electricityConnection());
+		assertTrue(pwr.equalsLocation(pwr2));
+
+		pwr2.setValue(2);
+		assertTrue(l.await());
+        
+        l.reset();
+        
+        pwr.setValue(3);
+		assertTrue(l.await());
+	}
+    
+    @Test
+	public void listenersSurviveReferenceChangesOnADecoratorPath() throws InterruptedException {
+        Resource top = resMan.createResource(newResourceName(), Resource.class);
+        PowerSensor ps1 = top.addDecorator("ps1", PowerSensor.class);
+        PowerSensor ps2 = top.addDecorator("ps2", PowerSensor.class);
+
+        ps1.create();
+        ps2.create();
+		PowerResource pwr = ps1.reading().create();
+		PowerResource pwr2 = ps2.reading().create();
+        
+		top.activate(true);
+        
+		ValueTestListener<PowerResource> l = new ValueTestListener<>(getApplicationManager());
+		pwr.addValueListener(l, false);
+		pwr.setValue(1);
+		assertTrue(l.await());
+        l.reset();
+
+		ps1.setAsReference(ps2);
+		assertTrue(pwr.equalsLocation(pwr2));
+
+		pwr2.setValue(2);
+		assertTrue(l.await());
+        l.reset();
+        
+        pwr.setValue(3);
+		assertTrue(l.await());
+	}    
+    
+    @Test
+	public void listenersSurviveReferenceChangesOnAListPath() throws InterruptedException {
+        SensorDevice sd = resMan.createResource(newResourceName(), SensorDevice.class);
+        PowerSensor ps1 = sd.sensors().add(PowerSensor.class);
+        PowerSensor ps2 = sd.sensors().add(PowerSensor.class);
+        ps1.create();
+        ps2.create();
+		PowerResource pwr = ps1.reading().create();
+		PowerResource pwr2 = ps2.reading().create();
+        
+        AdminApplication aa = getApplicationManager().getAdministrationManager().getAppById(getApplicationManager().getAppID().getIDString());
+
+		sd.activate(true);
+        
+		ValueTestListener<PowerResource> l = new ValueTestListener<>(getApplicationManager());
+		pwr.addValueListener(l, false);
+		pwr.setValue(1);
+		assertTrue(l.await());
+        l.reset();
+
+		ps1.setAsReference(ps2);
+		assertTrue(pwr.equalsLocation(pwr2));
+
+		pwr2.setValue(2);
+		assertTrue(l.await());
+        l.reset();
+        
+        pwr.setValue(3);
+		assertTrue(l.await());
+	}    
 
 	/** when a recursive listener registration affects resources which are only
 	 * reachable via reference, the callbacks from those resources must not use

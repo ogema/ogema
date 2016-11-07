@@ -4,10 +4,10 @@
     <parent>
     <artifactId>ogema-apps</artifactId>
     <groupId>org.ogema.apps</groupId>
-    <version>2.0.4</version>
+    <version>2.1.0</version>
   </parent>
 
-    <artifactId>roomClimateStation</artifactId>
+    <artifactId>arduino-uno-data-servlet</artifactId>
     <packaging>bundle</packaging>
 
     <name>OGEMA Applications :: roomClimateStation</name>
@@ -58,17 +58,16 @@
         <dependency>
         	<groupId>org.ogema.drivers</groupId>
         	<artifactId>lemoneg-driver</artifactId>
-        	<version>2.0.4</version>
+        	<version>${project.version}</version>
         </dependency>
          <dependency>
         	<groupId>org.ogema.drivers</groupId>
         	<artifactId>arduino-driver</artifactId>
-        	<version>2.0.4</version>
+        	<version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20070829</version>
         </dependency>
         <dependency>
         	<groupId>javax.servlet</groupId>

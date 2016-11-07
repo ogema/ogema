@@ -26,6 +26,7 @@ import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceRegistration;
+import org.slf4j.LoggerFactory;
 
 /**
  * 
@@ -41,23 +42,22 @@ public class Activator implements BundleActivator {
 	private ServiceRegistration<ResourceDB> reg;
 
 	@Override
-	public void start(BundleContext bc) throws Exception {
-		System.err.println("START");
+	public synchronized void start(BundleContext bc) throws Exception {
 		if (Boolean.getBoolean(ACTIVATE_MEM_DB)) {
 			MemoryResourceDB db = new MemoryResourceDB();
 			Dictionary<String, Object> serviceProps = new Hashtable<>();
 			serviceProps.put(Constants.SERVICE_RANKING, Integer.MIN_VALUE);
 			reg = bc.registerService(ResourceDB.class, db, serviceProps);
-			System.err.println("REGISTERED");
+            LoggerFactory.getLogger(getClass()).info("activated in memory non-persistent resource DB");
 		}
 	}
 
 	@Override
-	public void stop(BundleContext bc) throws Exception {
+	public synchronized void stop(BundleContext bc) throws Exception {
 		if (reg != null) {
 			reg.unregister();
-			System.err.println("UNREGISTERED");
 		}
+		reg = null;
 	}
 
 }

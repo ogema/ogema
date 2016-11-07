@@ -53,8 +53,8 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
  * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "TimeResource", propOrder = { "value" })
-@XmlRootElement(name = "time", namespace = NS_OGEMA_REST)
+@XmlType(name = "TimeResource", namespace = NS_OGEMA_REST, propOrder = { "value" })
+//@XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 public class TimeResource extends Resource {
 
 	protected long value;

@@ -30,96 +30,6 @@ body#GUIBody, body#appsBody{
 	overflow-y:scroll;
 }
 
-div#header {
-	-moz-box-shadow: 0 0 5px #000;
-	-webkit-box-shadow: 0 0 5px #000;
-	box-shadow: 0 0 5px #000;
-	background: white /*url(images/ogema.png)*/;
-	background-repeat: no-repeat;
-	background-position: 90% 50%;
-	background-size: 360px 150px;
-	min-height: 200px;
-	height: 20%;
-	border-top: none;
-	border-top-left-radius: 0px;
-	border-top-right-radius: 0px;
-	border-bottom-left-radius: 10px;
-	border-bottom-right-radius: 10px;
-	margin-bottom: 5px;
-	width: 70%;
-	min-width: 600px;
-	margin: auto;
-	padding: 0 30px
-}
-
-div#pre {
-	font-size: 1em;
-	margin-bottom: 10px;
-	text-align: justify;
-	margin-top: 20px;
-}
-
-div#wrap {
-	background: #F5F5F5;
-	width: 70%;
-	min-width: 600px;
-	min-height: 70%;
-	height: auto !important;
-	padding: 30px;
-	padding-top: 20px;
-	position: relative;
-	margin: auto;
-	margin-top: 5px;
-	margin-bottom: 0px;
-	border-radius: 10px;
-}
-
-div#footer {
-	-moz-box-shadow: 0 0 5px #000;
-	-webkit-box-shadow: 0 0 5px #000;
-	box-shadow: 0 0 5px #000;
-	background: #FFFFFF;
-	width: 70%;
-	min-width: 600px;
-	height: 30px;
-	padding-left: 30px;
-	padding-right: 30px;
-	position: relative;
-	margin: auto;
-	margin-top: 5px;
-	margin-bottom: 0px;
-	border-top-right-radius: 10px;
-	border-top-left-radius: 10px;
-	padding-top: 10px;
-}
-
-div#footer div {
-	text-align: center;
-	font-weight: bold;
-	width: 33.33%;
-	float: left;
-	display: block;
-	width: 33.33%;
-}
-
-div#wrap p {
-	margin-top: 10px;
-	font-size: 0.9em;
-	margin-left: 0px;
-	margin-bottom: 0px;
-	padding-bottom: 5px;
-	padding-left: 0px;
-	margin-left: 0px;
-	background-color: rgba(200, 200, 255, 0.1);
-	border: 1px solid rgba(179, 179, 179, 0.5);
-	box-shadow: 7px 7px 7px rgba(179, 179, 179, 1);
-}
-
-div.part {
-	padding: 0 10px 30px;
-	margin: 5px 0px 0px;
-}
-
 div#app .part {
 	height: 165px;
 }
@@ -274,8 +184,6 @@ a#adminindex:hover{
 /* ----ENDE-----Listenelemente*/
 .innerContent form {
 	margin-top: 8px;
-	background: white;
-	border: 1px solid #BDBDBD;
 }
 /* -------------Input*/
 input#store.ui-button {
@@ -321,7 +229,6 @@ img#button:hover {
 
 div#wrapUpload {
 	border-radius: 5px;
-	height: 200px;
 	padding: 10px;
 }
 
@@ -359,7 +266,7 @@ div.singleFile span.prozent {
 	overflow: auto;
 	/* 	min-height: 100px; */
 	padding-left: 30px;
-	height: 80vh;
+	height: 69vh;
 }
 
 #sortableApps .ui-widget, #sortableNewApps .ui-widget {
@@ -407,7 +314,7 @@ div.singleFile span.prozent {
 	border: none;
 }
 
-#sortableApps .ui-widget-content, #sortableNewApps .ui-widget-content {
+#sortableApps .portlet.ui-widget-content, #sortableNewApps .portlet.ui-widget-content {
 	border: none !important;
 	padding: 0;
 	height: auto !important;
@@ -468,45 +375,8 @@ div.singleFile span.prozent {
 #appDisplay {
 	padding-left: 20px;
 	padding-right: 20px;
-	background-color: #596778;
-}
-
-#appDisplay .appNamePol {
-	color: white;
-	text-align: center;
-}
-
-#appDisplay .wrapPolicies {
-	background: #EDEDED;
-	font-family: arial, sans-serif;
-	padding: 10px;
-	word-wrap: break-word;
-}
-
-#appDisplay .wrapPolicies .permissions {
-	margin: 10px;
-}
-
-#appDisplay .wrapPolicies .conditions {
-	margin: 10px;
-}
-
-#appDisplay .wrapOnePerm {
-	margin-bottom: 5px;
-	padding: 10px;
-	background:
-		url("jquery-ui-1.10.4.custom/css/black-tie/images/ui-bg_diagonals-thick_8_333333_40x40.png")
-		repeat scroll 50% 50% #333333;
-	border-radius: 10px;
-	color: white;
-}
-
-#appDisplay .wrapOneCond {
-	margin-bottom: 5px;
-	padding: 10px;
-	background: none repeat scroll 0 0 #3c698f;
-	border-radius: 10px;
-	color: white;
+	background-color: #F5F5F5;
+	border-top: 1px solid #124791;
 }
 
 .selectedPortlet {
@@ -962,4 +832,131 @@ p#currlvl{
 
 div.tooltip-inner{
 	max-width: 300px;
+}
+h2{
+	font-size: 1.3em;
+	font-weight: normal;
+	color: #124791;
+}
+label.filter{
+	top: unset;
+}
+label#levellbl{
+	margin-right: 17px;
+}
+#contextMenu{
+	position: relative;
+	display: none;
+	max-height: 200px;
+	max-width:150px;
+	overflow: hidden;
+	width: 120px;
+}
+#sortableNewApps{
+	height: 81vh;
+}
+#appFilter, #driverFilter{
+	margin: 0px 0px 0px 25px;
+	vertical-align: middle;
+}
+.prop{
+	background: #e9e9e9 none repeat scroll 0% 0%;
+	border-radius: 20px;
+	min-height: 30px;
+	text-align: left;
+	padding: 6px;
+	margin-bottom: 5px;
+	font-size: 1.3em;
+}
+.selected{
+	color: white;
+	background: #39C !important;;
+}
+.users-list{
+	list-style-type: none;
+}
+#selectableUsers{
+	width:400px;
+	min-width: 300px;
+}
+#userFunctions{
+	width: 20%;
+	float: left;
+	min-width: 180px;
+	margin-left: 40px;
+}
+#appstoreFunctions{
+	width: 180px;
+	float: left;
+	min-width: 180px;
+	margin-left: 40px;
+}
+@media(max-width:460px){
+	#selectableUsers{
+		width: 300px;
+	}	
+}
+#functions{
+	float: right;
+}
+#userContainer{
+	float: left;
+}
+.userInfo{
+	float: right;
+}
+.userEntry{
+	border: 1px solid rgb(233, 233, 233);
+	border-radius: 12px;
+	margin-bottom: 7px;
+	margin-right: 5px;
+	padding-left: 10px;
+	padding-top: 4px;
+	height: 30px;
+	background: #e9e9e9;
+}
+.entryHover:hover{
+	background: #f5f5f5;
+}
+#userDiv{
+	overflow: auto;	
+	min-height: 300px;
+}
+#assignUser{
+	display: block;
+	margin-top: 5px;
+}
+#appstoreSelect-button, #installStore-button{
+	min-width: 180px;
+	max-width: 250px;
+	height: 28px;
+}
+li.userEntry.dialogEntry{
+	margin-left: -37px;
+}
+#openStore{
+	vertical-align: top;
+}
+#applyAssign{
+	display: block;
+	margin-top: 10px
+}
+#pwd2{
+	margin-top: 3px;
+	display: block;
+}
+#assignUserToAppstore, #userAppstores, #appstoreUsers{
+	font-size: 0.9em
+}
+#appsLogin{
+	min-width: 300px;
+	text-align: center;
+}
+div#wrap{
+	height: auto !important;	
+}
+#loginPanel{
+	width: 300px;
+	min-width: 300px;
+	display: inline-block
 }

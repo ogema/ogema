@@ -51,6 +51,12 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 		}
 		return ctx;
 	}
+	
+	synchronized void close() {
+		if (ctx != null)
+			ctx.close();
+		ctx = null;
+	}
 
 	/**
 	 * This method is called by the application or a osgi bundle. The registration is delegated to the http service with
@@ -95,7 +101,7 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 		} catch (NamespaceException e) {
 			throw new RuntimeException("Servlet path already in use: " + alias);
 		} catch (ServletException e) {
-			throw new RuntimeException("Servlet exception " + alias);
+			throw new RuntimeException("Servlet exception " + alias,e);
 		}
 		httpCon.servlets.put(result, appId.getIDString());
 
@@ -127,8 +133,10 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 			fac.logger.warn("unregisterWebResource called on empty context. alias={}", alias);
 		}
 		alias = normalizePath(alias);
-		String nameRes = ctx.resources.remove(alias);
-		String nameServ = ctx.servlets.remove(alias);
+		if (ctx != null) { // only happens if framework is shutting down
+			ctx.resources.remove(alias);
+			ctx.servlets.remove(alias);
+		}
 		try {
 			fac.http.unregister(alias);
 		} catch (IllegalArgumentException iae) {
@@ -140,10 +148,11 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 	public boolean unregisterWebResourcePath(String alias) {
 		alias = normalizePath(alias);
 		String newAlias = extendPath(alias);
-		OgemaHttpContext httpContext = getOrCreateHttpContext();
-		String nameRes = httpContext.resources.remove(newAlias);
-		String nameServ = httpContext.servlets.remove(newAlias);
-
+//		OgemaHttpContext httpContext = getOrCreateHttpContext();
+		if (ctx != null) { // only happens if framework is shutting down
+			ctx.resources.remove(newAlias);
+			ctx.servlets.remove(newAlias);
+		}
 		try {
 			fac.http.unregister(newAlias);
 		} catch (IllegalArgumentException iae) {

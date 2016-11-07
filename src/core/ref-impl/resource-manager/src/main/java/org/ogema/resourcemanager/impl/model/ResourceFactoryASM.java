@@ -36,7 +36,9 @@ import java.util.Map;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
+
 import static org.objectweb.asm.Opcodes.ACC_SYNTHETIC;
+
 import org.objectweb.asm.Type;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
@@ -65,7 +67,7 @@ enum ResourceFactoryASM {
 	ResourceFactoryASM() {
 	}
 
-	private synchronized Class<? extends ResourceBase> getImplementation(Class<? extends Resource> ogemaType) {
+	synchronized Class<? extends ResourceBase> getImplementation(Class<? extends Resource> ogemaType) {
 		Class<? extends ResourceBase> implementationType = implementationTypes.get(ogemaType);
 		if (implementationType != null) {
 			return implementationType;
@@ -75,6 +77,7 @@ enum ResourceFactoryASM {
 		return implementationType;
 	}
     
+	@SuppressWarnings("rawtypes")
 	private Class<? extends ResourceBase> createImplementationType(final Class<? extends Resource> ogemaType) {
 		final long startTime = System.currentTimeMillis();
 

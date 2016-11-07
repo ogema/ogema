@@ -16,7 +16,6 @@
 package org.ogema.resourcemanager.impl.model.simple;
 
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
-import org.ogema.resourcemanager.impl.ResourceBase;
 
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 
@@ -25,7 +24,7 @@ import org.ogema.resourcemanager.virtual.VirtualTreeElement;
  * @author jlapp
  */
 @SuppressWarnings("deprecation")
-public class DefaultOpaqueResource extends ResourceBase implements org.ogema.core.model.simple.OpaqueResource {
+public class DefaultOpaqueResource extends SingleValueResourceBase implements org.ogema.core.model.simple.OpaqueResource {
 
 	public DefaultOpaqueResource(VirtualTreeElement el, String path, ApplicationResourceManager resMan) {
 		super(el, path, resMan);
@@ -49,11 +48,6 @@ public class DefaultOpaqueResource extends ResourceBase implements org.ogema.cor
 		//FIXME no change check
 		handleResourceUpdate(true);
 		return true;
-	}
-
-	@Override
-	public long getLastUpdateTime() {
-		return super.getLastUpdateTime();
 	}
 
 }

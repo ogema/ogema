@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelScanListener;
@@ -50,39 +49,41 @@ import org.ogema.driver.xbee.manager.RemoteDevice.InitStates;
 import org.ogema.driver.xbee.manager.SimpleDescriptor;
 import org.slf4j.Logger;
 
+import jssc.SerialPortException;
+
 public class XBeeDriver implements ChannelDriver, HardwareListener {
 
-	private final Map<String, Connection> connectionsMap; // <interfaceId,
-	// connection>
+	private final Map<String, Connection> connectionsMap;
 	private final String driverId = "xbee-driver";
 	private final String description = "ZigBee driver for Series 2 XBees in API Mode";
 	private final Map<ChannelUpdateListener, List<Channel>> listenerMap;
-	private ChannelAccess channelAccess;
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("xbee-driver");
 
-	public XBeeDriver(ChannelAccess channelAccess, HardwareManager hwMngr) {
+	public XBeeDriver(HardwareManager hwMngr) {
 		connectionsMap = new HashMap<String, Connection>();
 		listenerMap = new HashMap<>();
 		hwMngr.addListener(this);
-		this.channelAccess = channelAccess;
-
-		// Check if the portname property is set
-		String portName = System.getProperty(Constants.STATIC_IF_NAME);
-		if (portName != null) {
-			Connection con = new Connection(portName, this);
-			if (con.localDevice != null)
-				addConnection(con);
-		}
-		else {
-			Collection<HardwareDescriptor> descriptors = hwMngr.getHardwareDescriptors(".+:0403:6001:");
-			for (HardwareDescriptor descr : descriptors) {
-				portName = ((UsbHardwareDescriptor) descr).getPortName();
-				if (portName != null) {
-					Connection con = new Connection(portName, this);
-					if (con.localDevice != null)
-						addConnection(con);
+		try {
+			// Check if the portname property is set
+			String portName = System.getProperty(Constants.STATIC_IF_NAME);
+			if (portName != null) {
+				Connection con = new Connection(portName, this);
+				if (con.localDevice != null)
+					addConnection(con);
+			}
+			else {
+				Collection<HardwareDescriptor> descriptors = hwMngr.getHardwareDescriptors(".+:0403:6001:");
+				for (HardwareDescriptor descr : descriptors) {
+					portName = ((UsbHardwareDescriptor) descr).getPortName();
+					if (portName != null) {
+						Connection con = new Connection(portName, this);
+						if (con.localDevice != null)
+							addConnection(con);
+					}
 				}
 			}
+		} catch (SerialPortException e) {
+
 		}
 
 	}
@@ -147,13 +148,17 @@ public class XBeeDriver implements ChannelDriver, HardwareListener {
 			logger.error("No coordinator hardware seems to be pluged in. Please plug your XSTICK in.");
 			return false;
 		}
-		// connection.localDevice.getDeviceHandler().initNetworkScan();
 		boolean success = false;
 		// TODO wait for the initiated network scan/device initialization to finish? Timer? How long?
 		for (Map.Entry<Long, RemoteDevice> deviceEntry : connection.localDevice.getDevices().entrySet()) {
 			RemoteDevice remoteDevice = deviceEntry.getValue();
 			if (remoteDevice.getInitState() == InitStates.INITIALIZED) {
 				for (Map.Entry<Byte, Endpoint> endpointEntry : remoteDevice.getEndpoints().entrySet()) {
+					// @HACK Only devices that support On/Off cluster are reported.
+					// TODO Each tripple of (addres64Bit, endpoint, cluster) should be reported so the high level driver
+					// could filter the devices.
+					if (!endpointEntry.getValue().getClusters().containsKey((short) 6))
+						continue;
 					String deviceType = remoteDevice.getDeviceType();
 					String nodeIdentifier = remoteDevice.getNodeIdentifier();
 					if (nodeIdentifier == null)
@@ -161,21 +166,24 @@ public class XBeeDriver implements ChannelDriver, HardwareListener {
 					String deviceId = null;
 					String profileId = null;
 					SimpleDescriptor sd = endpointEntry.getValue().getSimpleDescriptor();
+					short devID = sd.getApplicationDeviceId();
 					if (sd != null) {
-						deviceId = Integer.toHexString(sd.getApplicationDeviceId() & 0xffff);
+						deviceId = Integer.toHexString(devID & 0xffff);
 						deviceId = ("0000" + deviceId).substring(deviceId.length());
 						profileId = Integer.toHexString(sd.getApplicationProfileId() & 0xffff);
 						profileId = ("0000" + profileId).substring(profileId.length()); // Needed for leading 0s
 					} // Needed for leading 0s
 
-					String parameters = deviceType + ":" + nodeIdentifier + ":" + deviceId + ":" + profileId;
 					String address64Bit = Long.toHexString(remoteDevice.getAddress64Bit());
 					address64Bit = ("0000000000000000" + address64Bit).substring(address64Bit.length()); // Needed for
 					// leading
 					// 0s
 					String endpointId = Integer.toHexString(endpointEntry.getKey() & 0xff);
 					endpointId = ("00" + endpointId).substring(endpointId.length());
-					DeviceLocator deviceLocator = channelAccess.getDeviceLocator(driverId, connection.getInterfaceId(),
+					String deviceDescription = Constants.getDeviceDescription(devID, address64Bit + "_" + endpointId);
+					String parameters = deviceType + ":" + /* nodeIdentifier */deviceDescription + ":" + deviceId + ":"
+							+ profileId;
+					DeviceLocator deviceLocator = new DeviceLocator(driverId, connection.getInterfaceId(),
 							address64Bit + ":" + endpointId, parameters);
 					listener.deviceFound(deviceLocator);
 					success = true;
@@ -260,8 +268,8 @@ public class XBeeDriver implements ChannelDriver, HardwareListener {
 	}
 
 	@Override
-	public void writeChannels(List<ValueContainer> channels) throws UnsupportedOperationException, IOException,
-			NoSuchDeviceException, NoSuchChannelException {
+	public void writeChannels(List<ValueContainer> channels)
+			throws UnsupportedOperationException, IOException, NoSuchDeviceException, NoSuchChannelException {
 		for (ValueContainer container : channels) {
 			ChannelLocator channelLocator = container.getChannelLocator();
 
@@ -290,8 +298,12 @@ public class XBeeDriver implements ChannelDriver, HardwareListener {
 		con = findConnection(iface);
 
 		if (con == null) {
-			con = new Connection(iface, this);
-			addConnection(con);
+			try {
+				con = new Connection(iface, this);
+				addConnection(con);
+			} catch (SerialPortException e) {
+				e.printStackTrace();
+			}
 		}
 
 		// Device handling
@@ -356,8 +368,13 @@ public class XBeeDriver implements ChannelDriver, HardwareListener {
 			return;
 		}
 
-		Connection con = new Connection(portName, this);
-		addConnection(con);
+		Connection con = null;
+		try {
+			con = new Connection(portName, this);
+			addConnection(con);
+		} catch (SerialPortException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -388,19 +405,19 @@ public class XBeeDriver implements ChannelDriver, HardwareListener {
 
 	@Override
 	public void addDeviceListener(DeviceListener listener) {
-		// TODO Auto-generated method stub
-
+		throw new UnsupportedOperationException(
+				"DeviceListener are not yet supported by this driver. Use DeviceScanListener instead!");
 	}
 
 	@Override
 	public void removeDeviceListener(DeviceListener listener) {
-		// TODO Auto-generated method stub
-
+		throw new UnsupportedOperationException(
+				"DeviceListener are not yet supported by this driver. Use DeviceScanListener instead!");
 	}
 
 	@Override
-	public void writeChannel(ChannelLocator channelLocator, Value value) throws UnsupportedOperationException,
-			IOException, NoSuchDeviceException, NoSuchChannelException {
+	public void writeChannel(ChannelLocator channelLocator, Value value)
+			throws UnsupportedOperationException, IOException, NoSuchDeviceException, NoSuchChannelException {
 		try {
 			Connection con = findConnection(channelLocator.getDeviceLocator().getInterfaceName());
 			Device dev = con.findDevice(channelLocator.getDeviceLocator());

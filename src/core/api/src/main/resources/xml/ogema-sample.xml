@@ -24,44 +24,61 @@ Example document for the OGEMA 2.0 REST XML schema.
     xmlns:og='http://www.ogema-source.net/REST'
     xsi:schemaLocation='http://www.ogema-source.net/REST Ogema.xsd'>
     
-    <name>Switch</name>
-    <type>org.ogema.core.model.commonactors.ElSwitch</type>
-    <path>Switch</path>
-    
+    <name>switchBox</name>
+    <type>org.ogema.model.devices.sensoractordevices.SingleSwitchBox</type>
+    <path>switchBox</path>
+    <decorating>false</decorating>
+    <active>true</active>
     <resource>
-        <name>stateFB</name>
-        <type>org.ogema.core.model.commonactors.FeedbackBoolean</type>
-        <path>Switch/stateFB</path>
-        <resource xsi:type="og:BooleanResource">
-            <name>feedback</name>
-            <type>org.ogema.core.model.simple.BooleanResource</type>
-            <value>false</value>
+        <name>electricityConnection</name>
+        <type>org.ogema.model.connections.ElectricityConnection</type>
+        <path>switchBox/electricityConnection</path>
+        <decorating>false</decorating>
+        <active>true</active>
+        <resource>
+            <name>powerSensor</name>
+            <type>org.ogema.model.sensors.ElectricPowerSensor</type>
+            <path>switchBox/electricityConnection/powerSensor</path>
+            <decorating>false</decorating>
+            <active>true</active>
+            <resource xsi:type="og:FloatResource">
+                <name>reading</name>
+                <type>org.ogema.core.model.units.PowerResource</type>
+                <path>switchBox/electricityConnection/powerSensor/reading</path>
+                <decorating>false</decorating>
+                <active>true</active>
+                <value>24.7</value>
+                <unit>W</unit>
+            </resource>
         </resource>
-    </resource>
-    <resource xsi:type="og:FloatResource">
-        <name>ratedSwitchingCurrent</name>
-        <type>org.ogema.core.model.simple.FloatResource</type>
-        
-        <resource xsi:type="og:FloatSchedule">
-            <name>switchSchedule</name>
-            <type>org.ogema.schedule.Schedule</type>
-            <entry>
-                <time>0</time>
-                <value>42</value>
-            </entry>
-            <entry>
-                <time>1</time>
-                <value>43</value>
-            </entry>
-        </resource>
-        
-        <value>47.11</value>
-        
     </resource>
     <resourcelink>
-        <link>x/y/z</link>
-        <type>org.ogema.core.model.commonactors.TextDisplay</type>
-        <name>z</name>
+        <link>kitchenLight</link>
+        <type>org.ogema.model.devices.buildingtechnology.ElectricLight</type>
+        <name>device</name>
     </resourcelink>
+    <resource>
+        <name>onOffSwitch</name>
+        <type>org.ogema.model.actors.OnOffSwitch</type>
+        <path>switchBox/onOffSwitch</path>
+        <decorating>false</decorating>
+        <active>true</active>
+        <resource xsi:type="og:BooleanResource">
+            <name>stateControl</name>
+            <type>org.ogema.core.model.simple.BooleanResource</type>
+            <path>switchBox/onOffSwitch/stateControl</path>
+            <decorating>false</decorating>
+            <active>true</active>
+            <value>true</value>
+        </resource>
+        <resource xsi:type="og:BooleanResource">
+            <name>stateFeedback</name>
+            <type>org.ogema.core.model.simple.BooleanResource</type>
+            <path>switchBox/onOffSwitch/stateFeedback</path>
+            <decorating>false</decorating>
+            <active>true</active>
+            <value>true</value>
+        </resource>
+    </resource>
     
 </og:resource>

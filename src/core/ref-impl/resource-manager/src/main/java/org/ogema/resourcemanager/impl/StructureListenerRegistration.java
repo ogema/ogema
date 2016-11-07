@@ -15,23 +15,22 @@
  */
 package org.ogema.resourcemanager.impl;
 
-import java.util.Objects;
 import java.util.concurrent.Callable;
-import java.util.concurrent.locks.ReadWriteLock;
 import org.ogema.core.administration.AdminApplication;
-import org.ogema.core.administration.RegisteredStructureListener;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.resourcetree.TreeElement;
+import org.ogema.resourcetree.listeners.DefaultResourceStructureEvent;
+import org.ogema.resourcetree.listeners.InternalStructureListenerRegistration;
 
 /**
  *
  * @author jlapp
  */
-public class StructureListenerRegistration implements RegisteredStructureListener {
+public class StructureListenerRegistration extends InternalStructureListenerRegistration {
 
 	final Resource resource;
 
@@ -44,7 +43,17 @@ public class StructureListenerRegistration implements RegisteredStructureListene
 		this.resource = resource;
 		this.listener = listener;
 		this.appman = appman;
+        virtualRegistration = !resource.exists();
 	}
+    
+    /**
+     the registration is sitting on a virtual resource, or has reported the resource as deleted
+     */
+    private boolean virtualRegistration; //XXX bad name
+    
+    public boolean isVirtualRegistration() {
+        return virtualRegistration;
+    }
 
 	public void queueEvent(final ResourceStructureEvent e) {
 		Callable<Boolean> c = new Callable<Boolean>() {
@@ -54,7 +63,7 @@ public class StructureListenerRegistration implements RegisteredStructureListene
 				ResourceDBManager dbMan = ((ApplicationResourceManager) appman.getResourceManagement())
 						.getDatabaseManager();
 				// get the structure lock and release it to insure that the action which triggered this event is completed
-				dbMan.lockStructureWrite();
+				dbMan.lockStructureWrite();  // XXX why isn't it sufficient to lock structure read?
 				dbMan.unlockStructureWrite();
 				listener.resourceStructureChanged(e);
 				return true;
@@ -73,10 +82,12 @@ public class StructureListenerRegistration implements RegisteredStructureListene
 		if (!path.equals(resource.getPath())) {
 			return;
 		}
+        virtualRegistration = false;
 		queueEvent(DefaultResourceStructureEvent.createResourceCreatedEvent(resource));
 	}
 
 	public void queueResourceDeletedEvent() {
+        virtualRegistration = true;
 		queueEvent(DefaultResourceStructureEvent.createResourceDeletedEvent(resource));
 	}
 
@@ -131,31 +142,6 @@ public class StructureListenerRegistration implements RegisteredStructureListene
 	}
 
 	@Override
-	public int hashCode() {
-		int hash = 7;
-		hash = 37 * hash + Objects.hashCode(resource.getPath());
-		return hash;
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (obj == null) {
-			return false;
-		}
-		if (getClass() != obj.getClass()) {
-			return false;
-		}
-		final StructureListenerRegistration other = (StructureListenerRegistration) obj;
-		if (!Objects.equals(this.resource, other.resource)) {
-			return false;
-		}
-		if (!Objects.equals(this.listener, other.listener)) {
-			return false;
-		}
-		return Objects.equals(this.appman, other.appman);
-	}
-
-	@Override
 	public Resource getResource() {
 		return resource;
 	}
@@ -168,6 +154,11 @@ public class StructureListenerRegistration implements RegisteredStructureListene
 	@Override
 	public ResourceStructureListener getListener() {
 		return listener;
+	}
+	
+	@Override
+	public ApplicationManager getApplicationManager() {
+		return appman;
 	}
 
 }

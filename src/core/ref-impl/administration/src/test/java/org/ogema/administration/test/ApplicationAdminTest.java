@@ -29,12 +29,13 @@ import org.ogema.core.application.AppID;
 import org.ogema.core.application.Timer;
 import org.ogema.core.application.TimerListener;
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
+import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.exam.OsgiAppTestBase;
 import org.ogema.model.actors.OnOffSwitch;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
@@ -76,6 +77,7 @@ public class ApplicationAdminTest extends OsgiAppTestBase {
 	}
 
 	@Test
+    @SuppressWarnings("deprecation")
 	public void registeredResourceListenersAreAvailableViaAdministration() {
 		OnOffSwitch sw = getApplicationManager().getResourceManagement().createResource(newResourceName(),
 				OnOffSwitch.class);
@@ -84,7 +86,7 @@ public class ApplicationAdminTest extends OsgiAppTestBase {
 
 		assertTrue(appAdmin.getResourceListeners().isEmpty());
 
-		ResourceListener l = new ResourceListener() {
+		org.ogema.core.resourcemanager.ResourceListener l = new org.ogema.core.resourcemanager.ResourceListener() {
 
 			@Override
 			public void resourceChanged(Resource resource) {
@@ -95,6 +97,27 @@ public class ApplicationAdminTest extends OsgiAppTestBase {
 
 		assertFalse(appAdmin.getResourceListeners().isEmpty());
 		assertTrue(appAdmin.getResourceListeners().get(0).getListener() == l);
+	}
+    
+    @Test
+	public void registeredValueListenersAreAvailableViaAdministration() {
+		OnOffSwitch sw = getApplicationManager().getResourceManagement().createResource(newResourceName(),
+				OnOffSwitch.class);
+
+		AdminApplication appAdmin = getAdminApplication();
+
+		assertTrue(appAdmin.getResourceListeners().isEmpty());
+
+		ResourceValueListener<Resource> l = new ResourceValueListener<Resource>() {
+
+            @Override
+            public void resourceChanged(Resource resource) {
+            }
+        };
+		sw.stateFeedback().addValueListener(l, false);
+
+		assertFalse(appAdmin.getValueListeners().isEmpty());
+		assertTrue(appAdmin.getValueListeners().get(0).getValueListener() == l);
 	}
 
 	@Test

@@ -1,8 +1,9 @@
 var servletPath = "/apps/ogema/graphgenerator";
 var visJsNetwork = undefined;
 
-function sendGET() {
-    $.get(path, processGET); 
+// callback should have two arguments, data and status
+function sendGET(callback) {
+    $.get(servletPath, callback); 
 }
 
 function processGET(data, status) {
@@ -11,20 +12,29 @@ function processGET(data, status) {
 
 function writeAll() {
 	var selectedGenerator = $('#generator').val();
+	var selectedType = $('#resourceType').val();
+	if (typeof selectedType==='undefined' || selectedType.length === 0) {
+		console.warn("Could not determine ResourceType");
+		selectedType = "org.ogema.core.model.Resource";
+	} 
+	// FIXME
+	console.log("Sending a request for type " + selectedType);
 	var successFunction = getSuccessFunctionForGenerator(selectedGenerator);
 	var dataType = getExpectedDataType(selectedGenerator);
-	var params = ["generator=" + selectedGenerator, "plottype=all"];
+	var params = ["generator=" + selectedGenerator, "plottype=all", "resourceType=" + selectedType];
 	if(selectedGenerator === "visjs") {
 		var enablePhysConf = $('#phys_conf').is(':checked');
 		params.push("enable_phys_conf=" + enablePhysConf);
 	}
-    sendPOST(servletPath, params, successFunction, dataType)
+    sendPOST(servletPath, params, successFunction, dataType);
 }
 
 function destroyVisJsContainer() {
-	if(!!visJsNetwork) {
-		visJsNetwork.destroy();
-	}
+	try {
+		if(!!visJsNetwork) {
+			visJsNetwork.destroy();
+		}
+	}catch (e) {}
 }
 
 function writeConnections() {
@@ -78,7 +88,11 @@ function drawVisJsGraph(data, status) {
 			edges: data.edges
 	};
 	var options = data.options;
-	visJsNetwork = new vis.Network(graph, graphData, options);
+	try {
+		visJsNetwork = new vis.Network(graph, graphData, options);
+	} catch (e) {
+		console.log("Error initialising visJS",e);
+	}
 }
 
 function processPOST(data, status) {

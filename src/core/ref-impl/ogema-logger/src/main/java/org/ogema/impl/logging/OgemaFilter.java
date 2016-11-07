@@ -41,7 +41,8 @@ public class OgemaFilter extends ThresholdFilter {
 	public void setLevelAdmin(LogLevel l) {
 		adminLevel = l;
 		effectiveLevel = l;
-		setLevel(effectiveLevel.name());
+		String effectiveLevelName = effectiveLevel == LogLevel.WARNING ? "WARN" : effectiveLevel.name();
+		setLevel(effectiveLevelName);
 	}
 
 	public void setLevelUser(LogLevel l) {
@@ -49,13 +50,15 @@ public class OgemaFilter extends ThresholdFilter {
 		if (adminLevel == null) {
 			effectiveLevel = l;
 		}
-		setLevel(effectiveLevel.name());
+        String effectiveLevelName = effectiveLevel == LogLevel.WARNING ? "WARN" : effectiveLevel.name();
+		setLevel(effectiveLevelName);
 	}
 
 	public void unsetAdminLevel() {
 		adminLevel = null;
 		effectiveLevel = userLevel;
-		setLevel(effectiveLevel.name());
+		String effectiveLevelName = effectiveLevel == LogLevel.WARNING ? "WARN" : effectiveLevel.name();
+		setLevel(effectiveLevelName);
 	}
 
 	@Override

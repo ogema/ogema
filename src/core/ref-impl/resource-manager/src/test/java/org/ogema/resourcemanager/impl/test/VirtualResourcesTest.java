@@ -22,24 +22,30 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+
+import org.junit.Assert;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.schedule.Schedule;
-import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.StringResource;
+import org.ogema.core.model.units.PowerResource;
 import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.resourcemanager.VirtualResourceException;
+import org.ogema.exam.ResourceAssertions;
 import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.locations.Location;
+import org.ogema.model.sensors.PowerSensor;
 import org.ogema.model.sensors.TemperatureSensor;
 import org.ogema.model.prototypes.PhysicalElement;
 import org.ogema.model.ranges.BinaryRange;
+import org.ogema.model.devices.buildingtechnology.Thermostat;
+import org.ogema.model.devices.sensoractordevices.SingleSwitchBox;
 import org.ogema.model.devices.whitegoods.CoolingDevice;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
@@ -199,7 +205,15 @@ public class VirtualResourcesTest extends OsgiTestBase {
 		sw1.getSubResource("newDecorator", FloatResource.class).create();
 		sw1.getSubResource("newDecorator", BooleanResource.class);
 	}
-
+    
+   	@Test(expected = NoSuchResourceException.class)
+	public void getSubResourceThrowsExceptionOnIncompatibleVirtualResource() {
+		OnOffSwitch sw1 = resMan.createResource(newResourceName(), OnOffSwitch.class);
+		FloatResource v = sw1.getSubResource("newDecorator", FloatResource.class);
+        ResourceAssertions.assertIsVirtual(v);
+		sw1.getSubResource("newDecorator", BooleanResource.class);
+	}
+    
 	@Test
 	public void getSubResourceWorksWithSuperType() {
 		OnOffSwitch sw1 = resMan.createResource(newResourceName(), OnOffSwitch.class);
@@ -299,6 +313,7 @@ public class VirtualResourcesTest extends OsgiTestBase {
 		assertTrue(schedule.getValues(0).isEmpty());
 	}
 
+	@SuppressWarnings("unused")
 	@Test
 	public void replacingReferencesIsVisibleOnExistingResourceObjects() {
 		final OnOffSwitch sw = resMan.createResource(newResourceName(), OnOffSwitch.class);
@@ -321,5 +336,48 @@ public class VirtualResourcesTest extends OsgiTestBase {
 		assertTrue("replacing reference yields inconsistent view of subresources", storedResourceL2.equalsLocation(sw3
 				.settings().setpoint()));
 	}
+
+	@Test
+	public void creatingVirtualResourcesWithSubtreeWorks() {
+		Thermostat th = resMan.createResource(newResourceName(), Thermostat.class);
+		TemperatureResource setpoint = th.temperatureSensor().settings().setpoint(); // virtual
+		th.temperatureSensor().create(); 
+		th.temperatureSensor().settings().setpoint();
+		Assert.assertEquals("Something went wrong during creation of a virtual resource",th.temperatureSensor().settings(), setpoint.getParent());
+		th.delete();
+	}
+	
+	@Test
+	public void virtualSubelementsDontFailWhenParentIsRecreated() {
+		SingleSwitchBox box1 = resMan.createResource(newResourceName(), SingleSwitchBox.class);
+		SingleSwitchBox box2 = resMan.createResource(newResourceName(), SingleSwitchBox.class);
+		box1.electricityConnection().create();
+		box2.electricityConnection().create();
+		PowerResource sensor = box1.electricityConnection().powerSensor().reading();
+		box1.electricityConnection().powerSensor().reading(); // create virtual resources
+		box1.electricityConnection().setAsReference(box2.electricityConnection());
+		sensor.create();
+		ResourceAssertions.assertExists(sensor);
+		ResourceAssertions.assertLocationsEqual(sensor, box2.electricityConnection().powerSensor().reading());
+		box1.delete();
+		box2.delete();
+	}
+	
+	@Test
+	public void existingSubelementsDontFailWhenParentIsSetAsReference() {
+		SingleSwitchBox box1 = resMan.createResource(newResourceName(), SingleSwitchBox.class);
+		SingleSwitchBox box2 = resMan.createResource(newResourceName(), SingleSwitchBox.class);
+		box1.electricityConnection().create();
+		box2.electricityConnection().create();
+		PowerSensor sensor = box1.electricityConnection().powerSensor().create();
+		box1.electricityConnection().setAsReference(box2.electricityConnection());
+		ResourceAssertions.assertIsVirtual(sensor);
+		sensor.create();
+		ResourceAssertions.assertExists(sensor);
+		ResourceAssertions.assertLocationsEqual(sensor, box2.electricityConnection().powerSensor());
+		box1.delete();
+		box2.delete();
+	}
+
 
 }

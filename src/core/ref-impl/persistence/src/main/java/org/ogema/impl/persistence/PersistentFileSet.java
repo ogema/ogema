@@ -15,13 +15,7 @@
  */
 package org.ogema.impl.persistence;
 
-import java.io.BufferedOutputStream;
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.RandomAccessFile;
 
 import org.slf4j.Logger;
 
@@ -30,9 +24,7 @@ class PersistentFileSet {
 
 	File fileOld, fileNew;
 
-	DataOutputStream out;
 	int nameSuffix;
-	RandomAccessFile in;
 	File directory;
 	String namePrefix;
 
@@ -58,12 +50,10 @@ class PersistentFileSet {
 				tmpCounter = Integer.valueOf(suffix);
 				if (tmpCounter > counter2) {
 					/*
-					 * Name is newer then name1 and name2. name1 can be deleted before it is overridden by the new name.
+					 * Name is newer than name1 and name2. name1 can be deleted before it is overridden by the new name.
 					 */
 					if (name1 != null) {
-						if (Configuration.LOGGING)
-							logger.debug("Deleting file: " + name1);
-						new File(dir, name1).delete();
+						checkDelete(dir, name1);
 					}
 					counter1 = counter2;
 					counter2 = tmpCounter;
@@ -73,23 +63,19 @@ class PersistentFileSet {
 				else if (tmpCounter < counter2 && tmpCounter > counter1) {
 					counter1 = tmpCounter;
 					/*
-					 * Name is newer then name1 but older than name2. name1 can be deleted before it is overridden by
+					 * Name is newer than name1 but older than name2. name1 can be deleted before it is overridden by
 					 * the new name.
 					 */
 					if (name1 != null) {
-						if (Configuration.LOGGING)
-							logger.debug("Deleting file: " + name);
-						new File(dir, name1).delete();
+						checkDelete(dir, name1);
 					}
 					name1 = name;
 				}
 				else {
-					if (Configuration.LOGGING)
-						logger.debug("Deleting file: " + name);
 					/*
-					 * Name is older then name1 and name2. name can be deleted.
+					 * Name is older than name1 and name2. name can be deleted.
 					 */
-					new File(dir, name).delete();
+					checkDelete(dir, name);
 				}
 			}
 		}
@@ -103,94 +89,34 @@ class PersistentFileSet {
 			nameSuffix = counter2 + 1;
 	}
 
-	void updateNextOut() {
-		DataOutputStream result = null;
-		File newFile = new File(directory, namePrefix + String.valueOf(nameSuffix));
-		nameSuffix++;
-		try {
-			FileOutputStream fos1 = new FileOutputStream(newFile);
-			result = new DataOutputStream(new BufferedOutputStream(fos1, DBResourceIO.ENTRY_MAX_SIZE));
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
+	private void checkDelete(File dir, String name1) {
+		File f = new File(dir, name1);
+		if (f.length() == 0) {
+			if (Configuration.LOGGING)
+				logger.debug("Deleting file: " + name1);
+			f.delete();
 		}
-		/*
-		 * Delete the old File
-		 */
-		try {
-			if (out != null)
-				out.close();
-		} catch (IOException e) {
-			e.printStackTrace();
+	}
+
+	public File getFileByName(String name) {
+		String fileName = null;
+		if (fileNew != null) {
+			fileName = fileNew.getName();
+			if (fileName.equals(name))
+				return fileNew;
 		}
 		if (fileOld != null) {
-			if (Configuration.LOGGING)
-				logger.debug("Deleting file: " + fileOld.getName());
-			fileOld.delete();
+			fileName = fileOld.getName();
+			if (fileName.equals(name))
+				return fileOld;
 		}
-		fileOld = fileNew;
-		fileNew = newFile;
-
-		out = result;
-	}
-
-	void updateCurrentOut() {
-		DataOutputStream result = null;
-		File f = fileNew;
-		File delete = fileOld;
-		if (f == null) {
-			fileNew = fileOld;
-			fileOld = null;
-			f = fileNew;
-			delete = null;
-		}
-		if (f != null) {
-			try {
-				FileOutputStream fos1 = new FileOutputStream(f, true);
-				result = new DataOutputStream(new BufferedOutputStream(fos1, DBResourceIO.ENTRY_MAX_SIZE));
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
-			}
-			/*
-			 * Delete the old File
-			 */
-			try {
-				if (out != null)
-					out.close();
-				if (delete != null) {
-					if (Configuration.LOGGING)
-						logger.debug("Deleting file: " + delete.getName());
-					delete.delete();
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			out = result;
-		}
-		else
-			updateNextOut();
-	}
-
-	void updateCurrentIn() {
-		RandomAccessFile result = null;
-		File f = fileNew;
-		if (f == null) {
-			f = fileOld;
-			fileNew = fileOld;
-			fileOld = null;
-		}
-		if (f != null)
-			try {
-				result = new RandomAccessFile(fileNew, "r");
-			} catch (FileNotFoundException e) {
-			}
-		in = result;
+		return null;
 	}
 
 	/*
 	 * Used by the tests only
 	 */
 	void reset() {
-		closeAll();
 		System.gc();
 		if (fileNew != null) {
 			fileNew.setWritable(true);
@@ -207,36 +133,28 @@ class PersistentFileSet {
 	}
 
 	void backup() {
-		closeAll();
 		System.gc();
 		if (fileNew != null) {
 			fileNew.setWritable(true);
-			fileNew.renameTo(new File(directory, "backup_new_" + namePrefix + System.currentTimeMillis()));
+			if (fileNew.length() == 0)
+				fileNew.delete();
+			else {
+				fileNew.renameTo(new File(directory, "backup_" + fileNew.getName() + System.currentTimeMillis()));
+			}
 		}
 		if (fileOld != null) {
 			fileOld.setWritable(true);
-			fileOld.renameTo(new File(directory, "backup_old_" + namePrefix + System.currentTimeMillis()));
+			if (fileOld.length() != 0) {
+				fileOld.delete();
+			}
+			else {
+				fileOld.renameTo(new File(directory, "backup_" + fileOld.getName() + System.currentTimeMillis()));
+			}
 		}
+		fileOld = fileNew = null;
 	}
 
-	void closeAll() {
-		try {
-			if (out != null)
-				out.close();
-			out = null;
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		try {
-			if (in != null)
-				in.close();
-			in = null;
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	public void deleteNew() {
+	public void shiftB() {
 		if (Configuration.LOGGING)
 			logger.debug("Deleting file: " + fileNew.getName());
 		fileNew.delete();
@@ -244,4 +162,43 @@ class PersistentFileSet {
 		fileOld = null;
 	}
 
+	public void setAsCurrentFile(String name) {
+		File f = getFileByName(name);
+		fileNew = f;
+	}
+
+	public void shiftF() {
+		if (Configuration.LOGGING)
+			logger.debug("Create new file: " + namePrefix);
+		File newFile = new File(directory, namePrefix + String.valueOf(nameSuffix));
+		nameSuffix++;
+		/*
+		 * Delete the old File
+		 */
+		if (fileOld != null) {
+			if (Configuration.LOGGING)
+				logger.debug("Deleting file: " + fileOld.getName());
+			fileOld.delete();
+		}
+		fileOld = fileNew;
+		fileNew = newFile;
+	}
+
+	public File getBiggest() {
+		int maxlength = 0;
+		File result = null;
+		String files[] = directory.list();
+
+		for (String name : files) {
+			if (name.startsWith(namePrefix)) {
+				File f = new File(directory, name);
+				int length = (int) f.length();
+				if (length > maxlength) {
+					maxlength = length;
+					result = f;
+				}
+			}
+		}
+		return result;
+	}
 }

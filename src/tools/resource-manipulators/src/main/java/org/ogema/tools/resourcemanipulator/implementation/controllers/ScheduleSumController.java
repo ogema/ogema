@@ -26,8 +26,8 @@ import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
-import org.ogema.tools.resourcemanipulator.implementation.CountDownTimer;
 import org.ogema.tools.resourcemanipulator.model.ScheduleSumModel;
+import org.ogema.tools.resourcemanipulator.timer.CountDownTimer;
 import org.ogema.tools.timeseries.api.FloatTimeSeries;
 import org.ogema.tools.timeseries.implementations.FloatTreeTimeSeries;
 

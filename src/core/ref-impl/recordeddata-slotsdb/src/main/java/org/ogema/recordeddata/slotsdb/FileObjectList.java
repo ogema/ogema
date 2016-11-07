@@ -17,10 +17,6 @@ package org.ogema.recordeddata.slotsdb;
 
 import java.io.File;
 import java.io.IOException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.List;
@@ -213,8 +209,9 @@ public final class FileObjectList {
 	public List<FileObject> getFileObjectsStartingAt(long timestamp) {
 		List<FileObject> toReturn = new Vector<FileObject>(1);
 		for (int i = 0; i < files.size(); i++) {
-			if (files.get(i).getTimestampForLatestValue() >= timestamp) {
-				toReturn.add(files.get(i));
+			FileObject fo = files.get(i);
+			if (fo.getTimestampForLatestValue() >= timestamp) {
+				toReturn.add(fo);
 			}
 		}
 		return toReturn;
@@ -252,20 +249,22 @@ public final class FileObjectList {
 		List<FileObject> toReturn = new Vector<FileObject>(1);
 		if (files.size() > 1) {
 			for (int i = 0; i < files.size(); i++) {
-				if ((files.get(i).getStartTimeStamp() <= start && files.get(i).getTimestampForLatestValue() >= start)
-						|| (files.get(i).getStartTimeStamp() <= end && files.get(i).getTimestampForLatestValue() >= end)
-						|| (files.get(i).getStartTimeStamp() >= start && files.get(i).getTimestampForLatestValue() <= end)) {
+				FileObject fo = files.get(i);
+				if ((fo.getStartTimeStamp() <= start && fo.getTimestampForLatestValue() >= start)
+						|| (fo.getStartTimeStamp() <= end && fo.getTimestampForLatestValue() >= end)
+						|| (fo.getStartTimeStamp() >= start && fo.getTimestampForLatestValue() <= end)) {
 					// needed files.
-					toReturn.add(files.get(i));
+					toReturn.add(fo);
 				}
 			}
 		}
 		else if (files.size() == 1) {
-			if (files.get(0).getStartTimeStamp() <= end && files.get(0).getTimestampForLatestValue() >= start) {
+			FileObject fo = files.get(0);
+			if (fo.getStartTimeStamp() <= end && fo.getTimestampForLatestValue() >= start) {
 				// contains
 				// this
 				// TS
-				toReturn.add(files.get(0));
+				toReturn.add(fo);
 			}
 		}
 		return toReturn;

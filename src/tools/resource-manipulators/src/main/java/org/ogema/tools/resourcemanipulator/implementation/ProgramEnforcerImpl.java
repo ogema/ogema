@@ -33,7 +33,7 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 	private long m_updateInterval;
 	private AccessPriority m_priority;
 	private boolean m_exclusiveAccessRequired;
-	private boolean deactivate = true;
+	private boolean m_deactivate;
 
 	// Configuration this is connected to (null if not connected)
 	private ProgramEnforcerModel m_config;
@@ -49,7 +49,7 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 		m_priority = AccessPriority.valueOf(configResource.priority().getValue());
 		m_exclusiveAccessRequired = configResource.exclusiveAccessRequired().getValue();
 		m_config = configResource;
-		deactivate = m_config.deactivateIfValueMissing().getValue();
+		m_deactivate = m_config.deactivateIfValueMissing().getValue();
 	}
 
 	public ProgramEnforcerImpl(ResourceManipulatorImpl base) {
@@ -58,6 +58,7 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 		m_updateInterval = 10000l;
 		m_priority = AccessPriority.PRIO_LOWEST;
 		m_exclusiveAccessRequired = false;
+		m_deactivate = true;
 		m_config = null;
 	}
 
@@ -80,7 +81,7 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 		m_config.priority().create();
 		m_config.priority().setValue(m_priority.toString());
 		m_config.deactivateIfValueMissing().create();
-		m_config.deactivateIfValueMissing().setValue(deactivate);
+		m_config.deactivateIfValueMissing().setValue(m_deactivate);
 
 		m_config.activate(true);
 		return true;
@@ -162,7 +163,7 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 
 	@Override
 	public void deactivateTargetIfProgramMissing(boolean deactivate) throws RuntimeException {
-		this.deactivate = deactivate;
+		this.m_deactivate = deactivate;
 		if (m_config != null && m_config.exists() && m_config.deactivateIfValueMissing().exists()) {
 			m_config.deactivateIfValueMissing().setValue(deactivate);
 		}

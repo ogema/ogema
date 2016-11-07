@@ -107,4 +107,12 @@ public class TimeInterval implements Comparable<TimeInterval> {
 		return (t0 == interval.t0 && t1 == interval.t1);
 	}
 
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 59 * hash + (int) (this.t0 ^ (this.t0 >>> 32));
+        hash = 59 * hash + (int) (this.t1 ^ (this.t1 >>> 32));
+        return hash;
+    }
+
 }

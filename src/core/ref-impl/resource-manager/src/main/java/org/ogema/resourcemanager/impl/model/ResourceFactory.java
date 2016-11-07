@@ -20,6 +20,8 @@ import java.lang.reflect.Proxy;
 
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.ResourceList;
+import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.array.ArrayResource;
 import org.ogema.core.model.array.BooleanArrayResource;
 import org.ogema.core.model.array.ByteArrayResource;
@@ -37,6 +39,7 @@ import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.model.units.AngleResource;
 import org.ogema.core.model.units.AreaResource;
 import org.ogema.core.model.units.BrightnessResource;
+import org.ogema.core.model.units.ColourResource;
 import org.ogema.core.model.units.ConcentrationResource;
 import org.ogema.core.model.units.ElectricCurrentResource;
 import org.ogema.core.model.units.ElectricResistanceResource;
@@ -54,12 +57,14 @@ import org.ogema.core.model.units.ThermalEnergyCapacityResource;
 import org.ogema.core.model.units.VelocityResource;
 import org.ogema.core.model.units.VoltageResource;
 import org.ogema.core.model.units.VolumeResource;
+import org.ogema.core.resourcemanager.InvalidResourceTypeException;
 import org.ogema.persistence.impl.faketree.ScheduleTreeElement;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.resourcemanager.impl.ConnectedResource;
 import org.ogema.resourcemanager.impl.DynamicProxyResource;
 import org.ogema.resourcemanager.impl.ElementInfo;
 import org.ogema.resourcemanager.impl.ResourceDBManager;
+import org.ogema.resourcemanager.impl.ValueResourceBase;
 import org.ogema.resourcemanager.impl.model.array.DefaultBooleanArrayResource;
 import org.ogema.resourcemanager.impl.model.array.DefaultByteArrayResource;
 import org.ogema.resourcemanager.impl.model.array.DefaultFloatArrayResource;
@@ -74,9 +79,11 @@ import org.ogema.resourcemanager.impl.model.simple.DefaultIntegerResource;
 import org.ogema.resourcemanager.impl.model.simple.DefaultOpaqueResource;
 import org.ogema.resourcemanager.impl.model.simple.DefaultStringResource;
 import org.ogema.resourcemanager.impl.model.simple.DefaultTimeResource;
+import org.ogema.resourcemanager.impl.model.simple.SingleValueResourceBase;
 import org.ogema.resourcemanager.impl.model.units.DefaultAngleResource;
 import org.ogema.resourcemanager.impl.model.units.DefaultAreaResource;
 import org.ogema.resourcemanager.impl.model.units.DefaultBrightnessResource;
+import org.ogema.resourcemanager.impl.model.units.DefaultColourResource;
 import org.ogema.resourcemanager.impl.model.units.DefaultConcentrationResource;
 import org.ogema.resourcemanager.impl.model.units.DefaultElectricCurrentResource;
 import org.ogema.resourcemanager.impl.model.units.DefaultElectricResistanceResource;
@@ -156,155 +163,171 @@ public class ResourceFactory {
 			return (T) result;
 		}
 
-		// Resource types with units
-		if (PhysicalUnitResource.class.isAssignableFrom(resType)) {
-			if (resType.equals(AngleResource.class)) {
-				result = new DefaultAngleResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(AreaResource.class)) {
-				result = new DefaultAreaResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(BrightnessResource.class)) {
-				result = new DefaultBrightnessResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(ConcentrationResource.class)) {
-				result = new DefaultConcentrationResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(ElectricCurrentResource.class)) {
-				result = new DefaultElectricCurrentResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(ElectricResistanceResource.class)) {
-				result = new DefaultElectricResistanceResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(EnergyPerAreaResource.class)) {
-				result = new DefaultEnergyPerAreaResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(EnergyResource.class)) {
-				result = new DefaultEnergyResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(FlowResource.class)) {
-				result = new DefaultFlowResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(FrequencyResource.class)) {
-				result = new DefaultFrequencyResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(LengthResource.class)) {
-				result = new DefaultLengthResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(LuminousFluxResource.class)) {
-				result = new DefaultLuminousFluxResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(MassResource.class)) {
-				result = new DefaultMassResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(PhysicalUnitResource.class)) {
-				result = new DefaultPhysicalUnitResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(PowerResource.class)) {
-				result = new DefaultPowerResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(TemperatureResource.class)) {
-				result = new DefaultTemperatureResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(ThermalEnergyCapacityResource.class)) {
-				result = new DefaultThermalEnergyCapacityResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(VelocityResource.class)) {
-				result = new DefaultVelocityResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(VoltageResource.class)) {
-				result = new DefaultVoltageResource(el, resType, path, m_resMan);
-			}
-			else if (resType.equals(VolumeResource.class)) {
-				result = new DefaultVolumeResource(el, resType, path, m_resMan);
-			}
-			else {
-				throw new UnsupportedOperationException("Cannot create a resource object for SimpleResource of type "
-						+ resType.getCanonicalName() + ": Case is not implemented.");
-			}
-			return (T) result;
-		}
+        if (ValueResource.class.isAssignableFrom(resType)) {
+            // Resource types with units
+            if (PhysicalUnitResource.class.isAssignableFrom(resType)) {
+                if (resType.equals(AngleResource.class)) {
+                    result = new DefaultAngleResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(AreaResource.class)) {
+                    result = new DefaultAreaResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(BrightnessResource.class)) {
+                    result = new DefaultBrightnessResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(ConcentrationResource.class)) {
+                    result = new DefaultConcentrationResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(ElectricCurrentResource.class)) {
+                    result = new DefaultElectricCurrentResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(ElectricResistanceResource.class)) {
+                    result = new DefaultElectricResistanceResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(EnergyPerAreaResource.class)) {
+                    result = new DefaultEnergyPerAreaResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(EnergyResource.class)) {
+                    result = new DefaultEnergyResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(FlowResource.class)) {
+                    result = new DefaultFlowResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(FrequencyResource.class)) {
+                    result = new DefaultFrequencyResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(LengthResource.class)) {
+                    result = new DefaultLengthResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(LuminousFluxResource.class)) {
+                    result = new DefaultLuminousFluxResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(MassResource.class)) {
+                    result = new DefaultMassResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(PhysicalUnitResource.class)) {
+                    result = new DefaultPhysicalUnitResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(PowerResource.class)) {
+                    result = new DefaultPowerResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(TemperatureResource.class)) {
+                    result = new DefaultTemperatureResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(ThermalEnergyCapacityResource.class)) {
+                    result = new DefaultThermalEnergyCapacityResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(VelocityResource.class)) {
+                    result = new DefaultVelocityResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(VoltageResource.class)) {
+                    result = new DefaultVoltageResource(el, resType, path, m_resMan);
+                }
+                else if (resType.equals(VolumeResource.class)) {
+                    result = new DefaultVolumeResource(el, resType, path, m_resMan);
+                }
+                else {
+                    throw new UnsupportedOperationException("Cannot create a resource object for SimpleResource of type "
+                            + resType.getCanonicalName() + ": Case is not implemented.");
+                }
+                return (T) result;
+            }
 
-		// simple resources and array resources.
-		if (SingleValueResource.class.isAssignableFrom(resType)) {
-			if (resType.equals(BooleanResource.class)) {
-				result = new DefaultBooleanResource(el, path, m_resMan);
-			}
-			else if (resType.equals(FloatResource.class)) {
-				result = new DefaultFloatResource(el, path, m_resMan);
-			}
-			else if (resType.equals(IntegerResource.class)) {
-				result = new DefaultIntegerResource(el, path, m_resMan);
-			}
-			else if (resType.equals(StringResource.class)) {
-				result = new DefaultStringResource(el, path, m_resMan);
-			}
-			else if (resType.equals(TimeResource.class)) {
-				result = new DefaultTimeResource(el, path, m_resMan);
-			}
-			else {
-				throw new UnsupportedOperationException("Cannot create a resource object for SingleValueResource of type "
-						+ resType.getCanonicalName() + ": Case is not implemented.");
-			}
-			return (T) result;
-		}
-		
-		if (ArrayResource.class.isAssignableFrom(resType)) {		
-			if (resType.equals(BooleanArrayResource.class)) {
-				result = new DefaultBooleanArrayResource(el, path, m_resMan);
-			}
-            else if (resType.equals(ByteArrayResource.class)) {
-				result = new DefaultByteArrayResource(el, path, m_resMan);
-			}
-			else if (resType.equals(FloatArrayResource.class)) {
-				result = new DefaultFloatArrayResource(el, path, m_resMan);
-			}
-			else if (resType.equals(IntegerArrayResource.class)) {
-				result = new DefaultIntegerArrayResource(el, path, m_resMan);
-			}
-			else if (resType.equals(StringArrayResource.class)) {
-				result = new DefaultStringArrayResource(el, path, m_resMan);
-			}
-			else if (resType.equals(TimeArrayResource.class)) {
-				result = new DefaultTimeArrayResource(el, path, m_resMan);
-			}
-            else if (resType.equals(org.ogema.core.model.simple.OpaqueResource.class)) {
-				result = new DefaultOpaqueResource(el, path, m_resMan);
-			}
-			else {
-				throw new UnsupportedOperationException("Cannot create a resource object for ArrayResource of type "
-						+ resType.getCanonicalName() + ": Case is not implemented.");
-			}
-			return (T) result;
-		}
+            // simple resources and array resources.
+            if (SingleValueResource.class.isAssignableFrom(resType)) {
+                if (resType.equals(BooleanResource.class)) {
+                    result = new DefaultBooleanResource(el, path, m_resMan);
+                }
+                else if (resType.equals(FloatResource.class)) {
+                    result = new DefaultFloatResource(el, path, m_resMan);
+                }
+                else if (resType.equals(IntegerResource.class)) {
+                    result = new DefaultIntegerResource(el, path, m_resMan);
+                }
+                else if (resType.equals(StringResource.class)) {
+                    result = new DefaultStringResource(el, path, m_resMan);
+                }
+                else if (resType.equals(TimeResource.class)) {
+                    result = new DefaultTimeResource(el, path, m_resMan);
+                } else if (resType.equals(SingleValueResource.class)) {
+                    return (T) new SingleValueResourceBase(el, path, m_resMan);
+                }
+                else {
+                    throw new UnsupportedOperationException("Cannot create a resource object for SingleValueResource of type "
+                            + resType.getCanonicalName() + ": Case is not implemented.");
+                }
+                return (T) result;
+            }
 
-		// schedules
-		if (Schedule.class.isAssignableFrom(resType)) {
-			if (el.getParent() == null) {
-				throw new IllegalStateException("schedules as top level resources are not allowed.");
-			}
+            if (ArrayResource.class.isAssignableFrom(resType)) {		
+                if (resType.equals(BooleanArrayResource.class)) {
+                    result = new DefaultBooleanArrayResource(el, path, m_resMan);
+                }
+                else if (resType.equals(ByteArrayResource.class)) {
+                    result = new DefaultByteArrayResource(el, path, m_resMan);
+                }
+                else if (resType.equals(FloatArrayResource.class)) {
+                    result = new DefaultFloatArrayResource(el, path, m_resMan);
+                }
+                else if (resType.equals(IntegerArrayResource.class)) {
+                    result = new DefaultIntegerArrayResource(el, path, m_resMan);
+                }
+                else if (resType.equals(StringArrayResource.class)) {
+                    result = new DefaultStringArrayResource(el, path, m_resMan);
+                }
+                else if (resType.equals(TimeArrayResource.class)) {
+                    result = new DefaultTimeArrayResource(el, path, m_resMan);
+                }
+                else if (resType.equals(ColourResource.class)) {
+                    result = new DefaultColourResource(el, path, m_resMan);
+                }
+                else if (resType.equals(org.ogema.core.model.simple.OpaqueResource.class)) {
+                    result = new DefaultOpaqueResource(el, path, m_resMan);
+                }
+                else {
+                    throw new UnsupportedOperationException("Cannot create a resource object for ArrayResource of type "
+                            + resType.getCanonicalName() + ": Case is not implemented.");
+                }
+                return (T) result;
+            }
 
-			final ElementInfo info = m_dbMan.getElementInfo(el);
-			ScheduleTreeElement scheduleElement = info.getSchedule();
-			if (scheduleElement == null) {
-				info.setSchedule(el);
-				scheduleElement = info.getSchedule();
-			}
-			TreeElement locEl = el;
-			while (locEl.isReference()) {
-				locEl = locEl.getReference();
-			}
-			String loc = locEl.getName();
-			if (loc.equals(HistoricalSchedule.PATH_IDENTIFIER)) {	
-				return (T) new HistoricalSchedule(el, scheduleElement, path, m_resMan, m_appMan);
-			}
-			else 
-				return (T) new DefaultSchedule(el, scheduleElement, path, m_resMan, m_appMan);
-		}
+            // schedules
+            if (Schedule.class.isAssignableFrom(resType)) {
+                if (el.getParent() == null) {
+                    throw new IllegalStateException("schedules as top level resources are not allowed.");
+                }
+
+                final ElementInfo info = m_dbMan.getElementInfo(el);
+                ScheduleTreeElement scheduleElement = info.getSchedule();
+                if (scheduleElement == null) {
+                    info.setSchedule(el);
+                    scheduleElement = info.getSchedule();
+                }
+                TreeElement locEl = el;
+                while (locEl.isReference()) {
+                    locEl = locEl.getReference();
+                }
+                String loc = locEl.getName();
+                if (loc.equals(HistoricalSchedule.PATH_IDENTIFIER)) {	
+                    return (T) new HistoricalSchedule(el, scheduleElement, path, m_resMan, m_appMan);
+                }
+                else 
+                    return (T) new DefaultSchedule(el, scheduleElement, path, m_resMan, m_appMan);
+            }
+
+            //a plain ValueResource, should probably only occur as virtual resource...
+            return (T) new ValueResourceBase(el, path, m_resMan);
+        }
 
 		// default case.
 		return mkProxy(el, path);
+	}
 
+	/*
+	 * true, if implementation type is generated by the framework, false otherwise
+	 */
+	private static boolean isComplexType(Class<? extends Resource> type) {
+		return !(ValueResource.class.isAssignableFrom(type) || ResourceList.class.isAssignableFrom(type));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -316,6 +339,19 @@ public class ResourceFactory {
 			InvocationHandler handler = new DynamicProxyResource(el, path, m_resMan);
 			Class<?>[] interfaces = new Class<?>[] { el.getType(), ConnectedResource.class };
 			return (T) Proxy.newProxyInstance(getClass().getClassLoader(), interfaces, handler);
+		}
+	}
+
+	public boolean hasResourceType(Class<? extends Resource> type) {
+		if (!BYTECODEGENERATION) // TODO
+			return true;
+		if (!isComplexType(type))
+			return true;
+		try {
+			ResourceFactoryASM.INSTANCE.getImplementation(type);
+			return true;
+		} catch (InvalidResourceTypeException e) {
+			return false;
 		}
 	}
 

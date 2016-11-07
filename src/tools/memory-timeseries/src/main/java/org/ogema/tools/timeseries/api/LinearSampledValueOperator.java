@@ -18,7 +18,7 @@ package org.ogema.tools.timeseries.api;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 
 /**
- * An linear operation SampledValue -> SampledValue.
+ * An linear operation SampledValue -&gt; SampledValue.
  */
 public interface LinearSampledValueOperator {
 

@@ -1,3 +1,18 @@
+/**
+ * This file is part of OGEMA.
+ *
+ * OGEMA is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
+ *
+ * OGEMA is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.ogema.driver.zwave.manager;
 
 import java.util.Iterator;
@@ -101,8 +116,8 @@ public class InputHandler implements NotificationWatcher {
 
 			case ESSENTIAL_NODE_QUERIES_COMPLETE:
 				// nur die coordinator node geadded
-				System.out.println(String.format("Node essential queries complete\n" + "\tnode id: %d", notification
-						.getNodeId()));
+				System.out.println(
+						String.format("Node essential queries complete\n" + "\tnode id: %d", notification.getNodeId()));
 				localDevice.setReadyId();
 				break;
 			case NODE_QUERIES_COMPLETE:
@@ -117,8 +132,8 @@ public class InputHandler implements NotificationWatcher {
 				break;
 			case NODE_EVENT:
 				// wenn event eintritt
-				System.out.println(String.format("Node event\n" + "\tnode id: %d\n" + "\tevent id: %d", notification
-						.getNodeId(), notification.getEvent()));
+				System.out.println(String.format("Node event\n" + "\tnode id: %d\n" + "\tevent id: %d",
+						notification.getNodeId(), notification.getEvent()));
 				break;
 			case NODE_NAMING:
 				// unbekannt
@@ -127,8 +142,8 @@ public class InputHandler implements NotificationWatcher {
 			case NODE_PROTOCOL_INFO:
 				// gibt den type der node an
 				System.out.println(String.format("Node protocol info\n" + "\tnode id: %d\n" + "\ttype: %s",
-						notification.getNodeId(), localDevice.getManager().getNodeType(notification.getHomeId(),
-								notification.getNodeId())));
+						notification.getNodeId(),
+						localDevice.getManager().getNodeType(notification.getHomeId(), notification.getNodeId())));
 				break;
 
 			// VALUE STATUS
@@ -136,25 +151,31 @@ public class InputHandler implements NotificationWatcher {
 				// value zu nodes hinzufügen
 				nodeId = notification.getNodeId();
 				ValueId valueId = notification.getValueId();
-				logger.debug(String.format("Value added\n" + "\tnode id: %d\n" + "\tcommand class: %d\n"
-						+ "\tinstance: %d\n" + "\tindex: %d\n" + "\tgenre: %s\n" + "\ttype: %s\n" + "\tlabel: %s\n"
-						+ "\tvalue: %s", nodeId, notification.getValueId().getCommandClassId(), valueId.getInstance(),
-						valueId.getIndex(), valueId.getGenre().name(), valueId.getType().name(), localDevice
-								.getManager().getValueLabel(valueId), getValue(valueId)));
+				logger.debug(String.format(
+						"Value added\n" + "\tnode id: %d\n" + "\tcommand class: %d\n" + "\tinstance: %d\n"
+								+ "\tindex: %d\n" + "\tgenre: %s\n" + "\ttype: %s\n" + "\tlabel: %s\n" + "\tvalue: %s",
+						nodeId, notification.getValueId().getCommandClassId(), valueId.getInstance(),
+						valueId.getIndex(), valueId.getGenre().name(), valueId.getType().name(),
+						localDevice.getManager().getValueLabel(valueId), getValue(valueId)));
 				// neu
 				Node n = localDevice.getNodes().get(nodeId);
-				NodeValue nv = new NodeValue(localDevice.getManager(), notification.getValueId(), n
-						.generateChannelAddress(notification.getValueId()));
+				if (n == null) // This can happen if an incomplete node was cached, so after the restart no unique node
+								// can be created.
+					break;
+				NodeValue nv = new NodeValue(localDevice.getManager(), notification.getValueId(),
+						n.generateChannelAddress(notification.getValueId()));
 				// n.getValues().put(nv.getChannelAddress(), nv);
 				n.addValue(nv);
-				// nv.valueChanged();
+				nv.valueChanged();
+				localDevice.getManager().refreshValue(valueId);
 				break;
 			case VALUE_REMOVED:
 				// value von node entfernen
-				System.out.println(String.format("Value removed\n" + "\tnode id: %d\n" + "\tcommand class: %d\n"
-						+ "\tinstance: %d\n" + "\tindex: %d", notification.getNodeId(), notification.getValueId()
-						.getCommandClassId(), notification.getValueId().getInstance(), notification.getValueId()
-						.getIndex()));
+				System.out.println(String.format(
+						"Value removed\n" + "\tnode id: %d\n" + "\tcommand class: %d\n" + "\tinstance: %d\n"
+								+ "\tindex: %d",
+						notification.getNodeId(), notification.getValueId().getCommandClassId(),
+						notification.getValueId().getInstance(), notification.getValueId().getIndex()));
 				// neu
 				// Node nn = localDevice.getNodes().get(Manager.get().getNodeName(notification.getHomeId(),
 				// notification.getNodeId()));
@@ -165,9 +186,11 @@ public class InputHandler implements NotificationWatcher {
 				// wert verändert
 				nodeId = notification.getNodeId();
 				valueId = notification.getValueId();
-				System.out.println(String.format("Value changed\n" + "\tnode id: %d\n" + "\tcommand class: %d\n"
-						+ "\tinstance: %d\n" + "\tindex: %d\n" + "\tvalue: %s", nodeId, valueId.getCommandClassId(),
-						valueId.getInstance(), valueId.getIndex(), getValue(valueId)));
+				System.out.println(String.format(
+						"Value changed\n" + "\tnode id: %d\n" + "\tcommand class: %d\n" + "\tinstance: %d\n"
+								+ "\tindex: %d\n" + "\tvalue: %s",
+						nodeId, valueId.getCommandClassId(), valueId.getInstance(), valueId.getIndex(),
+						getValue(valueId)));
 				// neu
 				Node nnn = localDevice.getNodes().get(nodeId);
 				nnn.getValues().get(nnn.generateChannelAddress(notification.getValueId())).valueChanged();
@@ -176,9 +199,11 @@ public class InputHandler implements NotificationWatcher {
 				// wert erneuert ??
 				nodeId = notification.getNodeId();
 				valueId = notification.getValueId();
-				System.out.println(String.format("Value refreshed\n" + "\tnode id: %d\n" + "\tcommand class: %d\n"
-						+ "\tinstance: %d\n" + "\tindex: %d" + "\tvalue: %s", nodeId, valueId.getCommandClassId(),
-						valueId.getInstance(), valueId.getIndex(), getValue(valueId)));
+				System.out.println(String.format(
+						"Value refreshed\n" + "\tnode id: %d\n" + "\tcommand class: %d\n" + "\tinstance: %d\n"
+								+ "\tindex: %d" + "\tvalue: %s",
+						nodeId, valueId.getCommandClassId(), valueId.getInstance(), valueId.getIndex(),
+						getValue(valueId)));
 				// neu
 				Node nnnn = localDevice.getNodes().get(nodeId);
 				nnnn.getValues().get(nnnn.generateChannelAddress(notification.getValueId())).valueChanged();
@@ -186,8 +211,8 @@ public class InputHandler implements NotificationWatcher {
 
 			// GROUP & SCENES ARE NYI
 			case GROUP:
-				System.out.println(String.format("Group\n" + "\tnode id: %d\n" + "\tgroup id: %d", notification
-						.getNodeId(), notification.getGroupIdx()));
+				System.out.println(String.format("Group\n" + "\tnode id: %d\n" + "\tgroup id: %d",
+						notification.getNodeId(), notification.getGroupIdx()));
 				break;
 			case SCENE_EVENT:
 				System.out.println(String.format("Scene event\n" + "\tscene id: %d", notification.getSceneId()));

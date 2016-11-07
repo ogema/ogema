@@ -57,6 +57,7 @@ public class FixedIntervalTest extends SlotsDbTest {
 		final String storageName = "writeReadTest1";
 
 		SlotsDb sdb = new SlotsDb();
+		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);
@@ -107,6 +108,7 @@ public class FixedIntervalTest extends SlotsDbTest {
 		final String storageName = "writeReadTest2";
 
 		SlotsDb sdb = new SlotsDb();
+		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);
@@ -146,6 +148,7 @@ public class FixedIntervalTest extends SlotsDbTest {
 		final String storageName = "writeReadTest3";
 
 		SlotsDb sdb = new SlotsDb();
+		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);
@@ -184,6 +187,7 @@ public class FixedIntervalTest extends SlotsDbTest {
 		final String storageName = "writeReadTest4";
 
 		SlotsDb sdb = new SlotsDb();
+		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(10);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);

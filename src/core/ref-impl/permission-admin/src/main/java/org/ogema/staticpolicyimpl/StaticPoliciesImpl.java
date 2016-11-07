@@ -24,15 +24,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Vector;
-
+import org.apache.felix.scr.annotations.Activate;
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.Service;
 import org.ogema.staticpolicy.StaticPolicies;
 import org.ogema.staticpolicy.StaticUser;
-import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
-import org.osgi.framework.ServiceReference;
-import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.condpermadmin.ConditionalPermissionAdmin;
 import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
 import org.osgi.service.condpermadmin.ConditionalPermissionUpdate;
@@ -47,7 +47,9 @@ import org.slf4j.LoggerFactory;
  * @author Zekeriya Mansuroglu
  *
  */
-public class StaticPoliciesImpl implements BundleActivator, StaticPolicies {
+@Component
+@Service(StaticPolicies.class)
+public class StaticPoliciesImpl implements StaticPolicies {
 
 	/**
 	 * Framework property ({@value} ) containing the location of the OGEMA security policies file, default =
@@ -63,9 +65,11 @@ public class StaticPoliciesImpl implements BundleActivator, StaticPolicies {
 	public static final String APP_POLICY_FILE = "ogema.policy";
 	public static final String USER_POLICY_FILE = "ogema.roles";
 	public static final String POLICY_DIR = "config";
+	
+	@Reference
 	ConditionalPermissionAdmin cpa;
 	List<StaticUser> collectedUsers = new ArrayList<>();
-    ServiceRegistration<StaticPolicies> reg;
+//    ServiceRegistration<StaticPolicies> reg;
 	/*
 	 * These system properties would normally granted dynamically by PermissionManager. Therefore interacts the
 	 * PermissionManager with the system administrator over the web interface.
@@ -154,11 +158,13 @@ public class StaticPoliciesImpl implements BundleActivator, StaticPolicies {
 		}
 	}
 
+	@Activate
 	public void start(BundleContext bc) throws BundleException {
 
-		ServiceReference<?> sRef = bc.getServiceReference(ConditionalPermissionAdmin.class);
-		if (sRef != null) {
-			cpa = (ConditionalPermissionAdmin) bc.getService(sRef);
+		// using DS instead
+//		ServiceReference<?> sRef = bc.getServiceReference(ConditionalPermissionAdmin.class);
+//		if (sRef != null) {
+//			cpa = (ConditionalPermissionAdmin) bc.getService(sRef);
 			/*
 			 * Check if the storage of the framework is to be cleaned
 			 */
@@ -206,12 +212,12 @@ public class StaticPoliciesImpl implements BundleActivator, StaticPolicies {
 					throw new BundleException("IOException", ex);
 				}
 			}
-		}
-		else {
-			throw new BundleException("Bundle CPA-test can not start, There is no "
-					+ "ConditinalPermissionAdmin service");
-		}
-        reg = bc.registerService(StaticPolicies.class, this, null);
+//		}
+//		else {
+//			throw new BundleException("Bundle CPA-test can not start, There is no "
+//					+ "ConditinalPermissionAdmin service");
+//		}
+//        reg = bc.registerService(StaticPolicies.class, this, null);
 	}
 
 	public void installPolicies(List<String> pInfos, boolean reset) {
@@ -246,11 +252,12 @@ public class StaticPoliciesImpl implements BundleActivator, StaticPolicies {
 		cpu.commit();
 	}
 
-	@Override
+	@Deactivate
 	public void stop(BundleContext context) throws Exception {
-        if (reg != null){
-            reg.unregister();
-        }
+		// using DS instead
+//        if (reg != null){
+//            reg.unregister();
+//        }
 	}
 
 	@Override

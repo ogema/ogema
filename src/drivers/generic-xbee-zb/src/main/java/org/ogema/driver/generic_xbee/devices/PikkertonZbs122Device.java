@@ -21,8 +21,9 @@ import java.util.Arrays;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.ogema.core.application.ApplicationManager;
+import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.ChannelConfiguration;
-import org.ogema.core.channelmanager.ChannelConfigurationException;
+import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.Value;
@@ -120,23 +121,22 @@ public class PikkertonZbs122Device extends GenericXbeeZbDevice {
 	@Override
 	public void addChannel(GenericXbeeZbConfig config) {
 		ChannelLocator channelLocator = createChannelLocator(config.channelAddress);
-		ChannelConfiguration channelConfig = channelAccess.getChannelConfiguration(channelLocator);
-		channelConfig.setSamplingPeriod(config.timeout);
+		ChannelConfiguration channelConfig = null;
 
 		if (driver.channelMap.containsKey(config.resourceName)) {
 			logger.error("resourceName already taken.");
 			return;
 		}
-		driver.channelMap.put(config.resourceName, channelLocator);
-
+		
 		try {
-			channelAccess.addChannel(channelConfig);
-		} catch (ChannelConfigurationException e) {
+			channelConfig = channelAccess.addChannel(channelLocator, Direction.DIRECTION_INOUT, config.timeout);
+			driver.channelMap.put(config.resourceName, channelConfig);
+			addToUpdateListener(channelConfig);
+		} catch (ChannelAccessException e) {
 			e.printStackTrace();
 		}
-		addToUpdateListener(channelLocator);
 	}
-
+	
 	@Override
 	public void updateValues(Value value) {
 		rawValues = ByteBuffer.wrap(value.getByteArrayValue());

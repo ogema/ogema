@@ -44,9 +44,9 @@ public interface ResourceDB {
 	/**
 	 * Add resource type or add additional new elements, delete elements not in the new model. Name of class is the name
 	 * of the type. If resources exist that are from the type to be updated and one of these resources does not fit the
-	 * mandatory part of the new resource type, the update demand is to be rejected. The annotations @Nonpersistent and @Optional
-	 * are to be evaluated. The annotation @Nonpersistent means that the value mustn't be stored in the data base. The
-	 * annotations @Optional and @Nonpersistent are to be stored in the ResourceType entry.
+	 * mandatory part of the new resource type, the update demand is to be rejected. The annotations @Nonpersistent
+	 * and @Optional are to be evaluated. The annotation @Nonpersistent means that the value mustn't be stored in the
+	 * data base. The annotations @Optional and @Nonpersistent are to be stored in the ResourceType entry.
 	 * 
 	 * @param type
 	 *            new model
@@ -177,13 +177,43 @@ public interface ResourceDB {
 	public TreeElement getByID(int id);
 
 	/**
-	 * Get a collection of node objects, that match with the filter specified in dict. The entries of dict are
-	 * implementation specific.
+	 * Get a collection of node objects, that match with the filter specified in dictionary. The entries of the
+	 * dictionary are implementation specific.
 	 * 
 	 * @param dict
 	 *            a map key value pairs, that describe the nodes of the requested resources.
 	 * @return Collection of matching nodes.
 	 */
 	Collection<TreeElement> getFilteredNodes(Map<String, String> dict);
+
+	/**
+	 * Get a TreeElement object for the node specified by the given path string.
+	 * 
+	 * @param path
+	 *            Resources path information
+	 * @param isRoot
+	 *            true if the resource is a top level one false otherwise.
+	 * @return The TreeElement object.
+	 */
+	TreeElement getFilteredNodesByPath(String path, boolean isRoot);
+
+	/**
+	 * Get a map of the Class objects which are the types of all sub resources of the model specified by the name of the
+	 * class of the model declaration.
+	 * 
+	 * @param name
+	 *            Name of the model declaring class.
+	 * @return Map of the classes, where the names of the children are used as keys.
+	 */
+	public Map<String, Class<?>> getModelDeclaredChildren(String name);
+
+	/**
+	 * Return a list of all registered model types that are sub types of the given model type.
+	 * 
+	 * @param cls
+	 *            The super type the returned elements are sub types from.
+	 * @return A list of Class objects of the model types derived from cls.
+	 */
+	public List<Class<? extends Resource>> getResourceTypesInstalled(Class<? extends Resource> cls);
 
 }

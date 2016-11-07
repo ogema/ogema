@@ -36,8 +36,26 @@
 
 <script type="text/javascript">
 $(document).ready(function() {
+	
+	var resTypeCallback = function(data, status) {
+		var list = "";
+		var i;
+		for (i=0;i<data.length;i++) {
+			var tp = data[i];
+			var idx = tp.lastIndexOf(".");
+			if (idx <= 0) continue;
+			var displayType = tp.substring(idx+1);
+			list += "<option value=\"" + tp + "\">" + displayType + "</option>";
+		}
+		if (list.length === 0)
+			list =  "<option value=\"org.ogema.core.model.Resource\">Resource</option>";
+		var typeSelector = $('#resourceType');
+		typeSelector.html(list);	
+	};
+	sendGET(resTypeCallback);
+
 	var generatorSelector = $('#generator');
-	var buttonsJS = "<button id=\"writeAll\" onClick=\"writeAll()\">ALL</button>" + "<button id=\"writeConnections\" onClick=\"writeConnections()\">Connections</button>"
+	var buttonsJS = "<button id=\"writeAll\" onClick=\"writeAll()\">Show Resource tree</button>" + "<button id=\"writeConnections\" onClick=\"writeConnections()\">Show connections</button>"
 		+ "<label for=\"phys_conf\"> <input type=\"checkbox\" id=\"phys_conf\"> Enable Physic Configurator </label> ";
 	generatorSelector.change(function() {
 		if($('#generator').val() === "graphviz") {
@@ -70,11 +88,20 @@ $(document).ready(function() {
 	    <option value="graphviz">Graphviz</option>
 	    <option value="visjs">Visual JS</option>
     </select>
+    <br>
+    <p>
+        Select the toplevel resource type.
+    </p>   
+    <select id="resourceType">
+    	<option value="org.ogema.core.model.Resource">Resource</option>
+    </select>
     <br/>
-    <br/>
+    <p>
+        Start.
+    </p> 
     <div id="buttonDiv"></div>
 	<br/>
-    <br/>
+	<br/>
 	<div id="resource_graph">
 		<div tabindex="900"
 			style="position: relative; overflow: hidden; -moz-user-select: none; width: 100%; height: 100%;"

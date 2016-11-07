@@ -38,7 +38,6 @@ import org.ogema.core.model.array.StringArrayResource;
 import org.ogema.core.model.array.TimeArrayResource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
-import org.ogema.core.model.simple.OpaqueResource;
 import org.ogema.core.model.units.ThermalEnergyCapacityResource;
 import org.ogema.core.model.units.VolumeResource;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
@@ -77,7 +76,7 @@ public class TreeElementTest extends DBBasicTest {
 
 	@Parameterized.Parameters
 	public static Collection<Object[]> params() {
-		return Arrays.asList(new Object[][] { { 1 } /* , { 2 }, { 3 }, { 4 } */});
+		return Arrays.asList(new Object[][] { { 1 } /* , { 2 }, { 3 }, { 4 } */ });
 	}
 
 	public TreeElementTest(int count) {
@@ -273,7 +272,7 @@ public class TreeElementTest extends DBBasicTest {
 
 		TestCase.assertTrue(node_anySens == (TreeElementImpl) freezeCombi.getChild("anySensor"));
 		TestCase.assertTrue(switchCap == (TreeElementImpl) node_anySens.getChild("switchCap"));
-		TestCase.assertTrue(freezeCombi.optionals.get("anySensor") == null);
+		// TestCase.assertTrue(freezeCombi.typeChildren.get("anySensor") == null);
 		// TestCase.assertTrue(node_tempSensCool.optionals.get("switchCap") ==
 		// null);
 		TestCase.assertTrue(freezeCombi.requireds.get("anyActor") != null);
@@ -285,13 +284,13 @@ public class TreeElementTest extends DBBasicTest {
 		// add leaves to the referenced resource
 		TreeElementImpl moftpk = (TreeElementImpl) switchCap.addChild("meanOffTimePerKelvin", FloatResource.class,
 				false);
-		TreeElementImpl montpk = (TreeElementImpl) switchCap
-				.addChild("meanOnTimePerKelvin", FloatResource.class, false);
+		TreeElementImpl montpk = (TreeElementImpl) switchCap.addChild("meanOnTimePerKelvin", FloatResource.class,
+				false);
 		// try to reach the leaves from the the top level resource
-		TestCase
-				.assertTrue(freezeCombi.getChild("anySensor").getChild("switchCap").getChild("meanOffTimePerKelvin") == moftpk);
-		TestCase
-				.assertTrue(freezeCombi.getChild("anySensor").getChild("switchCap").getChild("meanOnTimePerKelvin") == montpk);
+		TestCase.assertTrue(
+				freezeCombi.getChild("anySensor").getChild("switchCap").getChild("meanOffTimePerKelvin") == moftpk);
+		TestCase.assertTrue(
+				freezeCombi.getChild("anySensor").getChild("switchCap").getChild("meanOnTimePerKelvin") == montpk);
 
 		// set values of the leaves and read them back
 		moftpk.getData().setFloat(300.00f);
@@ -303,7 +302,7 @@ public class TreeElementTest extends DBBasicTest {
 
 		// delete sub resource
 		db.deleteResource(switchCap);
-		TestCase.assertTrue(freezeCombi.optionals.get("anySensor") == null);
+		// TestCase.assertTrue(freezeCombi.typeChildren.get("anySensor") == null);
 		TestCase.assertTrue(node_anySens == (TreeElementImpl) freezeCombi.getChild("anySensor"));
 		TestCase.assertFalse(switchCap == (TreeElementImpl) node_anySens.getChild("switchCap"));
 
@@ -311,14 +310,14 @@ public class TreeElementTest extends DBBasicTest {
 		switchCap = (TreeElementImpl) node_anySens.addChild("switchCap", TempStorageSwitchCapacity.class, true);
 		TestCase.assertTrue(node_anySens == (TreeElementImpl) freezeCombi.getChild("anySensor"));
 		TestCase.assertTrue(switchCap == (TreeElementImpl) node_anySens.getChild("switchCap"));
-		TestCase.assertTrue(freezeCombi.optionals.get("anySensor") == null);
+		// TestCase.assertTrue(freezeCombi.typeChildren.get("anySensor") == null);
 		TestCase.assertTrue(freezeCombi.requireds.get("anySensor") != null);
 
 		// delete child of top level resource which is a reference
 		// the referenced node has to exist after deleting of the reference
 		db.deleteResource(node_anySens);
 		TestCase.assertTrue(freezeCombi.getChild("anySensor") == null);
-		TestCase.assertTrue(freezeCombi.optionals.get("anySensor") != null);
+		// TestCase.assertTrue(freezeCombi.typeChildren.get("anySensor") != null);
 		TestCase.assertTrue(freezeCombi.requireds.get("anySensor") == null);
 
 		// referenced resource must exist!
@@ -405,8 +404,8 @@ public class TreeElementTest extends DBBasicTest {
 
 		TestCase.assertTrue(node_tempSensCool == (TreeElementImpl) freezeCombi.getChild(name_tempSensCool));
 		TestCase.assertTrue(switchCap == (TreeElementImpl) node_tempSensCool.getReference().getChild("switchCap"));
-		TestCase.assertTrue(freezeCombi.optionals.get(name_tempSensCool) == null);
-		// TestCase.assertTrue(node_tempSensCool.optionals.get("switchCap") ==
+		// TestCase.assertTrue(freezeCombi.typeChildren.get(name_tempSensCool) == null);
+		// TestCase.assertTrue(node_tempSensCool.typeChildren.get("switchCap") ==
 		// null);
 		TestCase.assertTrue(freezeCombi.requireds.get(name_tempSensCool) != null);
 		// TestCase.assertTrue(node_tempSensCool.requireds.get("switchCap") ==
@@ -420,26 +419,26 @@ public class TreeElementTest extends DBBasicTest {
 		// add leaves to the referenced resource
 		TreeElementImpl moftpk = (TreeElementImpl) switchCap.addChild("meanOffTimePerKelvin", FloatResource.class,
 				false);
-		TreeElementImpl montpk = (TreeElementImpl) switchCap
-				.addChild("meanOnTimePerKelvin", FloatResource.class, false);
+		TreeElementImpl montpk = (TreeElementImpl) switchCap.addChild("meanOnTimePerKelvin", FloatResource.class,
+				false);
 		// try to reach the leaves from the the top level resource
-		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap").getChild(
-				"meanOffTimePerKelvin") == moftpk);
-		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap").getChild(
-				"meanOnTimePerKelvin") == montpk);
+		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap")
+				.getChild("meanOffTimePerKelvin") == moftpk);
+		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap")
+				.getChild("meanOnTimePerKelvin") == montpk);
 
 		// set values of the leaves and read them back
 		moftpk.getData().setFloat(300.00f);
 		montpk.getData().setFloat(288.88f);
-		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap").getChild(
-				"meanOffTimePerKelvin").getData().getFloat() == 300.00f);
-		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap").getChild(
-				"meanOnTimePerKelvin").getData().getFloat() == 288.88f);
+		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap")
+				.getChild("meanOffTimePerKelvin").getData().getFloat() == 300.00f);
+		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool).getChild("switchCap")
+				.getChild("meanOnTimePerKelvin").getData().getFloat() == 288.88f);
 
 		// delete sub resource
 		db.deleteResource(switchCap);
-		TestCase.assertTrue(freezeCombi.optionals.get(name_tempSensCool) == null);
-		// TestCase.assertTrue(node_tempSensCool.optionals.get("switchCap") !=
+		// TestCase.assertTrue(freezeCombi.typeChildren.get(name_tempSensCool) == null);
+		// TestCase.assertTrue(node_tempSensCool.typeChildren.get("switchCap") !=
 		// null);
 		// TestCase.assertTrue(freezeCombi.requireds.get(name_tempSensCool) !=
 		// null);
@@ -452,8 +451,8 @@ public class TreeElementTest extends DBBasicTest {
 		switchCap = (TreeElementImpl) node_tempSensCool.addChild("switchCap", TempStorageSwitchCapacity.class, true);
 		TestCase.assertTrue(node_tempSensCool == (TreeElementImpl) freezeCombi.getChild(name_tempSensCool));
 		TestCase.assertTrue(switchCap == (TreeElementImpl) node_tempSensCool.getChild("switchCap"));
-		TestCase.assertTrue(freezeCombi.optionals.get(name_tempSensCool) == null);
-		// TestCase.assertTrue(node_tempSensCool.optionals.get("switchCap") ==
+		// TestCase.assertTrue(freezeCombi.typeChildren.get(name_tempSensCool) == null);
+		// TestCase.assertTrue(node_tempSensCool.typeChildren.get("switchCap") ==
 		// null);
 		TestCase.assertTrue(freezeCombi.requireds.get(name_tempSensCool) != null);
 		// TestCase.assertTrue(node_tempSensCool.requireds.get("switchCap") !=
@@ -463,8 +462,8 @@ public class TreeElementTest extends DBBasicTest {
 		// the referenced node has to exist after deleting of the reference
 		db.deleteResource(node_tempSensCool);
 		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool) == null);
-		TestCase.assertTrue(freezeCombi.optionals.get(name_tempSensCool) != null);
-		// TestCase.assertTrue(node_tempSensCool.optionals.get("switchCap") !=
+		// TestCase.assertTrue(freezeCombi.typeChildren.get(name_tempSensCool) != null);
+		// TestCase.assertTrue(node_tempSensCool.typeChildren.get("switchCap") !=
 		// null);
 		TestCase.assertTrue(freezeCombi.requireds.get(name_tempSensCool) == null);
 		// TestCase.assertTrue(node_tempSensCool.requireds.get("switchCap") ==
@@ -532,15 +531,15 @@ public class TreeElementTest extends DBBasicTest {
 
 		TestCase.assertTrue(node_tempSensCool == (TreeElementImpl) freezeCombi.getChild(name_tempSensCool));
 		TestCase.assertTrue(switchCap == (TreeElementImpl) node_tempSensCool.getChild("switchCap"));
-		TestCase.assertTrue(freezeCombi.optionals.get(name_tempSensCool) == null);
-		TestCase.assertTrue(node_tempSensCool.optionals.get("switchCap") == null);
+		// TestCase.assertTrue(freezeCombi.typeChildren.get(name_tempSensCool) == null);
+		// TestCase.assertTrue(node_tempSensCool.typeChildren.get("switchCap") == null);
 		TestCase.assertTrue(freezeCombi.requireds.get(name_tempSensCool) != null);
 		TestCase.assertTrue(node_tempSensCool.requireds.get("switchCap") != null);
 
 		// delete sub resource
 		db.deleteResource(switchCap);
-		TestCase.assertTrue(freezeCombi.optionals.get(name_tempSensCool) == null);
-		// TestCase.assertTrue(node_tempSensCool.optionals.get("switchCap") != null); // switchCap is no longer an
+		// TestCase.assertTrue(freezeCombi.typeChildren.get(name_tempSensCool) == null);
+		// TestCase.assertTrue(node_tempSensCool.typeChildren.get("switchCap") != null); // switchCap is no longer an
 		// optional element of a TemperatureSensor, but only a test-model in persistence
 		TestCase.assertTrue(freezeCombi.requireds.get(name_tempSensCool) != null);
 		TestCase.assertTrue(node_tempSensCool.requireds.get("switchCap") == null);
@@ -551,8 +550,8 @@ public class TreeElementTest extends DBBasicTest {
 		switchCap = (TreeElementImpl) node_tempSensCool.addChild("switchCap", TempStorageSwitchCapacity.class, true);
 		TestCase.assertTrue(node_tempSensCool == (TreeElementImpl) freezeCombi.getChild(name_tempSensCool));
 		TestCase.assertTrue(switchCap == (TreeElementImpl) node_tempSensCool.getChild("switchCap"));
-		TestCase.assertTrue(freezeCombi.optionals.get(name_tempSensCool) == null);
-		TestCase.assertTrue(node_tempSensCool.optionals.get("switchCap") == null);
+		// TestCase.assertTrue(freezeCombi.typeChildren.get(name_tempSensCool) == null);
+		// TestCase.assertTrue(node_tempSensCool.typeChildren.get("switchCap") == null);
 		TestCase.assertTrue(freezeCombi.requireds.get(name_tempSensCool) != null);
 		TestCase.assertTrue(node_tempSensCool.requireds.get("switchCap") != null);
 
@@ -560,8 +559,9 @@ public class TreeElementTest extends DBBasicTest {
 		db.deleteResource(node_tempSensCool);
 		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool) == null);
 		// TestCase.assertTrue(node_tempSensCool.getChild("switchCap") == null);
-		TestCase.assertTrue(freezeCombi.optionals.get(name_tempSensCool) != null);
-		// TestCase.assertTrue(node_tempSensCool.optionals.get("switchCap") != null); // no longer an optional element
+		// TestCase.assertTrue(freezeCombi.typeChildren.get(name_tempSensCool) != null);
+		// TestCase.assertTrue(node_tempSensCool.typeChildren.get("switchCap") != null); // no longer an optional
+		// element
 		TestCase.assertTrue(freezeCombi.requireds.get(name_tempSensCool) == null);
 		TestCase.assertTrue(node_tempSensCool.requireds.get("switchCap") == null);
 		exception = false;
@@ -586,15 +586,16 @@ public class TreeElementTest extends DBBasicTest {
 
 		TestCase.assertTrue(node_tempSensCool == (TreeElementImpl) freezeCombi.getChild(name_tempSensCool));
 		TestCase.assertTrue(switchCap == (TreeElementImpl) node_tempSensCool.getChild("switchCap"));
-		TestCase.assertTrue(freezeCombi.optionals.get(name_tempSensCool) == null);
-		TestCase.assertTrue(node_tempSensCool.optionals.get("switchCap") == null);
+		// TestCase.assertTrue(freezeCombi.typeChildren.get(name_tempSensCool) == null);
+		// TestCase.assertTrue(node_tempSensCool.typeChildren.get("switchCap") == null);
 		TestCase.assertTrue(freezeCombi.requireds.get(name_tempSensCool) != null);
 		TestCase.assertTrue(node_tempSensCool.requireds.get("switchCap") != null);
 
 		// delete sub resource
 		db.deleteResource(switchCap);
-		TestCase.assertTrue(freezeCombi.optionals.get(name_tempSensCool) == null);
-		// TestCase.assertTrue(node_tempSensCool.optionals.get("switchCap") != null); // no longer an optional element
+		// TestCase.assertTrue(freezeCombi.typeChildren.get(name_tempSensCool) == null);
+		// TestCase.assertTrue(node_tempSensCool.typeChildren.get("switchCap") != null); // no longer an optional
+		// element
 		TestCase.assertTrue(freezeCombi.requireds.get(name_tempSensCool) != null);
 		TestCase.assertTrue(node_tempSensCool.requireds.get("switchCap") == null);
 		TestCase.assertTrue(node_tempSensCool == (TreeElementImpl) freezeCombi.getChild(name_tempSensCool));
@@ -604,8 +605,8 @@ public class TreeElementTest extends DBBasicTest {
 		switchCap = (TreeElementImpl) node_tempSensCool.addChild("switchCap", TempStorageSwitchCapacity.class, true);
 		TestCase.assertTrue(node_tempSensCool == (TreeElementImpl) freezeCombi.getChild(name_tempSensCool));
 		TestCase.assertTrue(switchCap == (TreeElementImpl) node_tempSensCool.getChild("switchCap"));
-		TestCase.assertTrue(freezeCombi.optionals.get(name_tempSensCool) == null);
-		TestCase.assertTrue(node_tempSensCool.optionals.get("switchCap") == null);
+		// TestCase.assertTrue(freezeCombi.typeChildren.get(name_tempSensCool) == null);
+		// TestCase.assertTrue(node_tempSensCool.typeChildren.get("switchCap") == null);
 		TestCase.assertTrue(freezeCombi.requireds.get(name_tempSensCool) != null);
 		TestCase.assertTrue(node_tempSensCool.requireds.get("switchCap") != null);
 
@@ -613,8 +614,9 @@ public class TreeElementTest extends DBBasicTest {
 		db.deleteResource(node_tempSensCool);
 		TestCase.assertTrue(freezeCombi.getChild(name_tempSensCool) == null);
 		// TestCase.assertTrue(node_tempSensCool.getChild("switchCap") == null);
-		TestCase.assertTrue(freezeCombi.optionals.get(name_tempSensCool) != null);
-		// TestCase.assertTrue(node_tempSensCool.optionals.get("switchCap") != null); // no longer an optional element
+		// TestCase.assertTrue(freezeCombi.typeChildren.get(name_tempSensCool) != null);
+		// TestCase.assertTrue(node_tempSensCool.typeChildren.get("switchCap") != null); // no longer an optional
+		// element
 		TestCase.assertTrue(freezeCombi.requireds.get(name_tempSensCool) == null);
 		TestCase.assertTrue(node_tempSensCool.requireds.get("switchCap") == null);
 		exception = false;
@@ -851,8 +853,8 @@ public class TreeElementTest extends DBBasicTest {
 		TreeElementImpl propertyUnit = null;
 		exception = false;
 		try {
-			propertyUnit = (TreeElementImpl) node_propertyUnitsArr
-					.addChild("myUnit", BuildingPropertyUnit.class, false);
+			propertyUnit = (TreeElementImpl) node_propertyUnitsArr.addChild("myUnit", BuildingPropertyUnit.class,
+					false);
 		} catch (Throwable e) {
 			exception = true;
 		}
@@ -1103,6 +1105,7 @@ public class TreeElementTest extends DBBasicTest {
 		// building
 		try {
 			node_propertyUnitsArr = (TreeElementImpl) db.addResource(name_propertyUnit, ResourceList.class, testAppID);
+			node_propertyUnitsArr.setResourceListType(BuildingPropertyUnit.class);
 			TestCase.assertTrue(db.hasResource(resourceName));
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1115,8 +1118,8 @@ public class TreeElementTest extends DBBasicTest {
 		 * Add a complexArray Child to the building as reference. This test has to succeed.
 		 */
 		try {
-			node_propertyUnitsArrRef = (TreeElementImpl) building.addReference(node_propertyUnitsArr,
-					name_propertyUnit, true);
+			node_propertyUnitsArrRef = (TreeElementImpl) building.addReference(node_propertyUnitsArr, name_propertyUnit,
+					true);
 		} catch (Throwable e) {
 			exception = true;
 		}
@@ -1133,14 +1136,13 @@ public class TreeElementTest extends DBBasicTest {
 					testAppID);
 			TestCase.assertTrue(db.hasResource(resourceName));
 		} catch (Exception e) {
-			e.printStackTrace();
 			exception = true;
 		}
 		TestCase.assertFalse(exception);
 		exception = false;
 
 		/*
-		 * Add a Child to the node_propertyUnitsArr as reference. This test has to success because reference child in a
+		 * Add a Child to the node_propertyUnitsArr as reference. This test has to succeed because reference child in a
 		 * reference is supported as long as no loop of references is produced.
 		 */
 		try {
@@ -1362,8 +1364,8 @@ public class TreeElementTest extends DBBasicTest {
 	}
 
 	/**
-	 * abstract: test getTypeChildren(String name) test-id: scope: single tested functions of ResourceDB interface:
-	 * List<NodeDesc> getTypeChildren(String name)
+	 * abstract: test getTypeChildren(String name) test-id: scope: single tested functions of ResourceDB interface: List
+	 * <NodeDesc> getTypeChildren(String name)
 	 */
 	@Test
 	public void getTypeChildren() {
@@ -1482,6 +1484,7 @@ public class TreeElementTest extends DBBasicTest {
 	 * getIntValue(int attrId) long getLongValue(int attrId) String getStringValue(int attrId) boolean
 	 * getBooleanValue(int attrId byte[] getOpaqueValue(int attrId)
 	 */
+    @SuppressWarnings("deprecation")
 	public void setGetValue() {
 
 		boolean exception_thrown = false;
@@ -1496,9 +1499,9 @@ public class TreeElementTest extends DBBasicTest {
 		// sensor is yet optional, so its not a member of the requireds
 		TestCase.assertTrue(sub_resource_TestActor_id_0 == null);
 
-		sub_resource_TestActor_id_0 = resource_TestPhysicalDevice_id_0.optionals.get("actor");
-		// sensor is yet optional, so its a member of the optionals
-		TestCase.assertTrue(sub_resource_TestActor_id_0 != null);
+		// sub_resource_TestActor_id_0 = resource_TestPhysicalDevice_id_0.optionals.get("actor");
+		// // sensor is yet optional, so its a member of the optionals
+		// TestCase.assertTrue(sub_resource_TestActor_id_0 != null);
 
 		// change the situation by adding sensor as a required member
 		// first we try to add a child with the wrong type class
@@ -1563,18 +1566,18 @@ public class TreeElementTest extends DBBasicTest {
 
 		// as default all sub resources are optional until they are added via
 		// addChild
-		sub_resource_float_id = sub_resource_TestActor_id_0.optionals.get("float_res");
-		sub_resource_int_id = sub_resource_TestActor_id_0.optionals.get("int_res");
-		sub_resource_string_id = sub_resource_TestActor_id_0.optionals.get("string_res");
-		sub_resource_bool_id = sub_resource_TestActor_id_0.optionals.get("bool_res");
-		sub_resource_time_id = sub_resource_TestActor_id_0.optionals.get("time_res");
-		sub_resource_opaque_id = sub_resource_TestActor_id_0.optionals.get("opaque_res");
-		TestCase.assertTrue(sub_resource_float_id != null);
-		TestCase.assertTrue(sub_resource_int_id != null);
-		TestCase.assertTrue(sub_resource_string_id != null);
-		TestCase.assertTrue(sub_resource_bool_id != null);
-		TestCase.assertTrue(sub_resource_time_id != null);
-		TestCase.assertTrue(sub_resource_opaque_id != null);
+		// sub_resource_float_id = sub_resource_TestActor_id_0.optionals.get("float_res");
+		// sub_resource_int_id = sub_resource_TestActor_id_0.optionals.get("int_res");
+		// sub_resource_string_id = sub_resource_TestActor_id_0.optionals.get("string_res");
+		// sub_resource_bool_id = sub_resource_TestActor_id_0.optionals.get("bool_res");
+		// sub_resource_time_id = sub_resource_TestActor_id_0.optionals.get("time_res");
+		// sub_resource_opaque_id = sub_resource_TestActor_id_0.optionals.get("opaque_res");
+		// TestCase.assertTrue(sub_resource_float_id != null);
+		// TestCase.assertTrue(sub_resource_int_id != null);
+		// TestCase.assertTrue(sub_resource_string_id != null);
+		// TestCase.assertTrue(sub_resource_bool_id != null);
+		// TestCase.assertTrue(sub_resource_time_id != null);
+		// TestCase.assertTrue(sub_resource_opaque_id != null);
 
 		exception_thrown = false;
 		// add sub resources to the TestSensor as childs
@@ -1590,7 +1593,7 @@ public class TreeElementTest extends DBBasicTest {
 			sub_resource_time_id = (TreeElementImpl) sub_resource_TestActor_id_0.addChild("time_res",
 					org.ogema.core.model.simple.TimeResource.class, false);
 			sub_resource_opaque_id = (TreeElementImpl) sub_resource_TestActor_id_0.addChild("opaque_res",
-					OpaqueResource.class, false);
+					org.ogema.core.model.simple.OpaqueResource.class, false);
 		} catch (Exception e2) {
 			exception_thrown = true;
 			e2.printStackTrace();
@@ -1621,18 +1624,18 @@ public class TreeElementTest extends DBBasicTest {
 
 		// as default all sub resources are optional until they are added via
 		// addChild
-		sub_resource_float_id = sub_resource_TestActor_id_0.optionals.get("float_res");
-		sub_resource_int_id = sub_resource_TestActor_id_0.optionals.get("int_res");
-		sub_resource_string_id = sub_resource_TestActor_id_0.optionals.get("string_res");
-		sub_resource_bool_id = sub_resource_TestActor_id_0.optionals.get("bool_res");
-		sub_resource_time_id = sub_resource_TestActor_id_0.optionals.get("time_res");
-		sub_resource_opaque_id = sub_resource_TestActor_id_0.optionals.get("opaque_res");
-		TestCase.assertTrue(sub_resource_float_id == null);
-		TestCase.assertTrue(sub_resource_int_id == null);
-		TestCase.assertTrue(sub_resource_string_id == null);
-		TestCase.assertTrue(sub_resource_bool_id == null);
-		TestCase.assertTrue(sub_resource_time_id == null);
-		TestCase.assertTrue(sub_resource_opaque_id == null);
+		// sub_resource_float_id = sub_resource_TestActor_id_0.optionals.get("float_res");
+		// sub_resource_int_id = sub_resource_TestActor_id_0.optionals.get("int_res");
+		// sub_resource_string_id = sub_resource_TestActor_id_0.optionals.get("string_res");
+		// sub_resource_bool_id = sub_resource_TestActor_id_0.optionals.get("bool_res");
+		// sub_resource_time_id = sub_resource_TestActor_id_0.optionals.get("time_res");
+		// sub_resource_opaque_id = sub_resource_TestActor_id_0.optionals.get("opaque_res");
+		// TestCase.assertTrue(sub_resource_float_id == null);
+		// TestCase.assertTrue(sub_resource_int_id == null);
+		// TestCase.assertTrue(sub_resource_string_id == null);
+		// TestCase.assertTrue(sub_resource_bool_id == null);
+		// TestCase.assertTrue(sub_resource_time_id == null);
+		// TestCase.assertTrue(sub_resource_opaque_id == null);
 
 		// as default all sub resources are optional and not a member of the
 		// resource until they are added via addChild
@@ -1678,9 +1681,9 @@ public class TreeElementTest extends DBBasicTest {
 		// sensor is yet optional, so its not a member of the requireds
 		TestCase.assertTrue(sub_resource_TestSensor_id_0 == null);
 
-		sub_resource_TestSensor_id_0 = resource_TestPhysicalDevice_id_0.optionals.get("sensor");
-		// sensor is yet optional, so its a member of the optionals
-		TestCase.assertTrue(sub_resource_TestSensor_id_0 != null);
+		// sub_resource_TestSensor_id_0 = resource_TestPhysicalDevice_id_0.optionals.get("sensor");
+		// // sensor is yet optional, so its a member of the optionals
+		// TestCase.assertTrue(sub_resource_TestSensor_id_0 != null);
 
 		// change the situation by adding sensor as a required member
 		try {
@@ -1732,18 +1735,18 @@ public class TreeElementTest extends DBBasicTest {
 
 		// as default all sub resources are optional until they are added via
 		// addChild
-		sub_resource_float_array_id = sub_resource_TestSensor_id_0.optionals.get("float_array_res");
-		sub_resource_int_array_id = sub_resource_TestSensor_id_0.optionals.get("int_array_res");
-		sub_resource_string_array_id = sub_resource_TestSensor_id_0.optionals.get("string_array_res");
-		sub_resource_bool_array_id = sub_resource_TestSensor_id_0.optionals.get("bool_array_res");
-		sub_resource_time_array_id = sub_resource_TestSensor_id_0.optionals.get("time_array_res");
-		sub_resource_complex_array_id = sub_resource_TestSensor_id_0.optionals.get("complex_array_res");
-		TestCase.assertTrue(sub_resource_float_array_id != null);
-		TestCase.assertTrue(sub_resource_int_array_id != null);
-		TestCase.assertTrue(sub_resource_string_array_id != null);
-		TestCase.assertTrue(sub_resource_bool_array_id != null);
-		TestCase.assertTrue(sub_resource_time_array_id != null);
-		TestCase.assertTrue(sub_resource_complex_array_id != null);
+		// sub_resource_float_array_id = sub_resource_TestSensor_id_0.optionals.get("float_array_res");
+		// sub_resource_int_array_id = sub_resource_TestSensor_id_0.optionals.get("int_array_res");
+		// sub_resource_string_array_id = sub_resource_TestSensor_id_0.optionals.get("string_array_res");
+		// sub_resource_bool_array_id = sub_resource_TestSensor_id_0.optionals.get("bool_array_res");
+		// sub_resource_time_array_id = sub_resource_TestSensor_id_0.optionals.get("time_array_res");
+		// sub_resource_complex_array_id = sub_resource_TestSensor_id_0.optionals.get("complex_array_res");
+		// TestCase.assertTrue(sub_resource_float_array_id != null);
+		// TestCase.assertTrue(sub_resource_int_array_id != null);
+		// TestCase.assertTrue(sub_resource_string_array_id != null);
+		// TestCase.assertTrue(sub_resource_bool_array_id != null);
+		// TestCase.assertTrue(sub_resource_time_array_id != null);
+		// TestCase.assertTrue(sub_resource_complex_array_id != null);
 
 		exception_thrown = false;
 		// add sub resources to the TestSensor as childs
@@ -1758,8 +1761,8 @@ public class TreeElementTest extends DBBasicTest {
 					BooleanArrayResource.class, false);
 			sub_resource_time_array_id = (TreeElementImpl) sub_resource_TestSensor_id_0.addChild("time_array_res",
 					TimeArrayResource.class, false);
-			sub_resource_complex_array_id = (TreeElementImpl) sub_resource_TestSensor_id_0.addChild(
-					"complex_array_res", ResourceList.class, false);
+			sub_resource_complex_array_id = (TreeElementImpl) sub_resource_TestSensor_id_0.addChild("complex_array_res",
+					ResourceList.class, false);
 		} catch (Exception e2) {
 			exception_thrown = true;
 			e2.printStackTrace();
@@ -1790,18 +1793,18 @@ public class TreeElementTest extends DBBasicTest {
 
 		// as default all sub resources are optional until they are added via
 		// addChild
-		sub_resource_float_array_id = sub_resource_TestSensor_id_0.optionals.get("float_array_res");
-		sub_resource_int_array_id = sub_resource_TestSensor_id_0.optionals.get("int_array_res");
-		sub_resource_string_array_id = sub_resource_TestSensor_id_0.optionals.get("string_array_res");
-		sub_resource_bool_array_id = sub_resource_TestSensor_id_0.optionals.get("bool_array_res");
-		sub_resource_time_array_id = sub_resource_TestSensor_id_0.optionals.get("time_array_res");
-		sub_resource_complex_array_id = sub_resource_TestSensor_id_0.optionals.get("complex_array_res");
-		TestCase.assertTrue(sub_resource_float_array_id == null);
-		TestCase.assertTrue(sub_resource_int_array_id == null);
-		TestCase.assertTrue(sub_resource_string_array_id == null);
-		TestCase.assertTrue(sub_resource_bool_array_id == null);
-		TestCase.assertTrue(sub_resource_time_array_id == null);
-		TestCase.assertTrue(sub_resource_complex_array_id == null);
+		// sub_resource_float_array_id = sub_resource_TestSensor_id_0.optionals.get("float_array_res");
+		// sub_resource_int_array_id = sub_resource_TestSensor_id_0.optionals.get("int_array_res");
+		// sub_resource_string_array_id = sub_resource_TestSensor_id_0.optionals.get("string_array_res");
+		// sub_resource_bool_array_id = sub_resource_TestSensor_id_0.optionals.get("bool_array_res");
+		// sub_resource_time_array_id = sub_resource_TestSensor_id_0.optionals.get("time_array_res");
+		// sub_resource_complex_array_id = sub_resource_TestSensor_id_0.optionals.get("complex_array_res");
+		// TestCase.assertTrue(sub_resource_float_array_id == null);
+		// TestCase.assertTrue(sub_resource_int_array_id == null);
+		// TestCase.assertTrue(sub_resource_string_array_id == null);
+		// TestCase.assertTrue(sub_resource_bool_array_id == null);
+		// TestCase.assertTrue(sub_resource_time_array_id == null);
+		// TestCase.assertTrue(sub_resource_complex_array_id == null);
 
 		// as default all sub resources are optional and not a member of the
 		// resource until they are added via addChild
@@ -1905,7 +1908,7 @@ public class TreeElementTest extends DBBasicTest {
 		TestCase.assertTrue((e.active == e.topLevelParent.active)
 				&& (((e.parent != null) && (e.active == e.parent.active)) || (e.parent == null)));
 		TestCase.assertTrue(e.appID.equals(testAppID));
-		TestCase.assertTrue((e.parent.optionals.get(e.name) == e) || (e.parent.requireds.get(e.name) == e));
+		// TestCase.assertTrue((e.parent.optionals.get(e.name) == e) || (e.parent.requireds.get(e.name) == e));
 		TestCase.assertTrue(db.hasResourceType(e.type.getName()));
 		TestCase.assertTrue(e == db.resNodeByID.get(db.resIDByName.get(e.path)));
 		TestCase.assertTrue(e.resRef == null);

@@ -23,25 +23,30 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.transform.stream.StreamSource;
 
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.FloatValue;
+import org.ogema.core.channelmanager.measurements.IntegerValue;
 import org.ogema.core.channelmanager.measurements.Quality;
+import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.FloatResource;
+import org.ogema.core.model.simple.IntegerResource;
+import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.tools.SerializationManager;
 import org.ogema.exam.OsgiAppTestBase;
+import org.ogema.exam.ResourceAssertions;
 import org.ogema.model.devices.connectiondevices.ElectricityConnectionBox;
+import org.ogema.model.locations.Room;
+import org.ogema.model.locations.WorkPlace;
 import org.ogema.model.metering.ElectricityMeter;
 import org.ogema.serialization.JaxbResource;
 import org.ogema.serialization.jaxb.FloatSchedule;
@@ -60,7 +65,6 @@ import org.ops4j.pax.exam.spi.reactors.PerClass;
  */
 @ExamReactorStrategy(PerClass.class)
 public class ApplyTest extends OsgiAppTestBase {
-	// XXX tests use XML, should be duplicated with JSON?
 
 	// ResourceAccess resacc = getApplicationManager().getResourceAccessManager();
 	static int counter = 0;
@@ -128,6 +132,24 @@ public class ApplyTest extends OsgiAppTestBase {
 		assertTrue(meter.distributionBox().exists());
 		assertTrue(meter.distributionBox().isActive());
 	}
+	
+	@Test
+	public void addingOptionalElementWorks_Json() throws Exception {
+		String id = "JsonTest";
+		ElectricityMeter meter1 = getApplicationManager().getResourceManagement().createResource("meter" + id + "1",
+				ElectricityMeter.class);
+		ElectricityMeter meter2 = getApplicationManager().getResourceManagement().createResource("meter" + id + "2",
+				ElectricityMeter.class);
+		meter1.connection().create();
+		meter2.connection().currentSensor().create().activate(false);;
+		String str2 = sman.toJson(meter2);
+		String str1 = str2.replace("meter" + id + "2", "meter" + id + "1"); 
+		sman.applyJson(str1, meter1, false);
+		
+		assertNotNull(meter1.connection().currentSensor());
+		assertTrue(meter1.connection().currentSensor().exists());
+		assertTrue(meter1.connection().currentSensor().isActive());
+	}
 
 	@Test
 	public void addingDecoratorWorks_Xml() throws Exception {
@@ -161,7 +183,7 @@ public class ApplyTest extends OsgiAppTestBase {
 	}
 
 	<T> T unmarshal(String s, Class<T> clazz) throws JAXBException {
-		return jaxbUnmarshalling.createUnmarshaller().unmarshal(new StreamSource(new StringReader(sman.toXml(meter))),
+		return jaxbUnmarshalling.createUnmarshaller().unmarshal(new StreamSource(new StringReader(s)),
 				clazz).getValue();
 	}
 
@@ -212,6 +234,111 @@ public class ApplyTest extends OsgiAppTestBase {
 		assertNotNull(meter.getSubResource("scheduleTest").getSubResource("data"));
 		Schedule ogemaSchedule = (Schedule) meter.getSubResource("scheduleTest").getSubResource("data");
 		assertEquals(schedule.getEntry().size(), ogemaSchedule.getValues(0).size());
+	}
+	
+	@Test
+	public void addingEmptyScheduleWorks_Json() throws Exception {
+		sman.setSerializeSchedules(true);
+		String id = "JsonTest";
+		ElectricityMeter meter1 = getApplicationManager().getResourceManagement().createResource("meter" + id + "1",
+				ElectricityMeter.class);
+		ElectricityMeter meter2 = getApplicationManager().getResourceManagement().createResource("meter" + id + "2",
+				ElectricityMeter.class);
+		meter1.connection().currentSensor().reading().create();
+		meter2.connection().currentSensor().reading().program().create().activate(false);
+		
+		String str2 = sman.toJson(meter2);
+		String str1 = str2.replace("meter" + id + "2", "meter" + id + "1");
+		System.out.println("  --- Updating resource with json: " + str1);
+		sman.applyJson(str1, meter1, false);  
+		
+		assertNotNull(meter1.connection().currentSensor().reading().program());
+		assertTrue(meter1.connection().currentSensor().reading().program().exists()); 
+		assertTrue(meter1.connection().currentSensor().reading().program().isActive());
+		assertEquals(0, meter1.connection().currentSensor().reading().program().getValues(Long.MIN_VALUE).size());
+		meter1.delete();
+		meter2.delete();
+	}
+	
+	@Test
+	public void addingScheduleWithValuesWorks_Json() throws Exception {
+		sman.setSerializeSchedules(true);
+		String id = "JsonTest";
+		ElectricityMeter meter1 = getApplicationManager().getResourceManagement().createResource("meter" + id + "3",
+				ElectricityMeter.class);
+		ElectricityMeter meter2 = getApplicationManager().getResourceManagement().createResource("meter" + id + "4",
+				ElectricityMeter.class);
+		meter1.connection().currentSensor().reading().create();
+		meter2.connection().currentSensor().reading().program().create().activate(false);
+		meter2.connection().currentSensor().reading().program().addValue(1, new FloatValue(23));
+		meter2.connection().currentSensor().reading().program().addValue(4, new FloatValue(-65.2F));
+		meter2.connection().currentSensor().reading().program().addValue(System.currentTimeMillis(), new FloatValue(234.2F));
+		
+		String str2 = sman.toJson(meter2);
+		String str1 = str2.replace("meter" + id + "4", "meter" + id + "3"); 
+		System.out.println("  --- Updating resource with json: " + str1);
+		sman.applyJson(str1, meter1, false); 
+		
+		assertNotNull(meter1.connection().currentSensor().reading().program());
+		assertTrue(meter1.connection().currentSensor().reading().program().exists()); 
+		assertTrue(meter1.connection().currentSensor().reading().program().isActive());
+		assertEquals(3, meter1.connection().currentSensor().reading().program().getValues(Long.MIN_VALUE).size());
+		meter1.delete();
+		meter2.delete();
+	}
+	
+	@Test
+	public void addingIntegerScheduleWithValuesWorks_Json() throws Exception {
+		sman.setSerializeSchedules(true);
+		String id = "JsonTest";
+		ElectricityMeter meter1 = getApplicationManager().getResourceManagement().createResource("meter" + id + "5",
+				ElectricityMeter.class);
+		ElectricityMeter meter2 = getApplicationManager().getResourceManagement().createResource("meter" + id + "6",
+				ElectricityMeter.class);
+		meter1.getSubResource("intSub", IntegerResource.class).create();
+		meter2.getSubResource("intSub", IntegerResource.class).program().create().activate(false);
+		meter2.getSubResource("intSub", IntegerResource.class).program().addValue(1, new IntegerValue(23));
+		meter2.getSubResource("intSub", IntegerResource.class).program().addValue(4, new IntegerValue(-65));
+		meter2.getSubResource("intSub", IntegerResource.class).program().addValue(System.currentTimeMillis(), new IntegerValue(234));
+		
+		String str2 = sman.toJson(meter2);
+		String str1 = str2.replace("meter" + id + "6", "meter" + id + "5"); 
+		System.out.println("  --- Updating resource with json: " + str1);
+		sman.applyJson(str1, meter1, false); 
+		
+		assertNotNull(meter1.getSubResource("intSub", IntegerResource.class).program());
+		assertTrue(meter1.getSubResource("intSub", IntegerResource.class).program().exists()); 
+		assertTrue(meter1.getSubResource("intSub", IntegerResource.class).program().isActive());
+		assertEquals(3, meter1.getSubResource("intSub", IntegerResource.class).program().getValues(Long.MIN_VALUE).size());
+		meter1.delete();
+		meter2.delete();
+	}
+	
+	@Test
+	public void addingIntegerScheduleWithValuesWorks_Xml() throws Exception {
+		sman.setSerializeSchedules(true);
+		String id = "JsonTest";
+		ElectricityMeter meter1 = getApplicationManager().getResourceManagement().createResource("meter" + id + "7",
+				ElectricityMeter.class);
+		ElectricityMeter meter2 = getApplicationManager().getResourceManagement().createResource("meter" + id + "8",
+				ElectricityMeter.class);
+		meter1.getSubResource("intSub", IntegerResource.class).create();
+		meter2.getSubResource("intSub", IntegerResource.class).program().create().activate(false);
+		meter2.getSubResource("intSub", IntegerResource.class).program().addValue(1, new IntegerValue(23));
+		meter2.getSubResource("intSub", IntegerResource.class).program().addValue(4, new IntegerValue(-65));
+		meter2.getSubResource("intSub", IntegerResource.class).program().addValue(System.currentTimeMillis(), new IntegerValue(234));
+		
+		String str2 = sman.toXml(meter2);
+		String str1 = str2.replace("meter" + id + "8", "meter" + id + "7"); 
+		System.out.println("  --- Updating resource with xml: " + str1);
+		sman.applyXml(str1, meter1, false); 
+		
+		assertNotNull(meter1.getSubResource("intSub", IntegerResource.class).program());
+		assertTrue(meter1.getSubResource("intSub", IntegerResource.class).program().exists()); 
+		assertTrue(meter1.getSubResource("intSub", IntegerResource.class).program().isActive());
+		assertEquals(3, meter1.getSubResource("intSub", IntegerResource.class).program().getValues(Long.MIN_VALUE).size());
+		meter1.delete();
+		meter2.delete();
 	}
 
 	@Test
@@ -275,6 +402,113 @@ public class ApplyTest extends OsgiAppTestBase {
 		assertEquals(2, ogemaSchedule.getValues(0).size());
 		assertEquals(42, ogemaSchedule.getValues(0).get(0).getValue().getFloatValue(), 0);
 		assertEquals(44, ogemaSchedule.getValues(0).get(1).getValue().getFloatValue(), 0);
+	}
+	
+	@Test
+	public void addResourceListElementWorks() {
+		@SuppressWarnings("unchecked")
+		ResourceList<ElectricityMeter> list = getApplicationManager().getResourceManagement().createResource(newResourceName(), ResourceList.class);
+		list.setElementType(ElectricityMeter.class);
+		list.add();
+		String json = sman.toJson(list.getAllElements().get(0));
+		System.out.println("    json: " + json);
+		JSONObject subres = new JSONObject(json);
+		String path = subres.getString("path");
+		path = path.substring(0, path.length()-1) + "1"; // replace last 0 by 1
+		String name = subres.getString("name");
+		name = name.substring(0, name.length()-1) + "1";
+		subres.put("path", path);
+		subres.put("name", name);
+		try {
+			sman.createFromJson(subres.toString(), list);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new AssertionError(e);
+		}
+		System.out.println(sman.toJson(list));
+		assertEquals("Resource list with unexpected number of elements", 2, list.getAllElements().size());
+	}
+	
+	@Test
+	public void applyWorksForResourceList_JSON() {
+		applyWorksForResourceList(DataType.JSON);
+	}
+	
+	@Test
+	public void applyWorksForResourceList_XML() {
+		applyWorksForResourceList(DataType.XML);
+	}
+	
+	private void applyWorksForResourceList(DataType dataType) {
+		Room room = getApplicationManager().getResourceManagement().createResource(newResourceName(), Room.class);
+		room.workPlaces().create();
+		ResourceList<WorkPlace> wps = room.workPlaces();
+		WorkPlace wp1 = wps.add();
+		assertTrue(wp1.exists());
+		assertEquals(1, room.workPlaces().size());
+		String roomAsString;
+		switch(dataType) {
+		case JSON:
+			roomAsString = sman.toJson(room);
+			break;
+		case XML:
+			roomAsString = sman.toXml(room);
+			break;
+		default:
+			throw new RuntimeException();
+		}
+		System.out.println(roomAsString);
+		wp1.delete();
+		switch(dataType) {
+		case JSON:
+			sman.applyJson(roomAsString, room, false);
+			break;
+		case XML:
+			sman.applyXml(roomAsString, room, false);
+			break;
+		default:
+			throw new RuntimeException();
+		}
+		assertEquals("Resource list should have one element by now", 1, room.workPlaces().size());
+	}
+	
+	@Test
+	public void applyWorksForSimpleResource_JSON() {
+		applyWorksForSimpleResource(DataType.JSON);
+	}
+	
+	@Test
+	public void applyWorksForSimpleResource_XML() {
+		applyWorksForSimpleResource(DataType.XML);
+	}
+	
+	private void applyWorksForSimpleResource(DataType dataType) {
+		Room room = getApplicationManager().getResourceManagement().createResource(newResourceName(), Room.class);
+		room.name().<StringResource> create().setValue("test");
+		String roomAsString;
+		switch(dataType) {
+		case JSON:
+			roomAsString = sman.toJson(room);
+			break;
+		case XML:
+			roomAsString = sman.toXml(room);
+			break;
+		default:
+			throw new RuntimeException();
+		}
+		System.out.println(roomAsString);
+		room.name().delete();
+		switch(dataType) {
+		case JSON:
+			sman.applyJson(roomAsString, room, false);
+			break;
+		case XML:
+			sman.applyXml(roomAsString, room, false);
+			break;
+		default:
+			throw new RuntimeException();
+		}
+		ResourceAssertions.assertExists(room.name());
 	}
 
 }

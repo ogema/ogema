@@ -55,6 +55,7 @@ public class SingleIntervalTest extends SlotsDbTest {
 	private static void generateTestData() {
 
 		SlotsDb sdb = new SlotsDb();
+		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);

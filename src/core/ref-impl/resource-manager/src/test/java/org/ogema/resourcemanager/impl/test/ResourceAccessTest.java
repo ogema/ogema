@@ -92,6 +92,7 @@ public class ResourceAccessTest extends OsgiTestBase {
 	@Test
 	public void getResourceWorks() {
 		String name = RESNAME + counter++;
+		@SuppressWarnings("unused")
 		Resource r1 = resMan.createResource(name, OnOffSwitch.class);
 		Resource r = resAcc.getResource("/" + name);
 		assertNotNull(r);
@@ -100,6 +101,7 @@ public class ResourceAccessTest extends OsgiTestBase {
 	@Test
 	public void getResourceReturnsNullForNonExistingResource() {
 		String name = RESNAME + counter++;
+		@SuppressWarnings("unused")
 		Resource r1 = resMan.createResource(name, OnOffSwitch.class);
 		Resource r = resAcc.getResource("/fnord");
 		assertNull(r);

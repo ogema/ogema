@@ -33,14 +33,14 @@ import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
-import org.ogema.driver.hmhl.models.SmokeDetector;
-import org.ogema.driver.hmhl.models.WaterDetector;
 import org.ogema.model.devices.buildingtechnology.ElectricDimmer;
 import org.ogema.model.devices.sensoractordevices.SingleSwitchBox;
 import org.ogema.model.locations.Room;
 import org.ogema.model.sensors.HumiditySensor;
 import org.ogema.model.sensors.MotionSensor;
+import org.ogema.model.sensors.SmokeDetector;
 import org.ogema.model.sensors.TemperatureSensor;
+import org.ogema.model.sensors.WaterDetector;
 
 public class Rooms {
 

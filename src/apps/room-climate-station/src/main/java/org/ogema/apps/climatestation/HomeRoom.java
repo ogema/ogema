@@ -24,14 +24,14 @@ import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.ResourceAccess;
-import org.ogema.driver.hmhl.models.SmokeDetector;
-import org.ogema.driver.hmhl.models.WaterDetector;
 import org.ogema.model.devices.buildingtechnology.ElectricDimmer;
 import org.ogema.model.devices.sensoractordevices.SingleSwitchBox;
 import org.ogema.model.locations.Room;
 import org.ogema.model.sensors.HumiditySensor;
 import org.ogema.model.sensors.MotionSensor;
+import org.ogema.model.sensors.SmokeDetector;
 import org.ogema.model.sensors.TemperatureSensor;
+import org.ogema.model.sensors.WaterDetector;
 
 public class HomeRoom {
 
@@ -73,13 +73,13 @@ public class HomeRoom {
 			this.dimmerFeedback = dimmer.onOffSwitch().stateFeedback();
 		this.smoke = theRoom.getSubResource(SMOKE_DECORATOR_NAME);
 		if (smoke != null)
-			this.smokeAlert = smoke.smokeAlert();
+			this.smokeAlert = smoke.reading();
 		this.swBox1 = theRoom.getSubResource(SWITCH_BOX_1_DECORATOR_NAME);
 		if (swBox1 != null)
-			this.swBox1Feedback = swBox1.onOffSwitch().stateFeedback();
+			this.swBox1Control = swBox1.onOffSwitch().stateControl();
 		this.water = theRoom.getSubResource(WATER_DECORATOR_NAME);
 		if (water != null)
-			this.highWaterRes = water.highWater();
+			this.highWaterRes = water.reading();
 	}
 
 	static final String SENSOR_NAME_TEMPERATURE = "Temperature";
@@ -108,7 +108,7 @@ public class HomeRoom {
 	private SmokeDetector smoke;
 	BooleanResource smokeAlert;
 	private SingleSwitchBox swBox1;
-	BooleanResource swBox1Feedback;
+	BooleanResource swBox1Control;
 	private WaterDetector water;
 	StringResource highWaterRes;
 
@@ -120,7 +120,7 @@ public class HomeRoom {
 			if (res == null || !(res instanceof BooleanResource)) {
 				logger.error("Dimmer switch resource could not be found!");
 			}
-			BooleanResource dimmer = (BooleanResource) res;
+			BooleanResource dimmer = res;
 			// Check if the room is already decorated with an ElectricLight
 			ElectricDimmer el = theRoom.getSubResource(LIGHT_DECORATOR_NAME);
 			if (el != null) {
@@ -229,7 +229,7 @@ public class HomeRoom {
 			try {
 				// swBox1 = room.getSubResource(SWITCH_BOX_1_DECORATOR_NAME);
 				if (swBox1 != null) {
-					boolean airSwitch = swBox1Feedback.getValue();
+					boolean airSwitch = swBox1Control.getValue();
 					roomData.put(Constants.JSON_AIR_NAME, airSwitch);
 				}
 			} catch (JSONException e) {
@@ -422,7 +422,7 @@ public class HomeRoom {
 			if (swBox == null) {
 				room.addDecorator(SWITCH_BOX_1_DECORATOR_NAME, swBoxRes);
 				swBox1 = swBoxRes;
-				swBox1Feedback = swBoxRes.onOffSwitch().stateFeedback();
+				swBox1Control = swBoxRes.onOffSwitch().stateControl();
 			}
 			break;
 		case SENSOR_NAME_SWBOX_SWITCH1:
@@ -498,7 +498,7 @@ public class HomeRoom {
 			if (waterDed == null) {
 				room.addDecorator(WATER_DECORATOR_NAME, waterRes);
 				water = waterRes;
-				highWaterRes = waterRes.highWater();
+				highWaterRes = waterRes.reading();
 			}
 			break;
 		case SENSOR_NAME_SMOKE:
@@ -513,7 +513,7 @@ public class HomeRoom {
 			if (smokeDed == null) {
 				room.addDecorator(SMOKE_DECORATOR_NAME, smokeRes);
 				smoke = smokeRes;
-				smokeAlert = smokeRes.smokeAlert();
+				smokeAlert = smokeRes.reading();
 			}
 			break;
 		default:

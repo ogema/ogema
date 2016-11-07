@@ -30,15 +30,20 @@ import org.ogema.core.resourcemanager.AccessModeListener;
 public class AccessModeListenerList {
 
 	private Collection<AccessModeListenerRegistration> listeners;
+    
+    private synchronized Collection<AccessModeListenerRegistration> getListeners() {
+        return listeners;
+    }
 
 	synchronized void addAll(AccessModeListenerList other) {
-        if (other == null || other.listeners == null) {
+        Collection<AccessModeListenerRegistration> otherListeners;
+        if (other == null || (otherListeners = other.getListeners()) == null) {
             return;
         }
         if (listeners == null) {
             listeners = new ArrayList<>();
         }
-        listeners.addAll(other.listeners);
+        listeners.addAll(otherListeners);
     }
 
 	synchronized void addListener(AccessModeListener l, Resource res, ApplicationManager app) {

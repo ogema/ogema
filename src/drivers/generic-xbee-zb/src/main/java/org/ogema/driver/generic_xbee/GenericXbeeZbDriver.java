@@ -21,9 +21,8 @@ import java.util.Map;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccess;
-import org.ogema.core.channelmanager.ChannelConfigurationException;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.ChannelEventListener;
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
 import org.ogema.driver.generic_xbee.devices.PikkertonZbs110V2Device;
@@ -39,14 +38,14 @@ public class GenericXbeeZbDriver implements Application, DeviceScanListener {
 	/** Map of active LemonegDevices */
 	private final Map<String, GenericXbeeZbDevice> devices; // InterfaceId:DeviceAddress,
 	// GenericXbeeZbDevice
-	public final Map<String, ChannelLocator> channelMap; // Map a name to a channelLocator (resourceId)
+	public final Map<String, ChannelConfiguration> channelMap; // Map a name to a channelLocator (resourceId)
 	private int resourceNameCounter = 0;
 
 	ChannelEventListener channelEventListener;
 
 	public GenericXbeeZbDriver() {
 		devices = new HashMap<String, GenericXbeeZbDevice>();
-		channelMap = new HashMap<String, ChannelLocator>();
+		channelMap = new HashMap<String, ChannelConfiguration>();
 	}
 
 	@Override
@@ -59,6 +58,10 @@ public class GenericXbeeZbDriver implements Application, DeviceScanListener {
 
 	@Override
 	public void stop(AppStopReason reason) {
+		
+		for (ChannelConfiguration chConf : channelMap.values()) {
+			channelAccess.deleteChannel(chConf);
+		}
 	}
 
 	public void resourceAvailable(GenericXbeeZbConfig config) {
@@ -88,18 +91,15 @@ public class GenericXbeeZbDriver implements Application, DeviceScanListener {
 	}
 
 	public void resourceUnavailable(GenericXbeeZbConfig config) {
-		if (devices.containsKey(config.driverId + ":" + config.interfaceId + ":" + config.deviceAddress + ":"
-				+ config.channelAddress)) {
-			GenericXbeeZbDevice device = devices.get(config.interfaceId + ":" + config.deviceAddress.toUpperCase());
-			devices.remove(config.interfaceId + ":" + config.deviceAddress.toUpperCase());
-			// TODO removeFromUpdateListener(device.channelLocator);
+		String key = config.driverId + ":" + config.interfaceId + ":" + config.deviceAddress + ":"
+				+ config.channelAddress;
+		
+		GenericXbeeZbDevice device = devices.remove(key);
+		
+		if (device != null)
+		{
 			logger.info("delete: " + device.channelLocator);
-			try {
-				channelAccess.deleteChannel(device.channelLocator);
-			} catch (ChannelConfigurationException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			channelAccess.deleteChannel(device.channelLocator);
 		}
 	}
 
@@ -112,8 +112,8 @@ public class GenericXbeeZbDriver implements Application, DeviceScanListener {
 		GenericXbeeZbDevice device = null;
 		try {
 			String[] splitStringArray = deviceLocator.getParameters().split(":");
-			if (devices.containsKey(deviceLocator.getInterfaceName() + ":"
-					+ deviceLocator.getDeviceAddress().toUpperCase())) {
+			if (devices.containsKey(
+					deviceLocator.getInterfaceName() + ":" + deviceLocator.getDeviceAddress().toUpperCase())) {
 				return;
 			}
 			if (splitStringArray[0].equals("XBee")) {
@@ -133,9 +133,8 @@ public class GenericXbeeZbDriver implements Application, DeviceScanListener {
 		}
 		if (device != null) {
 			logger.info("\nDevice found: " + deviceLocator.getDeviceAddress() + "\n" + deviceLocator.getParameters());
-			devices
-					.put(deviceLocator.getInterfaceName() + ":" + deviceLocator.getDeviceAddress().toUpperCase(),
-							device);
+			devices.put(deviceLocator.getInterfaceName() + ":" + deviceLocator.getDeviceAddress().toUpperCase(),
+					device);
 		}
 	}
 

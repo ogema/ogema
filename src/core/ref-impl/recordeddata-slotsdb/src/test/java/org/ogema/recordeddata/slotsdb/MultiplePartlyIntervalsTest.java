@@ -51,6 +51,7 @@ public class MultiplePartlyIntervalsTest extends SlotsDbTest {
 		deleteTestFiles();
 
 		SlotsDb sdb = new SlotsDb();
+		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);

@@ -20,12 +20,14 @@ import java.util.Map;
 
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
+import org.ogema.core.channelmanager.ChannelAccessException;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.driverspi.DeviceListener;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceScanListener;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.driver.zwavehl.devices.DoorOpeningSensor;
+import org.ogema.driver.zwavehl.devices.MotionTemperatureLightSensor;
 import org.ogema.driver.zwavehl.devices.RelaySwitch;
 import org.ogema.driver.zwavehl.devices.SwitchBox;
 
@@ -51,7 +53,12 @@ public class ZWaveHlDriver implements Application, DeviceListener, DeviceScanLis
 		logger = appManager.getLogger();
 		this.appManager = appManager;
 		// new Thread(this, "zwave-hl-deviceScan").start();
-		appManager.getChannelAccess().addDeviceListener("zwave-driver", this);
+		try {
+			appManager.getChannelAccess().addDeviceListener("zwave-driver", this);
+		} catch (ChannelAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -83,6 +90,10 @@ public class ZWaveHlDriver implements Application, DeviceListener, DeviceScanLis
 				device = new RelaySwitch(this, appManager, config);
 				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
 				break;
+			case "010f.0800.1001":
+				device = new MotionTemperatureLightSensor(this, appManager, config);
+				devices.put(config.interfaceId + ":" + config.deviceAddress, device);
+				break;				
 			default:
 				logger.error("Device " + config.deviceParameters.split(":")[0] + " not supported");
 				// throw new RuntimeException("Message not supported");
@@ -133,6 +144,9 @@ public class ZWaveHlDriver implements Application, DeviceListener, DeviceScanLis
 			case "013c.0001.0003":
 				device = new RelaySwitch(this, appManager, deviceLocator);
 				break;
+			case "010f.0800.1001":
+				device = new MotionTemperatureLightSensor(this, appManager, deviceLocator);
+				break;				
 			default:
 				logger.error("Device " + deviceLocator.getParameters().split(":")[0] + " not supported");
 			}
@@ -173,7 +187,11 @@ public class ZWaveHlDriver implements Application, DeviceListener, DeviceScanLis
 			case "013c.0001.0003":
 				device = new RelaySwitch(this, appManager, deviceLocator);
 				break;
+			case "010f.0800.1001":
+				device = new MotionTemperatureLightSensor(this, appManager, deviceLocator);
+				break;				
 			case "0000.0001.0001": // UZB Z-Wave USB Adapter, coordinator device
+			case "0109.1001.0101":
 				break;
 			default:
 				logger.error("Device " + deviceLocator.getParameters().split(":")[0] + " not supported");
@@ -193,10 +211,15 @@ public class ZWaveHlDriver implements Application, DeviceListener, DeviceScanLis
 		dev.terminate();
 	}
 
-	public ChannelLocator getChannel(String resourceId) {
+	public ChannelConfiguration getChannel(String resourceId) {
+		ChannelConfiguration chConf = null;
+		
 		for (ZWaveHlDevice device : devices.values()) {
-			device.getChannel(resourceId);
+			chConf = device.getChannel(resourceId);
+			
+			if (chConf != null)
+				break;
 		}
-		return null;
+		return chConf;
 	}
 }

@@ -60,10 +60,8 @@ public interface ElectricityMeter extends GenericMeter {
 	 * 1: two-way meter without nonreturn<br>
 	 * 2: consumption meter<br>
 	 * 3: generation meter<br>
-	 * 4: consumption, capacitive reactive power<br>
-	 * 5: generation, capacitive reactive power<br>
-	 * 6: consumption, inductive reactive power<br>
-	 * 7: generation, inductive reactive power<br>
+	 * 4: capacitive reactive power<br>
+	 * 5: generation, inductive reactive power<br>
 	 * greater/equal 10.000: custom values
 	 */
 	@Override

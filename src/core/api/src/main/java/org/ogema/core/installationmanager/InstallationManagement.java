@@ -15,8 +15,6 @@
  */
 package org.ogema.core.installationmanager;
 
-import java.util.List;
-
 import org.ogema.core.security.AppPermission;
 import org.osgi.framework.Bundle;
 
@@ -24,29 +22,8 @@ import org.osgi.framework.Bundle;
  * Framework service for installation of applications and drivers and management of connections to application sources
  */
 public interface InstallationManagement {
-	/**
-	 * Connect to AppStore or to local directory containing apps.
-	 * 
-	 * @param address
-	 *            String representation of a valid url to the app store or local directory containing apps
-	 * @return ApplicationSource object that represent the connected app store.
-	 */
-	public ApplicationSource connectAppSource(String address);
 
-	/**
-	 * Disconnect from a remote or local app store.
-	 * 
-	 * @param address
-	 *            the address information that was used to connect to the app store.
-	 */
-	public void disconnectAppSource(String address);
 
-	/**
-	 * Returns a list of the currently connected app stores.
-	 * 
-	 * @return
-	 */
-	public List<ApplicationSource> getConnectedAppSources();
 
 	/**
 	 * Install the App by registering it in OGEMA and installing and starting its relevant bundle in the OSGi framework.
@@ -62,10 +39,10 @@ public interface InstallationManagement {
 	/**
 	 * Create an InstallableApplication instance with the given address and name information. The returned object is
 	 * initialized with the given arguments. Other properties like the granted permissions have to be initialized before
-	 * the application could be installed.
+	 * the application could be installed. Only file: URI's are supported as address.
 	 * 
 	 * @param address
-	 *            URL string which is the location of the source of the application to install.
+	 *            URI string which is the location of the source of the application to install.
 	 * @param name
 	 *            The name of the bundle file of the application.
 	 * @return The initialized object InstallableApplication
@@ -83,17 +60,9 @@ public interface InstallationManagement {
 	public InstallableApplication createInstallableApp(Bundle b);
 
 	/**
-	 * Gets the default application source as it installed in system.
+	 * Gets the path name of the storage area that belongs to the application its installation is currently processed.
 	 * 
-	 * @return The default {@link ApplicationSource}
+	 * @return The path name string
 	 */
-	public ApplicationSource getDefaultAppStore();
-
-	/**
-	 * Gets the name of the bundle store, that is provided by the framework.
-	 * 
-	 * @return The locale store or null if the framework doesn't support such a store.
-	 */
-	public ApplicationSource getLocalStore();
-
+	public String getCurrentInstallStoragePath();
 }

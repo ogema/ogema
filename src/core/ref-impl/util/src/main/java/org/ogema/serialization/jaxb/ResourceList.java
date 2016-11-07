@@ -17,9 +17,10 @@ package org.ogema.serialization.jaxb;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
-import org.codehaus.jackson.annotate.JsonTypeInfo;
+
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
 import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
 
 /**
@@ -27,8 +28,8 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
  * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "ResourceList", propOrder = { "elementType" })
-@XmlRootElement(name = "resourceList", namespace = NS_OGEMA_REST)
+@XmlType(name = "ResourceList", namespace = NS_OGEMA_REST, propOrder = { "elementType" })
+//@XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY)
 public class ResourceList extends Resource {
 

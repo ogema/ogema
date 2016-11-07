@@ -22,22 +22,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 
 import org.ogema.core.application.AppID;
 import org.ogema.core.installationmanager.InstallableApplication;
 import org.ogema.core.security.AppPermission;
 import org.osgi.framework.Bundle;
-import org.slf4j.Logger;
 
 public class InstallableApp implements InstallableApplication {
 
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 	static final String PERMS_ENTRY_NAME = "OSGI-INF/permissions.perm";
 	static final String allPerm = "java.security.AllPermission";
 	private static final String tmpDir = "./";
@@ -51,6 +48,8 @@ public class InstallableApp implements InstallableApplication {
 	String location;
 	private AppPermission appPerms;
 	private boolean isLocale;
+
+	public static final ThreadLocal<InstallableApp> currentInstallThreadLocale = new ThreadLocal<>();
 
 	InstallableApp(String path, String name) {
 		this.path = path;
@@ -130,24 +129,18 @@ public class InstallableApp implements InstallableApplication {
 
 	@Override
 	public List<String> getPermissionDemand() {
+		currentInstallThreadLocale.set(this);
 		List<String> permsArray = new ArrayList<>();
-		File f = new File(path, name);
-		JarFile jar = null;
-		try {
-			jar = new JarFile(f);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		JarEntry perms = null;
-		perms = jar.getJarEntry(PERMS_ENTRY_NAME);
-
 		BufferedReader br = null;
-		try {
-			if (perms != null) {
-				br = new BufferedReader(new InputStreamReader(jar.getInputStream(perms)));
+		URL url = bundle.getEntry(PERMS_ENTRY_NAME);
+		if (url != null) {
+			InputStream is;
+			try {
+				is = url.openStream();
+				br = new BufferedReader(new InputStreamReader(is));
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
-		} catch (IOException e) {
-			logger.warn("", e);
 		}
 		String line;
 		if (br == null) {// If the jar entry doesn't exist, AllPermission is desired.
@@ -155,21 +148,16 @@ public class InstallableApp implements InstallableApplication {
 		}
 		else {
 			try {
-				line = br.readLine();
-				while (line != null) {
+				while ((line = br.readLine()) != null) {
 					line = line.trim();
 					if (line.startsWith("#") || line.startsWith("//") || line.equals("")) {
 						continue;
 					}
 					permsArray.add(line);
-					line = br.readLine();
 				}
-				jar.close();
 			} catch (IOException e) {
-				logger.warn("", e);
 			}
 		}
-		state = InstallState.DESIRED_PERMS_SENT;
 		return permsArray;
 	}
 
@@ -189,18 +177,7 @@ public class InstallableApp implements InstallableApplication {
 	}
 
 	String createLocation() {
-		if (path.startsWith(".") || path.startsWith("/") || path.startsWith("file:")) {
-			isLocale = true;
-		}
-		String loc = path + name;
-		if (!isLocale) {
-			try {
-				return (new URL(loc)).toString();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		return "file:".concat(loc);
+		return Paths.get(path, name).normalize().toUri().toString();
 	}
 
 	@Override

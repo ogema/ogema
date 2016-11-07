@@ -45,7 +45,9 @@ public class KeepAlive implements Runnable {
 			try {
 				Thread.sleep(2000);
 			} catch (InterruptedException e1) {
-				e1.printStackTrace();
+//				e1.printStackTrace();
+				if (!Activator.bundleIsRunning)
+					return;
 			}
 		}
 		connection.sendFrame(Converter.hexStringToByteArray("41" + address));

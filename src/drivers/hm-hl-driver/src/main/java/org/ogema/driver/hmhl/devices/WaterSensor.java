@@ -26,8 +26,8 @@ import org.ogema.driver.hmhl.Constants;
 import org.ogema.driver.hmhl.HM_hlConfig;
 import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
-import org.ogema.driver.hmhl.models.WaterDetector;
 import org.ogema.model.sensors.StateOfChargeSensor;
+import org.ogema.model.sensors.WaterDetector;
 import org.ogema.tools.resource.util.ResourceUtils;
 
 public class WaterSensor extends HM_hlDevice {
@@ -78,13 +78,13 @@ public class WaterSensor extends HM_hlDevice {
 		attributeConfig.chLocator = addChannel(attributeConfig);
 
 		WaterDetector threeStateDevice = resourceManager.createResource(hm_hlConfig.resourceName, WaterDetector.class);
-		highWater = (StringResource) threeStateDevice.highWater().create();
+		highWater = threeStateDevice.reading().create();
 		// highWater.activate(true);
 		// highWater.setValue("dry");
 		highWater.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
 
-		StateOfChargeSensor eSens = (StateOfChargeSensor) threeStateDevice.battery().create();
-		batteryStatus = (FloatResource) eSens.reading().create();
+		StateOfChargeSensor eSens = threeStateDevice.battery().chargeSensor().create();
+		batteryStatus = eSens.reading().create();
 		// batteryStatus.activate(true);
 		// batteryStatus.setValue(95);
 		batteryStatus.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
@@ -93,7 +93,7 @@ public class WaterSensor extends HM_hlDevice {
 	}
 
 	protected void unifyResourceName(HM_hlConfig config) {
-		config.resourceName += Constants.HM_THREE_STATE_NAME + config.deviceAddress.replace(':', '_');
+		config.resourceName += Constants.HM_WATER_DETECTOR_RES_NAME + config.deviceAddress.replace(':', '_');
 	}
 
 	@Override

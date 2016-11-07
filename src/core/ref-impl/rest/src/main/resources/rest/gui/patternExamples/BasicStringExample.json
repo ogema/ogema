@@ -1,0 +1,4 @@
+{ 
+    "@type": "Pattern",
+    "modelClass": "org.ogema.core.model.simple.StringResource"
+}

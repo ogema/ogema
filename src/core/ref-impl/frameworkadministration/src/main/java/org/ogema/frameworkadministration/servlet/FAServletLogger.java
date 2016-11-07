@@ -17,16 +17,19 @@ package org.ogema.frameworkadministration.servlet;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.codehaus.jackson.map.ObjectMapper;
+
 import org.ogema.core.logging.LogOutput;
 import org.ogema.frameworkadministration.controller.LoggerController;
 import org.ogema.frameworkadministration.json.post.LoggerJsonPost;
 import org.ogema.frameworkadministration.json.post.LoggerJsonPostList;
 import org.ogema.frameworkadministration.utils.Utils;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class FAServletLogger extends HttpServlet {
 

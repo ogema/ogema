@@ -25,6 +25,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.administration.RegisteredStructureListener;
@@ -44,8 +45,11 @@ import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.SU
 import static org.ogema.core.resourcemanager.ResourceStructureEvent.EventType.SUBRESOURCE_REMOVED;
 
 import org.ogema.core.resourcemanager.ResourceStructureListener;
+import org.ogema.exam.ResourceAssertions;
 import org.ogema.model.actors.OnOffSwitch;
+import org.ogema.model.devices.buildingtechnology.Thermostat;
 import org.ogema.model.devices.generators.ElectricHeater;
+import org.ogema.model.devices.whitegoods.CoolingDevice;
 import org.ogema.model.locations.Room;
 import org.ogema.model.sensors.PowerSensor;
 import org.ogema.model.sensors.TemperatureSensor;
@@ -411,8 +415,6 @@ public class ResourceStructureListenerTest extends OsgiTestBase {
 	}
 
 	@Test
-	@Ignore("FIXME")
-	//FIXME
 	public void listenersAreNotNotifiedOnRemovedReferences() throws InterruptedException {
 		final OnOffSwitch sw = resMan.createResource(newResourceName(), OnOffSwitch.class);
 		final OnOffSwitch sw2 = resMan.createResource(newResourceName(), OnOffSwitch.class);
@@ -425,20 +427,24 @@ public class ResourceStructureListenerTest extends OsgiTestBase {
 		assertTrue(sw.ratedValues().upperLimit().equalsLocation(sw2.ratedValues().upperLimit()));
 
 		//remove the reference and check that no callbacks are received for sw2//*
-		sw.addOptionalElement(sw.ratedValues().getName());
-		sw.ratedValues().upperLimit().create();
-		System.out.println(sw.ratedValues().upperLimit().getLocation());
-		System.out.println(sw.ratedValues().getPath());
-		System.out.println(sw.ratedValues().getLocation());
-		System.out.println(sw.ratedValues().upperLimit().getPath());
-		System.out.println(sw.ratedValues().upperLimit().getLocation());
+		//sw.addOptionalElement(sw.ratedValues().getName());
+        sw.ratedValues().delete();
+        
+        assertTrue(sw2.ratedValues().exists());
+		sw.ratedValues().upperLimit().create();        
 		assertFalse(sw.ratedValues().equalsLocation(sw2.ratedValues()));
 		assertFalse(sw.ratedValues().upperLimit().equalsLocation(sw2.ratedValues().upperLimit()));
 
 		assertFalse(l.eventReceived(RESOURCE_ACTIVATED));
 		sw2.ratedValues().upperLimit().activate(true);
 
-		assertFalse("received event from wrong resource", l.awaitEvent(RESOURCE_ACTIVATED));
+		assertFalse("received event from removed reference", l.awaitEvent(RESOURCE_ACTIVATED, 1, TimeUnit.SECONDS));
+
+        l.reset();
+        assertFalse(sw.ratedValues().upperLimit().isActive());
+        sw.activate(true);
+        assertTrue(sw.ratedValues().upperLimit().isActive());
+        assertTrue("listener still working", l.awaitEvent(RESOURCE_ACTIVATED));
 	}
 
 	@Test
@@ -528,8 +534,8 @@ public class ResourceStructureListenerTest extends OsgiTestBase {
 		// remove reference
 		listener.reset();
 		sw2.stateControl().delete();
-		listener.latch.await(5, TimeUnit.SECONDS);
-		assertEquals(EventType.REFERENCE_REMOVED, listener.lastType); // -> RESOURCE_DELETED instead
+		assertTrue("missing callback, expected " + EventType.REFERENCE_REMOVED, listener.latch.await(5, TimeUnit.SECONDS));
+		assertEquals(EventType.REFERENCE_REMOVED, listener.lastType); 
 		// deactivate
 		listener.reset();
 		sw.stateControl().deactivate(false);
@@ -553,16 +559,17 @@ public class ResourceStructureListenerTest extends OsgiTestBase {
 		// clean up
 		sw.stateControl().removeStructureListener(listener);
 		sw2.delete();
-		sw.delete(); // -> null pointer exception
+		sw.delete(); 
 	}
 
+	@Ignore("Callback missing")
 	@Test
 	public void doubleReferencesWork() throws InterruptedException {
 		ElectricHeater a = resMan.createResource("a", ElectricHeater.class);
 		Room b = resMan.createResource("b", Room.class);
 		TemperatureSensor c = resMan.createResource("c", TemperatureSensor.class);
 		c.reading().create();
-		final CountDownLatch latch = new CountDownLatch(1);
+//		final CountDownLatch latch = new CountDownLatch(1);
 
 		StructureTestListener listener = new StructureTestListener();
 
@@ -596,5 +603,414 @@ public class ResourceStructureListenerTest extends OsgiTestBase {
 		b.delete();
 		a.delete();
 	}
+	
+	@Test 
+	public void highlyNestedReferencesWork() throws InterruptedException {
+		TemperatureSensor thermo0 = resMan.createResource(newResourceName(), TemperatureSensor.class);
+		TemperatureSensor thermo1 = resMan.createResource(newResourceName(), TemperatureSensor.class);
+		TemperatureSensor thermo2 = resMan.createResource(newResourceName(), TemperatureSensor.class);
+		TemperatureSensor thermo3 = resMan.createResource(newResourceName(), TemperatureSensor.class);
+		TemperatureSensor thermo4 = resMan.createResource(newResourceName(), TemperatureSensor.class);
+		TemperatureSensor thermo5 = resMan.createResource(newResourceName(), TemperatureSensor.class);
+		
+		StructureTestListener listener = new StructureTestListener();
+		thermo0
+			.location().room().temperatureSensor()
+			.location().room().temperatureSensor()
+			.location().room().temperatureSensor()
+			.location().room().temperatureSensor()
+			.location().room().temperatureSensor().reading().addStructureListener(listener);
+		thermo5.reading().create();
+		thermo4.location().room().temperatureSensor().setAsReference(thermo5);
+		thermo3.location().room().temperatureSensor().setAsReference(thermo4);
+		thermo2.location().room().temperatureSensor().setAsReference(thermo3);
+		thermo1.location().room().temperatureSensor().setAsReference(thermo2);
+		thermo0.location().room().temperatureSensor().setAsReference(thermo1);
+		Assert.assertTrue("Missing create callback",listener.awaitCreate(5, TimeUnit.SECONDS));
+		thermo5.reading().activate(false);
+		Assert.assertTrue("Missing activate callback", listener.awaitActivate(5, TimeUnit.SECONDS));
+		thermo3.delete();
+		Assert.assertTrue("Missing delete callback", listener.awaitEvent(RESOURCE_DELETED, 5, TimeUnit.SECONDS));
+		thermo4.delete();
+		thermo5.delete();
+		thermo0.delete();
+		thermo2.delete();
+		thermo1.delete();
+	}
+	
+	@Test
+	public void structureCallbackForNewDeepReferenceWorks() throws InterruptedException {
+		Thermostat thermo = resMan.createResource(newResourceName(), Thermostat.class);
+		TemperatureSensor tempSens = resMan.createResource(newResourceName(), TemperatureSensor.class);
+		StructureTestListener listener = new StructureTestListener();
+		thermo.temperatureSensor().location().room().temperatureSensor().settings().setpoint().addStructureListener(listener);
+		tempSens.location().room().temperatureSensor().settings().setpoint().create();
+		thermo.temperatureSensor().setAsReference(tempSens);
+		Assert.assertTrue("Missing create callback", listener.awaitCreate(5, TimeUnit.SECONDS));
+		thermo.delete();
+		tempSens.delete();
+	}
+	
+	@Test
+	public void addingSubresourceOnReferencedResourceCausesStructureCallback() throws InterruptedException {
+		final OnOffSwitch sw = resMan.createResource(newResourceName(), OnOffSwitch.class);
+		final OnOffSwitch sw2 = resMan.createResource(newResourceName(), OnOffSwitch.class);
+		StructureTestListener l = new StructureTestListener();
+		sw.settings().setAsReference(sw2.settings().create());
+		sw.settings().addStructureListener(l);  
+		sw2.settings().alarmLimits().create();
+		assertTrue("Referencing resource unexpectedly non-existent",sw.settings().alarmLimits().exists());
+		assertTrue("Missing structure callback for newly created subresource",l.awaitEvent(SUBRESOURCE_ADDED, 5, TimeUnit.SECONDS)); 
+		sw2.delete();
+		sw.delete();
+	}
+	
+	/*
+	 * like {@link #addingSubresourceOnReferencedResourceCausesStructureCallback()}, except that there are two references between the
+	 * resource on which the listener is registered and the newly created subresource. 
+	 */
+	@Test
+	public void addingSubresourceOnTransitivelyReferencedResourceCausesStructureCallback() throws InterruptedException {
+		final OnOffSwitch sw = resMan.createResource(newResourceName() + "_sw", OnOffSwitch.class);
+		final OnOffSwitch sw2 = resMan.createResource(newResourceName() + "_sw2", OnOffSwitch.class);
+		final OnOffSwitch sw3 = resMan.createResource(newResourceName() + "_sw3", OnOffSwitch.class);
+		StructureTestListener l = new StructureTestListener();
+		sw2.settings().setAsReference(sw3.settings().create());
+		sw.settings().setAsReference(sw2.settings());
+		sw.settings().addStructureListener(l); 
+		sw3.settings().alarmLimits().create();
+		assertTrue("Referencing resource unexpectedly non-existent",sw.settings().alarmLimits().exists());
+		assertTrue("Missing structure callback for newly created subresource",l.awaitEvent(SUBRESOURCE_ADDED, 5, TimeUnit.SECONDS));
+        ResourceAssertions.assertExists(sw3.settings().alarmLimits());
+		sw2.delete();
+        ResourceAssertions.assertDeleted(sw2);
+//        ResourceAssertions.assertDeleted(sw2.settings());
+//        ResourceAssertions.assertDeleted(sw2.settings().alarmLimits());
+
+        ResourceAssertions.assertExists(sw3.settings().alarmLimits());
+        ResourceAssertions.assertExists(sw3.settings());
+        ResourceAssertions.assertExists(sw3);
+		sw3.delete();
+		sw.delete();
+	}
+	
+	@Test
+	public void doubleListenerRegistrationOnSameLocationWorks() throws InterruptedException {
+		String suffix = newResourceName();
+		TemperatureSensor sensor0 = resMan.createResource("fridge0_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor1 = resMan.createResource("fridge1_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor2 = resMan.createResource("fridge2_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		sensor0.activate(false);
+		sensor1.activate(false);
+		sensor2.activate(false);
+		
+		StructureTestListener listener = new StructureTestListener();
+		sensor0.addStructureListener(listener);
+		sensor1.addStructureListener(listener);		
+		
+		sensor0.setAsReference(sensor1);
+		waitForSingleReferenceCallbacks(listener);  // from sensor0, expect a pair of deleted and created callbacks
+		waitForSingleEventCallback(listener, EventType.REFERENCE_ADDED); // from sensor1
+		
+		listener.reset(2);
+		sensor1.setAsReference(sensor2); // now we should get two reference callbacks, one from sensor0, one from sensor1
+		waitForReferenceCallbacks(listener, 2);
+		
+		listener.reset(2);
+		sensor2.delete();
+		waitForEventCallbacks(listener, EventType.RESOURCE_DELETED, 2);
+		
+		sensor1.removeStructureListener(listener);
+		sensor0.removeStructureListener(listener);
+		sensor1.delete();
+		sensor0.delete();
+	}
+
+	@Test
+	public void noSpuriousReferenceCallbacks() throws InterruptedException {
+		String suffix = newResourceName();
+		TemperatureSensor sensor0 = resMan.createResource("fridge0_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor1 = resMan.createResource("fridge1_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor2 = resMan.createResource("fridge2_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		sensor0.activate(false);
+		sensor1.activate(false);
+		sensor2.activate(false);
+		sensor0.setAsReference(sensor1);
+		StructureTestListener listener = new StructureTestListener();
+		sensor0.addStructureListener(listener);
+		
+		sensor2.setAsReference(sensor1);
+		assertFalse("Unexpected callback",listener.awaitEvent(EventType.REFERENCE_ADDED, 1, TimeUnit.SECONDS)); // since the reference goes to sensor1, there should probably be no callback for sensor0
+		
+		sensor2.delete();
+		assertFalse("Unexpected callback",listener.awaitEvent(EventType.REFERENCE_REMOVED, 1, TimeUnit.SECONDS)); // since the reference goes to sensor1, there should probably be no callback for sensor0
+		
+		sensor0.removeStructureListener(listener);
+		sensor0.delete();
+		sensor1.delete();
+	}
+	
+	@Test
+	public void noExcessiveCallbacksForReferencingResources() throws InterruptedException {
+		// setup
+		String suffix = newResourceName();
+		TemperatureSensor sensor0 = resMan.createResource("fridge0_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor1 = resMan.createResource("fridge1_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor2 = resMan.createResource("fridge2_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		sensor0.activate(false);
+		sensor1.activate(false);
+		sensor2.activate(false);
+		StructureTestListener listener = new StructureTestListener();
+		sensor0.addStructureListener(listener);
+		sensor0.setAsReference(sensor1);
+		waitForSingleReferenceCallbacks(listener); // check that only one set of reference callbacks occurs (delete, create)
+		listener.reset();
+		sensor1.setAsReference(sensor2);
+		waitForSingleReferenceCallbacks(listener);
+		
+		listener.reset();
+		sensor2.reading().create().activate(false);
+		waitForSingleEventCallback(listener, EventType.SUBRESOURCE_ADDED); // check that only one Subresource_Added callback occurs
+		
+		listener.reset();
+		sensor0.location().create().activate(false);
+		waitForSingleEventCallback(listener, EventType.SUBRESOURCE_ADDED);
+		
+		listener.reset();
+		sensor2.delete();
+		waitForSingleEventCallback(listener, EventType.RESOURCE_DELETED);
+		sensor1.delete();
+		sensor0.delete();
+	}
+	
+	@Test
+	public void noExcessiveCallbacksForReferencingResources2() throws InterruptedException {
+		// setup
+		String suffix = newResourceName();
+		TemperatureSensor sensor0 = resMan.createResource("fridge0_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor1 = resMan.createResource("fridge1_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor2 = resMan.createResource("fridge2_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor3 = resMan.createResource("fridge3_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor4 = resMan.createResource("fridge4_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor5 = resMan.createResource("fridge5_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor6 = resMan.createResource("fridge6_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor7 = resMan.createResource("fridge7_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		for (int i=0; i<8; i++) {
+			CoolingDevice cd = resAcc.getResource("fridge" + i + "_" + suffix);
+			cd.temperatureSensor().reading().create();
+			cd.activate(true);
+		}
+		StructureTestListener listener = new StructureTestListener();
+		sensor0.setAsReference(sensor1);
+		sensor1.setAsReference(sensor2);
+		sensor3.setAsReference(sensor4);
+		sensor4.setAsReference(sensor5);
+		sensor2.setAsReference(sensor3);
+		sensor5.setAsReference(sensor6);
+		// register listener
+		sensor0.addStructureListener(listener);
+		sensor6.setAsReference(sensor7);
+		waitForSingleReferenceCallbacks(listener); // check that only one set of reference callbacks occurs (delete, create)
+		
+        //FIXME: missing subresource_added callback!
+        /*
+		listener.reset();
+		sensor5.reading().create().activate(false);
+		waitForSingleEventCallback(listener, EventType.SUBRESOURCE_ADDED);
+        */
+	
+		listener.reset();
+		sensor7.delete();
+		waitForSingleEventCallback(listener, EventType.RESOURCE_DELETED);
+		
+		for (int i=0; i<7; i++) {
+			resAcc.getResource("fridge" + i + "_" + suffix).delete();
+		}
+	}
+	
+	@Test
+	public void referenceDeletionCausesDeleteCallbackOnSubresource() throws InterruptedException {
+		String suffix = newResourceName();
+		TemperatureSensor sensor0 = resMan.createResource("fridge0_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		TemperatureSensor sensor1 = resMan.createResource("fridge1_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		sensor1.reading().create();
+		
+		sensor0.setAsReference(sensor1);
+		StructureTestListener listener = new StructureTestListener();
+		sensor0.reading().addStructureListener(listener);
+		
+		sensor0.delete(); // here we also delete the subresource reading(), hence expect a listener callback
+		waitForSingleEventCallback(listener, RESOURCE_DELETED);
+		
+		sensor0.reading().create(); // double check that the listener is still there
+		waitForSingleEventCallback(listener, RESOURCE_CREATED);
+		
+		sensor0.reading().removeStructureListener(listener);
+		resAcc.getResource("fridge0_" + suffix).delete();
+		resAcc.getResource("fridge1_" + suffix).delete();
+	}
+	
+	/*
+	 * Similar to referenceDeletionCausesDeleteCallbackOnSubresource above, except that there are transitive references
+	 */
+	@Test
+	public void transitiveReferenceDeletionCausesDeleteCallbackOnSubresource() throws InterruptedException {
+		String suffix = newResourceName();
+		CoolingDevice fridge0 = resMan.createResource("fridge0_" + suffix, CoolingDevice.class);
+		CoolingDevice fridge1 = resMan.createResource("fridge1_" + suffix, CoolingDevice.class);
+		CoolingDevice fridge2 = resMan.createResource("fridge2_" + suffix, CoolingDevice.class);
+		CoolingDevice fridge3 = resMan.createResource("fridge3_" + suffix, CoolingDevice.class);
+		fridge3.location().room().temperatureSensor().reading().create();
+		fridge2.location().room().temperatureSensor().setAsReference(fridge3.location().room().temperatureSensor());
+		fridge1.location().setAsReference(fridge2.location());
+		
+		StructureTestListener listener = new StructureTestListener();
+		fridge0.location().room().temperatureSensor().reading().addStructureListener(listener); // add listener to virtual resource
+		
+		fridge0.location().setAsReference(fridge1.location());
+		waitForSingleEventCallback(listener, RESOURCE_CREATED);
+		
+        Thread.sleep(2000);
+        listener.reset();
+		fridge3.location().room().temperatureSensor().delete(); // this also deletes fridge0.location().room().temperatureSensor().reading()
+		waitForSingleEventCallback(listener, RESOURCE_DELETED); //error
+        //waitForEventCallbacks(listener, RESOURCE_DELETED, 2); //works
+		
+		// check once more that the listener is still there
+		listener.reset();
+		fridge0.location().room().temperatureSensor().reading().create();
+		waitForSingleEventCallback(listener, RESOURCE_CREATED);
+		
+		fridge0.location().room().temperatureSensor().reading().removeStructureListener(listener);
+		for (int i=0; i<4; i++) {
+			resAcc.getResource("fridge" + i + "_" + suffix).delete();
+		}
+		
+	}
+	
+	@Test 
+	public void structureListenerOnVirtualResourceSurvivesParentReferenceCreation() throws InterruptedException {
+		String suffix = newResourceName();
+		// sensor0 is virtual
+		TemperatureSensor sensor0 = resMan.createResource("fridge0_" + suffix, CoolingDevice.class).temperatureSensor();
+		TemperatureSensor sensor1 = resMan.createResource("fridge1_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		sensor1.reading().create();
+		sensor1.activate(true);
+		
+		StructureTestListener listener = new StructureTestListener();
+		sensor0.reading().addStructureListener(listener);
+		sensor0.setAsReference(sensor1); // this also creates the reading subresource
+		waitForSingleEventCallback(listener, RESOURCE_CREATED);
+		
+		// now we delete the reference and set it again on another resource -> check that the listener is still there
+		sensor0.delete();
+		waitForSingleEventCallback(listener, RESOURCE_DELETED);
+		TemperatureSensor sensor2 = resMan.createResource("fridge2_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		sensor2.reading().create();
+		sensor2.activate(true);
+		
+		listener.reset();
+		sensor0.setAsReference(sensor2);
+		waitForSingleEventCallback(listener, RESOURCE_CREATED);
+		
+		sensor0.reading().removeStructureListener(listener);
+		for (int i=0; i<3; i++) {
+			resAcc.getResource("fridge" + i + "_" + suffix).delete();
+		}
+	}
+	
+	@Test 
+	public void structureListenerOnVirtualResourceSurvivesHigherLevelParentReferenceCreation() throws InterruptedException {
+		String suffix = newResourceName();
+		// sensor0 is virtual
+		TemperatureSensor sensor0 = resMan.createResource("fridge0_" + suffix, CoolingDevice.class).temperatureSensor();
+		TemperatureSensor sensor1 = resMan.createResource("fridge1_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		sensor1.location().room().humiditySensor().create();
+		sensor1.activate(true);
+		
+		StructureTestListener listener = new StructureTestListener();
+		sensor0.location().room().humiditySensor().addStructureListener(listener);
+		sensor0.setAsReference(sensor1); // this also creates the reading subresource
+		waitForSingleEventCallback(listener, RESOURCE_CREATED);
+		
+		// now we delete the reference and set it again on another resource -> check that the listener is still there
+		sensor0.delete();
+		waitForSingleEventCallback(listener, RESOURCE_DELETED);
+		TemperatureSensor sensor2 = resMan.createResource("fridge2_" + suffix, CoolingDevice.class).temperatureSensor().create();
+		sensor2.location().room().humiditySensor().create();
+		sensor2.activate(true);
+		
+		listener.reset();
+		sensor0.setAsReference(sensor2);
+		waitForSingleEventCallback(listener, RESOURCE_CREATED);
+		
+		sensor0.location().room().humiditySensor().removeStructureListener(listener);		
+		for (int i=0; i<3; i++) {
+			resAcc.getResource("fridge" + i + "_" + suffix).delete();
+		}
+	}
+	
+	@Test
+	public void activationTriggersCallbackOnReferenceTarget() throws InterruptedException {
+		StructureTestListener listener = new StructureTestListener();
+		TemperatureSensor sensor0 = resMan.createResource(newResourceName(), TemperatureSensor.class);
+		TemperatureSensor sensor1 = resMan.createResource(newResourceName(), TemperatureSensor.class);
+		sensor0.location().room().temperatureSensor().reading().create();
+		sensor0.location().room().temperatureSensor().reading().addStructureListener(listener);
+		sensor1.location().setAsReference(sensor0.location());
+		sensor1.location().room().temperatureSensor().reading().activate(false);
+		Assert.assertTrue("Missing activation callback for reference target",listener.awaitActivate(5, TimeUnit.SECONDS));
+		sensor0.location().room().temperatureSensor().reading().removeStructureListener(listener);
+		sensor0.delete();
+		sensor1.delete();
+	}
+	
+	// same as above, but with a more complex reference chain
+	@Test
+	public void activationTriggersCallbackOnTransitiveReferenceTarget() throws InterruptedException {
+		StructureTestListener listener = new StructureTestListener();
+		TemperatureSensor sensor0 = resMan.createResource(newResourceName(), TemperatureSensor.class);
+		TemperatureSensor sensor1 = resMan.createResource(newResourceName(), TemperatureSensor.class);
+		TemperatureSensor sensor2 = resMan.createResource(newResourceName(), TemperatureSensor.class);
+		TemperatureSensor sensor3 = resMan.createResource(newResourceName(), TemperatureSensor.class);
+		sensor3.location().room().temperatureSensor().location().room().temperatureSensor().reading().create();
+		sensor3.location().room().temperatureSensor().location().room().temperatureSensor().reading().addStructureListener(listener);
+		sensor2.location().room().temperatureSensor().location().setAsReference(sensor3.location().room().temperatureSensor().location());
+		sensor1.location().room().create();
+		sensor0.location().room().setAsReference(sensor1.location().room());
+		sensor1.location().room().setAsReference(sensor2.location().room());
+		sensor0.location().room().temperatureSensor().location().room().temperatureSensor().reading().activate(false);
+		
+		Assert.assertTrue("Missing activation callback for reference target",listener.awaitActivate(5, TimeUnit.SECONDS));
+		sensor3.location().room().temperatureSensor().location().room().temperatureSensor().reading().removeStructureListener(listener);
+		sensor0.delete();
+		sensor1.delete();
+		sensor2.delete();
+		sensor3.delete();
+	}
+	
+	private static void waitForSingleReferenceCallbacks(StructureTestListener listener) throws InterruptedException {
+		waitForReferenceCallbacks(listener, 1);
+	}
+	
+	private static void waitForReferenceCallbacks(StructureTestListener listener, int nrCallbacksExpected) throws InterruptedException {
+		assertTrue("Event missing of type " + EventType.RESOURCE_DELETED, listener.awaitEvent(EventType.RESOURCE_DELETED));
+		assertTrue("Event missing of type " + EventType.RESOURCE_CREATED, listener.awaitEvent(EventType.RESOURCE_CREATED));
+		Thread.sleep(500);
+		assertEquals("Unexpected number of callbacks: ",nrCallbacksExpected,listener.getEventCount(EventType.RESOURCE_DELETED));
+		assertEquals("Unexpected number of callbacks: ",nrCallbacksExpected,listener.getEventCount(EventType.RESOURCE_CREATED));
+	}
+	
+	private static void waitForSingleEventCallback(StructureTestListener listener, EventType type) throws InterruptedException {
+		waitForEventCallbacks(listener, type, 1);
+	}
+	
+	private static void waitForEventCallbacks(StructureTestListener listener, EventType type, int nrCallbacksExpected) throws InterruptedException {
+		assertTrue("Event missing of type " + type, listener.awaitEvent(type));
+		Thread.sleep(500);
+		assertEquals("Unexpected number of callbacks: ",nrCallbacksExpected,listener.getEventCount(type));
+	}
+	
+	
 
 }

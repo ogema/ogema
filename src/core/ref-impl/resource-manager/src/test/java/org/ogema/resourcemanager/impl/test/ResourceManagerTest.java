@@ -20,6 +20,7 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
@@ -27,8 +28,10 @@ import org.ogema.core.model.simple.FloatResource;
 import org.ogema.model.connections.ElectricityConnection;
 import org.ogema.model.devices.buildingtechnology.AirConditioner;
 import org.ogema.model.metering.ElectricityMeter;
+import org.ogema.model.sensors.TemperatureSensor;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceException;
+import org.ogema.exam.ResourceAssertions;
 import org.ogema.model.actors.OnOffSwitch;
 import org.ops4j.pax.exam.ProbeBuilder;
 import org.ops4j.pax.exam.TestProbeBuilder;
@@ -137,6 +140,44 @@ public class ResourceManagerTest extends OsgiTestBase {
 		System.out.printf("%s -> %s%n", requestedName, uniqueName);
 		String uniqueName2 = resMan.getUniqueResourceName(requestedName);
 		assertEquals(uniqueName, uniqueName2);
+	}
+	
+	@Test
+	public void resourcesArentLost() {
+		String name = newResourceName();
+		int nrResources = 250;
+		for (int k=0; k<nrResources; k++) {
+			resMan.createResource(name + "__" + k, TemperatureSensor.class).location().room().temperatureSensor().reading().create();
+		}
+		System.gc();
+		for (int k=0; k<nrResources; k++) {
+			TemperatureSensor resource = resAcc.getResource(name + "__" + k);
+			Assert.assertNotNull("Resource unexepectedly found null",resource);
+			ResourceAssertions.assertExists(resource);
+			ResourceAssertions.assertExists(resource.location().room().temperatureSensor().reading());
+			resource.delete();
+		}
+		
+	}
+	
+	@Test
+	public void referencesArentLost() {
+		String name = newResourceName();
+		int nrResources = 250;
+		for (int k=0; k<nrResources; k++) {
+			resMan.createResource(name + "__" + k, TemperatureSensor.class).location().room().temperatureSensor().reading().create();
+			if (k>0)
+				resAcc.<TemperatureSensor> getResource(name + "__" + k).location().room().setAsReference(resAcc.<TemperatureSensor> getResource(name + "__" + (k-1)).location().room());
+		}
+		System.gc();
+		for (int k=0; k<nrResources; k++) {
+			TemperatureSensor resource = resAcc.getResource(name + "__" + (nrResources - k - 1));
+			Assert.assertNotNull("Resource unexepectedly found null",resource);
+			ResourceAssertions.assertExists(resource);
+			ResourceAssertions.assertExists(resource.location().room().temperatureSensor().reading());
+			resource.delete();
+		}
+		
 	}
 
 }

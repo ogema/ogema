@@ -19,7 +19,7 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
 
 /**
  * 
- * A Container for Sampledvalues. The SampeldValueContainer contains a {@link SampledValue} and a {@link ChannelLocator}
+ * A Container for SampledValues. The SampeldValueContainer contains a {@link SampledValue} and a {@link ChannelLocator}
  * .
  * 
  * 
@@ -29,7 +29,7 @@ public class SampledValueContainer {
 	private ChannelLocator channelLocator;
 
 	/**
-	 * Contructor
+	 * Constructor
 	 * 
 	 * @param channelLocator
 	 */

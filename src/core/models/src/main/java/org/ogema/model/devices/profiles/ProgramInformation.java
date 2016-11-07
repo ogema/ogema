@@ -31,7 +31,8 @@ import org.ogema.model.prototypes.Data;
 public interface ProgramInformation extends Data {
 
 	/**
-	 * A program id
+	 * A program id.<br> 
+	 * Use {@link Data#name()} instead for a human readable, not necessarily unique, name.
 	 */
 	StringResource programId();
 

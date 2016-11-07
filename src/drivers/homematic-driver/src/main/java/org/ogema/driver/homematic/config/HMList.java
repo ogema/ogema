@@ -69,7 +69,7 @@ public class HMList {
 	}
 
 	public static ListEntry getEntryByName(String name) {
-		ListEntry entry = (ListEntry) entriesByName.get(name);
+		ListEntry entry = entriesByName.get(name);
 		return entry;
 	}
 

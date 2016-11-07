@@ -19,7 +19,6 @@ import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.recordeddata.RecordedData;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
-import org.ogema.resourcemanager.impl.ResourceBase;
 import org.ogema.resourcemanager.impl.model.schedule.HistoricalSchedule;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 
@@ -27,7 +26,7 @@ import org.ogema.resourcemanager.virtual.VirtualTreeElement;
  * 
  * @author jlapp
  */
-public class DefaultTimeResource extends ResourceBase implements TimeResource {
+public class DefaultTimeResource extends SingleValueResourceBase implements TimeResource {
 
 	public DefaultTimeResource(VirtualTreeElement el, String path, ApplicationResourceManager resMan) {
 		super(el, path, resMan);
@@ -65,11 +64,6 @@ public class DefaultTimeResource extends ResourceBase implements TimeResource {
 	@Override
 	public AbsoluteSchedule program() {
 		return getSubResource("program", AbsoluteSchedule.class);
-	}
-
-	@Override
-	public long getLastUpdateTime() {
-		return super.getLastUpdateTime();
 	}
 
 	@Override

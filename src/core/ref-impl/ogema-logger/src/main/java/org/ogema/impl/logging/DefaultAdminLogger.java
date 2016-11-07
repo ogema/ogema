@@ -22,9 +22,6 @@ import org.ogema.core.administration.AdminLogger;
 import org.ogema.core.logging.LogLevel;
 import org.ogema.core.logging.LogOutput;
 
-import static org.ogema.core.logging.LogOutput.CACHE;
-import static org.ogema.core.logging.LogOutput.FILE;
-
 import org.slf4j.Marker;
 
 /**

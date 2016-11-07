@@ -37,13 +37,10 @@ public class TreeElementImpl implements TreeElement {
 	 */
 	public ConcurrentHashMap<String, TreeElementImpl> requireds;
 	/*
-	 * List of children which are defined as optional in the type definition and not yet added to the resource.
-	 */
-	public ConcurrentHashMap<String, TreeElementImpl> optionals;
-	/*
 	 * List of all children which are part of the type definition.
 	 */
 	public ConcurrentHashMap<String, Class<?>> typeChildren;
+	public ConcurrentHashMap<String, Integer> flagsChildren;
 
 	public Object resRef;
 	public TreeElementImpl parent;
@@ -92,8 +89,9 @@ public class TreeElementImpl implements TreeElement {
 	public TreeElementImpl(ResourceDBImpl db) {
 		this.db = db;
 		requireds = new ConcurrentHashMap<String, TreeElementImpl>();
-		optionals = new ConcurrentHashMap<String, TreeElementImpl>();
 		typeChildren = new ConcurrentHashMap<String, Class<?>>();
+		flagsChildren = new ConcurrentHashMap<String, Integer>();
+		typeKey = DBConstants.TYPE_KEY_INVALID;
 	}
 
 	@Override
@@ -146,15 +144,17 @@ public class TreeElementImpl implements TreeElement {
 		// if this is a reference than addChild to the reference
 		TreeElementImpl node = this;
 		if (reference)
-			node = refered;
+			return refered.getResRef();
 		return node.resRef;
 	}
 
 	public void setResRef(Object resRef) {
 		// if this is a reference than addChild to the reference
 		TreeElementImpl node = this;
-		if (reference)
-			node = refered;
+		if (reference) {
+			refered.setResRef(resRef);
+			return;
+		}
 		node.resRef = resRef;
 		if (db.activatePersistence) {
 			store(ChangeInfo.STATUS_CHANGED);
@@ -165,15 +165,17 @@ public class TreeElementImpl implements TreeElement {
 		// if this is a reference than addChild to the reference
 		TreeElementImpl node = this;
 		if (reference)
-			node = refered;
+			return refered.isActive();
 		return node.active;
 	}
 
 	public void setActive(boolean active) {
 		// if this is a reference than set the referenced node as active
 		TreeElementImpl node = this;
-		if (reference)
-			node = refered;
+		if (reference) {
+			refered.setActive(active);
+			return;
+		}
 		node.active = active;
 		if (db.activatePersistence) {
 			store(ChangeInfo.STATUS_CHANGED);
@@ -285,11 +287,8 @@ public class TreeElementImpl implements TreeElement {
 			throw new ResourceNotFoundException(this.toString());
 
 		TreeElementImpl refimpl = (TreeElementImpl) ref;
-		// if the reference to be added is also a reference
-		// or this-Object is also a reference
-		// the operation is not supported
-		// if (refimpl.reference || this.reference)
-		// throw new UnsupportedOperationException();
+
+		// Check if the reference causes a loop in the resource graph
 		if (checkRefLoop(refimpl))
 			throw new UnsupportedOperationException();
 		// check if a child with this name already exists.
@@ -303,42 +302,29 @@ public class TreeElementImpl implements TreeElement {
 			return addCompArrRef(ref, refName, decorating);
 
 		/*
-		 * If this is a reference the call is delegated to the refered object.
+		 * If this is a reference the call is delegated to the referred object.
 		 */
 		if (this.reference)
 			return refered.addReference(ref, refName, decorating);
 
+		if (refimpl.type == null && refimpl.typeKey == DBConstants.TYPE_KEY_COMPLEX_ARR)
+			refimpl.type = DBConstants.CLASS_COMPLEX_ARR_TYPE;
 		// check if the demanded model member exists and has the right type
-		TreeElementImpl e = optionals.get(refName);
-		if (!decorating) {
-			if ((e == null))
-				throw new ResourceNotFoundException(refName);
-			// Check if the reference to be added has the right type.
-			// If the reference is a complexArray the child has to such a type
-			// too
-			if ((refimpl.complexArray && !e.complexArray) || (!refimpl.complexArray && e.complexArray)) {
-				throw new InvalidResourceTypeException(refimpl.getName());
-			}
-			// If the child is complexArray but the type is not yet set, its set
-			// equal to the type of the reference
-			if (e.complexArray) {
-				e.type = refimpl.type;
-			}
-			// If the child is not complexArray the references type has to be an
-			// ancestor of the childs type.
-			// else if (!isAncestor(e.type, refimpl.type)) {
-			// throw new InvalidResourceTypeException(refimpl.getName());
-			// }
-			else if (!e.type.isAssignableFrom(refimpl.type)) {
-				throw new InvalidResourceTypeException(refimpl.getName());
-			}
+		TreeElementImpl result = initChild(refName, refimpl.type);
 
-		}
-		TreeElementImpl result;
+		@SuppressWarnings("unused")
+		boolean isComplexArr = refimpl.complexArray;// !db.isSimple(refimpl.type);
+		Integer flag = flagsChildren.get(refName);
+		@SuppressWarnings("unused")
+		boolean isChild;
+		if (flag != null && (flag & DBConstants.RES_ISCHILD) != 0)
+			isChild = true;
+
+		result.complexArray = refimpl.complexArray;
+
 		// for a decorator we need a new node object whereas a node object for a
 		// model member already exists.
 		if (decorating) {
-			result = new TreeElementImpl(db);
 			result.appID = topLevelParent.appID;
 			result.type = refimpl.type;
 			result.typeName = refimpl.typeName;
@@ -352,11 +338,21 @@ public class TreeElementImpl implements TreeElement {
 			result.active = false;
 			result.nonpersistent = false;
 			result.decorator = true;
-			result.complexArray = refimpl.complexArray;
-
 		}
 		else {
-			result = e;
+
+			// Determine the type of the ResourceList member. In case of decorating the application has to set the type
+			// via
+			// ResourceList#setElementType(Class<? extends Resource>)
+			if (result.complexArray)
+				result.type = db.getListType(result.parent, refName);
+
+			// If the child is not complexArray the references type has to be an
+			// ancestor of the childs type.
+			else if (!result.type.isAssignableFrom(refimpl.type)) {
+				throw new InvalidResourceTypeException(refimpl.getName());
+			}
+			// typeChildren.put(refName, refimpl.type);
 		}
 
 		// the difference of a reference to a child comes now
@@ -371,10 +367,6 @@ public class TreeElementImpl implements TreeElement {
 		// db.createTree(result);
 		db.registerRes(result);
 
-		// remove child from optionals and add it to the requireds
-		if (!decorating) {
-			optionals.remove(result.name);
-		}
 		requireds.put(result.name, result);
 		if (db.activatePersistence)
 			db.persistence.store(id, PersistencePolicy.ChangeInfo.NEW_SUBRESOURCE);
@@ -391,22 +383,6 @@ public class TreeElementImpl implements TreeElement {
 		return false;
 	}
 
-	// private boolean isAncestor(Class<?> ancestor, Class<?> child) {
-	// if (child == ancestor)
-	// return true;
-	// Class<?> superModel = child;
-	// Class<?>[] ifaces;
-	// while ((superModel != DBConstants.CLASS_BASIC_TYPE) && (superModel != DBConstants.CLASS_SIMPLE_TYPE)) {
-	//
-	// ifaces = superModel.getInterfaces();
-	//
-	// superModel = ifaces[0];
-	// if (superModel == ancestor)
-	// return true;
-	// }
-	// return false;
-	// }
-
 	@Override
 	public TreeElement addChild(String chName, Class<? extends Resource> chType, boolean isDecorating)
 			throws ResourceAlreadyExistsException, ResourceNotFoundException, InvalidResourceTypeException {
@@ -414,12 +390,12 @@ public class TreeElementImpl implements TreeElement {
 		if (!db.hasResource0(this))
 			throw new ResourceNotFoundException(this.toString());
 		// if this is a reference than addChild to the reference
-		TreeElementImpl node = this;
 		if (reference)
-			node = refered;
+			return refered.addChild(chName, chType, isDecorating);// node = refered;
 		/*
 		 * add child to node check if a child with this name already added.
 		 */
+		TreeElementImpl node = this;
 		if (node.requireds.containsKey(chName))
 			throw new ResourceAlreadyExistsException(chName);
 		/*
@@ -431,9 +407,11 @@ public class TreeElementImpl implements TreeElement {
 		/*
 		 * if a decorator is to be added its name mustn't match the name of a model member
 		 */
-		TreeElementImpl e = node.optionals.get(chName);
-		boolean isChild = (e != null);
-		boolean typeMatch = isChild && ((e.complexArray && chType == ResourceList.class) || (e.type == chType));
+		TreeElementImpl e = initChild(chName, chType);// TreeElementImpl e = node.optionals.get(chName);
+		Integer flags = flagsChildren.get(chName);
+		boolean isChild = flags != null && (flags & DBConstants.RES_ISCHILD) != 0;
+		boolean typeMatch = isChild
+				&& ((e.complexArray && chType == ResourceList.class) || (e.type.isAssignableFrom(chType)));
 		/*
 		 * The demanded model member doesn't exist as optional member and it is not a decorating one.
 		 */
@@ -487,15 +465,18 @@ public class TreeElementImpl implements TreeElement {
 		// get a resourceID for this node
 		int id = db.getNextresourceID();
 		result.resID = id;
+		result.parentID = node.resID;
 		// setup the tree for this type only if itsn't a ComplexArrayResourse
 		if ((result != null && !result.complexArray && result.type != null))
 			db.createTree(result);
+
+		// Determine the type of the ResourceList member. In case of decorating the application has to set the type via
+		// ResourceList#setElementType(Class<? extends Resource>)
+		if (result.complexArray && !isDecorating)
+			result.type = db.getListType(result.parent, result.name);
+
 		db.registerRes(result);
 
-		// remove child from optionals and add it to the required
-		if (!isDecorating) {
-			node.optionals.remove(result.name);
-		}
 		node.requireds.put(result.name, result);
 		if (db.activatePersistence)
 			db.persistence.store(id, PersistencePolicy.ChangeInfo.NEW_SUBRESOURCE);
@@ -508,8 +489,8 @@ public class TreeElementImpl implements TreeElement {
 		 * If a complexArray is to be added as element operation is unsupported.
 		 */
 		if (chType == DBConstants.CLASS_COMPLEX_ARR_TYPE) {
-			throw new UnsupportedOperationException("Adding of a child to a ComplexResourceArray with a wrong type: "
-					+ chType.getName());
+			throw new UnsupportedOperationException(
+					"Adding of a child to a ComplexResourceArray with a wrong type: " + chType.getName());
 		}
 		TreeElementImpl result = new TreeElementImpl(db);
 		/*
@@ -617,7 +598,6 @@ public class TreeElementImpl implements TreeElement {
 		 */
 		if (this.type != null) {
 			if (this.type.isAssignableFrom(refimpl.type)) {
-				// if (isAncestor(this.type, refimpl.type)) {
 				return true;
 			}
 			else
@@ -641,7 +621,7 @@ public class TreeElementImpl implements TreeElement {
 		// if this is a reference than addChild to the reference
 		TreeElementImpl node = this;
 		if (reference)
-			node = refered;
+			return refered.getChildren();
 		Vector<TreeElement> v = new Vector<TreeElement>(node.requireds.values());
 		return v;
 	}
@@ -654,8 +634,9 @@ public class TreeElementImpl implements TreeElement {
 		// if this is a reference than addChild to the reference
 		TreeElementImpl node = this;
 		if (reference)
-			node = refered;
-		node = node.requireds.get(name);
+			node = (TreeElementImpl) refered.getChild(name);
+		else
+			node = node.requireds.get(name);
 		return node;
 	}
 
@@ -672,7 +653,7 @@ public class TreeElementImpl implements TreeElement {
 			value.footprint = 1;
 		case DBConstants.TYPE_KEY_FLOAT:
 		case DBConstants.TYPE_KEY_INT:
-			value.footprint = 4;
+			value.footprint = 4; //XXX why no break here?
 		case DBConstants.TYPE_KEY_LONG:
 			value.footprint = 8;
 			break; // nothing to do
@@ -711,6 +692,7 @@ public class TreeElementImpl implements TreeElement {
 		refered = null;
 		reference = false;
 		refID = DBConstants.INVALID_ID;
+		typeKey = DBConstants.TYPE_KEY_INVALID;
 	}
 
 	public boolean compare(TreeElementImpl e) {
@@ -778,7 +760,7 @@ public class TreeElementImpl implements TreeElement {
 		if (complexArray) {
 			TreeElementImpl node = this;
 			if (reference) {
-				node = refered;
+				return refered.getResourceListType();
 			}
 			Class<?> cls = node.type;
 			if (cls != null) {
@@ -799,8 +781,12 @@ public class TreeElementImpl implements TreeElement {
 		if (complexArray) {
 			if (type != null && type != DBConstants.CLASS_COMPLEX_ARR_TYPE && type != cls)
 				throw new InvalidResourceTypeException("ResourceList type already set to " + type.getName());
-			else
+			else {
 				type = cls;
+				typeName = cls.getName();
+				if (db.activatePersistence)
+					db.persistence.store(resID, ChangeInfo.STATUS_CHANGED);
+			}
 		}
 		else
 			throw new InvalidResourceTypeException("TreeElement is not an instance of ResourceList but of " + typeName);
@@ -832,5 +818,57 @@ public class TreeElementImpl implements TreeElement {
 			}
 		}
 		return result;
+	}
+
+	public TreeElementImpl initChild(String chName, Class<?> clazz) {
+		TreeElementImpl elem = requireds.get(chName);
+		if (elem == null) {
+			// Hash sub resource as child owned by the model definition
+			TreeElementImpl e = new TreeElementImpl(db);
+			// save the type class
+			int typekey = e.typeKey;
+			typekey = e.typeKey = db.getTypeKeyFromClass(clazz);
+			// If neither SimpleResource nor Resource nor another complex
+			// resource
+			// is inherited by the data model
+			// its an invalid one.
+			if (typekey == DBConstants.TYPE_KEY_INVALID)
+				throw new InvalidResourceTypeException(type.getName());
+
+			/*
+			 * if its a ComplexResourceType set the type of the elements as the type of the node.
+			 */
+			if (typekey == DBConstants.TYPE_KEY_COMPLEX_ARR) {
+				e.complexArray = true;
+			}
+
+			// init node
+			// a resourceID is generated if the child is added as a required
+			// child.
+			//e.type = clazz; //typeChildren.get(chName);
+            e.type = typeChildren.get(chName);
+			if (e.type != null)
+				e.typeName = e.type.getName();
+			e.parent = this;
+			e.parentID = this.resID;
+			e.toplevel = false; // its a child of a parent node, so never
+			// top level
+			e.topLevelParent = this.topLevelParent;
+			e.appID = this.appID;
+			e.name = chName;
+			e.path = this.path + DBConstants.PATH_SEPARATOR + chName;
+			e.active = false;
+
+			Integer flags = flagsChildren.get(chName);
+			if (flags != null && (flags & DBConstants.RES_NONPERSISTENT) != 0)
+				e.nonpersistent = true;
+
+			// register type definition of the child in the table of known
+			// model definitions
+			db.typeClassByName.put(clazz.getName(), clazz);
+			return e;
+		}
+		else
+			return elem;
 	}
 }

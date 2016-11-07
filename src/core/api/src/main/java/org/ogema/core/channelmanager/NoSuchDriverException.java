@@ -34,7 +34,7 @@ public class NoSuchDriverException extends Exception {
 	}
 
 	/**
-	 * @return Dirver not installed: driverID
+	 * @return Driver not installed: driverID
 	 */
 	@Override
 	public String getMessage() {

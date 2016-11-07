@@ -25,7 +25,7 @@ import javax.xml.bind.DatatypeConverter;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.ChannelAccessException;
-import org.ogema.core.channelmanager.ChannelConfigurationException;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.ChannelEventListener;
 import org.ogema.core.channelmanager.EventType;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
@@ -56,11 +56,9 @@ public abstract class Generic_ZbDevice implements ChannelEventListener {
 	protected final ApplicationManager appManager;
 	protected final Generic_ZbDriver driver;
 
-	protected final Map<String, ChannelLocator> attributeChannel; // <channelAddress,
-	// ChannelLocator>
-	protected final List<ChannelLocator> attributeChannelList;
-	protected final Map<String, ChannelLocator> commandChannel; // <channelAddress,
-	// ChannelLocator>
+	protected final Map<String, ChannelConfiguration> attributeChannel = new HashMap<String, ChannelConfiguration>(); // <channelAddress, ChannelLocator>
+	protected final List<ChannelConfiguration> attributeChannelList = new ArrayList<ChannelConfiguration>();
+	protected final Map<String, ChannelConfiguration> commandChannel = new HashMap<String, ChannelConfiguration>(); // <channelAddress, ChannelLocator>
 
 	// protected ChannelEventListener channelEventListener;
 	protected long timeout;
@@ -68,16 +66,13 @@ public abstract class Generic_ZbDevice implements ChannelEventListener {
 
 	public Generic_ZbDevice(Generic_ZbDriver driver, ApplicationManager appManager, Generic_ZbConfig config) {
 		this.driver = driver;
-		attributeChannel = new HashMap<String, ChannelLocator>();
-		attributeChannelList = new ArrayList<ChannelLocator>();
-		commandChannel = new HashMap<String, ChannelLocator>();
 		channelAccess = appManager.getChannelAccess();
 		resourceManager = appManager.getResourceManagement();
 		this.appManager = appManager;
 		generic_ZbConfig = config;
 		unifyResourceName(generic_ZbConfig);
 
-		deviceLocator = channelAccess.getDeviceLocator(config.driverId, config.interfaceId, config.deviceAddress,
+		deviceLocator = new DeviceLocator(config.driverId, config.interfaceId, config.deviceAddress,
 				config.deviceParameters);
 		// channelEventListener = new ChannelEventListener() {
 		//
@@ -118,9 +113,6 @@ public abstract class Generic_ZbDevice implements ChannelEventListener {
 	 */
 	public Generic_ZbDevice(Generic_ZbDriver driver, ApplicationManager appManager, DeviceLocator deviceLocator) {
 		this.driver = driver;
-		attributeChannel = new HashMap<String, ChannelLocator>();
-		attributeChannelList = new ArrayList<ChannelLocator>();
-		commandChannel = new HashMap<String, ChannelLocator>();
 		channelAccess = appManager.getChannelAccess();
 		resourceManager = appManager.getResourceManagement();
 		this.appManager = appManager;
@@ -129,7 +121,7 @@ public abstract class Generic_ZbDevice implements ChannelEventListener {
 		generic_ZbConfig.deviceAddress = deviceLocator.getDeviceAddress();
 		generic_ZbConfig.interfaceId = deviceLocator.getInterfaceName();
 		String[] splitStringArray = deviceLocator.getParameters().split(":");
-		generic_ZbConfig.resourceName = splitStringArray[1] + "_";
+		generic_ZbConfig.resourceName = splitStringArray[1];
 		unifyResourceName(generic_ZbConfig);
 
 	}
@@ -149,14 +141,14 @@ public abstract class Generic_ZbDevice implements ChannelEventListener {
 	public abstract void updateChannelValue(String channelAddress, Value value);
 
 	protected ChannelLocator createChannelLocator(String channelAddress) {
-		return channelAccess.getChannelLocator(channelAddress, deviceLocator);
+		return new ChannelLocator(channelAddress, deviceLocator);
 	}
 
 	public void close() {
 		// TODO
 	}
 
-	public void writeToChannel(ChannelLocator channelLocator, String writeValue) {
+	public void writeToChannel(ChannelConfiguration channelConfiguration, String writeValue) {
 		Value value = null;
 		while (writeValue.length() % 2 != 0) {
 			// value is uneven but it needs to be even to be parsed to a byte
@@ -166,22 +158,22 @@ public abstract class Generic_ZbDevice implements ChannelEventListener {
 		value = new ByteArrayValue(DatatypeConverter.parseHexBinary(writeValue));
 
 		try {
-			channelAccess.setChannelValue(channelLocator, value);
+			channelAccess.setChannelValue(channelConfiguration, value);
 		} catch (ChannelAccessException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 
-	public abstract ChannelLocator addChannel(Generic_ZbConfig config);
+	public abstract ChannelConfiguration addChannel(Generic_ZbConfig config);
 
-	protected void addToUpdateListener(ChannelLocator channelLocator) {
-		attributeChannelList.add(channelLocator);
+	protected void addToUpdateListener(ChannelConfiguration chConf) throws ChannelAccessException {
+		attributeChannelList.add(chConf);
 		channelAccess.registerUpdateListener(attributeChannelList, this);
 	}
 
-	private void removeFromUpdateListener(ChannelLocator channelLocator) {
-		attributeChannelList.remove(channelLocator);
+	private void removeFromUpdateListener(ChannelConfiguration chConf) {
+		attributeChannelList.remove(chConf);
 	}
 
 	long lastTime = System.currentTimeMillis();
@@ -241,8 +233,8 @@ public abstract class Generic_ZbDevice implements ChannelEventListener {
 
 	public Value readValue(String channelAddress) {
 		// TODO alternative to printing the value
-		ChannelLocator chloc = attributeChannel.get(channelAddress);
-		SampledValueContainer container = new SampledValueContainer(chloc);
+		ChannelConfiguration chConf = attributeChannel.get(channelAddress);
+		SampledValueContainer container = new SampledValueContainer(chConf.getChannelLocator());
 
 		List<SampledValueContainer> channelList = new ArrayList<SampledValueContainer>(1);
 
@@ -257,33 +249,26 @@ public abstract class Generic_ZbDevice implements ChannelEventListener {
 	}
 
 	public void deleteChannel(Generic_ZbConfig config) {
-		ChannelLocator locator = null;
-		if (attributeChannel.containsKey(config.channelAddress)) {
-			locator = attributeChannel.get(config.channelAddress);
-			attributeChannel.remove(config.channelAddress);
-		}
-		else if (commandChannel.containsKey(config.channelAddress)) {
-			locator = commandChannel.get(config.channelAddress);
-			commandChannel.remove(config.channelAddress);
-		}
-		else {
+		ChannelConfiguration chConf = null;
+		
+		chConf = attributeChannel.remove(config.channelAddress);
+		
+		if (chConf == null)
+			chConf = commandChannel.remove(config.channelAddress);
+		
+		if (chConf == null)
 			return;
-		}
-
-		removeFromUpdateListener(locator);
-
-		try {
-			channelAccess.deleteChannel(locator);
-		} catch (ChannelConfigurationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		
+		removeFromUpdateListener(chConf);
+		channelAccess.deleteChannel(chConf);
 	}
 
 	public void unifyResourceName(Generic_ZbConfig zbConfig) {
-		if (zbConfig.resourceName == null)
-			zbConfig.resourceName = zbConfig.deviceAddress.replace(':', '_');
-		else
-			zbConfig.resourceName += zbConfig.deviceAddress.replace(':', '_');
+//		if (zbConfig.resourceName == null || zbConfig.resourceName.startsWith("Unknown_"))
+//			zbConfig.resourceName = zbConfig.deviceAddress.replace(':', '_');
+//		else {
+//			zbConfig.resourceName += "_";
+//			zbConfig.resourceName += zbConfig.deviceAddress.replace(':', '_');
+//		}
 	}
 }

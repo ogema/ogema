@@ -17,8 +17,6 @@ package org.ogema.pattern.test;
 
 import org.ogema.pattern.test.pattern.TempSensPattern;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -42,8 +40,8 @@ public class ValueChangedTest extends OsgiTestBase {
 	public class TempListener implements PatternListener<TempSensPattern> {
 
 		public volatile boolean available;
-		public CountDownLatch foundLatch;
-		public CountDownLatch lostLatch;
+		public volatile CountDownLatch foundLatch;
+		public volatile CountDownLatch lostLatch;
 
 		public TempListener() {
 			reset();

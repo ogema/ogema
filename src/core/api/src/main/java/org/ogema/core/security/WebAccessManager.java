@@ -135,10 +135,7 @@ public interface WebAccessManager {
 
 	/**
 	 * Get URL of the start page of an application; may be null, if the application has not registered a start page 
-	 * via {@link #registerStartUrl(org.ogema.core.application.AppID, java.lang.String) } yet and has no static web resources.
-	 * 
-	 * @param appid
-	 *            The id object of the application.
+	 * via {@link #registerStartUrl(java.lang.String) } yet and has no static web resources.
 	 */
 	public String getStartUrl();
 

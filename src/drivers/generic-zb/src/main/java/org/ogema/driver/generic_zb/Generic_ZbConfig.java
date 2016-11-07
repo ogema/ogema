@@ -15,7 +15,7 @@
  */
 package org.ogema.driver.generic_zb;
 
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 
 public class Generic_ZbConfig {
 	public String interfaceId;
@@ -26,5 +26,5 @@ public class Generic_ZbConfig {
 	public short deviceId; // Actually the ID that identifies the type of Endpoint
 	public long timeout;
 	public String resourceName;
-	public ChannelLocator chLocator;
+	public ChannelConfiguration chConfiguration;
 }

@@ -42,4 +42,9 @@ public interface CommonConfigurationNode extends Configuration {
 	 * All Sum configurations.
 	 */
 	ResourceList<SumModel> sums();
+	
+	/**
+	 * All Schedule management configurations 
+	 */
+	ResourceList<ScheduleManagementModel> scheduleManagements();
 }

@@ -34,6 +34,45 @@ angular.module('resources',[])
    
  //*********** definition of functions *****************
     	
+    	function columnSort(a,b) {
+    		if (a===b) 
+    			return 0;
+    		else if (a === "Location") 
+    			return -1;
+    		else if (b === "Location") 
+    			return 1;
+    		else if (a === "Type") 
+    			return -1;
+    		else if (b === "Type") 
+    			return 1;
+    		else if (a === "active") 
+    			return -1;
+    		else if (b === "active") 
+    			return 1;
+    		else if (a === "value") 
+    			return -1;
+    		else if (b === "value") 
+    			return 1;
+    		else if (a === "logging") 
+    			return -1;
+    		else if (b === "logging") 
+    			return 1;
+    		else if (a.indexOf("log interval")===0) 
+    			return -1;
+    		else if (b.indexOf("log interval")===0) 
+    			return 1;
+    		else if (a === "logging type") 
+    			return -1;
+    		else if (b === "logging type") 
+    			return 1;
+    		else if (a === "Logging") 
+    			return -1;
+    		else if (b === "Logging") 
+    			return 1;
+    		else 
+    			return 0;
+    	}
+    	
     	$scope.getColumns = function() {
     	  var sens = $scope.resourcesSet.getResources();
     	  var cols = [];
@@ -44,6 +83,7 @@ angular.module('resources',[])
     	  	 	}
     	  	 });
     	  }
+    	  cols.sort(columnSort);
     	  return cols;
     	};
     	

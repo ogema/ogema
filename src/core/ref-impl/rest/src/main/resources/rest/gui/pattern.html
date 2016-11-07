@@ -1,0 +1,374 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>REST tool</title>
+        <link href="libs/bootstrap.min.css" rel="stylesheet" type="text/css"/> 
+    <!--   <link href="libs/google-code-prettify/styles/prettify.css" type="text/css" rel="stylesheet" />
+         <link href="libs/google-code-prettify/styles/desert.css" type="text/css" rel="stylesheet" />   
+         <link href="libs/google-code-prettify/styles/tomorrow-night-blue.css" type="text/css" rel="stylesheet" /> -->
+         <link href="libs/google-code-prettify/styles/ogema.css" type="text/css" rel="stylesheet" />
+         <style>
+            .btn-file {
+			    position: relative;
+			    overflow: hidden;
+			}
+			.btn-file input[type=file] {
+			    position: absolute;
+			    top: 0;
+			    right: 0;
+			    min-width: 100%;
+			    min-height: 100%;
+			    font-size: 100px;
+			    text-align: right;
+			    filter: alpha(opacity=0);
+			    opacity: 0;
+			    outline: none;
+			    background: white;
+			    cursor: inherit;
+			    display: block;
+			}
+         </style>   
+		<script type="text/javascript" src="libs/google-code-prettify/prettify.js"></script>
+    </head>
+
+    <body>
+    <div class="container-fluid">
+	    <script language="JavaScript">
+	    	function loadExamplePattern(pattern) {
+	    		var bds = document.getElementsByName("body");
+	    		if (bds.length !== 1) {
+	    			console.err("Unexpected number of body elements found.",b.length);
+	    			return;
+	    		}
+	    		var body = bds[0];
+	    		if (pattern === null || typeof pattern === "undefined" || pattern === "empty") {
+	    			body.value = "";
+	    			return;
+	    		}
+	    		var request = new XMLHttpRequest();
+	    		var format;
+	    		if (document.topform.formatSelector.selectedIndex === 1)
+	    			format = "json";
+	    		else
+	    			format = "xml";
+		        var exampleTarget = "patternExamples/" + pattern + "." + format;
+		        request.open('GET', exampleTarget, true);
+		      	request.setRequestHeader("Accept", "application/" + format); 
+		        request.onreadystatechange = function()
+		        {
+		            if(request.readyState == 4)
+		            {
+		                if(request.status==200 || request.status==500)
+		                {
+		                    body.value = request.responseText;
+		                }
+		                else
+		                {
+		                    document.getElementById("response").textContent ="Error " + request.status
+		                }
+		            }
+		        }
+		        request.send();
+	    	}
+			function setOptionFields() {
+	    		var strIn = document.topform.resourceField.value;
+//	    		if (!strIn || strIn.indexOf("?") < 0) return;
+	    		var idx = strIn.indexOf("?");
+	    		var optionStr = "";
+	    		if (idx >= 0) {
+	    			var optionStr = strIn.substring(idx+1);
+	    		}
+	    		var options = optionStr.split("&");
+	    		var recursive = false;
+	    		var maxHits=null;
+	    		var from=null;
+	    		var usr=null;
+	    		var pw=null;
+	    		options.forEach(function(opt) { 
+	    			var keyVal = opt.split("=");  
+	    			if (keyVal.length != 2) return;
+	    			var key = keyVal[0];
+	    			var val = keyVal[1];
+	    			switch (key) {
+	    				case "recursive":
+	    					recursive = (val.toLowerCase() == "true");
+	    					break;
+	    				case "maxHits":
+	    					var intVal = parseInt(Number(val));
+	    					if (intVal == val && val >= 0)
+	    						maxHits = intVal;
+	    					break;
+	    				case "from":
+	    					var intVal2 = parseInt(Number(val));
+	    					if (intVal2 == val && val >= 0)
+	    						from = intVal2;
+	    					break;
+	    				case "user":
+	    					usr = val;
+	    					break;
+	    				case "pw":
+	    					pw = val;
+	    					break;
+	    				default:
+	    					return;
+	    			}
+	    		});
+	    		document.getElementById('optionRecursive').checked = recursive;
+	    		if (maxHits !== null)
+	    			document.getElementById('maxHitsField').value = maxHits;
+	    		else
+	    			document.getElementById('maxHitsField').value = '';	   	
+	    		if (from !== null)
+	    			document.getElementById('fromField').value = from;
+	    		else
+	    			document.getElementById('fromField').value = '';	   	
+	    		if (usr != null) 
+	    			document.getElementById('userField').value = usr;	
+	    		else
+	    			document.getElementById('userField').value = '';	
+	    		if (pw != null) 
+	    			document.getElementById('pwField').value = pw;	
+	    		else
+	    			document.getElementById('pwField').value = '';	
+	    	}
+	    	function isValidNonNegativeNr(nr) {
+	    		if (!nr)
+	    			return false;
+	    		var nr2 = parseInt(Number(nr));
+	    		if (nr != nr2) 
+	    			return false;
+	    		return (nr >= 0);
+	    	}
+	        function getOptionsString() {
+	        	var strIn = document.topform.resourceField.value;
+	        	if (!strIn) strIn = "";
+	        	if (strIn.indexOf("?") >= 0) {
+	        		strIn = strIn.substring(0,strIn.indexOf("?"));
+	        	}
+	        	var user = document.getElementById('userField').value;
+	        	var pw = document.getElementById('pwField').value;
+	        	var recursive = document.getElementById('optionRecursive').checked;
+	        	var maxHits = document.getElementById('maxHitsField').value;
+	        	var from = document.getElementById('fromField').value;
+	        	var qmSet = false;
+	        	if (user) {
+	        		strIn += "?user=" + user;
+	        		qmSet = true;
+	        	}
+	        	if (pw) {
+		        	strIn = appendSeparator(strIn,qmSet) + "pw=" + pw;
+	        		qmSet = true;
+	        	}
+	        	strIn = appendSeparator(strIn,qmSet) + "recursive=" + recursive;
+	        	qmSet = true;
+	        	if (isValidNonNegativeNr(maxHits)) 
+	        		strIn = appendSeparator(strIn,qmSet) + "maxHits=" + maxHits;
+	        	if (isValidNonNegativeNr(from)) 
+	        		strIn = appendSeparator(strIn,qmSet) + "from=" + from;
+	        	return strIn;
+	        }
+	        function appendSeparator(path,pathContainsOtherOptions) {
+	        	if (pathContainsOtherOptions)
+	        		return path += "&";
+	        	else 
+	        		return path += "?";
+	        }
+	        function setOptionsString() {
+	        	try {
+	        		document.topform.resourceField.value = getOptionsString();
+	        	} catch (e) {
+	        		console.error(e);
+	        	}
+	        }
+			function send(requestType, resource, body) {
+		        var request = new XMLHttpRequest();
+		        var restTarget = "/rest/patterns/" + resource;
+		        request.open(requestType, restTarget, true);
+		        var cntType;
+		        if (document.topform.formatSelector.selectedIndex === 1) {
+		      	   cntType = "application/json";
+		      	   request.setRequestHeader("Accept", "application/json");
+		        } 
+		        else {
+		        	cntType = "application/xml";
+		      	    request.setRequestHeader("Accept", "application/xml");
+		        }
+				request.setRequestHeader("Content-type",cntType);
+		        request.onreadystatechange = function()
+		        {
+		            if(request.readyState == 4)
+		            {
+		                if(request.status==200 || request.status==500)
+		                {
+		                   document.getElementById("response").textContent = request.responseText.substring(0,Math.min(100000,request.responseText.length));
+		                   //document.getElementById("pretag").removeAttribute("class");
+		                   document.getElementById("pretag").setAttribute("class","prettyprint");
+		                   	prettyPrint();
+		                   document.getElementById('downloadButton').href = generateFile(request.responseText);
+		                }
+		                else
+		                {
+		                    document.getElementById("response").textContent ="Error " + request.status
+		                }
+		            }
+		        }
+		        request.send(body);
+			}
+	    	function sendRESTrequest(requestType) {
+	    		var body = document.topform.body.value;
+	    		var resource = document.topform.resourceField.value;
+	    		send(requestType, resource, body);
+	    	}
+	    	var file = null;
+	    	function generateFile(text) {
+			    if (file !== null) {
+	 			    window.URL.revokeObjectURL(file);
+				}
+				var data = new Blob([text], {type: 'text/plain'});
+				file = window.URL.createObjectURL(data);
+				return file;
+	    	}
+	    	function readFile(evt) {
+		    	var f = evt.target.files[0];   
+		    	var resource = document.topform.resourceField.value;
+			    if (f) {
+			      var r = new FileReader();
+			      r.onload = function(e) {         
+			          var ct = r.result;        
+			          var request = new XMLHttpRequest();
+				      var restTarget = "/rest/patterns/" + resource;
+				      request.open('POST', restTarget, true);
+				      if (document.topform.formatSelector.selectedIndex === 1) {
+				        cntType = "application/json";
+				        request.setRequestHeader("Accept", "application/json");
+				      } 
+				      else {
+				      	cntType = "application/xml";
+				         request.setRequestHeader("Accept", "application/xml");
+				      }
+					  request.setRequestHeader("Content-type",cntType);
+//					  request.setRequestHeader("Content-type","application/xml");
+				      request.onreadystatechange = function() {
+				            if(request.readyState == 4) {
+				                if(request.status==200 || request.status==500)  {
+				                   document.getElementById("response").textContent = request.responseText.substring(0,Math.min(100000,request.responseText.length));
+				                   document.getElementById("pretag").setAttribute("class","prettyprint");
+				                   prettyPrint();
+				                }
+				                else {
+				                    document.getElementById("response").textContent ="Error " + request.status
+				                }
+				            }
+				      }
+				      request.send(ct);
+			      }
+			      r.readAsText(f);
+			    } else { 
+			        document.getElementById("response").textContent ="Error: Failed to load file";
+			    }
+	    	}
+		</script>
+	    <!--<form name="topform" action="#" onsubmit="sendRESTrequest('GET');">-->
+	    <form name="topform" action="javascript:sendRESTrequest('POST');">
+	        <h1 style="text-align:center;">OGEMA REST tool: pattern access</h1>
+	        <div class="row">
+	        	<div class="col col-md-5">
+		            <p>
+		            	Select REST servlet
+		            	<select onchange="window.location = window.location.href.replace('pattern.html',this.value + '.html');">
+		            		<option value="index">Resources</option>
+		            		<option selected="selected" value="pattern">Resource patterns</option>
+		            	</select>
+		            </p>
+		            <h2>Request path</h2>
+		            /rest/patterns/<input name="resourceField" type="text" size="84"
+		            		onchange="setOptionFields()" 
+		            		onkeydown="if (event.keyCode === 13) { sendRESTrequest('POST'); return false; }" 
+		            		value="?user=rest&pw=rest&recursive=false&maxHits=10&from=0">
+		            <p>
+		            	<h4>Options:</h4>
+		            	<ul>
+		            		<li>User: <input id="userField" type="text" size="15" onchange="setOptionsString()" value="rest"/></li>
+		            		<li>Password: <input id="pwField" type="text" size=15" onchange="setOptionsString()" value="rest"/></li>	
+		            		<li>Recursive <input type="checkbox" id="optionRecursive" onchange="setOptionsString()" /></li> 
+		            		<li>Max hits: <input id="maxHitsField" type="text" size="15" onchange="setOptionsString()" value="10"/></li>
+		            		<li>From: <input id="fromField" type="text" size="15" onchange="setOptionsString()" value="0"/></li>
+		            		<li>Format 	<select name="formatSelector">
+						            		<option selected="selected">XML</option>
+						            		<option>JSON</option>
+						            	</select>
+						    </li>
+		            	</ul>
+		            	
+		            <br />
+		            <h2 title="mandatory field">Message body</h2>
+		            <textarea name="body" rows="5" cols="100"></textarea>
+		            <br><br>
+		            <p>Load example (overwrites body content)
+		         		<select onchange="loadExamplePattern(this.value);">
+		         			<option selected="selected" value="empty"></option>
+		         			<option value="RoomPattern">Room pattern</option>
+		         			<option value="SwitchBoxPattern">Switch box pattern</option>
+		         			<option value="PhysicalElementPattern">Physical element pattern</option>
+		         			<option value="BasicStringExample">Basic String pattern</option>
+		         		</select>
+		         	</p>
+		            <h2>Send
+		         <!--   
+		         	<button type="button" class="btn btn-success" onclick="sendRESTrequest('GET')">GET</button> 
+		            <button type="button" class="btn btn-success" onclick="sendRESTrequest('PUT')">PUT</button>
+		         -->
+		         	<button type="button" class="btn btn-success" onclick="sendRESTrequest('POST')">POST</button>
+		         <!--  
+		            <button type="button" class="btn btn-success" onclick="sendRESTrequest('DELETE')">DELETE</button>
+		         -->
+		         	</h2>
+		            <h2>Import / Export</h2>
+		            <a class="btn btn-warning" id="downloadButton" download >Export result to file</a>
+		            <span class="btn btn-warning btn-file">
+					    Import pattern from file<input type="file" id="uploadButton" onchange="readFile(event)"/>
+					</span>
+		            <br>
+		            <h2>Explanation</h2>
+		            <p>Send a
+		           	  <ul>
+		           	  	<li>POST request with a serialized ResourcePattern to the top level path, to obtain a list of all pattern matches
+		           	  	<li>POST request with a serialized ResourcePattern to a resource path, to obtain a list of all pattern matches below this resource
+		           	  	<li>PUT: not supported 
+		           	  	<li>DELETE: not supported; use resource servlet instead</li>
+		           	  	<li>GET: not supported; use POST requests</li>
+		           	  </ul>  
+		           	  Paramter <i>recursive</i>: get pattern matches at the specified level only (toplevel, if the request goes to /rest/patterns/), or
+		           	  	recursive subresources as well.
+		           	</p>
+   
+	           </div>
+	          <div class="col col-md-7">
+		            <h2>Response</h2>
+		            <pre class="prettyprint" id="pretag"><code class="language-xml" id="response">Send a POST request</code></pre>
+		      </div>
+	
+		  </div>
+	    </form>
+	</div>
+    </body>
+</html>
+
+

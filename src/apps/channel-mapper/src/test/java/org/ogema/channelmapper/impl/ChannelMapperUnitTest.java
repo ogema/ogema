@@ -22,7 +22,7 @@ import java.util.List;
 
 import org.junit.Test;
 
-public class ChannelMapperUnitTest {
+public class ChannelMapperUnitTest  {
 
 	@Test
 	public void writeAndRereadConfigurationTest() {

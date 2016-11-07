@@ -26,9 +26,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.ObjectWriter;
 import org.ogema.apps.swtch.listeners.ControllableMultiPatternListener;
 import org.ogema.apps.swtch.listeners.ControllableOnOffPatternListener;
 import org.ogema.apps.swtch.listeners.ThermostatPatternListener;
@@ -47,6 +44,10 @@ import org.ogema.model.devices.buildingtechnology.Thermostat;
 import org.ogema.model.devices.sensoractordevices.SingleSwitchBox;
 import org.ogema.model.locations.Room;
 import org.ogema.model.prototypes.PhysicalElement;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 
 public class BasicSwitchGuiServlet extends HttpServlet {
 
@@ -149,7 +150,7 @@ public class BasicSwitchGuiServlet extends HttpServlet {
 			ObjectMapper mapper = new ObjectMapper();
 			JsonNode jo = mapper.readTree(msg);
 			if (jo.has("swtch")) {
-				String swtch = jo.get("swtch").getTextValue();
+				String swtch = jo.get("swtch").asText();
 				Resource res = appMan.getResourceAccess().getResource(swtch);
 				/*if (res instanceof SingleSwitchBox) {
 					SingleSwitchBox switchBox = (SingleSwitchBox) res;
@@ -158,13 +159,16 @@ public class BasicSwitchGuiServlet extends HttpServlet {
 				BooleanResource stateControl = res.getSubResource("onOffSwitch", OnOffSwitch.class).stateControl()
 						.create();
 				BooleanResource stateFeedback = res.getSubResource("onOffSwitch", OnOffSwitch.class).stateFeedback();
-				if (stateControl.exists() && stateFeedback.isActive()) {
-					stateControl.setValue(!stateFeedback.getValue());
+				if (stateControl.exists()) {
+					if (stateControl.isActive()) 
+						stateControl.setValue(!stateFeedback.getValue());
+					else
+						stateControl.setValue(true);
 					stateControl.activate(false);
 				}
 			}
 			else if (jo.has("mswtch")) {
-				String swtch = jo.get("mswtch").getTextValue();
+				String swtch = jo.get("mswtch").asText();
 				MultiSwitch res = appMan.getResourceAccess().getResource(swtch);
 				float value = (float) jo.get("value").asDouble() / 100;
 				if (value >= 0 && value <= 1) {
@@ -174,7 +178,7 @@ public class BasicSwitchGuiServlet extends HttpServlet {
 				}
 			}
 			else if (jo.has("thermo")) {
-				String swtch = jo.get("thermo").getTextValue();
+				String swtch = jo.get("thermo").asText();
 				Thermostat res = appMan.getResourceAccess().getResource(swtch);
 				float value = (float) jo.get("value").asDouble();
 				TemperatureResource tr = res.temperatureSensor().settings().setpoint().create();

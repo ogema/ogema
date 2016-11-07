@@ -18,21 +18,22 @@ package org.ogema.resourcemanager.impl;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.TreeMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.ogema.accesscontrol.AccessManager;
-import org.ogema.core.application.Application;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
@@ -45,9 +46,8 @@ import org.ogema.resourcemanager.virtual.DefaultVirtualResourceDB;
 import org.ogema.resourcemanager.virtual.VirtualResourceDB;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 import org.ogema.resourcetree.TreeElement;
+import org.ogema.resourcetree.listeners.InternalStructureListenerRegistration;
 import org.ogema.timer.TimerScheduler;
-import org.osgi.framework.Bundle;
-import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
 
 /**
@@ -64,6 +64,7 @@ public class ResourceDBManager {
 
 	private final VirtualResourceDB resdb;
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+	@SuppressWarnings("unused")
 	private final AccessManager access;
 	private final DataRecorder recordedDataAccess;
     private final AtomicInteger revisionCounter = new AtomicInteger(0);
@@ -74,10 +75,11 @@ public class ResourceDBManager {
 	 */
 	private final ReentrantReadWriteLock commitLock = new ReentrantReadWriteLock();
 	/** global lock guarding structural changes */
-	private final ReentrantReadWriteLock structureLock = new ReentrantReadWriteLock();
+	//private final ReentrantReadWriteLock structureLock = new ReentrantReadWriteLock();
 	protected RecordedDataManager recordedDataManager;
     
-    private final Collection<StructureListenerRegistration> structureListeners = new ConcurrentLinkedQueue<>();
+    //private final Collection<StructureListenerRegistration> structureListeners = new ConcurrentLinkedQueue<>();
+    private final NavigableMap<String, List<InternalStructureListenerRegistration>> structureListeners = new TreeMap<>();
 
 	public ResourceDBManager(ResourceDB resdb, DataRecorder recordedDataAccess, TimerScheduler scheduler,
 			AccessManager access) {
@@ -112,7 +114,7 @@ public class ResourceDBManager {
 						boolean childIsReference = child.isReference();
 						isReferencePath.push(childIsReference | isRef);
 						if (childIsReference) {
-							getElementInfo(child).addReference(el);
+							getElementInfo(child).addReference(child);
 						}
 					}
 				}
@@ -136,52 +138,50 @@ public class ResourceDBManager {
 		}
 	}
     
-    public void addStructureListener(StructureListenerRegistration slr) {
-        structureListeners.add(slr);
-    }
-    
-    public void removeStructureListener(StructureListenerRegistration slr) {
-        structureListeners.remove(slr);
-    }
-    
-    /*
-     * for all registered structure listeners check if their path is now newly available
-     */
-    //FIXME: probably too expensive, need to restrict updates somehow (by affected top level resource? consider only listeners sitting on a virtual path?)
-    public void updateStructureListenerRegistrations() {
-        for (StructureListenerRegistration slr: structureListeners) {
-            if (logger.isTraceEnabled()){
-                logger.trace("checking listener registration for {}", slr.resource.getPath());
+    public List<InternalStructureListenerRegistration> getStructureListeners(String path) {
+        synchronized(structureListeners) {
+            List<InternalStructureListenerRegistration> l = structureListeners.get(path);
+            if (l == null) {
+                return Collections.emptyList();
             }
+            return Collections.unmodifiableList(l);
+        }
+    }
+    
+    public void addStructureListener(InternalStructureListenerRegistration slr) {
+        String path = slr.getResource().getPath();
+        synchronized (structureListeners) {
+            List<InternalStructureListenerRegistration> l = structureListeners.get(path);
+            if (l == null) {
+                l = new CopyOnWriteArrayList<>();
+                structureListeners.put(path, l);
+            }
+            l.add(slr);
+        }
+    }
 
-            String path = slr.resource.getPath();
-            String[] a = path.split("/");
-            VirtualTreeElement e = resdb.getToplevelResource(a[0]);
-            if (e == null) {
-                //XXX remove registration?
-                continue;
+	public Map<String, List<InternalStructureListenerRegistration>> getStructureListenersTree(String path) {
+	    //FIXME path string mangling
+	    path = path.substring(1);
+	    String end = path + (char)('/'+1); //FIXME may select too much???
+        synchronized (structureListeners) {
+            //XXX can this be synchronized externally, without the map copy?
+            return new TreeMap<>(structureListeners.subMap(path, end));
+        }
+	}
+    
+    public void removeStructureListener(InternalStructureListenerRegistration slr) {
+        Objects.requireNonNull(slr);
+        synchronized (structureListeners) {
+            List<InternalStructureListenerRegistration> l = structureListeners.get(slr.getResource().getPath());
+            if (l == null) {
+                logger.warn("suspicious removeStructureListener call for registration {}", slr);
+                return;
             }
-            int i = 1;
-            for (; i < a.length && e != null; i++){
-                e = e.getChild(a[i]);
-            }
-            if (e == null) {
-                //FIXME: may happen for decorator paths? needs a test
-                //logger.error("path element {} is null for path {}", a[i], slr.getResource().getPath());
-                continue;
-            }
-            
-            ElementInfo info = getElementInfo(e);
-            boolean isAlreadyRegistered = false;
-            for (StructureListenerRegistration x: info.getStructureListeners()) {
-                if (slr.equals(x)) {
-                    isAlreadyRegistered = true;
-                }
-            }
-            
-            if (!isAlreadyRegistered && !e.isVirtual()) {
-                info.addStructureListener(slr.resource, slr.listener, slr.appman);
-                info.fireResourceCreated(path);
+            @SuppressWarnings("unused")
+			boolean removed = l.remove(slr);
+            if (l.isEmpty()) {
+                structureListeners.remove(slr.getResource().getPath());
             }
         }
     }
@@ -200,14 +200,14 @@ public class ResourceDBManager {
         return recordedDataManager.getRecordedData(e, true);
     }
 
-	public synchronized String getUniqueResourceName(String name, Application app) {
-		String uniqueName = getStoredUniqueName(name, app);
+	public synchronized String getUniqueResourceName(String name, String appId) {
+		String uniqueName = getStoredUniqueName(name, appId);
 		if (uniqueName != null) {
 			return uniqueName;
 		}
 		else {
 			if (resdb.getToplevelResource(name) == null) {
-				storeUniqueName(name, app, name);
+				storeUniqueName(name, appId, name);
 				return name;
 			}
 			else {
@@ -215,23 +215,17 @@ public class ResourceDBManager {
 				do {
 					uniqueName = name + "_" + ++c;
 				} while (resdb.getToplevelResource(uniqueName) != null);
-				storeUniqueName(name, app, uniqueName);
+				storeUniqueName(name, appId, uniqueName);
 				return uniqueName;
 			}
 		}
 	}
 
-	private String getStoredUniqueName(String name, Application app) {
+	private String getStoredUniqueName(String name, String appId) {
 		TreeElement uniqueNamesEl = resdb.getToplevelResource(ELEMENTNAME_UNIQUENAMES);
 		if (uniqueNamesEl == null) {
 			return null;
 		}
-		String appId = app.getClass().getCanonicalName();
-		Bundle b = FrameworkUtil.getBundle(app.getClass());
-		if (b != null) {
-			appId = b.getSymbolicName();
-		}
-        appId = appId.replace('.', '_').replace('/', '_');
 		TreeElement namesForApp = uniqueNamesEl.getChild(appId);
 		if (namesForApp == null) {
 			return null;
@@ -247,19 +241,13 @@ public class ResourceDBManager {
 		}
 	}
 
-	private void storeUniqueName(String requestedName, Application app, String uniqueName) {
+	private void storeUniqueName(String requestedName, String appId, String uniqueName) {
 		TreeElement uniqueNamesEl = resdb.getToplevelResource(ELEMENTNAME_UNIQUENAMES);
 		if (uniqueNamesEl == null) {
 			resdb.addOrUpdateResourceType(Resource.class);
 			resdb.addOrUpdateResourceType(StringResource.class);
 			uniqueNamesEl = resdb.addResource(ELEMENTNAME_UNIQUENAMES, Resource.class, APP_ID_SYSTEM);
 		}
-		String appId = app.getClass().getCanonicalName();
-		Bundle b = FrameworkUtil.getBundle(app.getClass());
-		if (b != null) {
-			appId = b.getSymbolicName();
-		}
-        appId = appId.replace('.', '_').replace('/', '_');
 		TreeElement namesForApp = uniqueNamesEl.getChild(appId);
 		if (namesForApp == null) {
 			namesForApp = uniqueNamesEl.addChild(appId, Resource.class, true);
@@ -269,6 +257,23 @@ public class ResourceDBManager {
 		storedName.fireChangeEvent();
         logger.debug("stored unique name {}/{}: {}", appId, requestedName, uniqueName);
 	}
+    
+    protected void deleteUniqueName(TreeElement el) {
+        TreeElement uniqueNamesEl = resdb.getToplevelResource(ELEMENTNAME_UNIQUENAMES);
+		if (uniqueNamesEl == null) {
+			return;
+		}
+		TreeElement namesForApp = uniqueNamesEl.getChild(el.getAppID());
+		if (namesForApp == null) {
+			return;
+		}
+        for (TreeElement uniqueName: namesForApp.getChildren()) {
+            if (el.getName().equals(uniqueName.getData().getString())) {
+                deleteResource(uniqueName);
+                logger.debug("removed unique resource name {} for app {}", el.getName(), el.getAppID());
+            }
+        }
+    }
 
 	/*
 	 * return a TreeElement's user object, if el is a reference, return the referenced TreeElement's user object.
@@ -411,27 +416,34 @@ public class ResourceDBManager {
 
 	public TreeElement createResource(String name, Class<? extends Resource> type, String appId)
 			throws ResourceAlreadyExistsException, InvalidResourceTypeException {
-		if (resdb.hasResource(name)) {
-			TreeElement existingElement = resdb.getToplevelResource(name);
-			if (!existingElement.getType().equals(type)) {
-				throw new ResourceAlreadyExistsException(String.format(
-						"resource '%s' already exists with different type (%s)", name, type));
-			}
-			else {
-				return existingElement;
-			}
-		}
-		// create new resource. resource is created as inactive, so no listener callbacks are necessary
-		TreeElement el = resdb.addResource(name, type, appId);
-		ElementInfo info = new ElementInfo(this, el);
-		el.setResRef(info);
-		return el;
+        lockStructureWrite();
+        try {
+            if (resdb.hasResource(name)) {
+                TreeElement existingElement = resdb.getToplevelResource(name);
+                if (!existingElement.getType().equals(type)) {
+                    throw new ResourceAlreadyExistsException(String.format(
+                            "resource '%s' already exists with different type (%s)", name, type));
+                }
+                else {
+                    return existingElement;
+                }
+            }
+            // create new resource. resource is created as inactive, so no listener callbacks are necessary
+            TreeElement el = resdb.addResource(name, type, appId);
+            ElementInfo info = new ElementInfo(this, el);
+            el.setResRef(info);
+            return el;
+        } finally {
+            unlockStructureWrite();
+        }
 	}
 
 	public void deleteResource(TreeElement elem) {
-		resdb.deleteResource(elem);
+		// the order may be relevant here... deleting the resource, resp. the DVTE, before firing resourceUnavialble
+		// may imply it being removed from the cache before the callback has been executed.
+        resourceDeleted(elem); 
+		resdb.deleteResource(elem);   
         revisionCounter.incrementAndGet();
-        resourceDeleted(elem);
     }
 
 	public boolean hasResource(String name) {
@@ -473,9 +485,6 @@ public class ResourceDBManager {
 				}
 			}
 		}
-
-		ElementInfo info = getElementInfo(el);
-		info.fireResourceActiveStateChanged(el, true);
 	}
 
 	/*
@@ -483,9 +492,6 @@ public class ResourceDBManager {
 	 */
 	public void resourceDeactivated(TreeElement el) {
 		resourceUnavailable(el, ResourceDemandListener.AccessLossReason.RESOURCE_INACTIVE);
-
-		ElementInfo info = getElementInfo(el);
-		info.fireResourceActiveStateChanged(el, false);
 	}
     
     public void resourceDeleted(TreeElement el) {
@@ -522,20 +528,27 @@ public class ResourceDBManager {
 	}
 
     public void lockStructureRead() {
-        structureLock.readLock().lock();
+        //structureLock.readLock().lock();
+        commitLock.readLock().lock();
     }
     
     public void unlockStructureRead() {
-        structureLock.readLock().unlock();
+        //structureLock.readLock().unlock();
+        commitLock.readLock().unlock();
     }
     
     public void lockStructureWrite() {
-        structureLock.writeLock().lock();
+        //structureLock.writeLock().lock();
+        commitLock.writeLock().lock();
     }
     
     public void unlockStructureWrite() {
-        structureLock.writeLock().unlock();
+        //structureLock.writeLock().unlock();
+        commitLock.writeLock().unlock();
     }
+    
+    // TODO The convention for obtaining these locks must be explained here. 
+    // E.g., the structure lock must always be obtained before the commit lock, if they are both acquired. Otherwise, deadlock can occur. 
 
 	/**
 	 * Lock for reading.

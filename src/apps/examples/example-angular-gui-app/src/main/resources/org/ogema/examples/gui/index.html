@@ -1,0 +1,58 @@
+<!--
+
+    This file is part of OGEMA.
+
+    OGEMA is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 3
+    as published by the Free Software Foundation.
+
+    OGEMA is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+<!DOCTYPE html>
+<html ng-app="resources">
+    <head>
+        <title>OGEMA app with angular.js</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="lib/bootstrap.min.css" rel="stylesheet" type="text/css"/> 
+    </head>
+    <body>
+    	<h3>OGEMA top-level resources</h3>
+        <div ng-controller="ResourcesCtrl">
+	        <button class="btn btn-success" ng-click="update()">Update</button> <br><br>
+	        
+	         <!-- Resources table -->
+	         <table class="table table-striped table-hover">
+	         	<!-- title row -->
+	        	<tr>
+	        	  	<th ng-repeat="col in getColumns()"> 
+	        	  		{{col}}	        	  		
+	        	  	<th>
+	        	  	  	Toggle status
+	        	  	</th>
+	        	</tr>
+	        	<!-- entries -->
+	        	<tr ng-repeat="res in getResources()">
+		        	<td ng-repeat="col in getColumns()">
+		        		{{getColumnValue(res,col)}}
+		        	</td>
+	        	    <td>
+		        		<button class="btn btn-danger" ng-click="toggleStatus(res)">{{getStatusBtnMsg(res)}}</button>
+		        	</td>
+	        	</tr>
+	        </table>
+	         
+    	</div>
+        <script src="lib/jquery-1.11.1.min.js"></script>
+        <script src="lib/angular-1.3.15.min.js"></script>
+        <script src="app.js"></script>    
+    </body>
+</html>
+</html>

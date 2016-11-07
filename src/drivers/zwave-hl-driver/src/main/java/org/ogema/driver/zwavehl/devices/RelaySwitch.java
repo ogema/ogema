@@ -16,6 +16,7 @@
 package org.ogema.driver.zwavehl.devices;
 
 import org.ogema.core.application.ApplicationManager;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.BooleanValue;
@@ -162,7 +163,7 @@ public class RelaySwitch extends ZWaveHlDevice implements ResourceValueListener<
 			attributeConfig.deviceAddress = zwaveHlConfig.deviceAddress;
 			attributeConfig.channelAddress = "0025:000" + (i + 1) + ":0000";
 			attributeConfig.resourceName = zwaveHlConfig.resourceName + "_OnOffToggle_CH" + (i + 1);
-			attributeConfig.chLocator = addChannel(attributeConfig);
+			attributeConfig.chConfiguration = addChannel(attributeConfig);
 			// if (i != 0)
 			// readValue("0025:000" + (i + 1) + ":0000");
 
@@ -181,7 +182,7 @@ public class RelaySwitch extends ZWaveHlDevice implements ResourceValueListener<
 			attributeConfig.deviceAddress = zwaveHlConfig.deviceAddress;
 			attributeConfig.channelAddress = "0032:000" + (i + 1) + ":0014";
 			attributeConfig.resourceName = zwaveHlConfig.resourceName + "_Current_CH" + (i + 1);
-			attributeConfig.chLocator = addChannel(attributeConfig);
+			attributeConfig.chConfiguration = addChannel(attributeConfig);
 			// readValue("0032:000" + (i + 1) + ":0014");
 
 			ElectricVoltageSensor vSens = (ElectricVoltageSensor) conn.voltageSensor().create();
@@ -195,7 +196,7 @@ public class RelaySwitch extends ZWaveHlDevice implements ResourceValueListener<
 			attributeConfig.deviceAddress = zwaveHlConfig.deviceAddress;
 			attributeConfig.channelAddress = "0032:000" + (i + 1) + ":0010";
 			attributeConfig.resourceName = zwaveHlConfig.resourceName + "_Voltage_CH" + (i + 1);
-			attributeConfig.chLocator = addChannel(attributeConfig);
+			attributeConfig.chConfiguration = addChannel(attributeConfig);
 			// readValue("0032:000" + (i + 1) + ":0014");
 
 			ElectricPowerSensor pSens = (ElectricPowerSensor) conn.powerSensor().create();
@@ -209,7 +210,7 @@ public class RelaySwitch extends ZWaveHlDevice implements ResourceValueListener<
 			attributeConfig.deviceAddress = zwaveHlConfig.deviceAddress;
 			attributeConfig.channelAddress = "0032:000" + (i + 1) + ":0008";
 			attributeConfig.resourceName = zwaveHlConfig.resourceName + "_Power_CH" + (i + 1);
-			attributeConfig.chLocator = addChannel(attributeConfig);
+			attributeConfig.chConfiguration = addChannel(attributeConfig);
 			// readValue("0032:000" + (i + 1) + ":0008");
 
 			ReactivePowerAngleSensor aSens = (ReactivePowerAngleSensor) conn.reactiveAngleSensor().create();
@@ -223,7 +224,7 @@ public class RelaySwitch extends ZWaveHlDevice implements ResourceValueListener<
 			attributeConfig.deviceAddress = zwaveHlConfig.deviceAddress;
 			attributeConfig.channelAddress = "0032:000" + (i + 1) + ":0018";
 			attributeConfig.resourceName = zwaveHlConfig.resourceName + "_Power_CH" + (i + 1);
-			attributeConfig.chLocator = addChannel(attributeConfig);
+			attributeConfig.chConfiguration = addChannel(attributeConfig);
 			// readValue("0032:000" + (i + 1) + ":0018");
 
 			// Add accumulated energy attribute
@@ -238,7 +239,7 @@ public class RelaySwitch extends ZWaveHlDevice implements ResourceValueListener<
 			attributeConfig.deviceAddress = zwaveHlConfig.deviceAddress;
 			attributeConfig.channelAddress = "0032:000" + (i + 1) + ":0000";
 			attributeConfig.resourceName = zwaveHlConfig.resourceName + "_Energy_CH" + (i + 1);
-			attributeConfig.chLocator = addChannel(attributeConfig);
+			attributeConfig.chConfiguration = addChannel(attributeConfig);
 			// readValue("0032:000" + (i + 1) + ":0000");
 		}
 
@@ -251,19 +252,19 @@ public class RelaySwitch extends ZWaveHlDevice implements ResourceValueListener<
 
 	@Override
 	public void resourceChanged(BooleanResource resource) {
-		ChannelLocator locator;
+		ChannelConfiguration chConf;
 		BooleanValue newState = new BooleanValue(resource.getValue());
 		if (resource.equals(onOff[0])) {
-			locator = this.valueChannel.get("0025:0001:0000");
-			writeToChannel(locator, newState);
+			chConf = this.valueChannel.get("0025:0001:0000");
+			writeToChannel(chConf, newState);
 		}
 		else if (resource.equals(onOff[1])) {
-			locator = this.valueChannel.get("0025:0002:0000");
-			writeToChannel(locator, newState);
+			chConf = this.valueChannel.get("0025:0002:0000");
+			writeToChannel(chConf, newState);
 		}
 		else if (resource.equals(onOff[2])) {
-			locator = this.valueChannel.get("0025:0003:0000");
-			writeToChannel(locator, newState);
+			chConf = this.valueChannel.get("0025:0003:0000");
+			writeToChannel(chConf, newState);
 		}
 	}
 

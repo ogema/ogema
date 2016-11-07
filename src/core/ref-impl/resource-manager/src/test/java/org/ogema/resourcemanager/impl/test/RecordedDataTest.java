@@ -43,7 +43,6 @@ import javax.inject.Inject;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.junit.Assert;
 import org.junit.Assume;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.FloatValue;
@@ -77,7 +76,9 @@ import org.ops4j.pax.exam.spi.reactors.PerClass;
 @ExamReactorStrategy(PerClass.class)
 public class RecordedDataTest extends OsgiAppTestBase {
 
-	private static final int MAX_FOR_REDUCTION_MODE_TEST = 500000;
+	// takes extremely long...
+//	private static final int MAX_FOR_REDUCTION_MODE_TEST = 500000;
+	private static final int MAX_FOR_REDUCTION_MODE_TEST = 50000;
 
 	@Inject
 	DataRecorder rda;

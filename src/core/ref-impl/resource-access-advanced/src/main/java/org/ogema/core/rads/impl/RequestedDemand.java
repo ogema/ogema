@@ -36,10 +36,10 @@ class RequestedDemand {
 
 	@Override
 	public boolean equals(Object o) {
-		if (!(o instanceof RequestedDemand))
+		if (o== null || !(o instanceof RequestedDemand))
 			return false;
 		final RequestedDemand demand = (RequestedDemand) o;
-		return (demand.m_pattern == m_pattern && demand.m_listener == m_listener);
+		return (demand.m_pattern == m_pattern && demand.m_listener.equals(m_listener));
 	}
 
 	@Override
@@ -53,4 +53,5 @@ class RequestedDemand {
 	public boolean demandsPattern(Class<? extends ResourcePattern<?>> pattern) {
 		return m_pattern.equals(pattern);
 	}
+	
 }

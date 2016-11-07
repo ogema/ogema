@@ -15,10 +15,6 @@
  */
 package org.ogema.resourcemanager.impl.test;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.ops4j.pax.exam.Constants;
-
 /**
  *
  * @author jlapp

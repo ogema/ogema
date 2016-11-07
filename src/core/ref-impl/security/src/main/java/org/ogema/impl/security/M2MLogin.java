@@ -55,8 +55,8 @@ public class M2MLogin extends HttpServlet {
 	 * javax.servlet.http.HttpServletResponse)
 	 */
 	@Override
-	synchronized protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException,
-			IOException {
+	synchronized protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+			throws ServletException, IOException {
 		UserAdmin admin = userAdmin;
 		logger.info(req.toString());
 		String usr = req.getParameter("usr");
@@ -77,7 +77,7 @@ public class M2MLogin extends HttpServlet {
 		if (auth) {
 			User user = (User) admin.getRole(usr);
 			Authorization author = admin.getAuthorization(user);
-			SessionAuth sauth = new SessionAuth(author, user, ses);
+			SessionAuth sauth = new SessionAuth(author, permMan.getAccessManager(), ses);
 			ses.setAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME, sauth);
 
 			/*

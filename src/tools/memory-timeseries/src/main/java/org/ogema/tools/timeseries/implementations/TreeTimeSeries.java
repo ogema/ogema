@@ -98,8 +98,6 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 	 * @return Set to all elements in the interval.
 	 */
 	protected SortedSet<SampledValue> getSubset(long t0, long t1) {
-		if (t1 <= t0)
-			return null;
 		final SampledValue from = new SampledValue(null, t0, Quality.BAD);
 		final SampledValue to = new SampledValue(null, t1, Quality.BAD);
 		final SortedSet<SampledValue> result = m_values.subSet(from, to);
@@ -315,6 +313,33 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 
 		return this;
 	}
+	
+	@Override
+	public TreeTimeSeries readWithBoundaries(ReadOnlyTimeSeries schedule, long start, long end) {
+		m_values.clear();
+		setInterpolationMode(schedule.getInterpolationMode());
+		if (end < start)
+			return this;
+		if (end == start) {
+			SampledValue sv = schedule.getValue(start);
+			if (sv != null)
+				m_values.add(new SampledValue(sv));
+			return this;
+		}
+		final List<SampledValue> newValues = schedule.getValues(start, end);
+		if (newValues.isEmpty() || start < newValues.get(0).getTimestamp()) {
+			SampledValue sv = schedule.getValue(start);
+			if (sv != null)
+				m_values.add(new SampledValue(sv));
+		}
+		for (SampledValue value : newValues) {
+			m_values.add(new SampledValue(value));
+		}
+		SampledValue sv = schedule.getValue(end);
+		if (sv != null)
+			m_values.add(new SampledValue(sv));
+		return this;
+	}
 
 	@Override
 	public void shiftTimestamps(long dt) {
@@ -336,6 +361,7 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 	}
 
 	@Override
+    @Deprecated
 	public Long getTimeOfLatestEntry() {
 		return null;
 	}
@@ -361,11 +387,13 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 
 
 	@Override
+    @Deprecated
 	public final boolean addValueSchedule(long startTime, long stepSize, List<Value> values) {
             return replaceValuesFixedStep(startTime, values, stepSize);
 	}
 
 	@Override
+    @Deprecated
 	public final boolean addValueSchedule(long startTime, long stepSize, List<Value> values, long timeOfCalculation) {
             return replaceValuesFixedStep(startTime, values, stepSize, timeOfCalculation);
 	}

@@ -43,6 +43,9 @@ public interface Price extends Data {
 	 * 2: wholesale buying price<br>
 	 * 3: general retail price<br>
 	 * 4: specific customer price for billing<br>
+	 * 5: tariff stage of a multi-rate retail tariff. Note that the time interval or other conditions defining
+	 * when the tariff stage actually applies can be defined by a decorator or by a future extension of the model. At
+	 * the time being the tariff stage should be defined by the name of the price resource.<br>
 	 * 10: grid fees<br>
 	 * 9999: other; greater 10.000: custom values
 	 */

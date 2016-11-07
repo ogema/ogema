@@ -24,14 +24,18 @@ import java.util.Set;
 
 import org.apache.felix.service.command.Descriptor;
 import org.ogema.accesscontrol.PermissionManager;
+import org.ogema.applicationregistry.ApplicationRegistry;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.application.AppID;
 import org.ogema.core.security.AppPermission;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
 
 public class ShellCommands {
-	private PermissionManager permman;
+	private final PermissionManager permman;
+	private final ApplicationRegistry appReg;
+	private final ServiceRegistration<ShellCommands> sr;
 
 	static final String policies_HelpString = "Lists policies as ConditionalPermissionInfo string representation."
 			+ "\n\t-all print the whole list of the of the system policies."
@@ -43,7 +47,14 @@ public class ShellCommands {
 		props.put("osgi.command.scope", "security");
 		props.put("osgi.command.function", new String[] { "policies" });
 		this.permman = permMananger;
-		context.registerService(this.getClass().getName(), this, props);
+		this.appReg = permMananger.getApplicationRegistry();
+		sr = context.registerService(ShellCommands.class, this, props);
+	}
+	
+	public void close() {
+		try {
+			sr.unregister();
+		} catch (Exception e) { /* ignore */ }
 	}
 
 	@Descriptor(policies_HelpString)
@@ -76,7 +87,7 @@ public class ShellCommands {
 
 	public void execute(PrintStream out, PrintStream err) {
 		AppPermission ap = null;
-		List<AdminApplication> apps = permman.getAdminManager().getAllApps();
+		List<AdminApplication> apps = appReg.getAllApps();
 		for (AdminApplication entry : apps) {
 			AppID aidi = entry.getID();
 			if (aidi == null)

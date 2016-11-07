@@ -30,13 +30,14 @@ public class ControllableOnOffPattern extends ResourcePattern<PhysicalElement> {
 		super(match);
 	}
 
-	private BooleanResource stateControl = model.getSubResource("onOffSwitch", OnOffSwitch.class).stateControl(); // FIXME requires that name of the subresource is "onOffSwitch"
+	private final BooleanResource stateControl = model.getSubResource("onOffSwitch", OnOffSwitch.class).stateControl(); // FIXME requires that name of the subresource is "onOffSwitch"
 
 	@Existence(required = CreateMode.OPTIONAL)
-	private BooleanResource stateFeedback = model.getSubResource("onOffSwitch", OnOffSwitch.class).stateFeedback();
+	private final BooleanResource stateFeedback = model.getSubResource("onOffSwitch", OnOffSwitch.class).stateFeedback();
 
-	@Equals(value = 1)
-	private BooleanResource controllable = model.getSubResource("onOffSwitch", OnOffSwitch.class).controllable();
+//	@Equals(value = 1)
+//    @SuppressWarnings("deprecation")
+//	private final BooleanResource controllable = model.getSubResource("onOffSwitch", OnOffSwitch.class).controllable();
 
 	public String getName() {
 		if (model.name().isActive())

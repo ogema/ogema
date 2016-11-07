@@ -16,27 +16,22 @@
 package org.ogema.core.channelmanager;
 
 /**
- * ChannelAccessException relays the Exeption
+ * ChannelAccessException is thrown by the ChannelAccess interface.
+ * It may encapsulate any lower level exception as its cause.
  */
 public class ChannelAccessException extends Exception {
 
 	private static final long serialVersionUID = -3043173064927193401L;
 
-	/**
-	 * Parent Excepiton relay
-	 * 
-	 * @param message
-	 */
 	public ChannelAccessException(String message) {
 		super(message);
 	}
 
-	/**
-	 * Parent Excepiton relay
-	 * 
-	 * @param cause
-	 */
 	public ChannelAccessException(Exception cause) {
 		super(cause);
+	}
+	
+	public ChannelAccessException(String message, Exception cause) {
+		super(message, cause);
 	}
 }

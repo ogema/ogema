@@ -114,7 +114,7 @@ public class ResourcePattern<DemandedModel extends Resource> {
 
 		/**
 		 * The mapping between integers and boolean is as follows: zero is
-		 * interpreted as "false", ever non-zero value is interpreted as "true".
+		 * interpreted as "false", every non-zero value is interpreted as "true".
 		 */
 		int value();
 	}
@@ -137,6 +137,33 @@ public class ResourcePattern<DemandedModel extends Resource> {
 	}
 
 	/**
+	 * 
+	 */
+	@Target(ElementType.FIELD)
+	@Retention(RetentionPolicy.RUNTIME)
+	public @interface ChangeListener {
+
+		/**
+		 * Trigger callbacks on structure changes?<br>
+		 * Default: <code>false</code> 
+		 */
+		boolean structureListener() default false;
+		/**
+		 * Trigger callbacks on value changes? This parameter is ignored on 
+		 * non-@see org.ogema.core.model.ValueResource ValueResources.<br>
+		 * Default: <code>true</code> 
+		 */
+		boolean valueListener() default true;
+		
+		/**
+		 * If true, value change callbacks are executed after a write operation even if the 
+		 * value did not change. If valueListener is false, this parameter is ignored.<br>
+		 * Default: <code>true</code> 
+		 */
+		boolean callOnEveryUpdate() default false;
+	}
+	
+	/**
 	 * Constructor invoked by the framework. All patterns must implement this as
 	 * a public constructor.
 	 *
@@ -157,11 +184,17 @@ public class ResourcePattern<DemandedModel extends Resource> {
 		return true;
 	}
 
+	/**
+	 * @see #equals(Object)
+	 */
 	@Override
 	public int hashCode() {
 		return model.getLocation().hashCode();
 	}
 
+	/**
+	 * Two pattern instances of the same class are equal if their demanded models share the same location.
+	 */
 	@SuppressWarnings("rawtypes")
 	@Override
 	public boolean equals(Object obj) {
@@ -170,5 +203,10 @@ public class ResourcePattern<DemandedModel extends Resource> {
 		if (obj == null || obj.getClass() != this.getClass())
 			return false;
 		return this.model.getLocation().equals(((ResourcePattern) obj).model.getLocation());
+	}
+	
+	@Override
+	public String toString() {
+		return "ResourcePattern " + getClass().getName() + ": " + model.getPath();
 	}
 }

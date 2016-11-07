@@ -69,6 +69,7 @@ public final class AdminPermission extends Permission {
 		}
 	}
 
+    @SuppressWarnings("fallthrough")
 	private int parseActions(String actStr) {
 		// Helper variable to detect if the actions string starts with comma
 		boolean comma = false;

@@ -22,29 +22,36 @@ import java.util.Map;
 
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
+import org.ogema.core.model.ResourceList;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.tools.resourcemanipulator.configurations.ManipulatorConfiguration;
 import org.ogema.tools.resourcemanipulator.configurations.ProgramEnforcer;
+import org.ogema.tools.resourcemanipulator.configurations.ScheduleManagement;
 import org.ogema.tools.resourcemanipulator.configurations.ScheduleSum;
 import org.ogema.tools.resourcemanipulator.configurations.Sum;
 import org.ogema.tools.resourcemanipulator.configurations.Threshold;
 import org.ogema.tools.resourcemanipulator.implementation.ProgramEnforcerImpl;
+import org.ogema.tools.resourcemanipulator.implementation.ScheduleManagementImpl;
 import org.ogema.tools.resourcemanipulator.implementation.ScheduleSumImpl;
 import org.ogema.tools.resourcemanipulator.implementation.SumImpl;
 import org.ogema.tools.resourcemanipulator.implementation.ThresholdConfigurationImpl;
 import org.ogema.tools.resourcemanipulator.implementation.controllers.Controller;
 import org.ogema.tools.resourcemanipulator.implementation.controllers.ProgramEnforcerController;
+import org.ogema.tools.resourcemanipulator.implementation.controllers.ScheduleConfiguration;
+import org.ogema.tools.resourcemanipulator.implementation.controllers.ScheduleManagementController;
 import org.ogema.tools.resourcemanipulator.implementation.controllers.ScheduleSumController;
 import org.ogema.tools.resourcemanipulator.implementation.controllers.SumController;
 import org.ogema.tools.resourcemanipulator.implementation.controllers.ThresholdController;
 import org.ogema.tools.resourcemanipulator.model.CommonConfigurationNode;
 import org.ogema.tools.resourcemanipulator.model.ProgramEnforcerModel;
 import org.ogema.tools.resourcemanipulator.model.ResourceManipulatorModel;
+import org.ogema.tools.resourcemanipulator.model.ScheduleManagementModel;
 import org.ogema.tools.resourcemanipulator.model.ScheduleSumModel;
 import org.ogema.tools.resourcemanipulator.model.SumModel;
 import org.ogema.tools.resourcemanipulator.model.ThresholdModel;
+import org.osgi.framework.Bundle;
 
 /**
  * Implementation of the new approach for the {@link ResourceManipulator}, which
@@ -60,6 +67,8 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
     private final OgemaLogger logger;
     private final String appId;
     private CommonConfigurationNode commonConfigurationNode;
+    // a single controller manages all schedules; it is constructed when needed for the first time
+    private ScheduleManagementController scheduleManagement = null;
 
     private final Map<ResourceManipulatorModel, Controller> controllerMap = new HashMap<>();
 
@@ -68,7 +77,9 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
         resMan = applicationManager.getResourceManagement();
         resAcc = applicationManager.getResourceAccess();
         logger = applicationManager.getLogger();
-        appId = applicationManager.getAppID().getIDString();
+//        appId = applicationManager.getAppID().getIDString(); //this is not even invariant under restart with unchanged configuration
+        Bundle bdl = applicationManager.getAppID().getBundle();
+        appId = bdl.getSymbolicName();
     }
 
 
@@ -81,10 +92,12 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
             final String targetName = "RESOURCE_MANIPULATOR_CONFIGURATIONS";
             final String name = resMan.getUniqueResourceName(targetName);
             commonConfigurationNode = resMan.createResource(name, CommonConfigurationNode.class);
-            commonConfigurationNode.thresholds().create();
-            commonConfigurationNode.programEnforcers().create();
-            commonConfigurationNode.scheduleSums().create();
-            commonConfigurationNode.sums().create();
+            // instead of activating all resource lists immediately, although we might not need them,
+            // we take care to create and activate them upon their first usage; see method #activate below
+//            commonConfigurationNode.thresholds().create();
+//            commonConfigurationNode.programEnforcers().create();
+//            commonConfigurationNode.scheduleSums().create();
+//            commonConfigurationNode.sums().create();
             commonConfigurationNode.activate(true);
         } else if (existingNodes.size() == 1) {
             commonConfigurationNode = existingNodes.get(0);
@@ -135,6 +148,9 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
         if(type == Sum.class) {
         	return (T) new SumImpl(this);
         }
+        if (type == ScheduleManagement.class) {
+        	return (T) new ScheduleManagementImpl(this,appMan);
+        }
         throw new UnsupportedOperationException("Cannot create an instance for unknown or un-implemented configuration type " + type.getName());
     }
 
@@ -154,14 +170,18 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
             for (ScheduleSum config : getConfigurations(ScheduleSum.class)) {
                 result.add( (T) config);
             }
-            for (ScheduleSum config : getConfigurations(ScheduleSum.class)) {
+            for (Sum config : getConfigurations(Sum.class)) {
                 result.add( (T) config);
+            }
+            for (ScheduleManagement config : getConfigurations(ScheduleManagement.class)) {
+            	result.add((T) config); 
             }
             return result;
         }
         
         if (type == Threshold.class) {
-            final List<ThresholdModel> configurations = commonConfigurationNode.thresholds().getAllElements();
+            final List<ThresholdModel> configurations = commonConfigurationNode.thresholds()
+            		.<ResourceList<ThresholdModel>> create().getAllElements();
             final List<T> result = new ArrayList<>(configurations.size());
             for (ThresholdModel configuration : configurations) {
                 final String appTag = configuration.application().getValue();
@@ -176,7 +196,8 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
         }
         
         if (type == ProgramEnforcer.class) {
-            final List<ProgramEnforcerModel> configurations = commonConfigurationNode.programEnforcers().getAllElements();
+            final List<ProgramEnforcerModel> configurations = commonConfigurationNode.programEnforcers()
+            		.<ResourceList<ProgramEnforcerModel>> create().getAllElements();
             final List<T> result = new ArrayList<>(configurations.size());
             for (ProgramEnforcerModel configuration : configurations) {
                 final String appTag = configuration.application().getValue();
@@ -191,7 +212,8 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
         }
 
         if (type == ScheduleSum.class) {
-            final List<ScheduleSumModel> configurations = commonConfigurationNode.scheduleSums().getAllElements();
+            final List<ScheduleSumModel> configurations = commonConfigurationNode.scheduleSums()
+            		.<ResourceList<ScheduleSumModel>> create().getAllElements();
             final List<T> result = new ArrayList<>(configurations.size());
             for (ScheduleSumModel configuration : configurations) {
                 final String appTag = configuration.application().getValue();
@@ -206,7 +228,8 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
         }
         
         if (type == Sum.class) {
-            final List<SumModel> configurations = commonConfigurationNode.sums().getAllElements();
+            final List<SumModel> configurations = commonConfigurationNode.sums()
+            		.<ResourceList<SumModel>> create().getAllElements();
             final List<T> result = new ArrayList<>(configurations.size());
             for (SumModel configuration : configurations) {
                 final String appTag = configuration.application().getValue();
@@ -216,6 +239,21 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
                     continue;
                 }
                 result.add((T) new SumImpl(this, configuration));
+            }
+            return result;
+        }
+        if (type == ScheduleManagement.class) {
+            final List<ScheduleManagementModel> configurations = commonConfigurationNode.scheduleManagements()
+            			.<ResourceList<ScheduleManagementModel>> create().getAllElements();
+            final List<T> result = new ArrayList<>(configurations.size());
+            for (ScheduleManagementModel configuration : configurations) {
+                final String appTag = configuration.application().getValue();
+                if (!appId.equals(appTag)) continue; // only care about your own configurations.             
+                if (!configuration.isActive()) {
+                    logger.warn("Encountered inactive configuration at "+ configuration.getLocation()+" while parsing the list of configurations. This should not happen (too ofteb), since the ResourceManipulators tool assumes only active configurations. Ignoring the configuration and continuing.");                    
+                    continue;
+                }
+                result.add((T) new ScheduleManagementImpl(this, configuration,appMan));
             }
             return result;
         }
@@ -237,19 +275,30 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
     public <T extends ResourceManipulatorModel> T createResource(Class<T> type) {
         final ResourceManipulatorModel result;
         if (type == ThresholdModel.class) {
+        	activate(commonConfigurationNode.thresholds());
             result = commonConfigurationNode.thresholds().add();
         } else if (type == ProgramEnforcerModel.class) {
+        	activate(commonConfigurationNode.programEnforcers());
             result = commonConfigurationNode.programEnforcers().add();
         } else if (type == ScheduleSumModel.class) {
+        	activate(commonConfigurationNode.scheduleSums());
             result = commonConfigurationNode.scheduleSums().add();
         } else if(type == SumModel.class) {
+        	activate(commonConfigurationNode.sums());
         	result = commonConfigurationNode.sums().add();
+        } else if (type == ScheduleManagementModel.class) {
+        	activate(commonConfigurationNode.scheduleManagements());
+        	result = commonConfigurationNode.scheduleManagements().add();
         } else {
             throw new UnsupportedOperationException("Cannot create a resource instance for unknown or un-implemented configiuration type " + type.getName());
         }
         result.application().create();
         result.application().setValue(appId);
         return (T) result;
+    }
+    
+    private void activate(ResourceList<?> listResource) {
+    	listResource.create().activate(false);
     }
 
     /**
@@ -288,8 +337,13 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
             controller = new ScheduleSumController(appMan, (ScheduleSumModel) configuration);
         } else if (configuration instanceof SumModel) {
         	controller = new SumController(appMan, (SumModel) configuration);
+        } else if (configuration instanceof ScheduleManagementModel) {
+        	if (scheduleManagement == null) // FIXME check if synchronization is needed; presumably not, since this is only called in one single application thread(?)
+        		scheduleManagement = new ScheduleManagementController(appMan);
+        	controller = new ScheduleConfiguration((ScheduleManagementModel) configuration, scheduleManagement, appMan);
         } else {
-            logger.error("Got resource available callback for unknown or unsupported resource manipulator configuration at " + configuration.getLocation() + " which is of type " + configuration.getResourceType().getCanonicalName() + ". Ignoring the callback.");
+            logger.error("Got resource available callback for unknown or unsupported resource manipulator configuration at " 
+            		+ configuration.getLocation() + " which is of type " + configuration.getResourceType().getCanonicalName() + ". Ignoring the callback.");
             return;
         }
 
@@ -310,7 +364,7 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
             existingController.stop();
             logger.debug("Stopped enforcing a manipulator rule of type " + configuration.getResourceType().getCanonicalName());
         } else {
-//            logger.error("Caught a resource unavailabe callback for configuration at " + configuration.getLocation() + " but no controller was assigned to this. Ignoring the callback. Expect that something went really wrong.");
+//            logger.error("Caught a resource unavailabe callback for configurat ion at " + configuration.getLocation() + " but no controller was assigned to this. Ignoring the callback. Expect that something went really wrong.");
         }
     }
 
@@ -318,6 +372,8 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
     public void deleteAllConfigurations() {
         final List<ManipulatorConfiguration> allConfigurations = getConfigurations(ManipulatorConfiguration.class);
         for (ManipulatorConfiguration config : allConfigurations) config.remove();
+        if (scheduleManagement != null)
+        	scheduleManagement.close();
     }
 
 }

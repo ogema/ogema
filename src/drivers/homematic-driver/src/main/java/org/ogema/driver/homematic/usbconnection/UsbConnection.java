@@ -34,6 +34,7 @@ import org.usb4java.LibUsbException;
 import org.usb4java.Transfer;
 import org.usb4java.TransferCallback;
 
+// FIXME event handling thread does not stop immediately on component shutdown
 public class UsbConnection implements IUsbConnection {
 
 	protected volatile Fifo<byte[]> inputFifo;
@@ -181,12 +182,15 @@ public class UsbConnection implements IUsbConnection {
 
 	@Override
 	public void closeConnection() {
-		keepAliveThread.interrupt();
 		keepAlive.stop();
+		keepAliveThread.interrupt();
 		if (usbThread.isAlive()) {
 			usbThread.abort();
 			try {
+				// FIXME this takes too long to wait for in the stop method
+				System.out.println("   waiting for Homematic local device ");
 				usbThread.join();
+				System.out.println("        Homematic local device done");
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -226,10 +230,11 @@ public class UsbConnection implements IUsbConnection {
 			this.abort = true;
 		}
 
+		// can we stop this somehow?
 		@Override
 		public void run() {
 			while (!this.abort && Activator.bundleIsRunning) {
-				int result = LibUsb.handleEventsTimeout(null, 250000000);
+				int result = LibUsb.handleEventsTimeout(null, 3000000);
 				if (result != LibUsb.SUCCESS)
 					logger.error("Unable to handle events %d", result);
 			}

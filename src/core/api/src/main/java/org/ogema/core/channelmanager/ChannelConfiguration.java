@@ -30,7 +30,7 @@ public interface ChannelConfiguration {
 	public static final long LISTEN_FOR_UPDATE = -1;
 
 	/**
-	 * ChannelManager should use driver in command mode, with no periodic reading or listening.
+	 * ChannelManager should use driver in comand mode, with no periodic reading or listening.
 	 */
 	public static final long NO_READ_NO_LISTEN = 0;
 
@@ -66,29 +66,7 @@ public interface ChannelConfiguration {
 
 	/**
 	 * 
-	 * @param samplingPeriodInMs
-	 *            sampling period in Ms - can be set to LISTEN_FOR_UPDATE if the channel manager should not actively
-	 *            poll the driver but instruct the driver to listen and update the channel.
-	 * 
-	 *            A Sampling Period of 0, will be not listen and not reading it's only for sending comands or reading
-	 *            on command. You can use the Variable NO_READ_NO_LISTEN
-	 */
-	public void setSamplingPeriod(long samplingPeriodInMs);
-
-	/**
-	 * 
 	 * @return the Direction of Channel
 	 */
 	public Direction getDirection();
-
-	/**
-	 * Set Direction of the Channel
-	 * 
-	 * @param direction
-	 */
-	public void setDirection(Direction direction);
-
-	/* other properties may be scaling factor, offset, ... */
-	// public void setOffset(float offset);
-	// public void setFactor(float factor);
 }

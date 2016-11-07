@@ -40,7 +40,6 @@ import org.ogema.core.resourcemanager.AccessMode;
 import static org.ogema.core.resourcemanager.AccessMode.EXCLUSIVE;
 import static org.ogema.core.resourcemanager.AccessMode.READ_ONLY;
 import static org.ogema.core.resourcemanager.AccessMode.SHARED;
-
 import org.ogema.core.resourcemanager.AccessModeListener;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.timeseries.InterpolationMode;
@@ -66,7 +65,7 @@ public class AccessModeTest extends OsgiTestBase {
 
 		@Override
 		public void stop(Application.AppStopReason reason) {
-
+			appMan2 = null;
 		}
 
 	};
@@ -264,4 +263,5 @@ public class AccessModeTest extends OsgiTestBase {
 		assertEquals(SHARED, schedule.getAccessMode());
 		assertEquals(SHARED, schedule2.getAccessMode());
 	}
+	
 }

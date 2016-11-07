@@ -35,7 +35,7 @@ import org.ogema.tools.timeseries.api.MemoryTimeSeries;
 import org.ogema.tools.timeseries.implementations.TreeTimeSeries;
 
 /*
- * A schedule that allows to access both to its own schedule values and the log data of its parent resource
+ * A schedule that allows to access both its own schedule values and the log data of its parent resource
  */
 public class HistoricalSchedule extends DefaultSchedule {
 

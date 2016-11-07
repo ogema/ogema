@@ -15,11 +15,19 @@
  */
 package org.ogema.core.rads.listening;
 
+import org.ogema.core.administration.PatternCondition;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.schedule.Schedule;
+import org.ogema.core.model.simple.BooleanResource;
+import org.ogema.core.model.simple.FloatResource;
+import org.ogema.core.model.simple.IntegerResource;
+import org.ogema.core.model.simple.StringResource;
+import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.rads.tools.ResourceFieldInfo;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessModeListener;
+import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureEvent.EventType;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
@@ -31,13 +39,15 @@ import org.ogema.core.resourcemanager.pattern.ResourcePattern.CreateMode;
  * the CompletionListener
  */
 @SuppressWarnings("rawtypes")
-class ConnectedResource {
+class ConnectedResource implements PatternCondition {
 
 	protected final Resource m_resource;
 	private final CompletionListener m_listener;
 	private final ResourceFieldInfo m_info;
 	private final ResourceValueListener<Resource> initValueListener;
 	private final OgemaLogger logger;
+	private final boolean isOptional;
+	private final String name;
 	private boolean equalsAnnotation = false;
 	private boolean listenValue = false;
 	private boolean valueListenerActive = false;
@@ -48,10 +58,12 @@ class ConnectedResource {
 	private boolean accessModeListenerActive = false;
 
 	public ConnectedResource(Resource resource, ResourceFieldInfo info, final CompletionListener listener,
-			final OgemaLogger logger) {
+			final OgemaLogger logger, String name, boolean isOptional) {
 		m_resource = resource;
 		m_info = info;
 		m_listener = listener;
+		this.name = name;
+		this.isOptional = isOptional;
 		this.logger = logger;
 		// this listener is used to check both @Equals and @ValueChangedListener annotations
 		initValueListener = new ResourceValueListener<Resource>() {
@@ -107,6 +119,7 @@ class ConnectedResource {
 		m_resource.removeStructureListener(structureListener);
 		accessModeListenerActive = false;
 		m_resource.removeAccessModeListener(accessListener);
+		m_resource.requestAccessMode(AccessMode.READ_ONLY, AccessPriority.PRIO_LOWEST);
 		if (m_info.isEqualityRequired()) {
 			//System.out.println("   Removing value listener " + m_resource.getLocation());
 			//m_resource.removeValueListener(valueListener);
@@ -187,6 +200,7 @@ class ConnectedResource {
 
 		@Override
 		public void resourceStructureChanged(ResourceStructureEvent event) {
+            logger.trace("connected resource structure callback: {}", event);
 			if (!structureListenerActive) {
 				logger.warn("Structure callback received although listener has been deregistered");
 				return;
@@ -247,10 +261,6 @@ class ConnectedResource {
 		return true;
 	}
 
-	public final boolean isComplete() {
-		return m_complete;
-	}
-
 	public final boolean isRequired() {
 		return (m_info.getCreateMode() == CreateMode.MUST_EXIST);
 	}
@@ -258,5 +268,78 @@ class ConnectedResource {
 	public final boolean requiresValueListener() {
 		return m_info.requiresValueListener();
 	}
+	
+	@Override
+	public final boolean isSatisfied() {
+		return m_complete;
+	}
+
+	@Override
+	public Class<? extends Resource> getResourceType() {
+		return m_resource.getResourceType();
+	}
+
+	@Override
+	public boolean exists() {
+		return m_resource.exists();
+	}
+
+	@Override
+	public boolean isActive() {
+		return m_resource.isActive();
+	}
+
+	@Override
+	public boolean isReference() {
+		return m_resource.isReference(true);
+	}
+
+	@Override
+	public String getPath() {
+		return m_resource.getPath();
+	}
+
+	@Override
+	public String getLocation() {
+		return m_resource.getLocation();
+	}
+
+	@Override
+	public Object getValue() {
+		if (m_resource instanceof StringResource)
+			return ((StringResource) m_resource).getValue();
+		else if (m_resource instanceof FloatResource)
+			return ((FloatResource) m_resource).getValue();
+		else if (m_resource instanceof BooleanResource)
+			return ((BooleanResource) m_resource).getValue();
+		else if (m_resource instanceof IntegerResource)
+			return ((IntegerResource) m_resource).getValue();
+		else if (m_resource instanceof TimeResource)
+			return ((TimeResource) m_resource).getValue();
+		else if (m_resource instanceof Schedule) 
+			return ((Schedule) m_resource).getValues(0).size() + " schedule values";
+		return null;
+	}
+
+	@Override
+	public boolean isOptional() {
+		return isOptional;
+	}
+
+	@Override
+	public AccessMode getAccessMode() {
+		return m_resource.getAccessMode();
+	}
+
+	@Override
+	public String getFieldName() {
+		return name;
+	}
+
+    @Override
+    public String toString() {
+        return String.format("%s: %s (optional: %b, active: %b, required: %b)",
+                getFieldName(), getPath(), isOptional(), isActive(), isRequired());
+    }
 
 }

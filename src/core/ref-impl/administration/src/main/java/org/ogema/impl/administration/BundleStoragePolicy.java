@@ -91,7 +91,7 @@ public class BundleStoragePolicy extends BundleTracker<Bundle> implements Bundle
 			log("Bundle update ", bundle, event);
 			return null;
 		}
-		int sl = (int) level.getStartLevel();
+		int sl = level.getStartLevel();
 		if (sl >= minStartLevel && !isURP) {
 			if (event.getType() == BundleEvent.INSTALLED)
 				constructStorageArea(bundle);

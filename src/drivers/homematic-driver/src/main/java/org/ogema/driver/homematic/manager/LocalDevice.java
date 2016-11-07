@@ -180,6 +180,7 @@ public class LocalDevice {
 
 		closeUsbConnection();
 		inputHandler.stop();
+		inputHandlerThread.interrupt();
 	}
 
 	public void saveDeviceConfig() {

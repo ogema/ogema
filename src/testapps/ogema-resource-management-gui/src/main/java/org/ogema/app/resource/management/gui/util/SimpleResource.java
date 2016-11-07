@@ -25,6 +25,7 @@ public class SimpleResource extends ResourceBean {
 	 * 
 	 */
 
+	@SuppressWarnings("unused")
 	private int size;
 
 	public SimpleResource(String name, Object value) {

@@ -53,8 +53,8 @@ public class Servlet extends HttpServlet implements Application {
 		this.wam.unregisterWebResource(Constants.SERVLET_PATH);
 	}
 
-	synchronized public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException,
-			IOException {
+	synchronized public void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 		String pi = request.getPathInfo();
 		response.setContentType("text/script");
 		OutputStream bout = response.getOutputStream();
@@ -71,15 +71,20 @@ public class Servlet extends HttpServlet implements Application {
 		}
 	}
 
-	synchronized public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException,
-			IOException {
+	synchronized public void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 		String pi = request.getPathInfo();
 		response.setContentType("text/script");
 		OutputStream bout = response.getOutputStream();
 		switch (pi) {
 		case "/setResource4Sensor":
-			String result = rooms.setResource4Sensor(request.getParameter("roomId"), request
-					.getParameter("resourcePath"), request.getParameter("sensor"));
+			String result = null;
+			try {
+				result = rooms.setResource4Sensor(request.getParameter("roomId"), request.getParameter("resourcePath"),
+						request.getParameter("sensor"));
+			} catch (Throwable t) {
+				bout.write(t.getMessage().getBytes());
+			}
 			bout.write(result.getBytes());
 			break;
 		case "/resetRoomSensors":

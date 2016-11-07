@@ -35,7 +35,8 @@ function room2() {
 				tInnen = data.tempIn;
 				fInnen = data.rhIn;
 				if (tInnen != undefined) {
-					tInnen = Math.round(tInnen);
+					tInnen = Math.round(tInnen*10)/10;
+					fInnen = Math.round(fInnen*100);
 				}
 				draw();
 			});

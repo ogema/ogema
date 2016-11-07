@@ -11,7 +11,7 @@ ngOGFrAdminApp.controller('getUserListCtrl', ['$scope', 'ogemaGateway', '$rootSc
         $scope.newUserIsNatural = true;
         $scope.newUserName = "";
         $scope.newUserPwd = "";
-
+		$scope.oldPwdForUser = "";
 
         $scope.oldUser = undefined;
         $scope.newUser = "";
@@ -195,13 +195,13 @@ ngOGFrAdminApp.controller('getUserListCtrl', ['$scope', 'ogemaGateway', '$rootSc
             }
         }
 
-        $scope.changePassword = function (user, pwd) {
+        $scope.changePassword = function (user, oldpwd, pwd) {
         //    console.log("changePassword", user, pwd);
 
             var path = "/apps/ogema/frameworkadminuser/changePassword";
 
             if (user != "" && pwd != "") {
-                ogemaGateway.postData(path, {user: user, pwd: pwd}).then(function (result) {
+                ogemaGateway.postData(path, {user: user, oldpwd: oldpwd, pwd: pwd}).then(function (result) {
                 //    console.log("RESULT", result)
                     $scope.initUser();
                 });

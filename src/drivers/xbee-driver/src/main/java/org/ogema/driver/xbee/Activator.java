@@ -19,7 +19,7 @@ import java.util.Map;
 
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Reference;
-import org.ogema.core.channelmanager.ChannelAccess;
+//import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.hardwaremanager.HardwareManager;
 import org.osgi.framework.BundleContext;
@@ -32,12 +32,10 @@ public class Activator {
 
 	@Reference
 	private HardwareManager hardwareManager;
-	@Reference(bind = "setChannelAccess")
-	protected ChannelAccess channelAccess;
 
 	public void activate(BundleContext context, Map<String, Object> config) throws Exception {
 
-		this.driver = new XBeeDriver(channelAccess, hardwareManager);
+		this.driver = new XBeeDriver(hardwareManager);
 
 		new ShellCommands(driver, context, hardwareManager);
 
@@ -52,9 +50,5 @@ public class Activator {
 
 	public HardwareManager getHardwareManager() {
 		return hardwareManager;
-	}
-
-	protected void setChannelAccess(ChannelAccess ca) {
-		this.channelAccess = ca;
 	}
 }

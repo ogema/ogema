@@ -15,6 +15,8 @@
  */
 package org.ogema.serialization;
 
+import java.util.Collection;
+
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.array.ArrayResource;
@@ -56,11 +58,16 @@ public class JaxbFactory {
 		return createJaxbSchedule(schedule, status, t0, t1);
 	}
 
+	public static JaxbResourceCollection createJaxbResources(Collection<Resource> resources, SerializationManager manager) {
+		final SerializationStatus status = new SerializationStatus(manager);
+		return createJaxbResources(resources, status);
+	}
+	
 	/**
 	 * Creates a {@link JaxbResource} wrapper for an OGEMA resource.
 	 */
 	@SuppressWarnings("deprecation")
-	static JaxbResource createJaxbResource(Resource resource, SerializationStatus status) {
+	public static JaxbResource createJaxbResource(Resource resource, SerializationStatus status) {
 		if (resource instanceof SingleValueResource) {
 			if (resource instanceof BooleanResource) {
 				return new JaxbBoolean((BooleanResource) resource, status);
@@ -136,5 +143,9 @@ public class JaxbFactory {
 			return new TimeSchedule(schedule, status, t0, t1);
 		}
 		throw new UnsupportedOperationException("Cannot serialize schedule: unsupported type: " + parent);
+	}
+	
+	private static JaxbResourceCollection createJaxbResources(Collection<Resource> resources, SerializationStatus status) {
+		return new JaxbResourceCollection(resources,status);
 	}
 }

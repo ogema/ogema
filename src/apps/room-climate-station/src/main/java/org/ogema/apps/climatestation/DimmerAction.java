@@ -18,10 +18,10 @@ package org.ogema.apps.climatestation;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
-import org.ogema.core.resourcemanager.ResourceListener;
 import org.ogema.model.devices.buildingtechnology.ElectricDimmer;
 
-public class DimmerAction implements ResourceListener {
+@SuppressWarnings("deprecation")
+public class DimmerAction implements org.ogema.core.resourcemanager.ResourceListener {
 
 	FloatResource control, feedback;
 
@@ -36,6 +36,7 @@ public class DimmerAction implements ResourceListener {
 		dimmerThread.start();
 	}
 
+    @SuppressWarnings("deprecation")
 	public void setSource(BooleanResource swtch) {
 		swtch.addResourceListener(this, true);
 	}

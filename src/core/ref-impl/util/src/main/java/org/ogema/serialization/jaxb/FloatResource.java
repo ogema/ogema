@@ -26,7 +26,9 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
-import org.codehaus.jackson.annotate.JsonTypeInfo;
+
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
 import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
 
 /**
@@ -54,8 +56,8 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
  * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "FloatResource", propOrder = { "value", "unit" })
-@XmlRootElement(name = "float", namespace = NS_OGEMA_REST)
+@XmlType(name = "FloatResource", namespace = NS_OGEMA_REST, propOrder = { "value", "unit" })
+//@XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY)
 public class FloatResource extends Resource {
 

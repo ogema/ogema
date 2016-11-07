@@ -21,7 +21,7 @@ import org.ogema.model.devices.generators.HeatPump;
 import org.ogema.model.sensors.TemperatureSensor;
 
 /**
- * Air conditioning operating on a thermal thermalConnection. In principle, the device
+ * Air conditioning operating on a thermalConnection. In principle, the device
  can operate in both directions on the thermalConnection. Usually, air conditioners
  have a target room/location whose temperature they are intended to control.
  This should be the {@link ThermalConnection#output() } of the thermalConnection, 

@@ -16,7 +16,6 @@
 package org.ogema.app.webresman;
 
 import java.util.Collection;
-import java.util.Map;
 
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxEventBehavior;
@@ -57,7 +56,9 @@ public class ResourceTypeContentPanel extends ApplicationPanel {
 				// target.appendJavaScript("alert('onClick');");
 				Collection<? extends Component> components = target.getComponents();
 				for (Component c : components) {
+					@SuppressWarnings("unused")
 					String ajaxRegionMarkupId = c.getAjaxRegionMarkupId();
+					@SuppressWarnings("unused")
 					String markupId = c.getMarkupId();
 					// System.out.println(ajaxRegionMarkupId + " " + markupId);
 				}
