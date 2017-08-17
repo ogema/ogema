@@ -15,6 +15,9 @@
  */
 package org.ogema.core.model.array;
 
+import org.ogema.core.resourcemanager.ResourceAccessException;
+import org.ogema.core.resourcemanager.VirtualResourceException;
+
 /**
  * Resource type representing an array of bytes. This can also be used to
  * represent files, images, ... .
@@ -38,6 +41,22 @@ public interface ByteArrayResource extends ArrayResource {
 	 * @return returns true if the values could be written, false if not (e.g. if access mode is read-only).	 	 
 	 */
 	boolean setValues(byte[] values);
+	
+	/**
+	 * Atomically sets to the given values and returns the previous values.
+	 * 
+	 * @param values
+	 * 		the new values to be set
+	 * @return
+	 * 		the previous values
+	 * @throws VirtualResourceException
+	 * 		if the resource is virtual
+	 * @throws SecurityException
+	 * 		if the caller does not have the read and write permission for this resource
+	 * @throws ResourceAccessException 
+	 * 		if access mode is read-only
+	 */
+	byte[] getAndSet(byte[] values) throws VirtualResourceException, SecurityException, ResourceAccessException;
 
 	/**
 	 * Gets the value of a single element in the array.

@@ -15,6 +15,8 @@
  */
 package org.ogema.accesscontrol;
 
+import java.security.SecureRandom;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -34,9 +36,14 @@ public class SessionAuth implements HttpSessionBindingListener {
 	Authorization auth;
 	HttpSession ses;
 
-	ConcurrentHashMap<String, String> otpList;
+	Map<String, String> otpList;
 
-	public ConcurrentHashMap<String, String> getOtpList() {
+		/**
+		 * Returns a live view of the otp list
+		 * @return
+		 * 	a concurrent map
+		 */
+	public Map<String, String> getOtpList() {
 		return otpList;
 	}
 
@@ -44,9 +51,9 @@ public class SessionAuth implements HttpSessionBindingListener {
 	// User usr;
 	private AccessManager accMngr;
 
-	//public User getUsr() {
-	//	return usr;
-	//}
+	// public User getUsr() {
+	// return usr;
+	// }
 
 	static Random rnd;
 
@@ -60,14 +67,14 @@ public class SessionAuth implements HttpSessionBindingListener {
 
 	@Override
 	public void valueBound(HttpSessionBindingEvent arg0) {
-//		String id = ses.getId();
-//		logger.info("Session binding event: bound " + id);
+		// String id = ses.getId();
+		// logger.info("Session binding event: bound " + id);
 	}
 
 	@Override
 	public void valueUnbound(HttpSessionBindingEvent arg0) {
 		String id = ses.getId();
-		logger.info("Session binding event: unbound " + id);
+		logger.info("Session binding event: unbound {}", id);
 		accMngr.logout(auth.getName());
 	}
 
@@ -75,18 +82,18 @@ public class SessionAuth implements HttpSessionBindingListener {
 		/*
 		 * Register each app and one time password. This is to be verified in RestAccess servlet.
 		 */
-
-		String otp = otpList.get(app);
+		String appId = app.getIDString();
+		String otp = otpList.get(appId);
 
 		if (otp == null) {
 			otp = Long.toHexString(rnd.nextLong());
-			otpList.put(app.getIDString(), otp);
+			otpList.put(appId, otp);
 		}
 		return otp;
 	}
 
 	static {
-		rnd = new Random(System.currentTimeMillis());
+		rnd = new SecureRandom();
 	}
 
 	public String getName() {

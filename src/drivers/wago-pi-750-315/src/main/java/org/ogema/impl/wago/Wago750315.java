@@ -2,7 +2,8 @@ package org.ogema.impl.wago;
 
 import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.ChannelConfiguration;
-import org.ogema.core.channelmanager.ChannelConfigurationException;
+import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
+import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.model.Resource;
@@ -143,18 +144,17 @@ public class Wago750315 implements ProcessImage, BusCoupler {
 	public void prepareChannel(IO io, int period, Resource res) {
 		DeviceLocator deviceLocator;
 
-		deviceLocator = channelAccess.getDeviceLocator(DRIVER_ID, iface, devAddr, deviceParameters);
+		deviceLocator = new DeviceLocator(DRIVER_ID, iface, devAddr, deviceParameters);
 		int regAddr = io.getWordOffset();
 		String channelAddr = "reg:" + regAddr;
-		ChannelLocator cl = channelAccess.getChannelLocator(channelAddr, deviceLocator);
-		ChannelConfiguration cfg = channelAccess.getChannelConfiguration(cl);
-		cfg.setSamplingPeriod(-1);
+		ChannelLocator cl = new ChannelLocator(channelAddr, deviceLocator);
+		ChannelConfiguration cfg = null;
 		try {
-			channelAccess.addChannel(cfg);
-		} catch (ChannelConfigurationException e) {
+			cfg = channelAccess.addChannel(cl, Direction.DIRECTION_INOUT, -1);
+		} catch (ChannelAccessException e) {
 			Activator.logger.info(e.getMessage());
 		}
-		io.setChannel(channelAccess, cl, res);
+		io.setChannel(channelAccess, cfg, res);
 	}
 
 	@Override

@@ -17,6 +17,7 @@ package org.ogema.tools.resourcemanipulator.trashcan;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.StringResource;
+import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.tools.resourcemanipulator.model.ResourceManipulatorModel;
 
@@ -27,6 +28,8 @@ import org.ogema.tools.resourcemanipulator.model.ResourceManipulatorModel;
 public class ResourceManipulatorPattern<CONFIGURATION extends ResourceManipulatorModel> extends
 		ResourcePattern<CONFIGURATION> {
 
+	// should not be changeable
+	@Access(mode=AccessMode.EXCLUSIVE, required=true)
 	public final StringResource application = model.application();
 
 	public ResourceManipulatorPattern(Resource res) {

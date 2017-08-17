@@ -20,12 +20,12 @@ $(function() {
 		$("#marketLogin").html("Marketplace "+curStore);
 		/**
 		 * get json data (apps for the current store) and put them in dialog
-		 * 
+		 *
 		 * @param {String}
 		 *            curStore Current appstore
 		 */
 		$.getJSON(
-				"/security/config/apps?name=" + curStore,
+				"/security/config/apps?name=" + curStore+"&user=" + otusr + "&pw=" + otpwd,
 				function(json) {
 
 					for (var v = 0; v < json.apps.length; v++) {
@@ -52,13 +52,13 @@ $(function() {
 					$("div.portlet-header>span").removeClass("ui-icon");
 
 					$("div#sortableNewApps").append("<ul id='contextMenu'><li onclick='install()'>Install Bundle</li></ul>")
-					
+
 					$("#contextMenu").menu({
 						select: function(event, ui){
 						$("#contextMenu").hide();
 						}
 					});
-						
+
 					$("div.portlet-header").dblclick(function() {
 						$("div.portlet-header").removeClass("selectedPortlet");
 						$(this).addClass("selectedPortlet");
@@ -76,7 +76,7 @@ $(function() {
 						$("#contextMenu").hide();
 						$("#contextMenu").removeData();
 					});
-					
+
 
 					$(".portlet-header").on("contextmenu", function (event) {
 						$("div.portlet-header").removeClass("selectedPortlet");
@@ -86,8 +86,8 @@ $(function() {
 				        	collision: "none",
 				            my: "left top",
 				            of: event
-				        });	        	        
-				        return false;	       
+				        });
+				        return false;
 				    });
 
 					$("#sysApps").click(function() {
@@ -95,7 +95,7 @@ $(function() {
 						$("#contextMenu").removeData();
 					});
 
-					
+
 				})
 		// if there are no apps, so no ajax possible
 		.fail(function() {
@@ -124,9 +124,9 @@ function loginRequired(){
 function submitLogin(){
 	var user = $("#user").val();
 	var pwd = $("#password").val();
-	
-	$.post("/security/config/appstorelogin?user="+user+"&store="+curStore+"&pwd="+pwd,{
-		
+
+	$.post("/security/config/appstorelogin?usr="+user+"&store="+curStore+"&pwd="+pwd +"&user=" + otusr + "&pw=" + otpwd,{
+
 	}, function(data, status){
 		if(data=="Success"){
 			$("#sysApps").show();
@@ -143,7 +143,7 @@ function submitLogin(){
 			alert("Error.");
 		}
 	});
-	
+
 }
 
 
@@ -153,7 +153,7 @@ function emptyDia(obj) {
 
 /**
  * Get the url subquery.
- * 
+ *
  * @return {Array} vals Array of subquery values
  */
 function getUrlVals() {
@@ -170,7 +170,7 @@ function getUrlVals() {
 
 /**
  * Take permission-JSON-string and extract the permission-name.
- * 
+ *
  * @param {String}
  *            permStr Permission-JSON-String from server.
  * @return {String} name Name in this permission-JSON-string.
@@ -191,7 +191,7 @@ function getPermName(permStr) {
 
 /**
  * Get permission resource/filter.
- * 
+ *
  * @param {String}
  *            permStr Permission-JSON-string from server.
  * @return {String} resource Resource/filter in this permission-JSON-string.
@@ -224,7 +224,7 @@ function getPermResource(permStr) {
 
 /**
  * Get permission action(s).
- * 
+ *
  * @param {String}
  *            permStr Permission-JSON-string from server.
  * @return {String} methods Method(s)/actions(s) in this permission-JSON-string.
@@ -279,14 +279,14 @@ function install(){
 // open the dialog for the app and get data
 /**
  * Open the dialog with permissions in it for the chosen app.
- * 
+ *
  * @param {number}
  *            rowNum rownumber/appnumber of the chosen app.
  */
 function openDia(store, app) {
 	/**
 	 * Get the Permissions to fill in the dialog of this app.
-	 * 
+	 *
 	 * @param {number}
 	 *            rowNum rownumber/appnumber of the current chosen app.
 	 */
@@ -294,12 +294,12 @@ function openDia(store, app) {
 	{
 		/**
 		 * get permission-JSON-data for the current appstore and the chosen app.
-		 * 
+		 *
 		 * @param {String}
 		 *            "/security/config/app?appstore=" + curStore + "&name=" +
 		 *            appName appstore and appname.
 		 */
-		$.getJSON("/security/config/app?appstore=" + store + "&name=" + app, function(json, xhr) {
+		$.getJSON("/security/config/app?appstore=" + store + "&name=" + app+"&user=" + otusr + "&pw=" + otpwd, function(json, xhr) {
 			installPermsByID(json.id);
 		}).fail(function(jqXHR, textStatus, error) {
 			var err = textStatus + ", " + error;
@@ -311,7 +311,7 @@ function openDia(store, app) {
 
 /**
  * Clears the dialog, so permissions can be filled in again without doubling.
- * 
+ *
  * @param {number}
  *            dialogNum Dialog number.
  */
@@ -321,7 +321,7 @@ function clearDia(dialogId) {
 
 /**
  * Highlight a single checkbox. Executed when a childbox gets changed.
- * 
+ *
  * @param {number}
  *            num For identifying single box.
  */

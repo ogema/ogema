@@ -8,7 +8,7 @@ $(document).ready(function() {
 });
 
 function getLLDrivers() {
-	$.getJSON("/servlet/showAllLLDrivers", requestLLDrivers);
+	$.getJSON("/servlet/showAllLLDrivers?user=" + otusr + "&pw=" + otpwd, requestLLDrivers);
 }
 
 function requestLLDrivers(data) {
@@ -30,7 +30,7 @@ function requestLLDrivers(data) {
 }
 
 function getHLDrivers() {
-	$.getJSON("/servlet/showAllHLDrivers", requestHLDrivers);
+	$.getJSON("/servlet/showAllHLDrivers?user=" + otusr + "&pw=" + otpwd, requestHLDrivers);
 }
 
 function requestHLDrivers(data) {
@@ -83,7 +83,7 @@ function getData(dataRequested) {
 
 	// devices
 	if (dataRequested == "devices") {
-		$.getJSON("/servlet/showN?llDriverId="
+		$.getJSON("/servlet/showN?user=" + otusr + "&pw=" + otpwd + "&llDriverId="
 				+ llDrivers[activeLLDriverIndex].llDriverId, showNetwork);
 		// $.getJSON()
 	}
@@ -91,7 +91,7 @@ function getData(dataRequested) {
 	// channels
 	if (dataRequested == "channels") {
 
-		$.getJSON("/servlet/showACC?llDriverId="
+		$.getJSON("/servlet/showACC?user=" + otusr + "&pw=" + otpwd + "&llDriverId="
 				+ llDrivers[activeLLDriverIndex].llDriverId,
 				function(data) {
 
@@ -108,17 +108,17 @@ function getData(dataRequested) {
 	// device scan
 	if (dataRequested == "deviceScan") {
 
-		$.getJSON("/servlet/scan?llDriverId="
+		$.getJSON("/servlet/scan?user=" + otusr + "&pw=" + otpwd + "&llDriverId="
 				+ llDrivers[activeLLDriverIndex].llDriverId, function(data) {
 			$("#deviceScan").html("");
 			$("#deviceScan").append(data.status);
 		});
 	}
-	
+
 	//caching devices
 		if (dataRequested == "cacheDevices") {
 
-			$.getJSON("/servlet/cache?llDriverId="
+			$.getJSON("/servlet/cache?user=" + otusr + "&pw=" + otpwd + "&llDriverId="
 					+ llDrivers[activeLLDriverIndex].llDriverId, function(data) {
 						$("#cacheDevices").html("");
 						$("#cacheDevices").append(data.status);
@@ -131,7 +131,7 @@ function getData(dataRequested) {
 		$("#jsTree_Resources").html("");
 		showResources();
 	}
-	
+
 	return true;
 
 } // end function getData(dataRequested)
@@ -305,7 +305,7 @@ function showResources() {
 							"stripes" : true
 						},
 						'data' : {
-							"url" : "/service/resourceview",
+							"url" : "/service/resourceview?user="+otusr+"&pw="+otpwd,
 							'data' : function(node) {
 								return {
 									'id' : node.id,
@@ -342,7 +342,7 @@ function showResources() {
 								$
 										.getJSON(
 												"/service/resourcevalue?id="
-														+ currentNode,
+														+ currentNode + "&user=" + otusr + "&pw=" + otpwd,
 												function(json) {
 
 													var curNodeId;
@@ -444,7 +444,7 @@ function append_showCD_Data(interfaceId, device, endpoint, device_id,
 
 	$
 			.getJSON(
-					"/servlet/showCD?llDriverId="
+					"/servlet/showCD?user=" + otusr + "&pw=" + otpwd + "&llDriverId="
 							+ llDrivers[activeLLDriverIndex].llDriverId
 							+ "&interfaceId=" + interfaceId + "&device="
 							+ device + "&endpoint=" + endpoint + "&clusterId="
@@ -870,7 +870,7 @@ function append_showCD_Data(interfaceId, device, endpoint, device_id,
 } // end append_showCD_Data()
 
 function writeResource(resourceId) {
-	$.post("/service/writeresource?resourceId=" + resourceId + "&"
+	$.post("/service/writeresource?user=" + otusr + "&pw=" + otpwd + "&resourceId=" + resourceId + "&"
 			+ "writeValue=" + $("#inputnode").val());
 }
 
@@ -883,7 +883,7 @@ function createChannel(interfaceId, device, device_id, channel, timeout, name,
 			+ '"' + timeout + '"' + "," + '"resourceName":' + '"' + name + '"'
 			+ "," + '"deviceID":' + '"' + device_id + '"' + '}'
 
-	$.post("/servlet/createC?hlDriverId=" + $("#" + select_id).val(), {
+	$.post("/servlet/createC?user=" + otusr + "&pw=" + otpwd + "&hlDriverId=" + $("#" + select_id).val(), {
 		config_data_json : "" + config_data_json
 	});
 }
@@ -894,7 +894,7 @@ function deleteChannel(interfaceId, device, channel, endpoint, select_id) {
 			+ '"deviceAddress":' + '"' + device + ':' + endpoint + '"' + ","
 			+ '"channelAddress":' + '"' + channel + '"' + '}'
 
-	$.post("/servlet/deleteC?hlDriverId=" + $("#" + select_id).val(), {
+	$.post("/servlet/deleteC?user=" + otusr + "&pw=" + otpwd+ "&hlDriverId=" + $("#" + select_id).val(), {
 		config_data_json : "" + config_data_json
 	});
 }
@@ -907,7 +907,7 @@ function writeChannel(interfaceId, device, channel, endpoint, input_id,
 			+ '"channelAddress":' + '"' + channel + '"' + "," + '"writeValue":'
 			+ '"' + $("#" + input_id).val() + '"' + '}'
 
-	$.post("/servlet/writeC?hlDriverId=" + $("#" + select_id).val(), {
+	$.post("/servlet/writeC?user=" + otusr + "&pw=" + otpwd+ "&hlDriverId=" + $("#" + select_id).val(), {
 		config_data_json : "" + config_data_json
 	});
 }
@@ -919,7 +919,7 @@ function readChannel(interfaceId, device, channel, endpoint,
 			+ '"deviceAddress":' + '"' + device + ':' + endpoint + '"' + ","
 			+ '"channelAddress":' + '"' + channel + '"' + '}'
 
-	$.getJSON("/servlet/readC?hlDriverId=" + $("#" + select_id).val(), {
+	$.getJSON("/servlet/readC?user=" + otusr + "&pw=" + otpwd+ "&hlDriverId=" + $("#" + select_id).val(), {
 		config_data_json : "" + config_data_json
 	}, function(data) {
 		$("#" + input_attr_readonly_id).val(data.value);
@@ -948,7 +948,7 @@ function chooseHLDriver(id, driverChosen) {
 	var numberForDeviceAdd = idNumber.slice(0, 1);
 	var deviceAdd = $("#" + tech + "_head" + numberForDeviceAdd).text();
 
-	$.getJSON("/servlet/showCC?hlDriverid=" + driverChosen + "&deviceAddress="
+	$.getJSON("/servlet/showCC?user=" + otusr + "&pw=" + otpwd+ "&hlDriverid=" + driverChosen + "&deviceAddress="
 			+ deviceAdd, function(json) {
 		console.log(json);
 		$("#" + tech + "_chanStatus_" + idNumber).html(bspStatus);

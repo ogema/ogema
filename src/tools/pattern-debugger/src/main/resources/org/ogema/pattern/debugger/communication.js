@@ -1,12 +1,19 @@
 var servletPath = "/org/ogema/tools/pattern-debugger/servlet";
 //var appsServletPath = "/apps/ogema/framework/gui/installedapps?action=listAll";
-// FIXME this will fail if the OTP is activated
-var appsServletPath = "/install/installedapps"+"?action=listAll&user="+otusr+"&pw="+otpwd;
+var usr,pw;
+if (typeof otusr !== "undefined")
+	usr = otusr;
+else
+	usr = "guest";
+if (typeof otpwd !== "undefined")
+	pw = otpwd;
+else
+	pw = "guest";
+var appsServletPath = "/install/installedapps"+"?action=listAll&user="+usr+"&pw="+pw;
 
-;
 // callback should have two arguments, data and status
 function sendGET(servlet,callback) {
-    $.get(servlet, callback); 
+    $.get(servlet, callback);
 }
 
 function processGET(data, status) {
@@ -26,7 +33,7 @@ function sendPOST(path, params, successFunction, dataType) {
 		    }
 		}
 	}
-	
+
     $.post(tmp, null, successFunction, dataType);
 }
 
@@ -45,10 +52,10 @@ var buildModal = function(data, status) {
 		var obj =  patterns[path];
 		var satisfied = obj.satisfied;
 		var color = "style=\"color:" + (satisfied ? "green" : "red") + ";\"";
-		list+="<tr " + color + "><td>" + obj.fieldName  + "</td><td>" + path  + "</td><td>" + obj.type + "</td><td>" + obj.optional + "</td><td>" + satisfied + "</td><td>" + 
+		list+="<tr " + color + "><td>" + obj.fieldName  + "</td><td>" + path  + "</td><td>" + obj.type + "</td><td>" + obj.optional + "</td><td>" + satisfied + "</td><td>" +
 			obj.exists+ "</td><td>" + obj.active + "</td><td>" + obj.value + "</td><td>" + obj.accessMode + "</td><td>" + obj.reference + "</td></tr>";
 	});
-	table.html(list); 
+	table.html(list);
 	var title = modal.find("#ModalLabel");
 	title.html("Demanded model: " + data.demandedModel);
 	var header = modal.find("#ModalHeader");
@@ -60,9 +67,9 @@ var getPatternInfo = function(pattern) {
 	var app = $('#appSelector').val();
 	var listener = $('#listenerSelector').val();
 	if (listener === null || typeof listener === "undefined") {
-		return;		
+		return;
 	}
-	sendGET(servletPath + "?target=patternInfo&app=" + app + "&listener=" + listener + "&pattern=" + pattern, buildModal);
+	sendGET(servletPath + "?target=patternInfo&app=" + app + "&listener=" + listener + "&pattern=" + pattern + "&user="+usr+"&pw="+pw, buildModal);
 }
 
 var buildPatternTable = function(data, status) {
@@ -89,9 +96,9 @@ function sendPatternRequest() {
 	if (listener === null || typeof listener === "undefined") {
 		var table = $('#patternTable');
 		table.html("");
-		return;		
+		return;
 	}
-	sendGET(servletPath + "?target=patterns&app=" + app + "&listener=" + listener,buildPatternTable);
+	sendGET(servletPath + "?target=patterns&app=" + app + "&listener=" + listener+ "&user="+usr+"&pw="+pw,buildPatternTable);
 }
 
 

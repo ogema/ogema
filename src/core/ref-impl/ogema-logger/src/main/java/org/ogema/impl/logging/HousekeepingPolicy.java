@@ -63,8 +63,8 @@ public class HousekeepingPolicy extends TimeBasedRollingPolicy<Object> {
 			checkFileSizes();
 			pruneHistory();
 		}
-		triggeringPollicy.setMaxFileSize(size);
 		maxFileSize = FileSize.valueOf(size);
+		triggeringPollicy.setMaxFileSize(maxFileSize);
 		maxFileSizeString = size;
 	}
 
@@ -72,7 +72,9 @@ public class HousekeepingPolicy extends TimeBasedRollingPolicy<Object> {
 		return maxFileSizeString;
 	}
 
-	public void setMaxTotalSize(long size) {
+	// must not be called "setMaxTotalSize", since logback accesses this by reflections,
+	// and mixes it up with the String-arg method below
+	public void setMaxTotalSizeLong(long size) {
 		if (isStarted()) {
 			checkFileSizes();
 			pruneHistory();

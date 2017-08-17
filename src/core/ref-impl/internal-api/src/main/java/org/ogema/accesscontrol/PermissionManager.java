@@ -31,6 +31,7 @@ import org.ogema.core.security.WebAccessManager;
 import org.ogema.resourcetree.TreeElement;
 import org.osgi.framework.Bundle;
 import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
+import org.osgi.service.condpermadmin.ConditionalPermissionUpdate;
 
 /**
  * This class is the entry point to the functionality related to permission handling. It encapsulates the Java/OSGi
@@ -48,8 +49,8 @@ public interface PermissionManager {
 	/**
 	 * Update the policy table of the conditional permission admin. The given AppPermission includes a list of
 	 * AppPermissionTypes where each of them represents a named entry of the policy table. The AppPermission instance is
-	 * obtained by the call to {@link #getPolicies(AppID)}. Multiple entries, positive (permission) or negative(exception),
-	 * should be avoided, in order to prevent negative effects on the performance.
+	 * obtained by the call to {@link #getPolicies(AppID)}. Multiple entries, positive (permission) or
+	 * negative(exception), should be avoided, in order to prevent negative effects on the performance.
 	 *
 	 * @param perm
 	 *            AppPermission that contains the description of the permissions to be granted.
@@ -62,8 +63,8 @@ public interface PermissionManager {
 	 * application.
 	 * 
 	 * @param app
-	 *            The application its policy is requested.
-	 * @return List of descriptions with an entry each granted permission.
+	 *            The application whose policy is requested.
+	 * @return List of descriptions with an entry for each granted permission.
 	 */
 	public AppPermission getPolicies(AppID app);
 
@@ -90,6 +91,17 @@ public interface PermissionManager {
 	 * @return true if the permission is granted, false otherwise.
 	 */
 	public boolean handleSecurity(Permission perm);
+
+	/**
+	 * Checks if the user and all of the user's parents imply the given permission.
+	 * 
+	 * @param user
+	 *            The user to be checked.
+	 * @param perm
+	 *            The permission to be checked.
+	 * @return true if the permission is granted, false otherwise.
+	 */
+	public boolean handleSecurity(String user, Permission perm);
 
 	/**
 	 * Checks if the given access control context contains the permission that implies the given permission.
@@ -127,7 +139,7 @@ public interface PermissionManager {
 	 * @return The object reference.
 	 */
 	public Object getSystemPermissionAdmin();
-	
+
 	/**
 	 * Gets the {@link ApplicationRegistry}.
 	 * 
@@ -240,8 +252,8 @@ public interface PermissionManager {
 	public AccessControlContext getBundleAccessControlContext(Class<?> class1);
 
 	/**
-	 * Removes a permission that was granted to the specified AppID before. The permission to be removed is specified by
-	 * the name of the permission class and the optional parameter filterString and actions.
+	 * Removes a permission that was granted to the specified bundle before. The permission to be removed is specified
+	 * by the name of the permission class and the optional parameter filterString and actions.
 	 *
 	 * @param bundle
 	 *            The bundle its policy should be reduced.
@@ -295,5 +307,34 @@ public interface PermissionManager {
 	 */
 	public boolean isDefaultPolicy(String permType, String filter, String actions);
 
+	/**
+	 * Checks if the framework is started with activated security.
+	 * 
+	 * @return
+	 */
 	public boolean isSecure();
+
+	/**
+	 * Removes a permission that was granted to the specified bundle before. The permission to be removed is specified
+	 * by the name of the permission class and the optional parameter filterString and actions. In case of removing
+	 * multiple permissions this method is more performance than
+	 * {@link PermissionManager#removePermission(Bundle, String, String, String)}. If this method is called multiple
+	 * times for the same bundle the ConditionalPermissionUpdate argument is initialized before the first call and the
+	 * same reference is given each call.
+	 *
+	 * @param cpu
+	 *            The ConditionalPermissionUpdate object
+	 * @param bundle
+	 *            The reference of the bundle, that owns the permission to be removed.
+	 * @param permissionClassName
+	 *            Type of the permission to be removed
+	 * @param filterString
+	 *            The name string of the permission to be removed
+	 * @param actions
+	 *            The actions to be removed from the permission
+	 * @return true, if the reduction of the policy could be achieved by removing of a permission from the policy table
+	 *         or false, if the reduction was achievable by adding of negative policy only.
+	 */
+	public boolean removePermissionManual(ConditionalPermissionUpdate cpu, Bundle bundle, String permissionClassName,
+			String filterString, String actions);
 }

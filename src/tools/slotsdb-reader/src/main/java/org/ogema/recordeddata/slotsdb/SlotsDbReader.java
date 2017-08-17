@@ -2,15 +2,17 @@ package org.ogema.recordeddata.slotsdb;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.net.URLDecoder;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.TreeSet;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
-import org.ogema.recordeddata.slotsdb.ConstantIntervalFileObject;
-import org.ogema.recordeddata.slotsdb.FileObject;
-import org.ogema.recordeddata.slotsdb.FlexibleIntervalFileObject;
 
 /**
  * Helper Tool to read out slotsDb files from console
@@ -20,29 +22,83 @@ public class SlotsDbReader {
 
 	private static final int FLEXIBLE_INTERVAL = -1;
 	static SimpleDateFormat formatter;
+	private static PrintStream out;
 
 	public static void main(String[] args) throws IOException {
-		int count = 0;
+		File mainDir = new File(args[0]);
+		if (!mainDir.isDirectory())
+			return;
+		String[] unsortedPerDayDirs = mainDir.list();
+		List<String> list = Arrays.asList(unsortedPerDayDirs);
+		TreeSet<String> sortedPerDayDirs = new TreeSet<>(list);
 
+		File firstDayDir = new File(mainDir, sortedPerDayDirs.first());
+		// URL url = firstDayDir.toURI().toURL();
+		// Object content = url.getContent();
+		// Files.list(firstDayDir.toPath());
+		String[] resourceDirs = firstDayDir.list();
+		list = Arrays.asList(resourceDirs);
+
+		for (String resourceDirName : resourceDirs) {
+			// System.out.println(resourceDirName);
+			ArrayList<String> slotList = new ArrayList<>();
+			for (String s : sortedPerDayDirs) {
+				// System.out.println(s);
+				File dayDir = new File(mainDir, s);
+				if (dayDir.isFile())
+					continue;
+				File resourceDir = new File(dayDir, resourceDirName);
+				File[] slots = resourceDir
+						.listFiles(/*
+									 * new FileFilter() {
+									 * 
+									 * @Override public boolean accept(File pathname) { System.out.println(pathname);
+									 * return pathname.isFile() && pathname.getName().endsWith(".slots"); } }
+									 */);
+				// if (slots != null)
+				String path = slots[0].getPath();
+				// System.out.println(path);
+				slotList.add(path);
+			}
+			int size = slotList.size();
+			String[] slotArr = new String[size];
+			processResource(slotList.toArray(slotArr), URLDecoder.decode(resourceDirName));
+		}
+	}
+
+	public static void processResource(String[] args, String filename) throws IOException {
+		int count = 0;
+		File f = new File(filename);
+		if (f.exists())
+			return;
+		out = new PrintStream(filename);
 		try {
 			formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:SSS");
 			formatter.setTimeZone(TimeZone.getTimeZone("CET"));
 
 			checkArguments(args);
+			long startTime = 0;
 			for (String name : args) {
+				System.out.print("Process file: " + name);
+				System.out.println(" -> " + filename);
 				FileObject fo = createFileObject(name);
 				List<SampledValue> values = fo.readFully();
 
+				if (startTime == 0)
+					startTime = values.get(0).getTimestamp();
 				if (values != null) {
 					if (values.size() != 0) {
-						String[][] tblData = new String[values.size()][3];
+						String[][] tblData = new String[values.size()][4];
 
 						for (int i = 0; i < values.size(); i++) {
-							Long timestamp = new Long(values.get(i).getTimestamp());
+							long timestamp = new Long(values.get(i).getTimestamp());
 							Date date = new Date(timestamp);
-							tblData[i][0] = Integer.toString(count++);
-							tblData[i][1] = formatter.format(date);
-							tblData[i][2] = Double.toString(values.get(i).getValue().getDoubleValue());
+							tblData[i][0] = Integer.toString(count++); // Number of the value
+							tblData[i][1] = formatter.format(date); // Formatted time stamp
+							tblData[i][2] = Double.toString(values.get(i).getValue().getDoubleValue()); // The value
+																										// itself
+							long difference = (timestamp - startTime);
+							tblData[i][3] = difference + ""; // Relative time stamp
 						}
 						printTable(tblData);
 					}
@@ -96,9 +152,9 @@ public class SlotsDbReader {
 
 	private static void printRow(String[] row) {
 		for (String column : row) {
-			System.out.print(column + " ");
+			out.print(column + " ");
 		}
-		System.out.println();
+		out.println();
 	}
 
 }

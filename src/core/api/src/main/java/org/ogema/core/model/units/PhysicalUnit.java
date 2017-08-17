@@ -19,14 +19,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Enumeration type for physical units. The IDs are chosen to match those
- * defined in the BACnet data model.
+ * Enumeration type for physical units. The IDs are chosen to match those defined in the BACnet data model.
  */
 public enum PhysicalUnit {
 
-	SQUARE_METERS("m²"), AMPERES("A"), OHMS("O"), VOLTS("V"), JOULES("J"), HERTZ("Hz"), METERS("m"), DEGREES("°"), KILOGRAMS(
-			"kg"), PARTS_PER_MILLION("ppm"), WATTS("W"), LUX("lx"), LUMEN("lm"), KELVIN("K"), JOULE_PER_KELVIN("J/K"), WATT_PER_SQUARE_METER(
-			"W/m²"), METERS_PER_SECOND("m/s"), CUBIC_METERS_PER_SECOND("m³/s"), CUBIC_METERS("m³"), UNKNOWN("???");
+	SQUARE_METERS("m²"), AMPERES("A"), OHMS("O"), VOLTS("V"), JOULES("J"), HERTZ("Hz"), METERS("m"), DEGREES(
+			"°"), KILOGRAMS("kg"), PARTS_PER_MILLION("ppm"), WATTS("W"), LUX("lx"), LUMEN("lm"), KELVIN(
+					"K"), JOULE_PER_KELVIN("J/K"), WATT_PER_SQUARE_METER("W/m²"), METERS_PER_SECOND(
+							"m/s"), CUBIC_METERS_PER_SECOND("m³/s"), CUBIC_METERS("m³"), UNKNOWN("???"), PERCENT("%");
 
 	static final Map<String, PhysicalUnit> stringToEnum;
 

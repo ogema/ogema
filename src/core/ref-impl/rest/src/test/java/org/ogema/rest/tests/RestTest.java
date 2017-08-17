@@ -115,6 +115,17 @@ public class RestTest extends OsgiAppTestBase {
 				CoreOptions.mavenBundle().groupId("org.apache.httpcomponents").artifactId("httpcore-osgi").version(
 						"4.4.1").start(), CoreOptions.mavenBundle("commons-logging", "commons-logging", "1.1.3").start(), };
 	}
+	
+    private static String appendUserInfo(String path) {
+    	StringBuilder sb = new StringBuilder(path);
+    	int idx = path.indexOf('?');
+    	if (idx < 0)
+    		sb.append('?');
+    	else
+    		sb.append('&');
+    	sb.append("user=rest&pw=rest");
+    	return sb.toString();
+    }
 
 	@Before
 	@SuppressWarnings("deprecation")
@@ -150,7 +161,7 @@ public class RestTest extends OsgiAppTestBase {
 	public void waitForServer() throws Exception {
 		//assertNotNull(servletContext);
 		assertNotNull(http);
-		Request test = Request.Head(baseUrl).addHeader("Accept", "application/json");
+		Request test = Request.Head(appendUserInfo(baseUrl)).addHeader("Accept", "application/json");
 		int tries = 0;
 		while (true) {
 			int statusCode = test.execute().returnResponse().getStatusLine().getStatusCode();
@@ -167,7 +178,7 @@ public class RestTest extends OsgiAppTestBase {
 	@Test
 	public void restPutXml() throws Exception {
 		waitForServer();
-		final String url = baseUrl + "/switch?depth=100";
+		final String url = appendUserInfo(baseUrl + "/switch?depth=100");
 		Request req = Request.Get(url).addHeader("Accept", "application/xml");
 		String xml = req.execute().returnContent().asString();
 		System.out.println(xml);
@@ -195,7 +206,7 @@ public class RestTest extends OsgiAppTestBase {
 	@Test
 	public void restPutWorks() throws Exception {
 		waitForServer();
-		final String url = baseUrl + "/switch?depth=100";
+		final String url = appendUserInfo(baseUrl + "/switch?depth=100");
 		Request req = Request.Get(url).addHeader("Accept", "application/json");
 		String json = req.execute().returnContent().asString();
 		System.out.println("JSON from server:\\n" + json);
@@ -216,9 +227,9 @@ public class RestTest extends OsgiAppTestBase {
 	@Test
 	public void restPutScheduleWorks() throws Exception {
 		waitForServer();
-		final String url = baseUrl + "/" + schedule.getPath("/");
+		final String url =baseUrl + "/" + schedule.getPath("/");
 
-		Request req = Request.Get(url + "/3").addHeader("Accept", "application/xml");
+		Request req = Request.Get(appendUserInfo(url + "/3")).addHeader("Accept", "application/xml");
 		String xml = req.execute().returnContent().asString();
 
 		System.out.println(xml);
@@ -231,7 +242,7 @@ public class RestTest extends OsgiAppTestBase {
 
 		sched.children("entry").each().get(0).child("value").empty().append("42");
 
-		Request put = Request.Put(url).addHeader("Accept", "application/xml").bodyString(sched.toString(),
+		Request put = Request.Put(appendUserInfo(url)).addHeader("Accept", "application/xml").bodyString(sched.toString(),
 				ContentType.APPLICATION_XML);
 
 		System.out.println(put.execute().returnContent().asString());
@@ -246,7 +257,7 @@ public class RestTest extends OsgiAppTestBase {
 		TemperatureResource t = getApplicationManager().getResourceAccess().getResource("restSchedulePostTest");
 		assertNull(t);
 
-		Request post = Request.Post(baseUrl).bodyStream(getClass().getResourceAsStream("/scheduletest.xml"),
+		Request post = Request.Post(appendUserInfo(baseUrl)).bodyStream(getClass().getResourceAsStream("/scheduletest.xml"),
 				ContentType.APPLICATION_XML);
 		Response resp = post.execute();
 		System.out.println(resp.returnResponse().getStatusLine());
@@ -271,14 +282,14 @@ public class RestTest extends OsgiAppTestBase {
         pe.name().setValue("testElement");
         
         String name = l.getName();
-        String url = baseUrl + "/" + name + "?depth=100";
+        String url = appendUserInfo(baseUrl + "/" + name + "?depth=100");
         String xml = Request.Get(url).addHeader("Content-Type", "application/xml").execute().returnContent().asString();
         
         System.out.println(xml);
         l.delete();
         assertNull("resource must be deleted", getApplicationManager().getResourceAccess().getResource(name));
         
-        Response r = Request.Post(baseUrl).bodyString(xml, ContentType.APPLICATION_XML).execute();
+        Response r = Request.Post(appendUserInfo(baseUrl)).bodyString(xml, ContentType.APPLICATION_XML).execute();
         
         System.out.println(r.handleResponse(TOSTRINGHANDLER));
         ResourceList<?> recreated = getApplicationManager().getResourceAccess().getResource(name);
@@ -309,7 +320,7 @@ public class RestTest extends OsgiAppTestBase {
 		assertTrue(wp1.exists());
 		assertEquals(1, room.workPlaces().size());
 
-		String url = baseUrl + "/" + room.getName() + "?depth=100";
+		final String url = appendUserInfo(baseUrl + "/" + room.getName() + "?depth=100");
 		waitForServer();
 
 		String roomAsString = Request.Get(url).addHeader("Content-Type", contentType.toString()).execute()
@@ -320,7 +331,7 @@ public class RestTest extends OsgiAppTestBase {
 
 		assertEquals("list should be empty", 0, room.workPlaces().size());
 
-		Request.Put(baseUrl + "/" + room.getName()).bodyString(roomAsString, contentType).execute();
+		Request.Put(appendUserInfo(baseUrl + "/" + room.getName())).bodyString(roomAsString, contentType).execute();
 
 		assertEquals("list should contain 1 room", 1, room.workPlaces().getAllElements().size());
 		assertEquals(wpName, room.workPlaces().getAllElements().get(0).getName());
@@ -346,14 +357,14 @@ public class RestTest extends OsgiAppTestBase {
 	@Test
 	public void restPostWorksForTopLevelResource() throws Exception {
 		waitForServer();
-		String url = String.format("%s/%s?depth=100", baseUrl, sw.getName());
+		final String url = appendUserInfo(String.format("%s/%s?depth=100", baseUrl, sw.getName()));
 		Request get = Request.Get(url).addHeader("Accept", "application/xml");
 		String xml = get.execute().returnContent().asString();
 
 		String newName = sw.getName() + "_copy";
 		xml = xml.replaceAll(sw.getName(), newName);
 
-		Request post = Request.Post(baseUrl).addHeader("Accept", "application/xml").bodyString(xml,
+		Request post = Request.Post(appendUserInfo(baseUrl)).addHeader("Accept", "application/xml").bodyString(xml,
 				ContentType.APPLICATION_XML);
 
 		String response = post.execute().returnContent().asString();
@@ -381,7 +392,7 @@ public class RestTest extends OsgiAppTestBase {
 
 		s1.physDim().setAsReference(s2.physDim());
 
-		String url = String.format("%s/%s?depth=100", baseUrl, "");
+		String url = appendUserInfo(String.format("%s/%s?depth=100", baseUrl, ""));
 		Request get = Request.Get(url).addHeader("Accept", "application/xml");
 		String xml = get.execute().returnContent().asString();
 
@@ -439,7 +450,7 @@ public class RestTest extends OsgiAppTestBase {
 				+ "</og:resource>"; // one top-level resource with three subresources, where subRes3 references subRes2 references subRes1, and subRes3 is created first
 
 		//FIXME: output with &references=true seems to be broken
-		Request post = Request.Post(baseUrl + "?depth=100").addHeader("Accept", "application/xml").bodyString(
+		Request post = Request.Post(appendUserInfo(baseUrl + "?depth=100")).addHeader("Accept", "application/xml").bodyString(
 				postContent, ContentType.APPLICATION_XML);
 		System.out.println(postContent);
 		System.out.println(post.execute().returnContent().asString());
@@ -451,7 +462,7 @@ public class RestTest extends OsgiAppTestBase {
 		assertNotNull("link '" + referenceToReference + "' is missing", newResource
 				.getSubResource(referenceToReference));
 
-		final String url = baseUrl + "/" + toplevelRes + "?depth=100";
+		final String url = appendUserInfo(baseUrl + "/" + toplevelRes + "?depth=100");
 		Request req = Request.Get(url).addHeader("Accept", "application/xml");
 		String xml2 = req.execute().returnContent().asString();
 		//System.out.println("xml2: " + xml2);
@@ -471,7 +482,7 @@ public class RestTest extends OsgiAppTestBase {
 		waitForServer();
 
 		//REST-Url to OGEMA-ElectricBinarySwitch-Resource with resource-tree depth=100
-		final String resourceUrl = baseUrl + "/switch?depth=100";
+		final String resourceUrl = appendUserInfo(baseUrl + "/switch?depth=100");
 
 		//send a request to the server and get the ElectricBinarySwitch-resource as json-string
 		String jsonFromRest = Request.Get(resourceUrl).addHeader("Accept", "application/json").execute()
@@ -534,7 +545,7 @@ public class RestTest extends OsgiAppTestBase {
 
 		assertTrue(pe.location().geographicLocation().exists());
 
-		String url = baseUrl + "/" + pe.location().geographicLocation().getPath();
+		String url = appendUserInfo(baseUrl + "/" + pe.location().geographicLocation().getPath());
 		System.out.println("deleting " + url);
 		Response r = Request.Delete(url).execute();
 		assertEquals(200, r.returnResponse().getStatusLine().getStatusCode());
@@ -542,7 +553,7 @@ public class RestTest extends OsgiAppTestBase {
 		r = Request.Get(url).execute();
 		assertEquals(404, r.returnResponse().getStatusLine().getStatusCode());
 
-		url = baseUrl + "/" + pe.getPath();
+		url = appendUserInfo(baseUrl + "/" + pe.getPath());
 		System.out.println("deleting " + url);
 		r = Request.Delete(url).execute();
 		assertEquals(200, r.returnResponse().getStatusLine().getStatusCode());
@@ -562,7 +573,7 @@ public class RestTest extends OsgiAppTestBase {
         
         l.add(getApplicationManager().getResourceManagement().createResource(newResourceName(), StringResource.class));
         
-        String url = baseUrl + "/" + l.getPath();
+        String url = appendUserInfo(baseUrl + "/" + l.getPath());
         @SuppressWarnings("unused")
 		Response r = Request.Delete(url).execute();
         
@@ -582,7 +593,7 @@ public class RestTest extends OsgiAppTestBase {
 		r.co2Sensor().deactivate(true);
 		assertFalse(r.co2Sensor().name().isActive());
 
-		String response = Request.Get(baseUrl + "/" + r.getPath() + "?depth=100").execute().returnContent().asString();
+		String response = Request.Get(appendUserInfo(baseUrl + "/" + r.getPath() + "?depth=100")).execute().returnContent().asString();
 		System.out.println(response);
 
 		assertTrue(response.contains(r.co2Sensor().getResourceType().getCanonicalName()));
@@ -591,7 +602,7 @@ public class RestTest extends OsgiAppTestBase {
 		// test again with top level resource
 		r.deactivate(true);
 		assertFalse(r.isActive());
-		response = Request.Get(baseUrl + "?depth=100").execute().returnContent().asString();
+		response = Request.Get(appendUserInfo(baseUrl + "?depth=100")).execute().returnContent().asString();
 		assertTrue(response.contains(r.co2Sensor().getResourceType().getCanonicalName()));
 		assertTrue(response.contains(testString));
 	}

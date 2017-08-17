@@ -19,7 +19,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- *
+ * Map-like data structure representing a {@code Struct} according to the
+ * HomeMatic XML-RPC specification.
+ * 
  * @author jlapp
  */
 public interface XmlRpcStruct {

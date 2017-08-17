@@ -27,8 +27,8 @@ import org.ogema.core.model.simple.FloatResource;
  * inversion flag I allows to invert the value set into the target resource.
  * Both flags are false by default. The effective rules enforced are as
  * follows:<br>
- * E = false : t = I XOR (s>x) <br>
- * E = true : t = I XOR (s>=x) <br>
+ * E = false : t = I XOR (s&gt;x) <br>
+ * E = true : t = I XOR (s&gt;=x) <br>
  *
  * If s becomes inactive, t is set inactive, too.
  * @author Timo Fischer, Fraunhofer IWES

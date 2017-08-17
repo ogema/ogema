@@ -134,14 +134,15 @@ public class SerialConnection implements SerialPortEventListener {
 			 * It's possible there is no CommPortIdentifier because RXTX does
 			 * not look for all of them.
 			 */
-			try {
-				m_SerialPort = new RXTXPort(m_Parameters.getPortName());
-			} catch (PortInUseException x) {
-				if (Modbus.debug)
-					x.printStackTrace();
+			// TODO This doesn't work on windows, it leads to crash of the java process
+//			try {
+//				m_SerialPort = new RXTXPort(m_Parameters.getPortName());
+//			} catch (PortInUseException x) {
+//				if (Modbus.debug)
+//					x.printStackTrace();
 
-				throw new Exception(x.getMessage());
-			}
+				throw new Exception(e.getMessage());
+//			}
 		}
 		// 3. set the parameters
 		try {

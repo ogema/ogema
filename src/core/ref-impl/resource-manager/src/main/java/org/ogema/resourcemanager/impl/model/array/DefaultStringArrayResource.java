@@ -16,6 +16,9 @@
 package org.ogema.resourcemanager.impl.model.array;
 
 import org.ogema.core.model.array.StringArrayResource;
+import org.ogema.core.resourcemanager.AccessMode;
+import org.ogema.core.resourcemanager.ResourceAccessException;
+import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.resourcemanager.impl.ResourceBase;
 
@@ -39,15 +42,20 @@ public class DefaultStringArrayResource extends ResourceBase implements StringAr
 	}
 
 	@Override
-	public boolean setValues(String[] value) {
-		if (!exists() || !hasWriteAccess()) {
-			return false;
+	public boolean setValues(String[] values) {
+		resMan.lockRead();
+		try {
+			final VirtualTreeElement el = getEl();
+			if (el.isVirtual() || getAccessModeInternal() == AccessMode.READ_ONLY) {
+				return false;
+			}
+			checkWritePermission();
+			el.getData().setStringArr(values);
+			//FIXME no change check!
+			handleResourceUpdateInternal(true);
+		} finally {
+			resMan.unlockRead();
 		}
-		checkWritePermission();
-		getTreeElement().getData().setStringArr(value);
-		getTreeElement().fireChangeEvent();
-		//FIXME no change check
-		handleResourceUpdate(true);
 		return true;
 	}
 
@@ -79,5 +87,19 @@ public class DefaultStringArrayResource extends ResourceBase implements StringAr
 	public long getLastUpdateTime() {
 		return super.getLastUpdateTime();
 	}
-
+	
+	@Override
+	public String[] getAndSet(final String[] value) throws VirtualResourceException, SecurityException, ResourceAccessException {
+		if (!exists())
+			throw new VirtualResourceException("Resource " + path + " is virtual, cannot set value");
+		checkWriteAccess();
+		resMan.lockWrite(); 
+		try {
+			final String[] val = getValues();
+			setValues(value);
+			return val;
+		} finally {
+			resMan.unlockWrite();
+		}
+	}
 }

@@ -18,6 +18,7 @@ package org.ogema.impl.logging;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.AppenderBase;
+import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import ch.qos.logback.core.filter.Filter;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -26,7 +27,8 @@ import java.security.PrivilegedAction;
  *
  * @author jlapp
  */
-public class FilterAppender extends AppenderBase<ILoggingEvent> {
+//public class FilterAppender extends AppenderBase<ILoggingEvent> {
+public class FilterAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
 	final Appender<ILoggingEvent> delegate;
 	final Filter<ILoggingEvent> filter;

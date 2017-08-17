@@ -39,7 +39,7 @@ import org.ogema.core.timeseries.ReadOnlyTimeSeries;
  */
 public class ObjectValue implements Value {
 
-	private Object value;
+	private final Object value;
 
 	public ObjectValue(Object value) {
 		this.value = value;

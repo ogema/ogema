@@ -16,17 +16,16 @@
 package org.ogema.resourcemanager.impl.model.units;
 
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.units.FlowResource;
+import org.ogema.core.model.units.LuminousFluxResource;
 import org.ogema.core.model.units.PhysicalUnit;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
-
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 
 /**
  *
  * @author Timo Fischer, Fraunhofer IWES
  */
-public class DefaultLuminousFluxResource extends UnitFloatResource implements FlowResource {
+public class DefaultLuminousFluxResource extends UnitFloatResource implements LuminousFluxResource {
 
 	public DefaultLuminousFluxResource(VirtualTreeElement el, Class<? extends Resource> unitResourceType, String path,
 			ApplicationResourceManager resMan) {

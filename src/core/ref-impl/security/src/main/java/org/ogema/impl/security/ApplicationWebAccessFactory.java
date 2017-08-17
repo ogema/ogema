@@ -23,6 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 import org.ogema.accesscontrol.PermissionManager;
@@ -50,7 +52,7 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
     final Logger logger = LoggerFactory.getLogger(getClass());
     final RestHttpContext restContext;
     final M2MLogin m2mLogin;
-    
+
     public ApplicationWebAccessFactory(PermissionManager pm, HttpService http, UserAdmin userAdmin) {
 		this.http = http;
         this.pm = pm;
@@ -75,9 +77,9 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
 			logger.error("filter registration failed", e);
 		}
 	}
-    
+
     /*
-     * Other registrations are removed by the ApplicationTracker -> we need to keep a reference to the HttpService for this 
+     * Other registrations are removed by the ApplicationTracker -> we need to keep a reference to the HttpService for this
      * (also of the ApplicationWebAccessManagers?)
      */
     public void close() {
@@ -98,11 +100,11 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
     	}
     	baseUrls.clear();
     }
-    
+
     private void registerFilter(HttpContext ctx) throws ServletException {
         //filter registrations moved to DS component definition in OSGI-INF/
 	}
-    
+
     /*
      * Creates a new WebAccessManager for the given app, or returns an existing
      * instance.
@@ -137,6 +139,14 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
             }
         }
         return false;
+    }
+
+    String[] registerStaticResource(HttpServlet servlet, HttpServletRequest req, AppID appId) {
+    	SessionAuth sauth = (SessionAuth) req.getSession().getAttribute("ogemaAuth");
+    	if (sauth == null)
+    		return null;
+    	String otp = sauth.registerAppOtp(appId);
+		return new String[]{appId.getIDString(), otp};
     }
 
     @Override
@@ -191,7 +201,7 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
     public void registerStartUrl(AppID appId, String url) {
         baseUrls.put(appId.getIDString(), url);
     }
-    
+
     public String getStartUrl(AppID appid) {
         ApplicationWebAccessManager aw = getAppWAM(appid);
         return aw != null ? aw.getStartUrl() : null;
@@ -210,16 +220,16 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
     @Override
     public String registerWebResourcePath(String alias, String name) {
         throw new UnsupportedOperationException("Not supported by global WebAccessManager, requires Application-specific WebAccessManager");
-    }    
+    }
 
     @Override
     public void registerStartUrl(String url) {
-        throw new UnsupportedOperationException("Not supported by global WebAccessManager, requires Application-specific WebAccessManager"); 
+        throw new UnsupportedOperationException("Not supported by global WebAccessManager, requires Application-specific WebAccessManager");
     }
 
 	@Override
 	public String getStartUrl() {
-		throw new UnsupportedOperationException("Not supported by global WebAccessManager, requires Application-specific WebAccessManager"); 
+		throw new UnsupportedOperationException("Not supported by global WebAccessManager, requires Application-specific WebAccessManager");
 	}
 
 

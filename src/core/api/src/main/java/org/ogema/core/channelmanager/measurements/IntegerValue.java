@@ -24,7 +24,7 @@ import org.ogema.core.timeseries.ReadOnlyTimeSeries;
  */
 public class IntegerValue implements Value {
 
-	private int value;
+	private final int value;
 
 	public IntegerValue(int value) {
 		this.value = value;

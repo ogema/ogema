@@ -21,6 +21,7 @@ import java.security.PrivilegedAction;
 import java.util.StringTokenizer;
 
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.ResourceList;
 import org.ogema.resourcetree.TreeElement;
 import org.slf4j.Logger;
 
@@ -49,6 +50,7 @@ public class ResourcePermission extends Permission {
 	public static final int _ALLACTIONS = _READ | _WRITE | _ADDSUB | _CREATE | _DELETE | _ACTIVITY;
 	public static final int _NOACTIONS = 0;
 	private static final String INVALID_CLASS_NAME = "$";
+	private static final Object RESOURCE_LIST_CLASS_NAME = ResourceList.class.getName();
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 
@@ -57,11 +59,32 @@ public class ResourcePermission extends Permission {
 	 */
 	String actions;
 
+	public int getActionsAsMask() {
+		return actionsAsMask;
+	}
+
 	String path;
 	boolean wced;
 	int actionsAsMask;
 	String type; // type name string instead of Class itself avoid CNFE after policy entry
 	int count;
+
+	public String getPath() {
+		return path;
+	}
+
+	public boolean isWced() {
+		return wced;
+	}
+
+	public String getType() {
+		return type;
+	}
+
+	public int getCount() {
+		return count;
+	}
+
 	private String owner;
 	private TreeElement node;
 
@@ -82,7 +105,7 @@ public class ResourcePermission extends Permission {
 	 * only the name and count information are considered. count: maximal number of resource instances that could be
 	 * created. recursive: set if a recursion is granted. Example Recursive: An app that wants access to a special type
 	 * of resources ask for that by a Resource permission like:
-	 * ResourcePermission(“path=*,type=”Refridgerator,recursive=true”, “READ, WRITE”) which calls for read and write
+	 * ResourcePermission(“path=*,type=org.ogema.model.actors.Actor", “READ, WRITE”) which calls for read and write
 	 * permissions for any refrigerator in the system and their subcomponents.
 	 * 
 	 * @param filter
@@ -91,11 +114,7 @@ public class ResourcePermission extends Permission {
 	public ResourcePermission(String filter, String actions) {
 		super(filter);
 		try {
-			this.count = 0;
-			// this.type = type;
-			// this.owner = null;
-
-			// pType = PermissionType.STATIC;
+			this.count = Integer.MAX_VALUE;
 			parseActions(actions);
 			/*
 			 * If the filter string doesn't specify a path this is equal to "*" That means path=null and wildcarded =
@@ -134,8 +153,6 @@ public class ResourcePermission extends Permission {
 		if (path == null)
 			path = "*";
 		try {
-			// pType = PermissionType.QUERY_PRIMIVE;
-			// parseActions(action);
 			/*
 			 * This constructor is used only for the action CREATE. Set it.
 			 */
@@ -169,6 +186,8 @@ public class ResourcePermission extends Permission {
 			parseActions(action);
 			this.count = maxNumber;
 			Class<?> type = te.getType();
+			if (type == ResourceList.class)
+				type = te.getResourceListType();
 			if (type == null)
 				this.type = INVALID_CLASS_NAME;
 			else
@@ -328,11 +347,12 @@ public class ResourcePermission extends Permission {
 				try {
 					return Class.forName(name);
 				} catch (ClassNotFoundException ioe) {
-					logger
-							.warn(String
-									.format(
-											"Resource type class %s couldn't be loaded. Therefor the type hierarchy can't be considered while permission check. To avoid this the type class should be exported by the system or any other application.",
-											typename));
+					// This exception occurs in particular, as long as no resource of a custom type has been created. 
+					// The log message is misleading in this case; if the resource type is really not exported, no
+					// resource of the respective type can be created anyway
+//					logger.warn(String.format(
+//							"Resource type class %s couldn't be loaded. Therefor the type hierarchy can't be considered in the permission check. To avoid this the type class should be exported by the system or any other application.",
+//							typename));
 					return null;
 				}
 			}
@@ -340,7 +360,7 @@ public class ResourcePermission extends Permission {
 		return result;
 	}
 
-    @SuppressWarnings("fallthrough")
+	@SuppressWarnings("fallthrough")
 	private int parseActions(String actStr) {
 		// Helper variable to detect if the actions string starts with comma
 		boolean comma = false;
@@ -546,16 +566,36 @@ public class ResourcePermission extends Permission {
 		 * element to be considered in further checks. If no element of the type was found, the permission is denied.
 		 */
 		if (this.type != null) {
+			if (this.type.equals(RESOURCE_LIST_CLASS_NAME)) {
+				logger.warn(
+						"ResourcePermission should not be defined with ResourceList as type! Such a permission doesn't imply any ResourcePermission!");
+				return false;
+			}
 			if (qp.node == null) {
-				if (!this.type.equals(qp.type))
+				if (qp.type != null && (qp.type.equals(RESOURCE_LIST_CLASS_NAME)) && !qp.actions.equals(CREATE)
+						&& !qp.actions.equals(ACTIVITY) && !qp.actions.equals(DELETE)) {
+					logger.warn(
+							"ResourcePermission should be queried with ResourceList as type only at first creation of the resource! Such a permission doesn't imply any ResourcePermission!");
+					return false;
+				}
+				else if (!(qp.type.equals(RESOURCE_LIST_CLASS_NAME)) && !this.type.equals(qp.type))
 					return false;
 			}
 			else {
 				TreeElement parent = qp.node;
 				boolean success = false;
+				Class<?> cls = getClassPrivileged(this.type);
 				while (parent != null) {
-					Class<?> cls = getClassPrivileged(this.type);
 					Class<?> parentCls = parent.getType();
+					if (parentCls == ResourceList.class) {
+						parentCls = parent.getResourceListType();
+						if (parentCls == null) // A resource list its list type not yet specified. In this case
+												// permission can be granted.
+						{
+							success = true;
+							break;
+						}
+					}
 					if (cls != null && parentCls != null) {
 						if (cls.isAssignableFrom(parentCls)) {
 							success = true;
@@ -628,7 +668,7 @@ public class ResourcePermission extends Permission {
 					// case 9
 					if (pathType != PathType.NO_WILDCARD || qp.pathType != PathType.NO_WILDCARD
 							|| (path != null && queryPath != null && !queryPath.equals(path)))
-						return false;
+					return false;
 		/*
 		 * Condition 4: the owner of the queried permission (owner of the referenced resource) is equal to the owner of
 		 * the granted permission or the owner of the granted permission is null.
@@ -652,7 +692,7 @@ public class ResourcePermission extends Permission {
 		 * number (valid for CREATE, ADDSUB and DELETE)
 		 */
 		if ((qp.actionsAsMask & (_CREATE | _ADDSUB)) != 0) {
-			if (count != 0 && qp.count >= count)
+			if (count != 0 && qp.count > count)
 				return false;
 		}
 		return true;
@@ -665,9 +705,8 @@ public class ResourcePermission extends Permission {
 		if (!(obj instanceof ResourcePermission))
 			return false;
 		ResourcePermission perm = (ResourcePermission) obj;
-		if ((actionsAsMask == perm.actionsAsMask)
-				&& ((path == null && perm.path == null) || (path != null && perm.path != null && path.equals(perm.path)))
-				&& wced == perm.wced)
+		if ((actionsAsMask == perm.actionsAsMask) && ((path == null && perm.path == null)
+				|| (path != null && perm.path != null && path.equals(perm.path))) && wced == perm.wced)
 			return true;
 		return false;
 	}

@@ -143,9 +143,13 @@ public class ResourceTransactionImpl implements ResourceTransaction {
 			dbMan.lockWrite();
 		else
 			dbMan.lockRead();
+		if (structureWrite || valueWrite)
+			dbMan.startTransaction();
 	}
 	
 	private void unlock(boolean structureWrite, boolean valueWrite) {
+		if (structureWrite || valueWrite)
+			dbMan.finishTransaction();
 		if (valueWrite)
 			dbMan.unlockWrite();
 		else

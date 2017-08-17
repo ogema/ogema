@@ -33,6 +33,7 @@ import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.BooleanResource;
+import org.ogema.core.model.simple.StringResource;
 import org.ogema.model.locations.Building;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
@@ -55,10 +56,24 @@ public class Activator implements BundleActivator, Application {
 	@Override
 	public void start(final ApplicationManager appManager) {
 		try {
+			OgemaFilePermissionTest ofpt = new OgemaFilePermissionTest(appManager);
+		} catch (Throwable e1) {
+			e1.printStackTrace();
+		}
+		try {
 			new Zwave(appManager);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		TEAConfigurationModel conf = appManager.getResourceManagement().createResource("teadeviceconfig",
+				TEAConfigurationModel.class);
+		conf.activate(true);
+		StringResource devAddr = conf.deviceAddress().create();
+		devAddr.activate(true);
+		devAddr.setValue("localhost:502");
+		StringResource resname = conf.resourceName().create();
+		resname.setValue("teaResource");
+		new TEADevice(appManager, conf);
 		// new HMPowerboxTest(appManager.getResourceAccess());
 		new Thread(new Runnable() {
 

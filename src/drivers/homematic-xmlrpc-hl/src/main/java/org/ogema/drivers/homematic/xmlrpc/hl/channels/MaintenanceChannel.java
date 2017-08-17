@@ -15,10 +15,10 @@
  */
 package org.ogema.drivers.homematic.xmlrpc.hl.channels;
 
+import org.ogema.drivers.homematic.xmlrpc.hl.api.AbstractDeviceHandler;
 import java.util.List;
 import java.util.Map;
 
-import org.ogema.drivers.homematic.xmlrpc.hl.HomeMaticDriver;
 import org.ogema.drivers.homematic.xmlrpc.hl.types.HmDevice;
 import org.ogema.drivers.homematic.xmlrpc.hl.types.HmMaintenance;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.DeviceDescription;
@@ -27,21 +27,32 @@ import org.ogema.drivers.homematic.xmlrpc.ll.api.HmEventListener;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.ParameterDescription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.HomeMaticConnection;
+import org.ogema.tools.resource.util.ResourceUtils;
 
 /**
+ * Handler for {@code MAINTENANCE} channels on BidCos and HmIP devices.
+ * See {@link PARAMS} for supported parameters.
  *
  * @author jlapp
  */
-public class MaintenanceChannel implements ChannelHandler {
+public class MaintenanceChannel extends AbstractDeviceHandler {
 
     Logger logger = LoggerFactory.getLogger(getClass());
-    enum PARAMS {
+    public enum PARAMS {
 
+        ERROR_CODE,
         LOWBAT,
-        RSSI_DEVICE
+        OPERATING_VOLTAGE,
+        RSSI_DEVICE,
+        RSSI_PEER,
 
     }
 
+    public MaintenanceChannel(HomeMaticConnection conn) {
+        super(conn);
+    }
+    
     class MaintenanceEventListener implements HmEventListener {
 
         final HmMaintenance mnt;
@@ -58,7 +69,12 @@ public class MaintenanceChannel implements ChannelHandler {
                 if (!address.equals(e.getAddress())) {
                     continue;
                 }
-                if (PARAMS.LOWBAT.name().equals(e.getValueKey())) {
+                if (PARAMS.ERROR_CODE.name().equals(e.getValueKey())) {
+                    if (!mnt.errorCode().isActive()) {
+                        mnt.errorCode().create().activate(false);
+                    }
+                    mnt.errorCode().setValue(e.getValueInt());
+                } else if (PARAMS.LOWBAT.name().equals(e.getValueKey())) {
                     if (!mnt.batteryLow().isActive()) {
                         mnt.batteryLow().create().activate(false);
                     }
@@ -68,6 +84,18 @@ public class MaintenanceChannel implements ChannelHandler {
                         mnt.rssiDevice().create().activate(false);
                     }
                     mnt.rssiDevice().setValue(e.getValueInt());
+                } else if (PARAMS.RSSI_PEER.name().equals(e.getValueKey())) {
+                    if (!mnt.rssiPeer().isActive()) {
+                        mnt.rssiPeer().create().activate(false);
+                    }
+                    mnt.rssiPeer().setValue(e.getValueInt());
+                } else if (PARAMS.OPERATING_VOLTAGE.name().equals(e.getValueKey())) {
+                    if (!mnt.battery().internalVoltage().reading().isActive()) {
+                        mnt.battery().internalVoltage().reading().create().activate(false);
+                        mnt.battery().internalVoltage().activate(false);
+                        mnt.battery().activate(false);
+                    }
+                    mnt.battery().internalVoltage().reading().setValue(e.getValueFloat());
                 }
             }
         }
@@ -80,9 +108,9 @@ public class MaintenanceChannel implements ChannelHandler {
     }
 
     @Override
-    public void setup(HmDevice parent, HomeMaticDriver hm, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
+    public void setup(HmDevice parent, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
         logger.debug("setup MAINTENANCE handler for address {}", desc.getAddress());
-        String swName = HomeMaticDriver.sanitizeResourcename("MAINTENANCE" + desc.getAddress());
+        String swName = ResourceUtils.getValidResourceName("MAINTENANCE" + desc.getAddress());
         Map<String, ParameterDescription<?>> values = paramSets.get(ParameterDescription.SET_TYPES.VALUES.name());
         if (values == null) {
             logger.warn("received no VALUES parameters for device {}", desc.getAddress());
@@ -92,7 +120,7 @@ public class MaintenanceChannel implements ChannelHandler {
         // create the battery field as it will be probably be linked into higher level models
         mnt.batteryLow().create();
         mnt.activate(true);
-        hm.getHomeMaticService().addEventListener(new MaintenanceEventListener(mnt, desc.getAddress()));
+        conn.addEventListener(new MaintenanceEventListener(mnt, desc.getAddress()));
     }
 
 }

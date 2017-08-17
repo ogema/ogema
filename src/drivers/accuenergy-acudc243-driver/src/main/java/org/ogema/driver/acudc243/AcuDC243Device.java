@@ -22,7 +22,7 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.ChannelConfiguration;
-import org.ogema.core.channelmanager.ChannelConfigurationException;
+import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
 import org.ogema.core.channelmanager.ChannelEventListener;
 import org.ogema.core.channelmanager.EventType;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
@@ -33,9 +33,18 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.simple.BooleanResource;
+import org.ogema.core.model.units.ElectricCurrentResource;
+import org.ogema.core.model.units.EnergyResource;
+import org.ogema.core.model.units.PowerResource;
+import org.ogema.core.model.units.VoltageResource;
+import org.ogema.core.recordeddata.RecordedData;
+import org.ogema.core.recordeddata.RecordedDataConfiguration;
+import org.ogema.core.resourcemanager.AccessMode;
+import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceException;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.resourcemanager.pattern.ResourcePatternAccess;
+import org.ogema.core.security.WebAccessManager;
 import org.ogema.tools.resource.util.ResourceUtils;
 
 /**
@@ -50,24 +59,30 @@ import org.ogema.tools.resource.util.ResourceUtils;
 public class AcuDC243Device implements ChannelEventListener, ResourceValueListener<BooleanResource> {
 
 	/** use the modbus-rtu driver */
-	private static final String DRIVER_ID = "modbus-rtu";
+	private static final String DRIVER_ID = "modbus-combined";
 
 	/** hard coded channel address. Read 3 16bit registers starting from address 0 */
-	private static final String CHANNEL_ADDRESS = "multi:6:512";
+	private static final String CHANNEL_ADDRESS = "2:HOLDING_REGISTERS:512:6";
 
 	private final ApplicationManager appManager;
 	private final ChannelAccess channelAccess;
 	private final OgemaLogger logger;
 
-	private MeterPattern dataResource;
-	private final AcuDC243Configuration configurationResource;
+	MeterPattern dataResource;
+	final AcuDC243Configuration configurationResource;
 
-	private ChannelLocator channelLocator;
+	private ChannelConfiguration channelConf;
+
+	ElectricCurrentResource current;
+
+	VoltageResource voltage;
+
+	PowerResource power;
 
 	public AcuDC243Device(ApplicationManager appManager, AcuDC243Configuration configurationResource) {
 
 		String dataResourceName;
-		List<ChannelLocator> list = new ArrayList<ChannelLocator>();
+		List<ChannelConfiguration> list = new ArrayList<ChannelConfiguration>();
 
 		this.appManager = appManager;
 		this.channelAccess = appManager.getChannelAccess();
@@ -77,20 +92,9 @@ public class AcuDC243Device implements ChannelEventListener, ResourceValueListen
 
 		configurationResource.addValueListener(this, true);
 
-		channelLocator = createChannelLocator(configurationResource);
-		list.add(channelLocator);
+		ChannelLocator channelLocator = createChannelLocator(configurationResource);
 
 		dataResourceName = configurationResource.resourceName().getValue();
-
-		// create channel
-		try {
-			ChannelConfiguration chConf = channelAccess.getChannelConfiguration(channelLocator);
-			chConf.setSamplingPeriod(1000);
-			channelAccess.addChannel(chConf);
-			channelAccess.registerUpdateListener(list, this);
-		} catch (ChannelConfigurationException e) {
-			logger.error(null, e);
-		}
 
 		// create the named ElectricityMeter instance and sub elements
 		try {
@@ -98,9 +102,46 @@ public class AcuDC243Device implements ChannelEventListener, ResourceValueListen
 			dataResource = patAcc.createResource(
 					appManager.getResourceManagement().getUniqueResourceName(dataResourceName), MeterPattern.class);
 			activate(dataResource); // does not activate value resources
+			initModel(dataResource);
 		} catch (ResourceException e) {
 			logger.error(null, e);
 		}
+		// create channel
+		try {
+			channelConf = channelAccess.addChannel(channelLocator, Direction.DIRECTION_INOUT, 1000);
+			list.add(channelConf);
+			channelAccess.registerUpdateListener(list, this);
+		} catch (ChannelAccessException e) {
+			logger.error(null, e);
+		}
+
+		Servlet s = new Servlet(this);
+		WebAccessManager wam = appManager.getWebAccessManager();
+		wam.registerWebResource("/acudc243/service", s); // TODO make alias generic for multiple devices
+	}
+
+	/**
+	 * Initialize the field with defaults and request exclusive write access to all fields read from device.
+	 */
+	public void initModel(MeterPattern p) {
+		this.current = p.current;
+		this.current.activate(false);
+		this.current.setValue(0.f);
+		this.voltage = p.voltage;
+		this.voltage.setValue(0);
+		this.power = p.power;
+		this.power.setValue(0);
+
+		this.current.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
+		this.voltage.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
+		this.power.requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
+
+		RecordedData rd = p.current.getHistoricalData();
+
+		RecordedDataConfiguration configuration = new RecordedDataConfiguration();
+		configuration.setStorageType(RecordedDataConfiguration.StorageType.ON_VALUE_CHANGED);
+		// configuration.setFixedInterval(3000);
+		rd.setConfiguration(configuration);
 	}
 
 	private void activate(MeterPattern device) {
@@ -113,7 +154,7 @@ public class AcuDC243Device implements ChannelEventListener, ResourceValueListen
 			SampledValue value;
 
 			// read latest cached value from channel
-			value = channelAccess.getChannelValue(channelLocator);
+			value = channelAccess.getChannelValue(channelConf);
 
 			// write received value to model
 			setModel(dataResource, value);
@@ -122,7 +163,7 @@ public class AcuDC243Device implements ChannelEventListener, ResourceValueListen
 			logger.error(null, e);
 		} catch (IllegalConversionException e) {
 			logger.error(null, e);
-		}catch (Throwable t) {
+		} catch (Throwable t) {
 			logger.error(null, t);
 		}
 	}
@@ -135,9 +176,9 @@ public class AcuDC243Device implements ChannelEventListener, ResourceValueListen
 		String deviceAddress = configuration.deviceAddress().getValue();
 		String deviceParameters = configuration.deviceParameters().getValue();
 
-		deviceLocator = channelAccess.getDeviceLocator(DRIVER_ID, interfaceId, deviceAddress, deviceParameters);
+		deviceLocator = new DeviceLocator(DRIVER_ID, interfaceId, deviceAddress, deviceParameters);
 
-		return channelAccess.getChannelLocator(CHANNEL_ADDRESS, deviceLocator);
+		return new ChannelLocator(CHANNEL_ADDRESS, deviceLocator);
 	}
 
 	private void setModel(MeterPattern pattern, SampledValue value) {
@@ -179,9 +220,9 @@ public class AcuDC243Device implements ChannelEventListener, ResourceValueListen
 		}
 
 		try {
-			channelAccess.deleteChannel(channelLocator);
+			channelAccess.deleteChannel(channelConf);
 		} catch (Throwable t) {
-			appManager.getLogger().error("channelAccess.deleteChannel({})", channelLocator, t);
+			appManager.getLogger().error("channelAccess.deleteChannel({})", channelConf, t);
 		}
 	}
 
@@ -190,76 +231,42 @@ public class AcuDC243Device implements ChannelEventListener, ResourceValueListen
 
 		// did the channel layout change?
 		ChannelLocator newChan = createChannelLocator(configurationResource);
-		if (!channelLocator.equals(newChan)) {
+		if (!channelConf.getChannelLocator().equals(newChan)) {
+
+			channelAccess.deleteChannel(channelConf);
 
 			try {
-				channelAccess.deleteChannel(channelLocator);
-			} catch (ChannelConfigurationException e1) {
-				// ignore if channel does not exist
-			}
-
-			channelLocator = newChan;
-			try {
-				channelAccess.addChannel(channelAccess.getChannelConfiguration(channelLocator));
-			} catch (ChannelConfigurationException e) {
-				appManager.getLogger().error("channelAccess.addChannel({})", channelLocator, e);
+				channelAccess.addChannel(newChan, Direction.DIRECTION_INOUT,
+						configurationResource.timeout().getValue());
+			} catch (ChannelAccessException e) {
+				appManager.getLogger().error("channelAccess.addChannel({})", newChan, e);
 			}
 		}
 		else {
-			String currentParameter = channelLocator.getDeviceLocator().getParameters();
+			String currentParameter = channelConf.getDeviceLocator().getParameters();
 			String newParameter = configurationResource.deviceParameters().getValue();
 
 			if (!currentParameter.equals(newParameter)) {
-				channelLocator.getDeviceLocator().setParameters(newParameter);
+
+				channelAccess.deleteChannel(channelConf);
 
 				try {
-					channelAccess.deleteChannel(channelLocator);
-				} catch (ChannelConfigurationException e1) {
-					// ignore if channel does not exist
-				}
-
-				try {
-					channelAccess.addChannel(channelAccess.getChannelConfiguration(channelLocator));
-				} catch (ChannelConfigurationException e) {
-					appManager.getLogger().error("channelAccess.addChannel({})", channelLocator, e);
+					channelAccess.addChannel(newChan, Direction.DIRECTION_INOUT,
+							configurationResource.timeout().getValue());
+				} catch (ChannelAccessException e) {
+					appManager.getLogger().error("channelAccess.addChannel({})", newChan, e);
 				}
 			}
 		}
-
-		// did the timeout change?
-		long newTimeout = configurationResource.timeout().getValue();
-		long oldTimeout = channelAccess.getChannelConfiguration(channelLocator).getSamplingPeriod();
-		if (oldTimeout != newTimeout) {
-			channelAccess.getChannelConfiguration(channelLocator).setSamplingPeriod(newTimeout);
-		}
-
-		// did the name change?
-		// String newId = configurationResource.resourceName().getValue();
-		//
-		// if (dataResource.meter.getName() != newId) {
-		// ResourceManagement resourceManager = appManager.getResourceManagement();
-		//
-		// // the resource is renamed, in this case delete the old and create a
-		// // new one
-		// try {
-		// dataResource.delete();
-		// dataResource = null;
-		// } catch (ResourceException e) {
-		// logger.error(null, e);
-		// }
-		//
-		// try {
-		// dataResource = new AcuDC243Resource(resourceManager, newId);
-		// dataResource.activate(true);
-		// } catch (ResourceException e) {
-		// logger.error(null, e);
-		// }
-		// }
 	}
 
 	@Override
 	public void channelEvent(EventType type, List<SampledValueContainer> channels) {
 		// this listener is only registered for our channel, no need to check it
 		update();
+	}
+
+	public String getName() {
+		return configurationResource.resourceName().getValue();
 	}
 }

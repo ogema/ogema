@@ -26,6 +26,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -34,6 +35,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.ResourceList;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
 import org.ogema.impl.persistence.TimedPersistence.Change;
 import org.ogema.persistence.DBConstants;
@@ -41,12 +43,6 @@ import org.ogema.persistence.PersistencePolicy.ChangeInfo;
 import org.slf4j.Logger;
 
 public class DBResourceIO {
-
-	/**
-	 * Initial size of buffer the type entry is set up therein.
-	 */
-
-	private static final int INITIAL_MAP_SIZE = 256;
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("persistence");
 
@@ -57,9 +53,10 @@ public class DBResourceIO {
 	int dbFileInitialOffset;
 	final MapValueSorter sorter;
 
-	final ConcurrentHashMap<Integer, TreeElementImpl> unsortedParents;
-	final ConcurrentHashMap<Integer, TreeElementImpl> unsortedRefs;
-	final ConcurrentHashMap<Integer, TreeElementImpl> unreachableCustomTypes;
+	ConcurrentHashMap<String, TreeElementImpl> unsortedParents;
+	ConcurrentHashMap<String, TreeElementImpl> unsortedRefs;
+	final ConcurrentHashMap<String, TreeElementImpl> unloadableCustomResources;
+	// final Set<TreeElementImpl> resourceLists;
 
 	private final ResourceDBImpl database;
 
@@ -113,9 +110,10 @@ public class DBResourceIO {
 	}
 
 	DBResourceIO(ResourceDBImpl db) {
-		unsortedParents = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
-		unsortedRefs = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
-		unreachableCustomTypes = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
+		unsortedParents = new ConcurrentHashMap<>();
+		unsortedRefs = new ConcurrentHashMap<>();
+		unloadableCustomResources = new ConcurrentHashMap<>();
+		// resourceLists = new HashSet<>();
 
 		offsetByID = new ConcurrentHashMap<Integer, Integer>();
 		sorter = new MapValueSorter(offsetByID);
@@ -191,7 +189,7 @@ public class DBResourceIO {
 				dataFile = new DataFile(f);
 				emergencyParser(dataFile.raf);
 				dataFile.close();
-				dataFile = null;
+				// dataFile = null;
 			}
 		}
 
@@ -227,16 +225,8 @@ public class DBResourceIO {
 		}
 		database.nextresourceID = maxID + 1;
 
-		/*
-		 * Remove sub resources of deleted custom model resources from the unhandled list.
-		 */
-		handleRemoved(unsortedParents);
-		handleRemoved(unsortedRefs);
-		/*
-		 * Place the unsorted node in the tree.
-		 */
-		handleUnsorted(unsortedParents);
-		handleUnsorted(unsortedRefs);
+		postProcess();
+
 		if (Configuration.LOGGING)
 			logger.debug("...Resources parsed");
 		try {
@@ -267,7 +257,7 @@ public class DBResourceIO {
 			String dataName = mf.dataFileName;
 			DataFile df = verifyDataFile(mf, dataName);
 			if (!mf.isValid() || df == null) {
-				// No valid file set exist, backup the files and begin an new file set when the storage period starts.
+				// No valid file set exist, backup the files and begin a new file set when the storage period starts.
 				mf.close();
 				dirFiles.backup();
 				if (df != null) {
@@ -320,6 +310,8 @@ public class DBResourceIO {
 						this.dataFile = df;
 					}
 				}
+				else
+					mf.close();
 			}
 
 			if (this.mapFile == null) {
@@ -677,16 +669,7 @@ public class DBResourceIO {
 		}
 		database.nextresourceID = maxID + 1;
 
-		/*
-		 * Remove sub resources of deleted custom model resources from the unhandled list.
-		 */
-		handleRemoved(unsortedParents);
-		handleRemoved(unsortedRefs);
-		/*
-		 * Place the unsorted node in the tree.
-		 */
-		handleUnsorted(unsortedParents);
-		handleUnsorted(unsortedRefs);
+		postProcess();
 		if (Configuration.LOGGING)
 			logger.debug("...Resources parsed");
 		try {
@@ -699,29 +682,49 @@ public class DBResourceIO {
 		}
 	}
 
+	private void postProcess() {
+		/*
+		 * Remove sub resources of deleted custom model resources from the unhandled list.
+		 */
+		// handleRemoved(unsortedParents);
+		// handleRemoved(unsortedRefs);
+		/*
+		 * Place the unsorted node in the tree.
+		 */
+		handleUnsorted(unsortedParents);
+		handleUnsorted(unsortedRefs);
+
+		// all of the remaining unsorted node can be added to the UCR (unloadable custom resources) list
+		unloadableCustomResources.putAll(unsortedParents);
+		unloadableCustomResources.putAll(unsortedRefs);
+		// let gc get rid of the unsorted maps
+		unsortedParents.clear();
+		unsortedRefs.clear();
+	}
+
 	/**
 	 * Remove all unsorted sub resources that are unreachable because their top level resource is removed due to failed
 	 * load of the model class.
 	 * 
 	 * @param map
 	 */
-	private void handleRemoved(Map<Integer, TreeElementImpl> map) {
-		Set<Entry<Integer, TreeElementImpl>> unreachables = unreachableCustomTypes.entrySet();
-		for (Map.Entry<Integer, TreeElementImpl> entry1 : unreachables) {
-			TreeElementImpl e1 = entry1.getValue();
-			if (database.activatePersistence)
-				database.persistence.store(e1.resID, ChangeInfo.DELETED);
-			Set<Entry<Integer, TreeElementImpl>> unsorteds = map.entrySet();
-			for (Map.Entry<Integer, TreeElementImpl> entry2 : unsorteds) {
-				TreeElementImpl e2 = entry2.getValue();
-				if (e2.path.startsWith(e1.path)) {
-					map.remove(e2.resID);
-					if (database.activatePersistence)
-						database.persistence.store(e2.resID, ChangeInfo.DELETED);
-				}
-			}
-		}
-	}
+	// private void handleRemoved(Map<Integer, TreeElementImpl> map) {
+	// Set<Entry<Integer, TreeElementImpl>> unreachables = unreachableCustomTypes.entrySet();
+	// for (Map.Entry<Integer, TreeElementImpl> entry1 : unreachables) {
+	// TreeElementImpl e1 = entry1.getValue();
+	// if (database.activatePersistence)
+	// database.persistence.store(e1.resID, ChangeInfo.DELETED);
+	// Set<Entry<Integer, TreeElementImpl>> unsorteds = map.entrySet();
+	// for (Map.Entry<Integer, TreeElementImpl> entry2 : unsorteds) {
+	// TreeElementImpl e2 = entry2.getValue();
+	// if (e2.path.startsWith(e1.path)) {
+	// map.remove(e2.resID);
+	// if (database.activatePersistence)
+	// database.persistence.store(e2.resID, ChangeInfo.DELETED);
+	// }
+	// }
+	// }
+	// }
 
 	/**
 	 * When database starts up, the persistent stored resource information are parsed and the resource tree is set up.
@@ -731,22 +734,22 @@ public class DBResourceIO {
 	 * 
 	 * @param map
 	 */
-	private void handleUnsorted(Map<Integer, TreeElementImpl> map) {
+	private void handleUnsorted(Map<String, TreeElementImpl> map) {
 		int countBefore, countAfter;
 		do {
-			Set<Entry<Integer, TreeElementImpl>> tlrs = map.entrySet();
+			Set<Entry<String, TreeElementImpl>> tlrs = map.entrySet();
 			countBefore = map.size();
 			if (countBefore == 0)
 				break;
-			for (Map.Entry<Integer, TreeElementImpl> entry : tlrs) {
+			for (Map.Entry<String, TreeElementImpl> entry : tlrs) {
 				TreeElementImpl e = entry.getValue();
 				if (putResource(e))
-					map.remove(e.resID);
+					map.remove(e.path);
 			}
 			countAfter = map.size();
 			if (countBefore == countAfter)
-				break; // This should never happen. It means there are undeleted nodes and they couldn't be sorted into
-						// the tree.
+				break; // This means there are undeleted nodes and they couldn't be sorted into the tree. This could
+						// happen when unloadable custom resources exist.
 		} while (countBefore > 0);
 	}
 
@@ -760,98 +763,66 @@ public class DBResourceIO {
 	TreeElementImpl readEntry(RandomAccessFile raf) throws IOException, EOFException {
 		boolean clsLoaded = true;
 		@SuppressWarnings("unused")
-		boolean isSimple = false;
 		// 1. read header of the entry
 		TreeElementImpl node = new TreeElementImpl(database);
 		readHeader(node, raf);
+		// if the node is a reference no own value container is needed
 		int typeKey = node.typeKey;
+		setNodeType(node);
 		// check if the resource is a simple or a complex one
-		switch (typeKey) {
-		// read simple resource
-		case DBConstants.TYPE_KEY_BOOLEAN:
+		if (!node.isReference()) {
 			node.initDataContainer();
-			node.type = DBConstants.CLASS_BOOL_TYPE;
-			node.simpleValue.Z = raf.readBoolean();
-			isSimple = true;
-			break;
-		case DBConstants.TYPE_KEY_FLOAT:
-			node.initDataContainer();
-			node.type = DBConstants.CLASS_FLOAT_TYPE;
-			node.simpleValue.F = raf.readFloat();
-			isSimple = true;
-			break;
-		case DBConstants.TYPE_KEY_INT:
-			node.initDataContainer();
-			node.type = DBConstants.CLASS_INT_TYPE;
-			node.simpleValue.I = raf.readInt();
-			isSimple = true;
-			break;
-		case DBConstants.TYPE_KEY_STRING:
-			node.initDataContainer();
-			node.type = DBConstants.CLASS_STRING_TYPE;
-			if (isNullString(raf))
-				node.simpleValue.S = null;
-			else
-				node.simpleValue.S = raf.readUTF();
-			isSimple = true;
-			break;
-		case DBConstants.TYPE_KEY_LONG:
-			node.initDataContainer();
-			node.type = DBConstants.CLASS_TIME_TYPE;
-			node.simpleValue.J = raf.readLong();
-			isSimple = true;
-			break;
-		// read array resource
-		case DBConstants.TYPE_KEY_OPAQUE:
-			node.initDataContainer();
-			node.type = DBConstants.CLASS_OPAQUE_TYPE;
-			readAB(node);
-			isSimple = true;
-			break;
-		case DBConstants.TYPE_KEY_INT_ARR:
-			node.initDataContainer();
-			node.type = DBConstants.CLASS_INT_ARR_TYPE;
-			readAI(node);
-			isSimple = true;
-			break;
-		case DBConstants.TYPE_KEY_LONG_ARR:
-			node.initDataContainer();
-			node.type = DBConstants.CLASS_TIME_ARR_TYPE;
-			readAJ(node);
-			isSimple = true;
-			break;
-		case DBConstants.TYPE_KEY_FLOAT_ARR:
-			node.initDataContainer();
-			node.type = DBConstants.CLASS_FLOAT_ARR_TYPE;
-			readAF(node);
-			isSimple = true;
-			break;
-		case DBConstants.TYPE_KEY_COMPLEX_ARR:
-			node.type = DBConstants.CLASS_COMPLEX_ARR_TYPE;
-			clsLoaded = true;
-			break;
-		case DBConstants.TYPE_KEY_BOOLEAN_ARR:
-			node.initDataContainer();
-			node.type = DBConstants.CLASS_BOOL_ARR_TYPE;
-			readAZ(node);
-			isSimple = true;
-			break;
-		case DBConstants.TYPE_KEY_STRING_ARR:
-			node.initDataContainer();
-			node.type = DBConstants.CLASS_STRING_ARR_TYPE;
-			readAS(node);
-			isSimple = true;
-			break;
-		case DBConstants.TYPE_KEY_COMPLEX:
-			// create complex resource
-			// first register the type of the resource
-			clsLoaded = setTypeFromName(node);
-			break;
-		default:
-			break;
+			switch (typeKey) {
+			// read simple resource
+			case DBConstants.TYPE_KEY_BOOLEAN:
+				node.simpleValue.Z = raf.readBoolean();
+				break;
+			case DBConstants.TYPE_KEY_FLOAT:
+				node.simpleValue.F = raf.readFloat();
+				break;
+			case DBConstants.TYPE_KEY_INT:
+				node.simpleValue.I = raf.readInt();
+				break;
+			case DBConstants.TYPE_KEY_STRING:
+				if (isNullString(raf))
+					node.simpleValue.S = null;
+				else
+					node.simpleValue.S = raf.readUTF();
+				break;
+			case DBConstants.TYPE_KEY_LONG:
+				node.simpleValue.J = raf.readLong();
+				break;
+			// read array resource
+			case DBConstants.TYPE_KEY_OPAQUE:
+				readAB(node);
+				break;
+			case DBConstants.TYPE_KEY_INT_ARR:
+				readAI(node);
+				break;
+			case DBConstants.TYPE_KEY_LONG_ARR:
+				readAJ(node);
+				break;
+			case DBConstants.TYPE_KEY_FLOAT_ARR:
+				readAF(node);
+				break;
+			case DBConstants.TYPE_KEY_COMPLEX_ARR:
+				break;
+			case DBConstants.TYPE_KEY_BOOLEAN_ARR:
+				readAZ(node);
+				break;
+			case DBConstants.TYPE_KEY_STRING_ARR:
+				readAS(node);
+				break;
+			case DBConstants.TYPE_KEY_COMPLEX:
+				clsLoaded = false;
+				break;
+			default:
+				break;
+			}
 		}
 
 		if (node.type != null) {
+			clsLoaded = true;
 			String clsName = node.type.getName();
 			if (!node.typeName.equals(clsName)) {
 				try {
@@ -866,21 +837,75 @@ public class DBResourceIO {
 		if (clsLoaded)
 			putResource(node);
 		else {
-			unreachableCustomTypes.put(node.resID, node);
+			unloadableCustomResources.put(node.path, node);
 			logger.debug("Type couldn't be loaded: " + node.typeName);
 		}
 		return node;
+	}
+
+	private void setNodeType(TreeElementImpl node) {
+		int typeKey = node.typeKey;
+		switch (typeKey) {
+		// read simple resource
+		case DBConstants.TYPE_KEY_BOOLEAN:
+			node.type = DBConstants.CLASS_BOOL_TYPE;
+			break;
+		case DBConstants.TYPE_KEY_FLOAT:
+			node.type = DBConstants.CLASS_FLOAT_TYPE;
+			break;
+		case DBConstants.TYPE_KEY_INT:
+			node.type = DBConstants.CLASS_INT_TYPE;
+			break;
+		case DBConstants.TYPE_KEY_STRING:
+			node.type = DBConstants.CLASS_STRING_TYPE;
+			break;
+		case DBConstants.TYPE_KEY_LONG:
+			node.type = DBConstants.CLASS_TIME_TYPE;
+			break;
+		// read array resource
+		case DBConstants.TYPE_KEY_OPAQUE:
+			node.type = DBConstants.CLASS_OPAQUE_TYPE;
+			break;
+		case DBConstants.TYPE_KEY_INT_ARR:
+			node.type = DBConstants.CLASS_INT_ARR_TYPE;
+			break;
+		case DBConstants.TYPE_KEY_LONG_ARR:
+			node.type = DBConstants.CLASS_TIME_ARR_TYPE;
+			break;
+		case DBConstants.TYPE_KEY_FLOAT_ARR:
+			node.type = DBConstants.CLASS_FLOAT_ARR_TYPE;
+			break;
+		case DBConstants.TYPE_KEY_COMPLEX_ARR:
+			node.type = DBConstants.CLASS_COMPLEX_ARR_TYPE;
+			break;
+		case DBConstants.TYPE_KEY_BOOLEAN_ARR:
+			node.type = DBConstants.CLASS_BOOL_ARR_TYPE;
+			break;
+		case DBConstants.TYPE_KEY_STRING_ARR:
+			node.type = DBConstants.CLASS_STRING_ARR_TYPE;
+			break;
+		case DBConstants.TYPE_KEY_COMPLEX:
+			// create complex resource
+			// first register the type of the resource
+			setTypeFromName(node);
+			break;
+		default:
+			break;
+		}
 	}
 
 	void tryReadEntry(RandomAccessFile raf) throws IOException, EOFException {
 		// 1. read header of the entry
 		TreeElementImpl node = new TreeElementImpl(database);
 		readHeader(node, raf);
-		int typeKey = node.typeKey;
+		// if the node is a reference no own value container is needed
+		if (node.isReference())
+			return;
 		/*
 		 * prepare data container, so the simple data can be filled in.
 		 */
 
+		int typeKey = node.typeKey;
 		// check if the interface is a simple or a complex one
 		switch (typeKey) {
 		// read simple resource
@@ -955,32 +980,29 @@ public class DBResourceIO {
 	private boolean setTypeFromName(TreeElementImpl node) {
 		boolean result = false;
 		String typeName = node.typeName;
-		try {
-			if (typeName != null) {
-				Class<?> type = database.getResourceType(typeName);
-				if (type == null) {
-					try {
-						type = Class.forName(node.typeName).asSubclass(Resource.class);
-					} catch (ClassNotFoundException e) {
-					}
-					if (type != null) {
-						type = database.addOrUpdateResourceType((Class<? extends Resource>) type);
-						result = true;
-					}
-					else { // potentially this happens if a custom data model can no longer be loaded, because the
-							// exporter
-							// bundle is not at least installed.
-						logger.warn(String.format("Resouce class %s to the persistent data couldn't be loaded!",
-								node.typeName));
-					}
-				}
-				if (type != null) {
+
+		if (typeName != null) {
+			Class<?> type = database.getResourceType(typeName);
+			if (type == null) {
+				try {
+					type = Class.forName(node.typeName).asSubclass(Resource.class);
+					type = database.addOrUpdateResourceType((Class<? extends Resource>) type);
 					result = true;
-					node.type = type;
+				} catch (ClassNotFoundException e) {
+					// potentially this happens if a custom data model can no longer be loaded, because the
+					// exporter
+					// bundle is not at least installed.
+					logger.warn(String.format("Resouce class %s to the persistent data couldn't be loaded!",
+							node.typeName));
+				} catch (InvalidResourceTypeException e) {
+					e.printStackTrace();
+					type = null;
 				}
 			}
-		} catch (InvalidResourceTypeException e) {
-			e.printStackTrace();
+			if (type != null) {
+				result = true;
+				node.type = type;
+			}
 		}
 		return result;
 	}
@@ -1117,13 +1139,16 @@ public class DBResourceIO {
 	}
 
 	boolean putResource(TreeElementImpl e) {
+		// Collect all ResourceLists to remove those with unspecified type.
+		// if (e.type == ResourceList.class)
+		// resourceLists.add(e);
 		boolean unsorted = false;
 		// determine the parent node
 		TreeElementImpl parent = database.resNodeByID.get(e.parentID);
 		if ((parent == null) && (!e.toplevel)) // parent not yet read from
 		// archive file
 		{
-			unsortedParents.put(e.resID, e);
+			unsortedParents.put(e.path, e);
 			unsorted = true;
 		} // temporarily its hold as unsorted
 			// node in order to be sorted in the
@@ -1146,7 +1171,7 @@ public class DBResourceIO {
 		if (e.reference) {
 			refered = database.resNodeByID.get(e.refID);
 			if (refered == null) {
-				unsortedRefs.put(e.resID, e);
+				unsortedRefs.put(e.path, e);
 				unsorted = true;
 			}
 			else {
@@ -1171,7 +1196,7 @@ public class DBResourceIO {
 		if (e.toplevel)
 			database.root.put(e.name, e);
 		else {
-//			e.parent.optionals.remove(e.name);
+			// e.parent.optionals.remove(e.name);
 			e.parent.requireds.put(e.name, e);
 		}
 		database.registerRes(e);
@@ -1242,6 +1267,10 @@ public class DBResourceIO {
 			// Put the ID
 			try {
 				dos.writeInt(currEntry.getKey());
+				logger.debug(currEntry.getKey().toString());
+				logger.debug("=");
+				logger.debug(currEntry.getValue().toString());
+				logger.debug(",");
 				dos.writeInt(currEntry.getValue());
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -1252,6 +1281,10 @@ public class DBResourceIO {
 			dos.writeInt(numOfEntries);
 			dos.writeInt(MapFile.MAGIC1);
 			dos.writeInt(MapFile.MAGIC2);
+			logger.debug(mapFile.dataFileName);
+			logger.debug(Integer.toString(numOfEntries));
+			logger.debug(Integer.toHexString(MapFile.MAGIC1));
+			logger.debug(Integer.toHexString(MapFile.MAGIC2));
 			dos.flush();
 			mapFile.fos.getFD().sync();
 			dos.close();
@@ -1310,6 +1343,69 @@ public class DBResourceIO {
 			}
 		} catch (IOException e1) {
 			e1.printStackTrace();
+		}
+	}
+
+	public TreeElementImpl handleUCR(String name, Class<? extends Resource> type) {
+		// Is there an UCR with this name
+		TreeElementImpl tei = unloadableCustomResources.remove(name);
+		if (tei == null)
+			return null;
+		String prefix = name;
+		if (!prefix.endsWith("/"))
+			prefix = prefix + "/";
+		// Is the existing UCR from the required type
+		if (type != null && type != ResourceList.class && !tei.typeName.equals(type.getName())) {
+			// UCR is to be deleted
+			if (database.activatePersistence)
+				database.persistence.store(tei.resID, ChangeInfo.DELETED);
+			// unreachableCustomTypes.remove(name);
+			// and all of its subresources too
+
+			Set<Entry<String, TreeElementImpl>> unreachables = unloadableCustomResources.entrySet();
+			for (Map.Entry<String, TreeElementImpl> entry1 : unreachables) {
+				String path = entry1.getKey();
+				if (path.startsWith(prefix))
+					unloadableCustomResources.remove(path);
+			}
+			return null;
+		}
+		else {
+			// UCR is to be reactivated
+			// is there a type specified?
+			if (type == null) {
+				if (!setTypeFromName(tei)) // There is an UCR with the name but the type couldn't be resolved
+				{
+					unloadableCustomResources.put(name, tei);
+					return null;
+				}
+			}
+			else {
+				tei.type = type;
+			}
+			putResource(tei);
+			// and its children too
+			int count = 0;
+			do { // Try it recursively as long as any UCRs can be resolved
+				count = 0;
+				Set<Entry<String, TreeElementImpl>> unreachables = unloadableCustomResources.entrySet();
+				for (Map.Entry<String, TreeElementImpl> entry1 : unreachables) {
+					String path = entry1.getKey();
+					TreeElementImpl child = entry1.getValue();
+					TreeElementImpl parent = database.resNodeByID.get(child.parentID);
+					if (parent != null) { // Is the parent resource already part of the tree?
+						if (child.type == null)
+							setTypeFromName(child); // Try to load type class
+						if (child.type != null) { // Set parent and hook it on the tree
+							child.parent = parent;
+							putResource(child);
+							count++;
+							unloadableCustomResources.remove(path);
+						}
+					}
+				}
+			} while (count > 0);
+			return tei;
 		}
 	}
 }

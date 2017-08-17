@@ -26,6 +26,7 @@ import org.ogema.driver.homematic.Activator;
 import org.ogema.driver.homematic.manager.RemoteDevice.InitStates;
 import org.ogema.driver.homematic.manager.messages.CmdMessage;
 import org.ogema.driver.homematic.manager.messages.Message;
+import org.ogema.driver.homematic.usbconnection.Fifo;
 import org.slf4j.Logger;
 
 /**
@@ -37,7 +38,7 @@ import org.slf4j.Logger;
 public class MessageHandler {
 	private LocalDevice localDevice;
 	public long MIN_WAITING_TIME = 500;
-	private volatile List<Long> sentMessageAwaitingResponse = new ArrayList<Long>(); // <Token>
+	private volatile List<Integer> sentMessageAwaitingResponse = new ArrayList<Integer>(); // <Token>
 	private volatile Map<String, SendThread> runningThreads = new ConcurrentHashMap<String, SendThread>(); // <Deviceaddress,
 	// Thread>
 	HashMap<String, CmdMessage> sentCommands = new HashMap<String, CmdMessage>();
@@ -92,11 +93,12 @@ public class MessageHandler {
 		private int tries;
 		private volatile int errorCounter = 0;
 
-		private volatile Map<Long, Message> unsentMessageQueue; // Messages waiting to be sent
+		private volatile Fifo<Message> unsentMessageQueue; // Messages waiting to be sent
 
 		public SendThread(String dest) {
 			this.dest = dest;
-			unsentMessageQueue = new ConcurrentHashMap<Long, Message>();
+			unsentMessageQueue = new Fifo<>(8);
+			this.setName("Homematic-SendThread-" + dest);
 		}
 
 		@Override
@@ -106,18 +108,21 @@ public class MessageHandler {
 					Message entry = null;
 					logger.debug("Try: " + tries);
 					synchronized (unsentMessageQueue) {
-						try {
-							entry = this.unsentMessageQueue.remove(getSmallestKey());
-							if (entry == null) {
+						// entry = this.unsentMessageQueue.remove(getSmallestKey());
+						entry = (Message) this.unsentMessageQueue.get();
+						if (entry == null) {
+							try {
 								unsentMessageQueue.wait();
-								entry = this.unsentMessageQueue.get(getSmallestKey());
-								if (entry == null)
-									continue;
+							} catch (InterruptedException e) {
+								logger.debug("Waiting SendThread interrupted");
 							}
-						} catch (InterruptedException e) {
+							// entry = this.unsentMessageQueue.get(getSmallestKey());
+							entry = (Message) this.unsentMessageQueue.get();
+							if (entry == null)
+								continue;
 						}
 					}
-					long token = entry.getToken(); 
+					int token = entry.getToken();
 					sentMessageAwaitingResponse.add(token);
 					logger.debug("sentMessageAwaitingResponse added " + token);
 					// register command message to assign additional info about the request message to the receiver of
@@ -137,8 +142,9 @@ public class MessageHandler {
 						if (sentMessageAwaitingResponse.contains(token)) {
 							localDevice.sendFrame(entry.getFrame());
 							try {
-								Thread.sleep(3000);
+								Thread.sleep(5000);
 							} catch (InterruptedException e) {
+								logger.debug("Sleeping SendThread interrupted");
 								break;
 							}
 							logger.debug(
@@ -182,20 +188,21 @@ public class MessageHandler {
 
 		public void addMessage(Message message) {
 			synchronized (unsentMessageQueue) {
-				this.unsentMessageQueue.put(message.getToken(), message);
+				// this.unsentMessageQueue.put(message.getToken(), message);
+				this.unsentMessageQueue.put(message);
 				unsentMessageQueue.notify();
 			}
 			logger.debug("unsentMessageQueue added " + message.getToken());
 		}
 
-		private long getSmallestKey() {
-			Set<Long> keys = this.unsentMessageQueue.keySet();
-			long min = 0xffffffffL;
-			for (long key : keys) {
-				if (key < min)
-					min = key;
-			}
-			return min;
-		}
+		// private long getSmallestKey() {
+		// Set<Long> keys = this.unsentMessageQueue.keySet();
+		// long min = 0xffffffffL;
+		// for (long key : keys) {
+		// if (key < min)
+		// min = key;
+		// }
+		// return min;
+		// }
 	}
 }

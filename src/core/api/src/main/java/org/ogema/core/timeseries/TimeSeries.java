@@ -116,6 +116,7 @@ public interface TimeSeries extends ReadOnlyTimeSeries {
 	 * rejected (this can occur in TimeSeries on which a write restriction is
 	 * enforced or that can be virtual).
 	 */
+	// FIXME this means that Long.MAX_VALUE cannot be deleted... 
 	boolean deleteValues(long endTime);
 
 	/**

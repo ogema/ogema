@@ -15,10 +15,8 @@
  */
 package org.ogema.core.rads.change;
 
-import org.ogema.core.administration.RegisteredValueListener;
 import org.ogema.core.resourcemanager.pattern.PatternChangeListener;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
-import org.ogema.resourcetree.listeners.InternalStructureListenerRegistration;
 
 // TODO move to API and provide access via admin interface... 
 // TODO InternalValueListenerRegistration

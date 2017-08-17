@@ -47,27 +47,27 @@ public class FAServletUser extends HttpServlet {
 		}
 
 		if ("getUserData".equals(action)) {
-			String user = req.getParameter("user");
+			String user = req.getParameter("usr");
 			String result = UserController.getInstance().getUserInformation(user);
 			resp.getWriter().write(result);
 			resp.setStatus(200);
 		}
 		else if ("getUserPolicies".equals(action)) {
-			String user = req.getParameter("user");
+			String user = req.getParameter("usr");
 			//String result = UserController.getInstance().getPolicies(user);
 			String result = UserController.getInstance().getPoliciesMachineUser(user);
 			resp.getWriter().write(result);
 			resp.setStatus(200);
 		}
 		else if ("getUserPermittedApps".equals(action)) {
-			String user = req.getParameter("user");
+			String user = req.getParameter("usr");
 			//String result = UserController.getInstance().getPermittedApps(user);
 			String result = UserController.getInstance().getAppsNaturalUser(user);
 			resp.getWriter().write(result);
 			resp.setStatus(200);
 		}
 		else if ("grantAdminRights".equals(action)) {
-			String user = req.getParameter("user");
+			String user = req.getParameter("usr");
 			boolean success = UserController.getInstance().grantAdminRights(user);
 			if (success) {
 				String message = Utils.createMessage("OK", "admin rights granted");
@@ -80,7 +80,7 @@ public class FAServletUser extends HttpServlet {
 			}
 		}
 		else if ("revokeAdminRights".equals(action)) {
-			String user = req.getParameter("user");
+			String user = req.getParameter("usr");
 			boolean success = UserController.getInstance().revokeAdminRights(user);
 			if (success) {
 				String message = Utils.createMessage("OK", "admin rights revoked");

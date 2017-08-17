@@ -18,6 +18,7 @@ package org.ogema.tools.timeseries.api;
 import java.util.List;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.timeseries.InterpolationMode;
+import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 
 /**
  * Definition of a float-valued time series that is interpreted as a function f
@@ -34,9 +35,9 @@ public interface FloatTimeSeries extends MemoryTimeSeries {
 	void multiplyBy(float factor);
 
 	/**
-	 * Multiply all values by a constant factor.
+	 * Multiply by another time series (whose value type must be convertible to float)
 	 */
-	void multiplyBy(final FloatTimeSeries factor);
+	void multiplyBy(final ReadOnlyTimeSeries factor);
 
 	/**
 	 * Return a time series that is a copy of this multiplied by the given
@@ -46,9 +47,9 @@ public interface FloatTimeSeries extends MemoryTimeSeries {
 
 	/**
 	 * Return a new time series that is the result of point-wise multiplication
-	 * of this with the other time series.
+	 * of this with the other time series (whose value type must be convertible to float).
 	 */
-	FloatTimeSeries times(final FloatTimeSeries other);
+	FloatTimeSeries times(final ReadOnlyTimeSeries other);
 
 	/**
 	 * Add the constant addend to all entries of this.
@@ -56,9 +57,10 @@ public interface FloatTimeSeries extends MemoryTimeSeries {
 	void add(float addend);
 
 	/**
-	 * Add the constant addend to all entries of this.
+	 * Add the time series other (which values must be convertible to float)
+	 * to the values of this.
 	 */
-	void add(FloatTimeSeries other);
+	void add(ReadOnlyTimeSeries other);
 
 	/**
 	 * Returns a new time series that equals this plus an addend added to all of
@@ -67,8 +69,8 @@ public interface FloatTimeSeries extends MemoryTimeSeries {
 	FloatTimeSeries plus(float addend);
 
 	/**
-	 * Returns a time series that is the sum of this and other. Sum is to be
-	 * understood point-wise. The domain of the sum equals the intersection of
+	 * Returns a time series that is the sum of this and other (whose value type must be convertible to float). 
+	 * Sum is to be understood point-wise. The domain of the sum equals the intersection of
 	 * the domains of this and other.
 	 */
 	FloatTimeSeries plus(final FloatTimeSeries other);

@@ -21,6 +21,7 @@ import java.io.StringWriter;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
 import javax.xml.transform.stream.StreamSource;
 
 import static org.junit.Assert.assertEquals;
@@ -45,9 +46,11 @@ import org.ogema.core.tools.SerializationManager;
 import org.ogema.exam.OsgiAppTestBase;
 import org.ogema.exam.ResourceAssertions;
 import org.ogema.model.devices.connectiondevices.ElectricityConnectionBox;
+import org.ogema.model.devices.generators.ElectricHeater;
 import org.ogema.model.locations.Room;
 import org.ogema.model.locations.WorkPlace;
 import org.ogema.model.metering.ElectricityMeter;
+import org.ogema.model.sensors.PowerSensor;
 import org.ogema.serialization.JaxbResource;
 import org.ogema.serialization.jaxb.FloatSchedule;
 import org.ogema.serialization.jaxb.Resource;
@@ -189,11 +192,13 @@ public class ApplyTest extends OsgiAppTestBase {
 
 	String marshal(Object o) throws JAXBException {
 		StringWriter sw = new StringWriter(200);
-		jaxbUnmarshalling.createMarshaller().marshal(o, sw);
+		Marshaller m = jaxbUnmarshalling.createMarshaller();
+        m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
+        m.marshal(o, sw);
 		return sw.toString();
 	}
 
-	FloatSchedule createTestSchedule() {
+	static FloatSchedule createTestSchedule() {
 		FloatSchedule schedule = new FloatSchedule();
 		schedule.setName("data");
 		schedule.setType(AbsoluteSchedule.class);
@@ -235,15 +240,55 @@ public class ApplyTest extends OsgiAppTestBase {
 		Schedule ogemaSchedule = (Schedule) meter.getSubResource("scheduleTest").getSubResource("data");
 		assertEquals(schedule.getEntry().size(), ogemaSchedule.getValues(0).size());
 	}
+    
+    @Test
+    public void applyCreatesLinksToNewResources() throws JAXBException {
+        ElectricHeater heater = getApplicationManager().getResourceManagement().createResource(newResourceName(), ElectricHeater.class);
+        String heaterName = heater.getName();
+        PowerSensor psens = getApplicationManager().getResourceManagement().createResource(newResourceName(), PowerSensor.class);
+        String psensName = psens.getName();
+        heater.electricityConnection().powerSensor().reading().create();
+        psens.reading().setAsReference(heater.electricityConnection().powerSensor().reading());
+        
+        sman.setFollowReferences(false);
+        Resource heaterXml = unmarshal(sman.toXml(heater), Resource.class);
+        Resource psensXml = unmarshal(sman.toXml(psens), Resource.class);
+        
+        Resource root = new Resource();
+        root.setPath("/");
+        root.setName("");
+        root.setType(org.ogema.core.model.Resource.class);
+        root.getSubresources().add(psensXml);
+        root.getSubresources().add(heaterXml);
+        
+        heater.delete();
+        psens.delete();
+        heater = getApplicationManager().getResourceAccess().getResource(heaterName);
+        psens = getApplicationManager().getResourceAccess().getResource(psensName);
+        assertNull(heater);
+        assertNull(psens);
+        
+        String msg = marshal(root);
+        System.out.println(msg);
+        
+        sman.createFromXml(msg);
+        
+        heater = getApplicationManager().getResourceAccess().getResource(heaterName);
+        psens = getApplicationManager().getResourceAccess().getResource(psensName);
+        
+        assertNotNull(heater);
+        assertNotNull(psens);
+        
+        ResourceAssertions.assertExists(psens.reading());
+        assertTrue(psens.reading().equalsLocation(heater.electricityConnection().powerSensor().reading()));
+    }
 	
 	@Test
 	public void addingEmptyScheduleWorks_Json() throws Exception {
 		sman.setSerializeSchedules(true);
 		String id = "JsonTest";
-		ElectricityMeter meter1 = getApplicationManager().getResourceManagement().createResource("meter" + id + "1",
-				ElectricityMeter.class);
-		ElectricityMeter meter2 = getApplicationManager().getResourceManagement().createResource("meter" + id + "2",
-				ElectricityMeter.class);
+		ElectricityMeter meter1 = getApplicationManager().getResourceManagement().createResource("meter" + id + "1", ElectricityMeter.class);
+		ElectricityMeter meter2 = getApplicationManager().getResourceManagement().createResource("meter" + id + "2", ElectricityMeter.class);
 		meter1.connection().currentSensor().reading().create();
 		meter2.connection().currentSensor().reading().program().create().activate(false);
 		
@@ -390,7 +435,7 @@ public class ApplyTest extends OsgiAppTestBase {
 		Resource meter1 = unmarshal(sman.toXml(meter), Resource.class);
 		meter1.getSubresources().add(floatRes);
 		sman.applyXml(marshal(meter1), meter, true);
-
+		
 		schedule.getEntry().clear();
 		schedule.setStart(2L);
 		schedule.setEnd(3L);

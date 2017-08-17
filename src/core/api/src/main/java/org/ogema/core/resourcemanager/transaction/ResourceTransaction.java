@@ -466,7 +466,8 @@ public interface ResourceTransaction {
 	 * 		create resource if it does not exist? If this is false and the resource is virtual, a
 	 * 		VirtualResourceException is thrown, causing the transaction to be aborted.
 	 * @param recursive
-	 * 		true: activate subresources as well 
+	 * 		true: activate subresources as well. A recursive search includes the entire resource
+	 *            tree below the calling resource, but does not extend the search going over references 
 	 */
 	void activate(Resource resource, boolean create, boolean recursive);
 	

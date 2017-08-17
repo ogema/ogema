@@ -18,6 +18,7 @@ package org.ogema.tools.memoryschedules.tools;
 import org.ogema.tools.memoryschedules.tools.IndexInterval;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
@@ -196,6 +197,13 @@ public class SampledValueSortedList {
         if (idx >= m_values.size() - 1) return null;
         return new SampledValue(m_values.get(idx + 1));
     }
+    
+    public SampledValue getPreviousValue(long time) {
+        final int idx = getIndexBelow(time);
+        if (idx < 0)
+        	return null;
+        return new SampledValue(m_values.get(idx));
+    }
 
     public void addValue(SampledValue value) {
         final SampledValue newValue = new SampledValue(value);
@@ -232,6 +240,8 @@ public class SampledValueSortedList {
         if (lower == size) return new ArrayList<>();
 
         int upper = getIndexBelow(t1);
+        if (upper == -1)
+        	return new ArrayList<>();
         while (upper < size && m_values.get(upper).getTimestamp() < t1)
             ++upper;
 
@@ -298,4 +308,24 @@ public class SampledValueSortedList {
             result.add(new SampledValue(value));
         return result;
     }
+    
+    public boolean isEmpty(long startInclusive, long endInclusive) {
+    	if (m_values.isEmpty())
+    		return true;
+    	int i = getIndexBelow(endInclusive);
+    	return (i == NO_SUCH_INDEX || m_values.get(i).getTimestamp() < startInclusive);
+    }
+    
+    public int size(long startInclusive, long endInclusive) {
+    	return getSublist(startInclusive, endInclusive).size();
+    }
+    
+    public Iterator<SampledValue> iterator() {
+    	return m_values.iterator();
+    }
+    
+    public Iterator<SampledValue> iterator(long startInclusive, long endInclusive) {
+    	return getSublist(startInclusive, endInclusive).iterator();
+    }
+    
 }

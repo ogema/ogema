@@ -8,20 +8,21 @@ ngOGFrGui.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', funct
             path = $rootScope.rootPath+path;
     //        console.log("SERVICE getJSON: ", path, data, config);
             var deferred = $q.defer();
+            appendOtp(data);
             //  var formdata = $.param(data);
      //       console.log("getJSON", data);
             $http({
                 method: 'GET',
                 url: path,
                 params: data,
-                //  headers : { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' } 
+                //  headers : { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }
             }).success(function(result, status) {
                 deferred.resolve(result);
-               
+
             }).error(function(status, error, result) {
         //        console.log("Error calling LIST", status, error, result);
                 deferred.reject();
-                 
+
                 //deferred.resolve();
             });
             return deferred.promise;
@@ -33,7 +34,7 @@ ngOGFrGui.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', funct
        //     console.log("SERVICE postForm: path, data, config: ", path, data, config);
             var deferred = $q.defer();
             var formdata = $.param(data);
-            
+
         //    console.log("FORMDATA:", formdata);
             $http({
                 method: 'POST',
@@ -58,13 +59,13 @@ ngOGFrGui.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', funct
    * The workhorse; converts an object to x-www-form-urlencoded serialization.
    * @param {Object} obj
    * @return {String}
-   */ 
+   */
   var param = function(obj) {
     var query = '', name, value, fullSubName, subName, subValue, innerObj, i;
-      
+
     for(name in obj) {
       value = obj[name];
-        
+
       if(value instanceof Array) {
         for(i=0; i<value.length; ++i) {
           subValue = value[i];
@@ -86,11 +87,11 @@ ngOGFrGui.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', funct
       else if(value !== undefined && value !== null)
         query += encodeURIComponent(name) + '=' + encodeURIComponent(value) + '&';
     }
-      
+
     return query.length ? query.substr(0, query.length - 1) : query;
   };
- 
-  
+
+
         this.postData = function(path, data, config) {
             path = $rootScope.rootPath+path;
       //      console.log("SERVICE postData: path, data, config: ", path, data, config);
@@ -127,7 +128,7 @@ ngOGFrGui.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', funct
           //              console.log(result)
                         var resources = result.subresources;
                         /* angular.forEach(resources, function(element, key) {
-                            
+
                             resolveResourcelink(element, path).then(function(result) {
                                 if (result != undefined) {
                                     //console.log("resolved: ",result);
@@ -279,7 +280,7 @@ ngOGFrGui.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', funct
                     unifyResult(value);
 
                 } else {
-                    // do something... 
+                    // do something...
 
                 }
 
@@ -287,6 +288,12 @@ ngOGFrGui.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', funct
             return obj;
         }
 
+        function appendOtp(data) {
+        	if (typeof otusr === "undefined")
+        		return;
+        	data.user = otusr;
+        	data.pw = otpwd
+        }
 
         this.getObject = function(obj, key, val) {
             var objects = [];

@@ -77,7 +77,8 @@ public interface SerializationManager {
 	 *
 	 * @param status If true, references are followed as if they were "real"
 	 * subresources. If false, references are not followed but embedded into the
-	 * resulting object as a reference.
+	 * resulting object as a reference.<br>
+	 * Default value: true.
 	 */
 	void setFollowReferences(boolean status);
 

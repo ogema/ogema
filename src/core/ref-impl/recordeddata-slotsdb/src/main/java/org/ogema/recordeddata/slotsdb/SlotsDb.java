@@ -21,6 +21,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -54,25 +56,30 @@ public class SlotsDb implements DataRecorder {
 	/*
 	 * File extension for SlotsDB files. Only these Files will be loaded.
 	 */
-	public static String FILE_EXTENSION = ".slots";
+	public final static String FILE_EXTENSION = ".slots";
 
 	/*
 	 * Root folder for SlotsDB files
 	 */
-	public static String DB_ROOT_FOLDER = System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase()
-			+ ".dbfolder");
+	public final static String DB_ROOT_FOLDER = AccessController.doPrivileged(new PrivilegedAction<String>() {
+
+		@Override
+		public String run() {
+			return System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase() + ".dbfolder");
+		}
+	});
+			
 
 	/*
 	 * If no other root folder is defined, data will be stored to this folder
 	 */
-	public static String DEFAULT_DB_ROOT_FOLDER = "data/slotsdb/";
+	public final static String DEFAULT_DB_ROOT_FOLDER = "data/slotsdb/";
 
 	/*
 	 * Root Folder for JUnit Testcases
 	 */
-	public static String DB_TEST_ROOT_FOLDER = "testdata/";
+	public final static String DB_TEST_ROOT_FOLDER = "testdata/";
 
-	public static String SLOTS_DB_STORAGE_ID_PATH = DEFAULT_DB_ROOT_FOLDER + "slotsDbStorageIDs.ser";
 	//public static String CONFIGURATION_PATH = DEFAULT_DB_ROOT_FOLDER + "configurations.ser";
 
 	/*
@@ -82,72 +89,111 @@ public class SlotsDb implements DataRecorder {
 	 * 
 	 * host:/#> ulimit -aH [...] open files (-n) 1024 [...]
 	 */
-	public static String MAX_OPEN_FOLDERS = System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase()
-			+ ".max_open_folders");
-	public static int MAX_OPEN_FOLDERS_DEFAULT = 512;
+	public final static String MAX_OPEN_FOLDERS = AccessController.doPrivileged(new PrivilegedAction<String>() {
+
+		@Override
+		public String run() {
+			return System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase() + ".max_open_folders");
+		}
+	});
+			
+	public final static int MAX_OPEN_FOLDERS_DEFAULT = 512;
 
 	/*
 	 * configures the data flush period. The less you flush, the faster SLOTSDB
 	 * will be. unset this System Property (or set to 0) to flush data directly
 	 * to disk.
 	 */
-	public static String FLUSH_PERIOD = System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase()
-			+ ".flushperiod");
+	// this is now evaluated in the FileObjectProxy constructor, so the property can be set explicitly in the tests
+//	public static String FLUSH_PERIOD = System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase()
+//			+ ".flushperiod");
 
 	/*
 	 * configures how long data will at least be stored in the SLOTSDB.
 	 */
-	public static String DATA_LIFETIME_IN_DAYS = System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase()
-			+ ".limit_days");
+	public final static String DATA_LIFETIME_IN_DAYS = AccessController.doPrivileged(new PrivilegedAction<String>() {
 
+		@Override
+		public String run() {
+			return System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase() + ".limit_days");
+		}
+		
+	});
+	
 	/*
 	 * configures the maximum Database Size (in MB).
 	 */
-	public static String MAX_DATABASE_SIZE = System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase()
-			+ ".limit_size");
+	public final static String MAX_DATABASE_SIZE = AccessController.doPrivileged(new PrivilegedAction<String>() {
+
+		@Override
+		public String run() {
+			return System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase() + ".limit_size");
+		}
+	});
 
 	/*
 	 * Minimum Size for SLOTSDB (in MB).
 	 */
-	public static int MINIMUM_DATABASE_SIZE = 2;
+	public final static int MINIMUM_DATABASE_SIZE = 2;
 
 	/*
 	 * Initial delay for scheduled tasks (size watcher, data expiration, etc.)
 	 */
-	public static int INITIAL_DELAY = 10000;
+	public final static int INITIAL_DELAY = 10000;
 
 	/*
 	 * Interval for scanning expired, old data. Set this to 86400000 to scan
 	 * every 24 hours.
 	 */
-	public static int DATA_EXPIRATION_CHECK_INTERVAL = 5000;
+	public final static int DATA_EXPIRATION_CHECK_INTERVAL = 5000;
 
-	FileObjectProxy proxy; // quasi-final
+	private String dbRootFolder; // quasi-final
+	private FileObjectProxy proxy; // quasi-final
+	private String SLOTS_DB_STORAGE_ID_PATH; // quasi-final
 	private final Map<String, SlotsDbStorage> slotsDbStorages = new HashMap<String, SlotsDbStorage>();
 	
 	@Reference
 	FrameworkClock clock;  
+	
+	public SlotsDb() {}
+	
+	// only for tests
+	SlotsDb(String baseFolder) {
+		init(baseFolder);
+	}
+	
+	private void init(String baseFolder) {
+		if (baseFolder.endsWith("/") || baseFolder.endsWith("\\"))
+			baseFolder = baseFolder.substring(0, baseFolder.length()-1);
+		dbRootFolder = baseFolder;
+		SLOTS_DB_STORAGE_ID_PATH = baseFolder + "/slotsDbStorageIDs.ser";
+		this.proxy = new FileObjectProxy(baseFolder, null);
+		readPersistedSlotsDbStorages();
+	}
 
-//	public SlotsDb() {
 	@Activate
     protected synchronized void activate(BundleContext ctx, Map<String, Object> config) {
-		if (DB_ROOT_FOLDER == null) {
-			proxy = new FileObjectProxy(DEFAULT_DB_ROOT_FOLDER, clock);
-		}
-		else {
-			proxy = new FileObjectProxy(DB_ROOT_FOLDER, clock);
-		}
-		readPersistedSlotsDbStorages();
+		String baseFolder = (DB_ROOT_FOLDER != null ? DB_ROOT_FOLDER : DEFAULT_DB_ROOT_FOLDER);
+		init(baseFolder);
 	}
 
 	@Deactivate
 	protected synchronized void deactivate(Map<String, Object> config) {
 		if (proxy != null)
 			proxy.close();
-		proxy = null;
 		synchronized (slotsDbStorages) {
 			slotsDbStorages.clear();
 		}
+		proxy = null;
+		dbRootFolder = null;
+		SLOTS_DB_STORAGE_ID_PATH = null;
+	}
+	
+	final FileObjectProxy getProxy() {
+		final FileObjectProxy proxy = this.proxy;
+		if (proxy == null)
+			throw new IllegalStateException("SlotsDb has not been initialized yet");
+		return proxy;
 	}
 	
 	/**
@@ -217,8 +263,6 @@ public class SlotsDb implements DataRecorder {
 		}
 	}
 
-	// FIXME
-	// caller must synchronize -> not any more
 	@Override
 	public RecordedDataStorage createRecordedDataStorage(String id, RecordedDataConfiguration configuration)
 			throws DataRecorderException {

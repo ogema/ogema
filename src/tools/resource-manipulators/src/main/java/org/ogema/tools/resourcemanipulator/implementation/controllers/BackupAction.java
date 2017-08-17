@@ -15,6 +15,8 @@
  */
 package org.ogema.tools.resourcemanipulator.implementation.controllers;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.List;
 
 import org.ogema.core.application.ApplicationManager;
@@ -38,7 +40,13 @@ public class BackupAction {
 	public final static Long LOG_DATA_LIFETIME; // may be null, if property not set
 	
 	static {
-		String logDataLifetimeStr = System.getProperty("org.ogema.recordeddata.slotsdb.limit_days");
+		String logDataLifetimeStr = AccessController.doPrivileged(new PrivilegedAction<String>() {
+
+			@Override
+			public String run() {
+				return System.getProperty("org.ogema.recordeddata.slotsdb.limit_days");
+			}
+		});
 		Long value = null;
 		try {
 			value = Long.parseLong(logDataLifetimeStr) * 24*60*60*1000;

@@ -16,9 +16,13 @@
 package org.ogema.tools.resource.util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 import org.ogema.core.channelmanager.measurements.BooleanValue;
 import org.ogema.core.channelmanager.measurements.FloatValue;
@@ -29,6 +33,7 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.array.ArrayResource;
 import org.ogema.core.model.array.BooleanArrayResource;
@@ -221,6 +226,31 @@ public class ValueResourceUtils {
 	}
 
 	/**
+	 * Set the resource value; the passed value is converted by the respective 
+	 * method of {@link Value}. 
+	 * @param resource
+	 * @param value
+	 */
+	public static void setValue(SingleValueResource resource, Value value) {
+		if (resource instanceof StringResource) {
+			((StringResource) resource).setValue(value.getStringValue());
+		}
+		else if (resource instanceof FloatResource) {
+			((FloatResource) resource).setValue(value.getFloatValue());
+		}
+		else if (resource instanceof IntegerResource) {
+			((IntegerResource) resource).setValue(value.getIntegerValue());
+		}
+		else if (resource instanceof BooleanResource) {
+			((BooleanResource) resource).setValue(value.getBooleanValue());
+		}
+		else if (resource instanceof TimeResource) {
+			((TimeResource) resource).setValue(value.getLongValue());
+		}
+	}
+	
+	
+	/**
 	 * Returns a String representation of the value of <code>resource</code>.
 	 * @param resource
 	 */
@@ -350,6 +380,82 @@ public class ValueResourceUtils {
 			return ((byte[]) obj)[idx];
 		else 
 			throw new IllegalArgumentException(); // cannot occur
+	}
+	
+	/**
+	 * Check if the array resource contains a String. This returns false if the resource is inactive.
+	 * @param array
+	 * 		may not be null
+	 * @param string
+	 * 		may be null, in which case false is returned
+	 * @return
+	 */
+	public static boolean contains(StringArrayResource array, String string) {
+		Objects.requireNonNull(array);
+		if (string == null)
+			return false;
+		return array.isActive() && Arrays.asList(array.getValues()).contains(string); 
+	}
+	
+	/**
+	 * Check if the array resource contains a float value. This returns false if the resource is inactive.
+	 * @param array
+	 * @param value
+	 * @param delta
+	 * 		non-negative
+	 * @return
+	 * @throws IllegalArgumentException
+	 * 		if delta &lt; 0
+	 */
+	public static boolean contains(FloatArrayResource array, float value, float delta) throws IllegalArgumentException {
+		Objects.requireNonNull(array);
+		if (delta < 0)
+			throw new IllegalArgumentException("delta < 0: " + delta);
+		if (!array.isActive())
+			return false;
+		for (float f : array.getValues()) { 
+			if (delta == 0F) {
+				if (value == f)  
+					return true;
+			}
+			else if (Math.abs(f-value) < delta)
+				return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * Check if the array resource contains an int value. This returns false if the resource is inactive.
+	 * @param array
+	 * @param value
+	 * @return
+	 */
+	public static boolean contains(IntegerArrayResource array, int value) {
+		Objects.requireNonNull(array);
+		if (!array.isActive())
+			return false;
+		for (int i : array.getValues()) {
+			if (i == value)
+				return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * Check if the array resource contains a long value. This returns false if the resource is inactive.
+	 * @param array
+	 * @param value
+	 * @return
+	 */
+	public static boolean contains(TimeArrayResource array, long value) {
+		Objects.requireNonNull(array);
+		if (!array.isActive())
+			return false;
+		for (long i : array.getValues()) {
+			if (i == value)
+				return true;
+		}
+		return false;
 	}
 	
 	/**
@@ -589,8 +695,10 @@ public class ValueResourceUtils {
 	public static MemoryTimeSeries affineTransformation(ReadOnlyTimeSeries readOnlyTimeSeries, float factor, float addend) {
 		TreeTimeSeries tts = new TreeTimeSeries(FloatValue.class);
 		tts.setInterpolationMode(readOnlyTimeSeries.getInterpolationMode());		
-		List<SampledValue> values = readOnlyTimeSeries.getValues(Long.MIN_VALUE);
-		for (SampledValue value : values) {
+		final Iterator<SampledValue> it = readOnlyTimeSeries.iterator();
+		SampledValue value;
+		while (it.hasNext()) {
+			value = it.next();
 			tts.addValue(new SampledValue(new FloatValue(value.getValue().getFloatValue()*factor + addend), 
 					value.getTimestamp(), value.getQuality()));
 		}
@@ -625,10 +733,26 @@ public class ValueResourceUtils {
 	 * 		if no interpolation mode is set for the schedule
 	 */
 	public static float integrate(ReadOnlyTimeSeries schedule, long startTime, long endTime) {
+		return integrate(schedule, startTime, endTime, null);
+	}
+	
+	/**
+	 * Like {@link #integrate(ReadOnlyTimeSeries, long, long)}, but with an explicitly set interpolation mode.
+	 * @param schedule
+	 * @param startTime
+	 * @param endTime
+	 * @param mode
+	 * 		Interpolation mode for integration. If null, the default schedule interpolation mode is used.
+	 * @return
+	 */
+	public static float integrate(ReadOnlyTimeSeries schedule, long startTime, long endTime, InterpolationMode mode) {
 		FloatTimeSeries fts = new FloatTreeTimeSeries();
 		fts.readWithBoundaries(schedule, startTime, endTime);
+		if (mode != null)
+			fts.setInterpolationMode(mode);
 		return fts.integrate(startTime, endTime);
 	}
+	
 
 	/**
 	 * Returns an average value for the time series on the specified interval; depending on the interpolation mode,
@@ -649,15 +773,15 @@ public class ValueResourceUtils {
 			else 
 				return sv.getValue().getFloatValue();
 		}
+		else if (startTime > endTime)
+			return getAverage(schedule, endTime, startTime);
 		if (schedule.getInterpolationMode() == InterpolationMode.NONE) {
 			int count = 0;
 			float val = 0;
-			List<SampledValue> values;
-			if (startTime < endTime)
-				values = schedule.getValues(startTime, endTime);
-			else 
-				values = schedule.getValues(endTime, startTime);
-			for (SampledValue sv: values) {
+			final Iterator<SampledValue> it = schedule.iterator(startTime, endTime);
+			SampledValue sv;
+			while (it.hasNext()) {
+				sv = it.next();
 				if (sv.getQuality() != Quality.BAD) {
 					count++;
 					val += sv.getValue().getFloatValue();
@@ -671,15 +795,138 @@ public class ValueResourceUtils {
 		return integrate(schedule, startTime, endTime) / (endTime - startTime);
 	}
 	
+	/**
+	 * Like {@link ReadOnlyTimeSeries#getValues(long, long)}, except that the resulting list is guaranteed to contain 
+	 * data points for the two boundary points <tt>startTime</tt> and <tt>endTime</tt>. If the time series is not defined at the boundaries,
+	 * bad quality values are returned there.
+	 * @param schedule
+	 * @param startTime
+	 * @param endTime
+	 * @return
+	 * 		a list with at least two entries (if <tt>endTime &gt; startTime</tt>) for the two boundary points
+	 * @throws IllegalArgumentException 
+	 * 		if <code>endTime &lt; startTime</code>
+	 */
+	public static List<SampledValue> getValuesWithBoundaries(ReadOnlyTimeSeries schedule, long startTime, long endTime) throws IllegalArgumentException {
+		Objects.requireNonNull(schedule);
+		if (startTime > endTime)
+			throw new IllegalArgumentException("Start time smaller than end time: start time: " + startTime + ", end time: " + endTime);
+		if (startTime == endTime) {
+			SampledValue val = getValueSafe(schedule, startTime);
+			return Collections.singletonList(val);
+		}
+		final List<SampledValue> values = schedule.getValues(startTime, endTime);
+		if (values.isEmpty() || values.get(0).getTimestamp() > startTime) {
+			values.add(getValueSafe(schedule, startTime));
+			Collections.sort(values);
+		}
+		if (values.isEmpty() || values.get(values.size()-1).getTimestamp() < endTime) 
+			values.add(getValueSafe(schedule, endTime));
+		return values;
+	}
+	
+	/**
+	 * Like {@link ReadOnlyTimeSeries#getValue(long)}, but never returns null.
+	 * If the schedule is not defined at <tt>time</tt>, a bad quality value is returned.
+	 * @param schedule
+	 * @param time
+	 * @return
+	 */
+	public static SampledValue getValueSafe(ReadOnlyTimeSeries schedule, long time) {
+		SampledValue val = schedule.getValue(time);
+		if (val == null)
+			val = new SampledValue(new FloatValue(Float.NaN), time, Quality.BAD);
+		return val;
+	}
+	
+	/**
+	 * Get the time series value at a certain point in time, as if it had interpolation mode <tt>mode</tt>
+	 * @param timeSeries
+	 * @param time
+	 * @param mode
+	 * @return
+	 */
+	public static SampledValue getValueForInterpolationMode(ReadOnlyTimeSeries timeSeries, long time, InterpolationMode mode) {
+		if (mode == timeSeries.getInterpolationMode())
+			return timeSeries.getValue(time);
+		if (!isInScheduleRange(timeSeries, time, mode)) 
+			return null;
+		switch (mode) {
+		case NONE:
+			List<SampledValue> values = timeSeries.getValues(time, time+1);
+			if (values.isEmpty())
+				return new SampledValue(new FloatValue(Float.NaN), time, Quality.BAD);
+			return values.get(0);
+		case STEPS:
+			SampledValue previous = timeSeries.getPreviousValue(time);
+			return new SampledValue(new FloatValue(previous.getValue().getFloatValue()), time, previous.getQuality());
+		case NEAREST:
+			previous = timeSeries.getPreviousValue(time);
+			SampledValue next = timeSeries.getNextValue(time);
+			if (previous == null)
+				return next;
+			if (next == null)
+				return previous;
+			long d1 = time-previous.getTimestamp();
+			long d2 = next.getTimestamp()-time;
+			SampledValue toBeCopied = (d1 <= d2 ? previous: next);
+			return new SampledValue(new FloatValue(toBeCopied.getValue().getFloatValue()), time, toBeCopied.getQuality());
+		case LINEAR:
+			previous = timeSeries.getPreviousValue(time);
+			next = timeSeries.getNextValue(time);
+			if (previous == null || next  == null)
+				return null;
+			long t0 = time - previous.getTimestamp();
+			if (t0 == 0)
+				return previous;
+			long t1 = next.getTimestamp() - time;
+			if (t1 == 0)
+				return next;
+			float diff = next.getValue().getFloatValue()-previous.getValue().getFloatValue();
+			Quality qual = (previous.getQuality() == Quality.GOOD && next.getQuality() == Quality.GOOD ? Quality.GOOD : Quality.BAD);
+			return new SampledValue(new FloatValue(previous.getValue().getFloatValue() + diff * t0 / (t0 + t1)), time, qual);
+		default: 
+			throw new RuntimeException();
+		}
+	}
+	
+	/**
+	 * Check whether a point in time would be in the time series range if the latter had interpolation mode <tt>mode</tt>
+	 * @param timeSeries
+	 * @param time
+	 * @param mode
+	 * @return
+	 */
+	public static boolean isInScheduleRange(ReadOnlyTimeSeries timeSeries, long time, InterpolationMode mode) {
+		if (timeSeries.isEmpty())
+			return false;
+		switch (mode) {
+		case NEAREST:
+			return true;
+		case STEPS:
+			return time >= timeSeries.getNextValue(Long.MIN_VALUE).getTimestamp();
+		case LINEAR:
+		case NONE:
+			return time >= timeSeries.getNextValue(Long.MIN_VALUE).getTimestamp()
+					&& time <= timeSeries.getPreviousValue(Long.MAX_VALUE).getTimestamp();
+		default:
+			throw new RuntimeException();
+		}
+	}
+	
     /**
      * Gets the value type for a schedule by looking at its parent resource.
      */
     public static Class<? extends Value> getValueType(Schedule schedule) {
-        final Resource parent = schedule.getParent();
+        Resource parent = schedule.getParent(); // must be either a single value resource or resource list
+        while (parent instanceof ResourceList)
+        	parent = parent.getParent();
         if (parent == null) 
-            throw new RuntimeException("Schedule at path " + schedule.getPath() + " does not seem to have a parent. Cannot determine the type of elements. OGEMA schedules must always have a simple non-array parent resource.");
+            throw new IllegalStateException("Schedule at path " + schedule.getPath() 
+            	+ " does not seem to have a valid parent. Cannot determine the type of elements. OGEMA schedules must always have a simple non-array parent resource.");
         if (!(parent instanceof SingleValueResource))
-        	throw new RuntimeException("Parent of schedule " + schedule.getPath() + " is not a SingleValueResource, cannot determine its type");
+        	throw new RuntimeException("Parent of schedule " + schedule.getPath() 
+        	+ " is not a SingleValueResource, cannot determine its type");
         if (parent instanceof FloatResource)
             return FloatValue.class;
         else if (parent instanceof IntegerResource) 
@@ -691,7 +938,7 @@ public class ValueResourceUtils {
         else if (parent instanceof TimeResource) 
             return LongValue.class;
         else 
-        	throw new RuntimeException("Illegal type " + parent.getResourceType().getName());
+        	throw new IllegalStateException("Illegal type " + parent.getResourceType().getName());
     }
 
     /**
@@ -737,6 +984,171 @@ public class ValueResourceUtils {
     	return v;
     }
     
-	// TODO downsampling of schedule values? in MemoryTimeSeries?
+    /**
+     * See {@link #interpolate(SampledValue, SampledValue, long, InterpolationMode, boolean)}.
+     * The default value <tt>badQualityForUndefined = false</tt> is used here.
+     * @param previous
+     * @param next
+     * @param t
+     * @param mode
+     * @return
+     */
+    public static SampledValue interpolate(SampledValue previous, SampledValue next, long t, InterpolationMode mode) {
+    	return interpolate(previous, next, t, mode, false);
+    }
+    
+    /**
+     * Interpolate between two {@link SampledValue}s, based on the provided {@link InterpolationMode}.
+     * @param previous
+     * 		may be null
+     * @param next
+     * 		may be null
+     * @param t
+     * 		the timestamp for which the interpolated value is requested
+     * @param mode
+     * 		the interpolation mode
+     * @param badQualityForUndefined
+     * 		if true, a sampled value with bad quality is returned in case the requested value
+     * 		is undefined (e.g. one of the two sampled values is null, but an interpolation is
+     * 		required). If the argument is false, null is returned in this case.
+     * @return
+     */
+    public static SampledValue interpolate(final SampledValue previous, final SampledValue next, final long t, 
+    			final InterpolationMode mode, final boolean badQualityForUndefined) {
+    	if (previous == null && next == null)
+    		return badQualityForUndefined ? new SampledValue(FloatValue.NAN, t, Quality.BAD) : null;
+    	if (previous != null && previous.getTimestamp() == t)
+    		return previous;
+    	if (next != null && next.getTimestamp() == t)
+    		return next;
+    	switch (mode) {
+		case STEPS:
+			if (previous == null)
+				return badQualityForUndefined ? new SampledValue(FloatValue.NAN, t, Quality.BAD) : null;
+			return new SampledValue(previous.getValue(), t, previous.getQuality());
+		case LINEAR:
+			if (previous == null || next == null)
+				return badQualityForUndefined ? new SampledValue(FloatValue.NAN, t, Quality.BAD) : null;
+			final float p = previous.getValue().getFloatValue();
+			final float n = next.getValue().getFloatValue();
+			final long tp = previous.getTimestamp();
+			final long tn = next.getTimestamp();
+			float newV = p + (n-p)*(t-tp)/(tn-tp);
+			return new SampledValue(new FloatValue(newV), t, 
+				previous.getQuality() == Quality.GOOD && next.getQuality() == Quality.GOOD ? Quality.GOOD : Quality.BAD);
+		case NEAREST:
+			if (previous == null && next == null)
+				return badQualityForUndefined ? new SampledValue(FloatValue.NAN, t, Quality.BAD) : null;
+			final Long tp2 = (previous != null ? previous.getTimestamp() : null);
+			final Long tn2 = (next != null ? next.getTimestamp() : null);
+			final SampledValue sv = (tp2 == null ? next : tn2 == null ? previous : (t-tp2)<=(tn2-t) ? previous : next);
+			return new SampledValue(sv.getValue(), t, sv.getQuality());
+		default: // NONE and null
+			return badQualityForUndefined ? new SampledValue(FloatValue.NAN, t, Quality.BAD) : null;
+		}
+    }
+    
+    
+    /**
+     * Find maximum value in time series
+     * 
+     * @param timeSeries
+     * @param startTime
+     * @param endTime
+     * @return maximum value or null if no value is found
+     */
+    public static SampledValue getMax(ReadOnlyTimeSeries timeSeries, long startTime, long endTime) {
+    	float max = -Float.MAX_VALUE;
+    	Long t = null; 
+    	final Iterator<SampledValue> it = timeSeries.iterator(startTime, endTime);
+    	SampledValue val;
+    	while (it.hasNext()) {
+    		val = it.next();
+    		if (val.getQuality() == Quality.BAD) continue;
+    		float fval = val.getValue().getFloatValue();
+    		if (fval > max) {
+    			max = fval;
+    			t = val.getTimestamp();
+    		}
+    	}
+    	return t != null ? new SampledValue(new FloatValue(max), t, Quality.GOOD) : null;
+    }
+    
+    /**
+     * Find the minimum value in time series
+     * 
+     * @param timeSeries
+     * @param startTime
+     * @param endTime
+     * @return maximum value or null if no value is found
+     */
+    public static SampledValue getMin(ReadOnlyTimeSeries timeSeries, long startTime, long endTime) {
+    	float min = Float.MAX_VALUE;
+    	Long t = null; 
+    	final Iterator<SampledValue> it = timeSeries.iterator(startTime, endTime);
+    	SampledValue val;
+    	while (it.hasNext()) {
+    		val = it.next();
+    		if (val.getQuality() == Quality.BAD) 
+    			continue;
+    		float fval = val.getValue().getFloatValue();
+    		if (fval < min) { 
+    			min = fval;
+    			t = val.getTimestamp();
+    		}
+    	}
+    	return t != null ? new SampledValue(new FloatValue(min), t, Quality.GOOD) : null;
+    }
+    
+    /**
+     * Find maximum value in time series
+     * 
+     * @param timeSeries
+     * @param startTime
+     * @param endTime
+     * @return maximum value or -Float.MAX_VALUE if no value is found
+     * @deprecated use {@link #getMax(ReadOnlyTimeSeries, long, long)}, which also
+     * provides information on the timestamp
+     *  
+     */
+    @Deprecated
+    public static float getMaximum(ReadOnlyTimeSeries timeSeries, long startTime, long endTime) {
+    	float max = -Float.MAX_VALUE;
+    	final Iterator<SampledValue> it = timeSeries.iterator(startTime, endTime);
+    	SampledValue val;
+    	while (it.hasNext()) {
+    		val = it.next();
+    		if (val.getQuality() == Quality.BAD) continue;
+    		float fval = val.getValue().getFloatValue();
+    		if (fval > max) max = fval;
+    	}
+    	return max;
+    }
+    
+    /**
+     * Find minimum value in time series
+     * 
+     * @param timeSeries
+     * @param startTime
+     * @param endTime
+     * @return minmum value or Float.MAX_VALUE if time series is empty
+     * @deprecated use {@link #getMin(ReadOnlyTimeSeries, long, long)}, which also
+     * provides information on the timestamp
+     */
+    @Deprecated
+    public static float getMinimum(ReadOnlyTimeSeries timeSeries, long startTime, long endTime) {
+    	float min = Float.MAX_VALUE;
+    	final Iterator<SampledValue> it = timeSeries.iterator(startTime, endTime);
+    	SampledValue val;
+    	while (it.hasNext()) {
+    		val = it.next();
+    		if (val.getQuality() == Quality.BAD) 
+    			continue;
+    		float fval = val.getValue().getFloatValue();
+    		if (fval < min) 
+    			min = fval;
+    	}
+    	return min;
+    }
 	
 }

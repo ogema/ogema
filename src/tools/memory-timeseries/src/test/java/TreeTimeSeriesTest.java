@@ -15,6 +15,7 @@
  */
 import subtests.FloatTimeSeriesTests;
 import subtests.IntegerTimeSeriesTests;
+
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.IntegerValue;
@@ -49,5 +50,5 @@ public class TreeTimeSeriesTest {
 		FloatTimeSeriesTests tests = new FloatTimeSeriesTests(timeSeries);
 		tests.performAllTests();
 	}
-
+	
 }

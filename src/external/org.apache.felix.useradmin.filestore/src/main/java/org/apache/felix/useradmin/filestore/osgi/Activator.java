@@ -17,7 +17,7 @@
 package org.apache.felix.useradmin.filestore.osgi;
 
 import java.io.File;
-import java.util.Properties;
+import java.util.Hashtable;
 
 import org.apache.felix.useradmin.RoleRepositoryStore;
 import org.apache.felix.useradmin.filestore.RoleRepositoryFileStore;
@@ -43,7 +43,7 @@ public class Activator implements BundleActivator {
 		String[] interfaces = { RoleRepositoryStore.class.getName(), UserAdminListener.class.getName(),
 				ManagedService.class.getName() };
 
-		Properties props = new Properties();
+		Hashtable<String, Object> props = new Hashtable<String, Object>(1);
 		props.put(Constants.SERVICE_PID, RoleRepositoryFileStore.PID);
 
 		context.registerService(interfaces, m_store, props);

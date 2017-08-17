@@ -42,6 +42,7 @@ public interface AdministrationManager {
 
 	/**
 	 * Gets users account holding user credentials and properties.
+	 * @throws RuntimeException if user does not exist
 	 */
 	public UserAccount getUser(String userName);
 
@@ -100,7 +101,7 @@ public interface AdministrationManager {
 	/**
 	 * Creates a new user account with the specified name. The created user could be handled by the framework in
 	 * dependence of the user represents a natural person or not. This can be specified by the boolean parameter
-	 * isnatural.
+	 * isnatural. The new password of the user is equal to the user name.
 	 * 
 	 * @param name
 	 *            The name of the user

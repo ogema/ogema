@@ -25,6 +25,7 @@ import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.tools.resourcemanipulator.ResourceManipulatorImpl;
 import org.ogema.tools.resourcemanipulator.configurations.Sum;
 import org.ogema.tools.resourcemanipulator.model.SumModel;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation for a sum configuration.
@@ -77,6 +78,10 @@ public class SumImpl implements Sum {
 
 		m_config.inputs().create();
 		for (SingleValueResource val : m_inputs) {
+			if (!val.exists()) {
+				val.create();
+				LoggerFactory.getLogger(ResourceManipulatorImpl.class).warn("Virtual resource passed to Sum configuration; creating it. {}",val);
+			}
 			m_config.inputs().add(val);
 		}
 		m_config.resultBase().setAsReference(m_output);

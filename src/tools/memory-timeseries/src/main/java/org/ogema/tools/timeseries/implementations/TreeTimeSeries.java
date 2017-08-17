@@ -18,6 +18,7 @@ package org.ogema.tools.timeseries.implementations;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.SortedSet;
@@ -140,7 +141,7 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 	final public SampledValue getNextValue(long time) {
 		final SampledValue pivot = new SampledValue(null, time, Quality.BAD);
 		final SampledValue element = m_values.ceiling(pivot);
-		return (element != null) ? new SampledValue(element) : null;
+		return (element != null) ? element.copyDefensively() : null;
 	}
 
 	@Override
@@ -172,9 +173,25 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 	// used in a constructor -> final
 	@Override
 	public final boolean addValues(Collection<SampledValue> values) {
-		for (SampledValue value : values) {
-			addValue(value);
+		if (values.isEmpty())
+			return true;
+		if (m_values.isEmpty()) { // no need to delete old values in this case
+			m_values.addAll(values);
+			return true;
 		}
+		final SortedSet<SampledValue> copy;
+		if (values instanceof SortedSet) {
+			copy = (SortedSet<SampledValue>) values;
+		} else {
+			copy = new TreeSet<>(values);
+		}
+		
+		SampledValue first = copy.first();
+		SampledValue last = copy.last();
+		if (!m_values.subSet(first, true, last, true).isEmpty()) {
+			deleteByTimestamps(copy);
+		}
+		m_values.addAll(values);
 		return true;
 	}
 
@@ -191,12 +208,15 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 	 * @param elements
 	 *            subset of m_values that will be removed from the sorted set.
 	 */
-	private void deleteValues(SortedSet<SampledValue> elements) {
-		while (!elements.isEmpty()) {
-			m_values.remove(elements.first());
-		}
-	}
+//	private void deleteValues(SortedSet<SampledValue> elements) {
+//		while (!elements.isEmpty()) {
+//			m_values.remove(elements.first());
+//		}
+//	}
 
+	/**
+	 * 
+	 */
 	@Override
 	public boolean deleteValues() {
 		m_values.clear();
@@ -206,7 +226,8 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 	@Override
 	final public boolean deleteValues(long endTime) {
 		final SampledValue max = new SampledValue(null, endTime, Quality.BAD);
-		deleteValues(m_values.headSet(max));
+//		deleteValues(m_values.headSet(max));
+		m_values.headSet(max).clear();
 		return true;
 	}
 
@@ -214,7 +235,17 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 	final public boolean deleteValues(long startTime, long endTime) {
 		final SampledValue min = new SampledValue(null, startTime, Quality.BAD);
 		final SampledValue max = new SampledValue(null, endTime, Quality.BAD);
-		deleteValues(m_values.subSet(min, max));
+//		deleteValues(m_values.subSet(min, max));
+		m_values.subSet(min, max).clear();
+		return true;
+	}
+	
+	protected boolean deleteByTimestamps(Collection<SampledValue> points) {
+		long t;
+		for (SampledValue sv : points) {
+			t = sv.getTimestamp();
+			getSubset(t, t+1).clear();
+		}
 		return true;
 	}
 
@@ -256,21 +287,31 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 	@Override
 	public List<SampledValue> getValues(long startTime) {
 		SortedSet<SampledValue> elements = m_values.tailSet(new SampledValue(null, startTime, Quality.BAD));
-		final List<SampledValue> result = new ArrayList<>(elements.size());
-		for (SampledValue value : elements)
-			result.add(new SampledValue(value));
-		return result;
+		return getValuesInternal(elements);
 	}
 
 	@Override
 	public List<SampledValue> getValues(long startTime, long endTime) {
 		SortedSet<SampledValue> elements = getSubset(startTime, endTime);
-		final List<SampledValue> result = new ArrayList<>(elements.size());
-		for (SampledValue value : elements)
-			result.add(new SampledValue(value));
-		return result;
+		return getValuesInternal(elements);
 	}
 
+	protected List<SampledValue> getValuesInternal(SortedSet<SampledValue> elements) {
+		final List<SampledValue> result;
+		if (elements.isEmpty())
+			return new ArrayList<>();
+		SampledValue first = elements.first();
+		if (first.copyDefensively() == first) { // check if cloning of values is required
+			result = new ArrayList<>(elements);  // should be faster than below method
+		}
+		else {
+			result = new ArrayList<>(elements.size());
+			for (SampledValue value : elements)
+				result.add(value.copyDefensively());
+		}
+		return result;
+	}
+	
 	@Override
 	public Class<? extends Value> getValueType() {
 		return m_type;
@@ -293,12 +334,11 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 	@Override
 	public TreeTimeSeries read(ReadOnlyTimeSeries schedule) {
 		m_values.clear();
-		final List<SampledValue> newValues = schedule.getValues(0);
+		final List<SampledValue> newValues = schedule.getValues(Long.MIN_VALUE);
 		for (SampledValue value : newValues) {
-			m_values.add(new SampledValue(value.getValue(), value.getTimestamp(), value.getQuality()));
+			m_values.add(value.copyDefensively());
 		}
 		setInterpolationMode(schedule.getInterpolationMode());
-
 		return this;
 	}
 
@@ -307,7 +347,7 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 		m_values.clear();
 		final List<SampledValue> newValues = schedule.getValues(start, end);
 		for (SampledValue value : newValues) {
-			m_values.add(new SampledValue(value.getValue(), value.getTimestamp(), value.getQuality()));
+			m_values.add(value.copyDefensively());
 		}
 		setInterpolationMode(schedule.getInterpolationMode());
 
@@ -330,14 +370,14 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 		if (newValues.isEmpty() || start < newValues.get(0).getTimestamp()) {
 			SampledValue sv = schedule.getValue(start);
 			if (sv != null)
-				m_values.add(new SampledValue(sv));
+				m_values.add(sv.copyDefensively());
 		}
 		for (SampledValue value : newValues) {
-			m_values.add(new SampledValue(value));
+			m_values.add(value.copyDefensively());
 		}
 		SampledValue sv = schedule.getValue(end);
 		if (sv != null)
-			m_values.add(new SampledValue(sv));
+			m_values.add(sv.copyDefensively());
 		return this;
 	}
 
@@ -355,6 +395,7 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 		m_values.addAll(shiftedValues);
 	}
 
+	// this involves copying all sampled values
 	@Override
 	public MemoryTimeSeries clone() {
 		return new TreeTimeSeries(this, m_type);
@@ -403,5 +444,44 @@ public class TreeTimeSeries implements MemoryTimeSeries {
         final SampledValue result = getValue(t);
         return (result!=null) ? result : new SampledValue(new FloatValue(0.f), t, Quality.BAD);
     }
+    
+    @Override
+    public SampledValue getPreviousValue(long time) {
+    	final SampledValue pivot = new SampledValue(null, time, Quality.BAD);
+		final SampledValue element = m_values.floor(pivot);
+		return (element != null) ? element.copyDefensively() : null;
+    }
+
+	@Override
+	public boolean isEmpty() {
+		return m_values.isEmpty();
+	}
+
+	@Override
+	public boolean isEmpty(long startTime, long endTime) {
+		SampledValue next = getNextValue(startTime);
+		return (next == null || next.getTimestamp() > endTime);
+	}
+
+	@Override
+	public int size() {
+		return m_values.size();
+	}
+
+	@Override
+	public int size(long startTime, long endTime) {
+		return m_values.subSet(new SampledValue(null, startTime, Quality.BAD), true, new SampledValue(null, endTime, Quality.BAD), true).size();
+	}
+
+	// TODO check: any problems with this proxy approach?
+	@Override
+	public Iterator<SampledValue> iterator() {
+		return m_values.iterator(); 
+	}
+
+	@Override
+	public Iterator<SampledValue> iterator(long startTime, long endTime) {
+		return m_values.subSet(new SampledValue(null, startTime, Quality.BAD), true, new SampledValue(null, endTime, Quality.BAD), true).iterator();
+	}
     
 }

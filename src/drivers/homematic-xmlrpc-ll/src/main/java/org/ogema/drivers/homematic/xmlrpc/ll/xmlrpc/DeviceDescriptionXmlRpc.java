@@ -33,7 +33,7 @@ import org.ogema.drivers.homematic.xmlrpc.ll.api.DeviceDescription;
  */
 public class DeviceDescriptionXmlRpc extends MapXmlRpcStruct implements DeviceDescription {
     
-    final static List<DeviceDescription.KEYS> requiredKeys = Arrays.asList(
+    final static List<DeviceDescription.KEYS> REQUIRED_KEYS = Arrays.asList(
             DeviceDescription.KEYS.PARAMSETS,
             DeviceDescription.KEYS.RF_ADDRESS,
             DeviceDescription.KEYS.CHILDREN,
@@ -94,6 +94,9 @@ public class DeviceDescriptionXmlRpc extends MapXmlRpcStruct implements DeviceDe
     }
     
     public static String[] asStringArray(Object[] a) {
+        if (a == null) {
+            return null;
+        }
         String[] s = new String[a.length];
         for (int i = 0; i < a.length; i++) {
             s[i] = a[i].toString();
@@ -109,6 +112,37 @@ public class DeviceDescriptionXmlRpc extends MapXmlRpcStruct implements DeviceDe
     @Override
     public String[] getParamsets() {
         return getStringArray(KEYS.PARAMSETS.name());
+    }
+    
+    @Override
+    public String getParent() {
+        return getString(KEYS.PARENT.name());
+    }
+    
+    @Override
+    public String getParentType() {
+        return getString(KEYS.PARENT_TYPE.name());
+    }
+
+    @Override
+    public String getType() {
+        return getString(KEYS.TYPE.name());
+    }
+    
+    @Override
+    public boolean isDevice() {
+        String parent = getParent();
+        return parent == null || parent.isEmpty();
+    }
+    
+    @Override
+    public int getVersion() {
+        return getInt(KEYS.VERSION.name());
+    }
+    
+    @Override
+    public String[] getChildren() {
+        return getStringArray(KEYS.CHILDREN.name());
     }
     
 }

@@ -26,7 +26,7 @@ import org.ogema.apps.openweathermap.WeatherUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- *
+ * 
  * @author skarge
  */
 public class OpenWeatherMapREST {
@@ -37,14 +37,13 @@ public class OpenWeatherMapREST {
 	private static OpenWeatherMapREST instance;
 
 	public static void main(String[] args) {
-//		System.setProperty("openweathermapKEY",	"");
+		// System.setProperty("openweathermapKEY", "");
 		OpenWeatherMapREST rest = OpenWeatherMapREST.getInstance();
 		ForecastData result = rest.getWeatherForcast("Kassel", "de");
 
 		int intervallInMinutes = 1;
 		result = rest.util.interpolateForecast(result, intervallInMinutes);
-		System.out.println(rest.util.toString(result)
-				+ "--------------------\n");
+		System.out.println(rest.util.toString(result) + "--------------------\n");
 		CurrentData current = rest.getWeatherCurrent("Kassel", "de");
 		System.out.println(rest.util.toString(current));
 	}
@@ -58,9 +57,9 @@ public class OpenWeatherMapREST {
 			OpenWeatherMapREST.instance = new OpenWeatherMapREST();
 			String key = System.getProperty("org.ogema.drivers.openweathermap.key", null);
 			if (key == null) {
-				System.out
-						.print("openweathermapKEY is required, Please register: http://openweathermap.org/register");
-			} else {
+				System.out.print("openweathermapKEY is required, Please register: http://openweathermap.org/register");
+			}
+			else {
 				OpenWeatherMapREST.instance.setAPI_KEY(key);
 			}
 		}
@@ -69,8 +68,7 @@ public class OpenWeatherMapREST {
 	}
 
 	public ForecastData getWeatherForcast(String city, String countryCode) {
-		String url = BASE_URL + "data/2.5/forecast?q=" + city + ","
-				+ countryCode;
+		String url = BASE_URL + "data/2.5/forecast?q=" + city + "," + countryCode;
 		if (API_KEY != null && API_KEY.isEmpty() == false) {
 			url += "&APPID=" + API_KEY;
 		}
@@ -80,18 +78,16 @@ public class OpenWeatherMapREST {
 			ForecastData data = mapper.readValue(json, ForecastData.class);
 			return data;
 		} catch (Exception e) {
-			System.out.println("error by: " + e.getMessage() + " --> " + json
-					+ "\n\n");
+			System.out.println("error by: " + e.getMessage() + " --> " + json + "\n\n");
 			e.printStackTrace();
 			return null;
 		}
 	}
 
 	public CurrentData getWeatherCurrent(String city, String countryCode) {
-//city = "Kassel";
-//countryCode = "de";
-		String url = BASE_URL + "data/2.5/weather?q=" + city + ","
-				+ countryCode;
+		// city = "Kassel";
+		// countryCode = "de";
+		String url = BASE_URL + "data/2.5/weather?q=" + city + "," + countryCode;
 		if (API_KEY != null && API_KEY.isEmpty() == false) {
 			url += "&APPID=" + API_KEY;
 		}

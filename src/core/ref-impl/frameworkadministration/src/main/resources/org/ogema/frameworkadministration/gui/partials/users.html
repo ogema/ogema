@@ -17,7 +17,7 @@
 -->
 <div class="building col-sm-12 well well-sm" ng-controller="UserAdministrationController">
     <div class="spinner" ng-show="loading">
-        LOADING ....            
+        LOADING ....
     </div>
     <div class="row">
         <div class="col-md-12">
@@ -40,8 +40,8 @@
                         <tr ng-repeat="user in users| filter:q">
                             <td width="80%">
                                 <a href ng-click="editUser(user.name)" ng-class="{admin: user.isAdmin == true}">
-                                    <span class="glyphicon glyphicon-user" ng-if="user.isNatural == true"> </span> 
-                                    <span class="glyphicon glyphicon-cog" ng-if="user.isNatural == false"> </span> 
+                                    <span class="glyphicon glyphicon-user" ng-if="user.isNatural == true"> </span>
+                                    <span class="glyphicon glyphicon-cog" ng-if="user.isNatural == false"> </span>
                                     {{user.name}}
                                 </a>
                             </td>
@@ -57,9 +57,9 @@
             </div>
         </div>
         <div class="col-sm-6">
-            <accordion> 
+            <accordion>
                 <accordion-group>
-                    
+
                     <accordion-heading>
 	                    <div>
 				            Create new User <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': status.open, 'glyphicon-chevron-right': !status.open}"></i>
@@ -88,7 +88,7 @@
                         </div>
                     </accordion-heading>
                     <div class="row">
-                        <div class="col-md-3"><label>Copy User </label> 
+                        <div class="col-md-3"><label>Copy User </label>
                             <select ng-model="oldUser" class="form-control" ng-options="user.name for user in users">
                                 <option value="">- choose -</option>
                             </select></div>
@@ -138,8 +138,8 @@
     </tr>
     <tr>
     <td>OGEMA Role</td><td>
-    <span class="glyphicon glyphicon-user" ng-if="userData.credentials.ogemaRole == 'naturalUser'"> </span> 
-    <span class="glyphicon glyphicon-cog" ng-if="userData.credentials.ogemaRole != 'naturalUser'"> </span> 
+    <span class="glyphicon glyphicon-user" ng-if="userData.credentials.ogemaRole == 'naturalUser'"> </span>
+    <span class="glyphicon glyphicon-cog" ng-if="userData.credentials.ogemaRole != 'naturalUser'"> </span>
     {{userData.credentials.ogemaRole == 'naturalUser' | iif : "natural user" : "machine user"}}
     </td>
     </tr>
@@ -171,15 +171,15 @@
                     <td width="5"><span class="tiny" popover-placement="top" popover="delete"  popover-trigger="mouseenter"  alt="delete">d</span></td>
                     <td width="5"><span class="tiny" popover-placement="top" popover="activity"  popover-trigger="mouseenter"  alt="activity">a</span></td>
                     <td width="5"><span class="tiny btn-xs" popover-placement="top" popover="delete policy"  popover-trigger="mouseenter"  alt="delete"><span class="glyphicon glyphicon-trash"></span></span></td>
-                </tr>    
+                </tr>
             </thead>
             <tbody>
                 <tr ng-repeat="policy in userPolicies.resourcePermissions"  ng-class="policy.delete ? 'danger' : ''">
                     <td>
                         <button class="btn btn-link" ng-click="toggleAccessDecision(policy)">
                             <span class="glyphicon glyphicon-ok-circle  glyph-permitted" ng-if="policy.accessDecision == 'allow'"> </span>
-                            <span class="glyphicon glyphicon-ban-circle glyph-notpermitted" ng-if="policy.accessDecision != 'allow'"> </span>                   
-                        </button> 
+                            <span class="glyphicon glyphicon-ban-circle glyph-notpermitted" ng-if="policy.accessDecision != 'allow'"> </span>
+                        </button>
 
                     </td>
                     <td>
@@ -189,7 +189,7 @@
                         <a href="#" editable-text="policy.resourceType">{{ policy.resourceType || 'empty' }}</a>
                     </td>
                     <td ng-repeat="role in permissionActions">
-                        <input type="checkbox" checklist-model="policy.permissionActions" checklist-value="role"> 
+                        <input type="checkbox" checklist-model="policy.permissionActions" checklist-value="role">
                     </td>
                     <td>
                         <button class="btn btn-xs" ng-click="policy.delete = ! policy.delete"  ng-class="policy.delete ? 'btn-success' : 'btn-danger'"><span class="glyphicon"  ng-class="policy.delete ? 'glyphicon-ok' : 'glyphicon-trash'"></span></button>
@@ -213,15 +213,15 @@
                     <td width="5"><span class="tiny" popover-placement="top" popover="delete"  popover-trigger="mouseenter"  alt="delete">d</span></td>
                     <td width="5"><span class="tiny" popover-placement="top" popover="activity"  popover-trigger="mouseenter"  alt="activity">a</span></td>
                     <td width="5"><span class="tiny btn-xs" popover-placement="top" popover="add policy"  popover-trigger="mouseenter"  alt="delete"><span class="glyphicon glyphicon-plus"></span></span></td>
-                </tr>    
+                </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>
                         <button class="btn btn-link" ng-click="toggleAccessDecision(newpolicy)">
                             <span class="glyphicon glyphicon-ok-circle glyph-permitted" ng-if="newpolicy.accessDecision == 'allow'"> </span>
-                            <span class="glyphicon glyphicon-ban-circle glyph-notpermitted" ng-if="newpolicy.accessDecision != 'allow'"> </span>                   
-                        </button> 
+                            <span class="glyphicon glyphicon-ban-circle glyph-notpermitted" ng-if="newpolicy.accessDecision != 'allow'"> </span>
+                        </button>
                     </td>
                     <td>
                         <a href="#" editable-text="newpolicy.resourcePath">{{ newpolicy.resourcePath || 'empty' }}</a>
@@ -230,12 +230,12 @@
                         <a href="#" editable-text="newpolicy.resourceType">{{ newpolicy.resourceType || 'empty' }}</a>
                     </td>
                     <td ng-repeat="role in permissionActions">
-                        <input type="checkbox" checklist-model="newpolicy.permissionActions" checklist-value="role"> 
+                        <input type="checkbox" checklist-model="newpolicy.permissionActions" checklist-value="role">
                     </td>
                     <td>
                         <button class="btn btn-xs btn-success btn-usr-gui" ng-click="addNewPolicy(newpolicy)"><span class="glyphicon glyphicon-plus"></span></button>
                     </td>
-                </tr>  
+                </tr>
             </tbody>
         </table>
     </div>
@@ -257,7 +257,7 @@
     <tbody>
         <tr>
             <td width="10%">
-                <img class="fileListItemLogo" ng-if="app.bundleID !== undefined" ng-src="/install/installedapps?action=getIcon&app={{app.bundleID}}" alt="{{app.readableName}}"/>
+				<img class="fileListItemLogo" ng-if="app.bundleID !== undefined" ng-src="{{retrieveIcon(app.bundleID)}}" alt="{{app.readableName}}"/>
                 <img class="fileListItemLogo" ng-if="app.bundleID === undefined" src="./img/svg/appdefaultlogo.svg" alt="{{app.readableName}}"/>
             </td>
             <td width="*">
@@ -269,7 +269,7 @@
             </td>
         </tr>
     </tbody>
-    </table>                  
+    </table>
     </div>
     </button>
     </accordion-group>

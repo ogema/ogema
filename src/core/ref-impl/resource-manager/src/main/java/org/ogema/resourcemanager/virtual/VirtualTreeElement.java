@@ -49,5 +49,12 @@ public interface VirtualTreeElement extends TreeElement {
     VirtualTreeElement getExistingChild(String name);
 
 	void delete();
-
+    
+    /**
+     * Replace the type of this TreeElement with a sub type of the current type.
+     * Only works on a virtual element.
+     * @throws IllegalStateException if thus element already exists and has a different type.
+     */
+    void constrainType(Class<? extends Resource> type);
+    
 }

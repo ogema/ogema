@@ -33,7 +33,7 @@ import org.slf4j.Logger;
  *
  * @author jlapp
  */
-public class Persistence implements HmBackend, DeviceListener {
+class Persistence implements HmBackend, DeviceListener {
 
     private final ApplicationManager appman;
     private final HmLogicInterface hm;

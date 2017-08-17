@@ -22,7 +22,7 @@ package org.ogema.impl.security;
  * For each request http service calls
  * handleSecurity, where the authorization for calling web resources of a
  * particular app will be checked.
- * 
+ *
  */
 import static org.ogema.accesscontrol.Constants.OTPNAME;
 import static org.ogema.accesscontrol.Constants.OTUNAME;
@@ -30,10 +30,16 @@ import static org.ogema.accesscontrol.Constants.OTUNAME;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.URL;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.servlet.ServletException;
@@ -48,7 +54,6 @@ import org.ogema.accesscontrol.Util;
 import org.ogema.core.application.AppID;
 import org.ogema.core.application.Application;
 import org.ogema.core.logging.LoggerFactory;
-import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.http.HttpContext;
 import org.slf4j.Logger;
 
@@ -56,7 +61,7 @@ import org.slf4j.Logger;
  * Parts of the URI can be reached via HttpServletRequest by calling the following methods:
  * /applicationID/directory/file.ext/info getRequestURI() /applicationID getContextPath() /directory/file.ext
  * getServletPath() /info getPathInfo()
- * 
+ *
  */
 /**
  * @author Zekeriya Mansuroglu
@@ -65,22 +70,46 @@ import org.slf4j.Logger;
 public class OgemaHttpContext implements HttpContext {
 
 	private final PermissionManager pm;
-	static Boolean httpEnable;
-	private static boolean xservletEnable;
+	static final Boolean httpEnable;
+	private static final boolean xservletEnable;
 
 	AppID owner;
 
 	LoggerFactory factory;
 
+	// note: the following three maps are actually concurrent hash maps, but there is a strange incompatibility with
+	// Java 7 when building this in a Java 8 environment, if one declares the maps to be ConcurrentHashMap (here: error on shutdown)
+	// see https://stackoverflow.com/questions/32954041/concurrenthashmap-crashing-application-compiled-with-jdk-8-but-targeting-jre-7
+
 	// alias vs. resource path
-	ConcurrentHashMap<String, String> resources;
+	final Map<String, String> resources;
 	// alias vs. app id
-	ConcurrentHashMap<String, String> servlets;
+	final Map<String, String> servlets;
 
-	ConcurrentHashMap<String, String> sessionsOtpqueue;
+	final Map<String, String> sessionsOtpqueue;
 
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass().getName());
-	private AccessManager accessMngr;
+	private final static Logger logger = org.slf4j.LoggerFactory.getLogger(OgemaHttpContext.class.getName());
+	private final AccessManager accessMngr;
+
+	// loopback addresses and host names to determine if a request comes from the loopback interface
+	private static final Set<String> loopbackAddresses = new HashSet<>();
+
+	static {
+		loopbackAddresses.add("127.0.0.1");
+		loopbackAddresses.add("0:0:0:0:0:0:0:1");
+		try {
+			for (NetworkInterface nif : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+				if (nif.isLoopback()) {
+					for (InetAddress ia : Collections.list(nif.getInetAddresses())) {
+						loopbackAddresses.add(ia.getHostAddress());
+						loopbackAddresses.add(ia.getHostName());
+					}
+				}
+			}
+		} catch (SocketException se) {
+			logger.error("could not determine loopback addresses", se);
+		}
+	}
 
 	public OgemaHttpContext(PermissionManager pm, AppID app) {
 		Objects.requireNonNull(pm);
@@ -92,9 +121,9 @@ public class OgemaHttpContext implements HttpContext {
 		this.accessMngr = pm.getAccessManager();
 		this.owner = app;
 	}
-	
+
 	public void close() {
-		// note: this does not prevent the alias to be unregisterd from the http service, which is taken care 
+		// note: this does not prevent the alias to be unregisterd from the http service, which is taken care
 		// of by ApplicationWebAccessManager and ApplicationTracker
 		resources.clear();
 		servlets.clear();
@@ -104,8 +133,7 @@ public class OgemaHttpContext implements HttpContext {
 	public final ThreadLocal<HttpSession> requestThreadLocale = new ThreadLocal<>();
 
 	static boolean isLoopbackAddress(String address) {
-		return address.equals(InetAddress.getLoopbackAddress().getHostAddress())
-				|| address.equals(InetAddress.getLoopbackAddress().getHostName());
+		return loopbackAddresses.contains(address);
 	}
 
 	/*
@@ -113,15 +141,13 @@ public class OgemaHttpContext implements HttpContext {
 	 */
 	@Override
 	public boolean handleSecurity(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		
-		String currenturi = request.getRequestURI();
-		StringBuffer url = request.getRequestURL();
-		String servletpath = request.getServletPath();
-		String info = request.getPathInfo();
-		String query = request.getQueryString();
-		String trans = request.getPathTranslated();
-
-		if (Configuration.DEBUG) {
+		final String currenturi = request.getRequestURI();
+		final String info = request.getPathInfo();
+		if (Configuration.DEBUG && logger.isDebugEnabled()) {
+			StringBuffer url = request.getRequestURL();
+			String servletpath = request.getServletPath();
+			String query = request.getQueryString();
+			String trans = request.getPathTranslated();
 			logger.debug("Current URI: " + currenturi);
 			logger.debug("Current URL: " + url);
 			logger.debug("Servlet path: " + servletpath);
@@ -135,6 +161,8 @@ public class OgemaHttpContext implements HttpContext {
 		 * Forbidden(403) and return false.
 		 */
 		String scheme = request.getScheme();
+		// System.out.println("Testing on non-secure allow: httpEnable:"+httpEnable+"
+		// remoteAddr:"+request.getRemoteAddr()+" scheme:"+scheme);
 		if (!httpEnable && (!isLoopbackAddress(request.getRemoteAddr()) && !scheme.equals("https"))) {
 			logger.error("\tSecure connection is required.");
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
@@ -146,8 +174,8 @@ public class OgemaHttpContext implements HttpContext {
 		HttpSession httpses = request.getSession();
 		SessionAuth sesAuth;
 
-		logger.debug("SessionID: " + httpses.getId());
-		logger.debug("HTTP-Referer: " + request.getHeader("Referer"));
+		logger.debug("SessionID: {}", httpses.getId());
+		logger.debug("HTTP-Referer: {}", request.getHeader("Referer"));
 		if ((sesAuth = (SessionAuth) httpses.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME)) == null) {
 			// Store the request, so that it could be responded after successful login.
 			if (!request.getRequestURL().toString().endsWith("favicon.ico")) {
@@ -170,7 +198,7 @@ public class OgemaHttpContext implements HttpContext {
 					}
 					String oldReq = requestPathAndQuery.toString();
 					httpses.setAttribute(LoginServlet.OLDREQ_ATTR_NAME, oldReq);
-					logger.debug("Saved old request URI -> " + oldReq);
+					logger.debug("Saved old request URI -> {}", oldReq);
 				}
 			}
 
@@ -204,9 +232,17 @@ public class OgemaHttpContext implements HttpContext {
 			String usr = request.getParameter(OTUNAME);
 			String pwd = request.getParameter(OTPNAME);
 
-			String key = Util.startsWithAnyKey(servlets, currenturi);
-			if (key != null)
+			String key = servlets.get(currenturi);
+			if (key == null)
+				key = Util.startsWithAnyKey(servlets, currenturi);
+			if (key != null) {
+				// a web page may be generated dynamically in a servlet
+				if (currenturi.endsWith(".html") && request.getMethod().equals("GET"))
+					return true;
+				if (usr == null)
+					return false;
 				return pm.getWebAccess().authenticate(httpses, usr, pwd);
+			}
 		}
 
 		/*
@@ -225,7 +261,7 @@ public class OgemaHttpContext implements HttpContext {
 		}
 		if (!permitted) {
 			String message = "User " + usrName + " is not permitted to access to " + request.getPathInfo();
-			request.getSession().invalidate();
+			// request.getSession().invalidate(); // why invalidate the session, because the access is not authorized only.
 			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, message);
 
 			if (Configuration.DEBUG)
@@ -266,7 +302,7 @@ public class OgemaHttpContext implements HttpContext {
 	 * Service will call this method to locate the named resource. The context can control from where resources come.
 	 * For example, the resource can be mapped to a file in the bundle's persistent storage area via
 	 * bundleContext.getDataFile(name).toURL() or to a resource in the context's bundle via getClass().getResource(name)
-	 * 
+	 *
 	 * Each web page potentially contains AJAX requests to the rest server. Therefore the link to the requested web page
 	 * will be embedded in to a html snippet that contains one time authentication information. This information are
 	 * valid until the page is reloaded or the session is expired. To distinguish between the first request and the
@@ -329,28 +365,25 @@ public class OgemaHttpContext implements HttpContext {
 	}
 
 	static {
-		if (httpEnable == null)
-			AccessController.doPrivileged(new PrivilegedAction<Void>() {
+		httpEnable = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
 
-				@Override
-				public Void run() {
-					// For development purposes secure mode could be disabled
-					if (System.getProperty("org.ogema.non-secure.http.enable", "false").equals("false"))
-						httpEnable = false;
-					else
-						httpEnable = true;
-					/*
-					 * Switch to enable/disable servlet access restrictions after APP-SEC 16: Access to a web resource
-					 * out of a previously downloaded web page shall only be granted, if the requested web resource is a
-					 * static content or the dynamic content (servlet) is registered by the same app as the source of
-					 * the web page.
-					 */
-					if (System.getProperty("org.ogema.xservletacces.enable", "false").equals("false"))
-						xservletEnable = false;
-					else
-						xservletEnable = true;
-					return null;
-				}
-			});
+			@Override
+			public Boolean run() {
+				return Boolean.getBoolean("org.ogema.non-secure.http.enable");
+			}
+		});
+		/*
+		 * Switch to enable/disable servlet access restrictions after APP-SEC 16: Access to a web resource
+		 * out of a previously downloaded web page shall only be granted, if the requested web resource is a
+		 * static content or the dynamic content (servlet) is registered by the same app as the source of
+		 * the web page.
+		 */
+		xservletEnable = System.getSecurityManager() != null && AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
+
+			@Override
+			public Boolean run() {
+				return Boolean.getBoolean("org.ogema.xservletacces.enable");
+			}
+		});
 	}
 }

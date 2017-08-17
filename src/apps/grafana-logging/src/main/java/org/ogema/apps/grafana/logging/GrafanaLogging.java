@@ -38,7 +38,6 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Singl
 
 	protected OgemaLogger logger;
 	protected ApplicationManager am;
-	protected ResourceManagement rm;
 	protected ResourceAccess ra;
 	protected List<Class<? extends SingleValueResource>> resourceTypes;
     @SuppressWarnings("rawtypes")
@@ -53,7 +52,6 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Singl
     public void start(ApplicationManager am) {
         this.am = am;
         this.logger = am.getLogger();
-        this.rm = am.getResourceManagement();
         this.ra = am.getResourceAccess();
 
         logger.debug("Grafana logging app started", getClass().getName());
@@ -73,9 +71,18 @@ public class GrafanaLogging implements Application, ResourceDemandListener<Singl
 
 	@Override
 	public void stop(AppStopReason reason) {
-		am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
-		am.getWebAccessManager().unregisterWebResource(servletPath);
-		ra.removeResourceDemand(SingleValueResource.class, this);
+		if (am != null) {
+			am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
+			am.getWebAccessManager().unregisterWebResource(servletPath);
+		}
+		if (ra != null)
+			ra.removeResourceDemand(SingleValueResource.class, this);
+		am = null;
+		ra = null;
+		resourceTypes = null;
+		panels = null;
+		infl = null;
+		logger =null;
 	}
 
 	public List<Class<? extends SingleValueResource>> getResourceTypes() {

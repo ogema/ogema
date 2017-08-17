@@ -18,12 +18,11 @@ package org.ogema.recordeddata.slotsdb;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.Quality;
@@ -34,17 +33,7 @@ import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
 import org.ogema.recordeddata.DataRecorderException;
 import org.ogema.recordeddata.RecordedDataStorage;
 
-public class FixedIntervalTest extends SlotsDbTest {
-
-	@BeforeClass
-	public static void setUp() {
-		deleteTestFiles();
-	}
-
-	@AfterClass
-	public static void tearDown() {
-		deleteTestFiles();
-	}
+public class FixedIntervalTest extends DbTest {
 
 	@Test
 	/**
@@ -52,12 +41,10 @@ public class FixedIntervalTest extends SlotsDbTest {
 	 *  
 	 * @throws DataRecorderException
 	 */
-	public void writeReadTestTimeRange() throws DataRecorderException {
+	public void writeReadTestTimeRange() throws DataRecorderException, IOException {
 
 		final String storageName = "writeReadTest1";
 
-		SlotsDb sdb = new SlotsDb();
-		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);
@@ -103,12 +90,10 @@ public class FixedIntervalTest extends SlotsDbTest {
 	 *  
 	 * @throws DataRecorderException
 	 */
-	public void writeReadTestSingleTimestamp() throws DataRecorderException {
+	public void writeReadTestSingleTimestamp() throws DataRecorderException, IOException {
 
 		final String storageName = "writeReadTest2";
 
-		SlotsDb sdb = new SlotsDb();
-		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);
@@ -143,12 +128,10 @@ public class FixedIntervalTest extends SlotsDbTest {
 	 *  
 	 * @throws DataRecorderException
 	 */
-	public void writeReadTimestampNotAvailable() throws DataRecorderException {
+	public void writeReadTimestampNotAvailable() throws DataRecorderException, IOException {
 
 		final String storageName = "writeReadTest3";
 
-		SlotsDb sdb = new SlotsDb();
-		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);
@@ -182,12 +165,10 @@ public class FixedIntervalTest extends SlotsDbTest {
 	 *  
 	 * @throws DataRecorderException
 	 */
-	public void writeRead10msTest() throws DataRecorderException {
+	public void writeRead10msTest() throws DataRecorderException, IOException {
 
 		final String storageName = "writeReadTest4";
 
-		SlotsDb sdb = new SlotsDb();
-		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(10);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);

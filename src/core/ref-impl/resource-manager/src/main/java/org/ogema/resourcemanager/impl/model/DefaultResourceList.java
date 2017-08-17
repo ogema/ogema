@@ -20,8 +20,10 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.ogema.core.model.Resource;
@@ -331,6 +333,13 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	protected void reload() {
 		getAllElements();
 	}
+
+    @Override
+    @SuppressWarnings("unchecked")
+    protected Map<String, DeletedLinkInfo> deleteInternal(Map<String, DeletedLinkInfo> danglingLinks) {
+        updateElementsNode(Collections.EMPTY_LIST);
+        return super.deleteInternal(danglingLinks);
+    }
 
 	//TODO: get rid of parent parameter?
 	@Override

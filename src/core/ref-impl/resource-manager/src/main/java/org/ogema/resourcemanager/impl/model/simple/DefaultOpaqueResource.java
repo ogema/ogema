@@ -15,6 +15,8 @@
  */
 package org.ogema.resourcemanager.impl.model.simple;
 
+import org.ogema.core.resourcemanager.ResourceAccessException;
+import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
@@ -49,5 +51,21 @@ public class DefaultOpaqueResource extends SingleValueResourceBase implements or
 		handleResourceUpdate(true);
 		return true;
 	}
+	
+	@Override
+	public byte[]getAndSet(final byte[]value) throws VirtualResourceException, SecurityException, ResourceAccessException {
+		if (!exists())
+			throw new VirtualResourceException("Resource " + path + " is virtual, cannot set value");
+		checkWriteAccess();
+		resMan.lockWrite(); 
+		try {
+			final byte[]val = getValue();
+			setValue(value);
+			return val;
+		} finally {
+			resMan.unlockWrite();
+		}
+	}
+	
 
 }

@@ -27,6 +27,7 @@ import javax.inject.Inject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
+import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.LogLevel;
@@ -50,6 +51,8 @@ import org.osgi.framework.ServiceRegistration;
 public abstract class OsgiAppTestBase {
 	@Inject
 	protected BundleContext ctx;
+	@Inject
+	protected AdministrationManager adminManager;
 	private CountDownLatch startLatch = new CountDownLatch(1);
 	private CountDownLatch stopLatch = new CountDownLatch(1);
 	private volatile ApplicationManager appMan;
@@ -104,11 +107,14 @@ public abstract class OsgiAppTestBase {
 
 				CoreOptions.mavenBundle("org.ow2.asm", "asm-all", "5.1").start(),
 
+				 // cannot update to current version 2.0.12 in tests, due to older system packages in test framework bundle
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.scr", "1.8.2").start(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.eventadmin", "1.4.6").start(),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin.filestore", "1.0.2").start(),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin", "1.0.3").start(),
-				// not using latest version 1.8.8, since it causes problems with security
+				CoreOptions.mavenBundle("org.ogema.external", "org.apache.felix.useradmin.filestore", "1.0.2").start(),
+				CoreOptions.mavenBundle("org.ogema.external", "org.apache.felix.useradmin", "1.0.3").start(),
+				// alternatively to the 2 above:
+//				CoreOptions.mavenBundle("org.osgi", "org.knopflerfish.bundle.useradmin", "4.1.1").start(),
+				// not using latest version 1.8.8, since it causes problems with security -> 1.8.14 should work
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.configadmin", "1.6.0").start(), 
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.api", "2.3.2").start(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.jetty", "3.0.2").start(),
@@ -117,7 +123,7 @@ public abstract class OsgiAppTestBase {
 				CoreOptions.mavenBundle("javax.servlet", "javax.servlet-api", "3.1.0"),
 
 				CoreOptions.mavenBundle("org.slf4j", "slf4j-api", "1.7.21"),
-				CoreOptions.mavenBundle("joda-time", "joda-time", "2.9.3"),
+//				CoreOptions.mavenBundle("joda-time", "joda-time", "2.9.3"), // not required any more
 
 				// jackson (for serialization manager) -->
 				CoreOptions.mavenBundle("com.fasterxml.jackson.core", "jackson-core", "2.7.4"),
@@ -130,7 +136,8 @@ public abstract class OsgiAppTestBase {
 				CoreOptions.mavenBundle("org.apache.commons", "commons-math3", "3.6.1"),
 				CoreOptions.mavenBundle("commons-io", "commons-io", "2.5"),
 				CoreOptions.mavenBundle("commons-codec", "commons-codec", "1.10"),
-				CoreOptions.mavenBundle("org.json", "json", "20160212"),
+				CoreOptions.mavenBundle("org.apache.commons", "commons-lang3", "3.4"),
+				CoreOptions.mavenBundle("org.json", "json", "20170516"),
 				// <-- apache commons
                 
                 CoreOptions.mavenBundle("com.google.guava", "guava", "19.0"),
@@ -147,6 +154,7 @@ public abstract class OsgiAppTestBase {
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "resource-manager").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "resource-access-advanced").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "security").version(ogemaVersion).startLevel(4).start(),
+				CoreOptions.mavenBundle("org.ogema.ref-impl", "ogema-security-manager").version(ogemaVersion).startLevel(4).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "persistence").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "channel-manager").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "hardware-manager").version(ogemaVersion).start(),
@@ -189,9 +197,9 @@ public abstract class OsgiAppTestBase {
 
 	public Option felixGogoShellOption() {
 		return CoreOptions.composite(
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.runtime", "0.16.2"),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.shell", "0.12.0"),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.command", "0.16.0"));
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.runtime", "1.0.4"),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.shell", "1.0.0"),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.command", "1.0.2"));
 	}
 
 	public Option ogemaWebFrontentOption() {
@@ -255,6 +263,17 @@ public abstract class OsgiAppTestBase {
 
 	@Before
 	public void before() throws InterruptedException {
+		// create standard users, if not existing yet
+		try {
+			adminManager.getUser("master");
+		} catch (RuntimeException e) {
+			adminManager.createUserAccount("master", true);
+		}
+		try {
+			adminManager.getUser("rest");
+		} catch (RuntimeException e) {
+			adminManager.createUserAccount("rest", false);
+		}
 		registration = ctx.registerService(Application.class, app, null);
 		assertTrue("app not started", startLatch.await(3, TimeUnit.SECONDS));
 		assertNotNull(appMan);

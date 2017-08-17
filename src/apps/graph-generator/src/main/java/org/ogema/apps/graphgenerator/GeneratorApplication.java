@@ -49,9 +49,14 @@ public class GeneratorApplication implements Application {
 
 	@Override
 	public void stop(AppStopReason reason) {
-		appMan.getWebAccessManager().unregisterWebResource(MAINPAGE_ALIAS);
-		appMan.getWebAccessManager().unregisterWebResource(SERVLET_ALIAS);
-
-		logger.debug("{} stopped", getClass().getName());
+		if (appMan != null) {
+			appMan.getWebAccessManager().unregisterWebResource(MAINPAGE_ALIAS);
+			appMan.getWebAccessManager().unregisterWebResource(SERVLET_ALIAS);
+		}
+		if (logger != null)
+			logger.debug("{} stopped", getClass().getName());
+		appMan = null;
+		logger = null;
+		servlet = null;
 	}
 }

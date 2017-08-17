@@ -15,6 +15,7 @@
  */
 package org.ogema.drivers.homematic.xmlrpc.ll.xmlrpc;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -98,8 +99,25 @@ public class MapXmlRpcStruct implements XmlRpcStruct {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public String toString() {
-        return struct.toString();
+        StringBuilder sb = new StringBuilder("{");
+        for (Map.Entry<String, Object> e: struct.entrySet()) {
+            if (sb.length() > 1) {
+                sb.append(", ");
+            }
+            sb.append(e.getKey()).append("=");
+            Object val = e.getValue();
+            if (val.getClass().isArray()) {
+                sb.append(Arrays.toString((Object[])val));
+            } else if (val instanceof Map) {
+                sb.append(new MapXmlRpcStruct((Map<String, Object>)val).toString());
+            } else {
+                sb.append(val);
+            }
+        }
+        sb.append("}");
+        return sb.toString();
     }
 
     @Override

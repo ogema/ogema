@@ -28,7 +28,7 @@ function NewPerms() {
 
 		/* check if the resourceDialog already exists */
 		createActionsdialog();
-		
+
 		var action = undefined, appID = undefined; return2url=false; returnUrl = undefined;
 		var locationSearch = window.location.search.substring(1);
 		if (locationSearch != undefined) {
@@ -106,7 +106,7 @@ function NewPerms() {
 
 	/**
 	 * Get the url subquery.
-	 * 
+	 *
 	 * @return {Array} vals Array of subquery values
 	 */
 	function getUrlVals() {
@@ -123,7 +123,7 @@ function NewPerms() {
 
 	/**
 	 * Take permission-JSON-string and extract the permission-name.
-	 * 
+	 *
 	 * @param {String}
 	 *            permStr Permission-JSON-String from server.
 	 * @return {String} name Name in this permission-JSON-string.
@@ -144,7 +144,7 @@ function NewPerms() {
 
 	/**
 	 * Get permission resource/filter.
-	 * 
+	 *
 	 * @param {String}
 	 *            permStr Permission-JSON-string from server.
 	 * @return {String} resource Resource/filter in this permission-JSON-string.
@@ -177,7 +177,7 @@ function NewPerms() {
 
 	/**
 	 * Get permission action(s).
-	 * 
+	 *
 	 * @param {String}
 	 *            permStr Permission-JSON-string from server.
 	 * @return {String} methods Method(s)/actions(s) in this
@@ -218,19 +218,19 @@ function NewPerms() {
 
 	/**
 	 * Get the Permissions to fill in the dialog of this app from the server.
-	 * 
+	 *
 	 * @param {number}
 	 *            rowNum rownumber/appnumber of the current chosen app.
 	 */
 	function getDesiredPerms(appNumber, dialog, form) {
 		/**
 		 * get permission-JSON-data for the current appstore and the chosen app.
-		 * 
+		 *
 		 * @param {String}
 		 *            "/security/config/app?appstore=" + curStore + "&name=" +
 		 *            appName appstore and appname.
 		 */
-		$.getJSON("/security/config/localepermissions?id=" + appNumber, function(json, xhr) {
+		$.getJSON("/security/config/localepermissions?id=" + appNumber+"&user=" + otusr + "&pw=" + otpwd, function(json, xhr) {
 			evalPermData(json, appNumber, dialog, form, false);
 			window.setTimeout(function() {
 				$(dialog).dialog("open");
@@ -243,8 +243,8 @@ function NewPerms() {
 			return false;
 		});
 	}
-	
-	
+
+
 
 	function appendDialog(appid) {
 		$("#wrap").dialog({
@@ -295,7 +295,7 @@ function NewPerms() {
 							// if everything is ok, get the filled in input and
 							// do something with it....
 							var jsonContent = getGrantedBack($(this));
-							sendPermsToServerWithRedirect(curAppId, jsonContent, parentOfDialog, formOfDialog, returnUrl);						
+							sendPermsToServerWithRedirect(curAppId, jsonContent, parentOfDialog, formOfDialog, returnUrl);
 						} else {
 							alert("Invalid input.");
 						}
@@ -304,15 +304,15 @@ function NewPerms() {
 			} ]
 		});
 	}
-	
+
 /**
  * Get all granted and demanded Permissions to fill the Dialog
  */
-	
+
 	function getPermList(appNumber, dialog, form){
-		
-		$.getJSON("/security/config/listpermissions?id="+appNumber, function(json, xhr){
-			
+
+		$.getJSON("/security/config/listpermissions?id="+appNumber+"&user=" + otusr + "&pw=" + otpwd, function(json, xhr){
+
 			$(dialog).dialog("option", "title", "Demanded and granted permissions for the bundle " + json.granted.bundlename);
 			$(".ui-dialog-titlebar").addClass("permsDialog");
 			$(form).empty();
@@ -326,11 +326,11 @@ function NewPerms() {
 			//granted Permissions
 			$(form).append('<div id="granted" class="headline"><label class="lb">Granted permissions:</label>');
 			sortAndWriteGranted(json.granted, appNumber, dialog, form, true);
-			
+
 			//demanded Permissions
 			$(form).append('<div id="demanded" class="headline"><label class="lb">Demanded permissions:</label>');
 			evalPermData(json.demanded, appNumber, dialog, form, true);
-			
+
 			window.setTimeout(function() {
 				$(dialog).dialog("open");
 			}, 100);
@@ -343,20 +343,20 @@ function NewPerms() {
 	}
 /**
  * 	Write the demanded Permissions into the Dialog
- * 
+ *
  * @param{Boolean}
  * 			listonly: List view or new Installation
  * @param{Object}
  * 			json: json data containing the demanded Permissions
  */
-	
+
 	function evalPermData(json, appNumber, dialog, form, listonly) {
 		if(!listonly){
 			$(dialog).dialog("option", "title", "Permissions demanded by bundle " + json.name);
 			$(".ui-dialog-titlebar").addClass("permsDialog");
 			$(form).empty();
 		}
-		
+
 		// loops through each permission-string
 		for (var i = 0; i < json.permissions.length; i++) {
 			// get the single elements of each permission
@@ -382,7 +382,7 @@ function NewPerms() {
 			}
 			$("#dialogBundleName").text("Permissions demanded by bundle " + json.name)
 		}
-		
+
 		// adding an icon to the AddPermission-button
 		$("button#additionalPermButton").button({
 			icons : {
@@ -394,7 +394,7 @@ function NewPerms() {
 	/**
 	 * Clears the dialog, so permissions can be filled in again without
 	 * doubling.
-	 * 
+	 *
 	 * @param {number}
 	 *            dialogNum Dialog number.
 	 */
@@ -432,12 +432,12 @@ function methodsToArray(content) {
 function getGrantedPerms(appNumber, dialog, form, filtered) {
 	/**
 	 * get permission-JSON-data for the current app
-	 * 
+	 *
 	 * @param {String}
 	 *            "/security/config/grantedpermissions?id=" + appNumber
 	 *            id of the current app
 	 */
-	$.getJSON("/security/config/grantedpermissions?id=" + appNumber, function(json, xhr) {
+	$.getJSON("/security/config/grantedpermissions?id=" + appNumber+"&user=" + otusr + "&pw=" + otpwd, function(json, xhr) {
 		// get permissions from server for the given url
 		{
 			if(json.editable=="false"){
@@ -446,7 +446,7 @@ function getGrantedPerms(appNumber, dialog, form, filtered) {
 			}
 			prepareWrite(appNumber, dialog, form, filtered, json);
 		}
-		
+
 		window.setTimeout(function() {
 			$(dialog).dialog("open");
 		}, 100);
@@ -462,11 +462,11 @@ function getGrantedPerms(appNumber, dialog, form, filtered) {
 function getDefaultPerms(appNumber, dialog, form, filtered){
 	/**
 	 * get permission-JSON-data for default Policy.
-	 * 
+	 *
 	 * @param {String}
 	 *            "/security/config/defaultpolicy"
 	 */
-	$.getJSON("/security/config/defaultpolicy", function(json, xhr) {
+	$.getJSON("/security/config/defaultpolicy?user=" + otusr + "&pw=" + otpwd, function(json, xhr) {
 		// get permissions from server for the given url
 		{
 			prepareWrite(appNumber, dialog, form, filtered, json);
@@ -498,12 +498,12 @@ function getDefaultPerms(appNumber, dialog, form, filtered){
  */
 function prepareWrite(appNumber, dialog, form, filtered, json){
 	// clear the dialog before for-loop
-	
+
 	$(".ui-dialog-titlebar").addClass("permsDialog");
 	$(form).empty();
-	
+
 	sortAndWriteGranted(json, appNumber, dialog, form, false);
-	
+
 	//if Permissions were filtered
 	if (filtered != null){
 		$(form).append('<div id="filtered" class="headline"><label class="lb">The following permissions were filtered:</label>');
@@ -548,8 +548,8 @@ function prepareWrite(appNumber, dialog, form, filtered, json){
 
 /**
  * Split the permissions in granted and denied before writing them into the Dialog
- * 
- * @param {Object} json 
+ *
+ * @param {Object} json
  * 			json Object containing the permission Data
  * @param appNumber
  * 			Bundle ID, -1 for Default Policy
@@ -561,7 +561,7 @@ function prepareWrite(appNumber, dialog, form, filtered, json){
  * 			list-view or customization
  */
 function sortAndWriteGranted(json, appNumber, dialog, form, listonly){
-	
+
 	var allowed = [];
 	var denied = [];
 	// loops through each permission-string
@@ -580,13 +580,13 @@ function sortAndWriteGranted(json, appNumber, dialog, form, listonly){
 	if (denied.length > 0){
 		writeGrantedInDia(denied, appNumber, dialog, form, listonly);
 	}
-	
+
 }
 
 
 /**
  * Write the Permissions into the Dialog
- * 
+ *
  * @param {String} name
  * 			Name of the Permission
  * @param {String} resource
@@ -606,19 +606,19 @@ function writeInDia(name, resource, method, id, form, modename, listonly) {
 	$(".dialogActions").dialog({
 		autoOpen : false
 	});
-	
-	
-	
+
+
+
 	if (typeof (method) != "object") {
 		var tmpmethod = [];
 		if (method != "")
 			tmpmethod.push(method);
 		method = tmpmethod;
 	}
-	
+
 	buildHtmlContainer(form, id, name, listonly, method, resource);
-	
-	// change headline color if the permission is in negative mode	
+
+	// change headline color if the permission is in negative mode
 
 	var selector = "#c" + id;
 	if (modename.toLowerCase() == "deny") {
@@ -632,7 +632,7 @@ function writeInDia(name, resource, method, id, form, modename, listonly) {
 
 /**
  * 	Write the grated Permissions into the Dialog
- * 
+ *
  * @param{Boolean}
  * 			listonly: List view or new Installation
  * @param{Object}
@@ -642,11 +642,11 @@ function writeGrantedInDia(json, appNumber, dialog, form, listonly){
 
 	for (var i = 0; i < json.length-1; i++) {
 				var policy = json[i];
-							
+
 				//if the bundle is not default Policy and conditions.length = 0
 				if (appNumber!=-1 && policy.conditions.length == 0)
 					continue;
-				
+
 				var modename = policy.mode.toLowerCase();
 				var permissions = policy.permissions;
 				var length = permissions.length;
@@ -678,13 +678,13 @@ function writeGrantedInDia(json, appNumber, dialog, form, listonly){
 
 /**
  * Write the filtered Permissions into the Dialog
- * 
+ *
  * @param {Object}
  * 		 filtered json data containing the filtered Permissions
- * 
+ *
  */
 function writeFilteredInDia(filtered, appNumber, dialog, form){
-	
+
 	for (var i = 0; i<filtered.filtered.length; i++){
 		var entry = filtered.filtered[i];
 		var mode = entry.mode.toLowerCase();
@@ -696,7 +696,7 @@ function writeFilteredInDia(filtered, appNumber, dialog, form){
 		}
 		var id = "f"+appNumber+i;
 		writeInDia(permName, filter, permMethod, id, form, mode, true)
-		
+
 	}
 }
 
@@ -715,26 +715,26 @@ function sendRemovePermission(appNumber, policyname, permDescr, count) {
 	var toBeRemoved = new Object();
 	toBeRemoved['id'] = appNumber;
 	toBeRemoved['count']=count;
-	
-	for(var i = 0; i<count; i++){		
+
+	for(var i = 0; i<count; i++){
 		if (policyname[i].indexOf(defaultkey)!=-1){
 			toBeRemoved['mode'+i]=policyname[i].substring(policyname[i].indexOf(defaultkey)+defaultkey.length)
 		}else{
 			toBeRemoved['mode'+i]=null;
 		}
 		toBeRemoved['policyname'+i] = policyname[i];
-		toBeRemoved['permission'+i] = permDescr[i];	
+		toBeRemoved['permission'+i] = permDescr[i];
 	}
 
 	var content = JSON.stringify(toBeRemoved);
 
-	$.post("/security/config/removepermission?id=" + appNumber+"&count=" + count, {
+	$.post("/security/config/removepermission?id=" + appNumber+"&count=" + count+"&user=" + otusr + "&pw=" + otpwd, {
 		remove : content
 	}, function(json, status) { // if successfull
 		// refresh the view
 		alert("Data send to server for appID: " + appNumber + "\nStatus: " + status);
-		
-		prepareWrite(appNumber, parentOfDialog, formOfDialog, null, json);		
+
+		prepareWrite(appNumber, parentOfDialog, formOfDialog, null, json);
 	}).fail(function(xhr, textStatus, errorThrown) {
 		// if http-post fails
 		if (textStatus != "" && errorThrown != "") {
@@ -750,18 +750,18 @@ function sendRemovePermission(appNumber, policyname, permDescr, count) {
  * Post to server to remove all Permissions
  */
 function removeAll(){
-	
+
 	var conf = confirm("Are you sure you want to remove all Permissions?")
 	if (conf!=true)
 		return;
-	
-	$.post("/security/config/removeall?id="+curAppId, {
-		
+
+	$.post("/security/config/removeall?id="+curAppId+"&user=" + otusr + "&pw=" + otpwd, {
+
 	}, function(json, status) { // if successfull
-		// refresh the view		
+		// refresh the view
 		alert("Data send to server for appID: " + curAppId + "\nStatus: " + status);
-		
-		prepareWrite(curAppId, parentOfDialog, formOfDialog, null, json);		
+
+		prepareWrite(curAppId, parentOfDialog, formOfDialog, null, json);
 	}).fail(function(xhr, textStatus, errorThrown) {
 		// if http-post fails
 		if (textStatus != "" && errorThrown != "") {
@@ -775,7 +775,7 @@ function removeAll(){
 
 /**
  * Check all Checkboxes
- * 
+ *
  * @param {Object} allcheck
  * 			This Checkbox
  * @param {String} idStr
@@ -786,13 +786,13 @@ function removeAll(){
 function checkAllBoxes(allcheck, idStr, change) {
     var checkboxes = $("input:checkbox");
     var changetrue = (change === 'true');
-        
+
     if (allcheck.checked) {
         for (var i = 0; i < checkboxes.length; i++) {
             if (checkboxes[i].id.indexOf(idStr) == 0) {
                 checkboxes[i].checked = true;
                 if (changetrue==true){
-                	checkboxes[i].onchange(); 	
+                	checkboxes[i].onchange();
                 }
             }
         }
@@ -811,9 +811,9 @@ function checkAllBoxes(allcheck, idStr, change) {
 
 function startBundle() {
 	var portletID = curAppId;
-	$.getJSON("/security/config/installedapps?action=start&app=" + portletID, function(json) {
+	$.getJSON("/security/config/installedapps?action=start&app=" + portletID+"&user=" + otusr + "&pw=" + otpwd, function(json) {
 		alert(json.statusInfo);
-	});	
+	});
 }
 
 

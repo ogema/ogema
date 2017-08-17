@@ -22,6 +22,7 @@ import java.util.concurrent.Executor;
 
 import org.ogema.core.application.Timer;
 import org.ogema.core.application.TimerListener;
+import org.ogema.timer.TimerRemovedListener;
 import org.slf4j.Logger;
 
 /**
@@ -49,8 +50,8 @@ public class ApplicationTimer implements Timer, Comparable<ApplicationTimer>,
      * Reference to the scheduler managing this.
      */
     private final DefaultTimerScheduler scheduler;
-    protected long period;
-    protected long nextRun;
+    protected volatile long period;
+    protected volatile long nextRun;
 
     /**
      * false iff this timer's listener callbacks are currently being executed
@@ -61,11 +62,20 @@ public class ApplicationTimer implements Timer, Comparable<ApplicationTimer>,
      * Set of all objects receiving callback events from this timer.
      */
     protected final List<TimerListener> listeners = new ArrayList<>();
+    /**
+     * may be null
+     */
+    private final TimerRemovedListener timerRemovedListener;
 
     protected volatile TimerState state = TimerState.RUNNING;
 
     protected ApplicationTimer(Executor exec, long period,
             DefaultTimerScheduler scheduler, Logger logger) {
+    	this(exec, period, scheduler, logger, null);
+    }
+    
+    protected ApplicationTimer(Executor exec, long period,
+            DefaultTimerScheduler scheduler, Logger logger, TimerRemovedListener timerRemovedListener) {
         if (period < 1){
             throw new IllegalArgumentException("period must be > 0");
         }
@@ -73,6 +83,7 @@ public class ApplicationTimer implements Timer, Comparable<ApplicationTimer>,
         this.logger = logger;
         this.period = period;
         this.scheduler = scheduler;
+        this.timerRemovedListener = timerRemovedListener;
         long now = scheduler.getExecutionTime();
         if (period > Long.MAX_VALUE - now) {
             this.nextRun = Long.MAX_VALUE;
@@ -106,12 +117,7 @@ public class ApplicationTimer implements Timer, Comparable<ApplicationTimer>,
     @Override
     public boolean removeListener(TimerListener listener) {
         synchronized (listeners) {
-            if (listeners.contains(listener)) {
-                listeners.remove(listener);
-                return true;
-            } else {
-                return false;
-            }
+        	return listeners.remove(listener);
         }
     }
 
@@ -133,7 +139,8 @@ public class ApplicationTimer implements Timer, Comparable<ApplicationTimer>,
         nextRun += period;
     }
 
-    protected long getNextRunTime() {
+    @Override
+    public long getNextRunTime() {
         return nextRun;
     }
 
@@ -203,6 +210,13 @@ public class ApplicationTimer implements Timer, Comparable<ApplicationTimer>,
     // discard all timer references
     @Override
     public void destroy() {
+        if (state != TimerState.SHUTDOWN && timerRemovedListener != null) {
+        	try {
+        		timerRemovedListener.timerRemoved(this);
+        	} catch (Throwable e) {
+        		logger.warn("Error in timerRemoved callback",e);
+        	}
+        }
         state = TimerState.SHUTDOWN;
     }
 

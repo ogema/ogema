@@ -120,6 +120,7 @@ public class InfluxFake extends HttpServlet {
 	private static int GRAFANA_AHEAD_TIME_IN_MS = 1000 * 60 * 60; // 60min
 	private static int GRAFANA_BEFORE_TIME_IN_MS = -1 * 1000 * 60 * 5; // 05min
 	private static int DEFAULT_MAX_VALUES = 500;
+	private Calendar calendar;
 
 	public enum DataType {
 
@@ -206,6 +207,8 @@ public class InfluxFake extends HttpServlet {
 		this.restrictions = new HashMap<String, Map<String, Class<? extends Resource>>>();
 		//System.out.println("Created new InfluxFake!!!");
 		//         t= am.getResourceManagement().createResource("auxTempResourceDoNotRemove", TemperatureResource.class); //  this is currently needed in order to get access to the class loader of PhysicalUnitResources
+
+		calendar = Calendar.getInstance();
 	}
 
 	/**************** Methods to be overridden  **********/
@@ -915,8 +918,6 @@ public class InfluxFake extends HttpServlet {
 	}
 
 	private String getGrafanaTimeString(long millis, long offset) {
-
-		Calendar calendar = Calendar.getInstance();
 		calendar.setTimeInMillis(millis);
 		int timezoneOffset = calendar.getTimeZone().getOffset(calendar.getTimeInMillis());
 		calendar.setTimeInMillis(millis - timezoneOffset + offset);

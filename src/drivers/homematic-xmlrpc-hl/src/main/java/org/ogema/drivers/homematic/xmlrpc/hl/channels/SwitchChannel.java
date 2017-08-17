@@ -15,6 +15,7 @@
  */
 package org.ogema.drivers.homematic.xmlrpc.hl.channels;
 
+import org.ogema.drivers.homematic.xmlrpc.hl.api.AbstractDeviceHandler;
 import java.util.List;
 import java.util.Map;
 import org.ogema.core.model.Resource;
@@ -23,7 +24,6 @@ import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.ResourceValueListener;
-import org.ogema.drivers.homematic.xmlrpc.hl.HomeMaticDriver;
 import org.ogema.drivers.homematic.xmlrpc.hl.types.HmDevice;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.DeviceDescription;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.HmEvent;
@@ -32,23 +32,27 @@ import org.ogema.drivers.homematic.xmlrpc.ll.api.ParameterDescription;
 import org.ogema.model.actors.OnOffSwitch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.HomeMaticConnection;
+import org.ogema.tools.resource.util.ResourceUtils;
 
 /**
  *
  * @author jlapp
  */
-public class SwitchChannel implements ChannelHandler {
+public class SwitchChannel extends AbstractDeviceHandler {
     
-    private static final Logger logger = LoggerFactory.getLogger(SwitchChannel.class);
+    protected final Logger logger = LoggerFactory.getLogger(SwitchChannel.class);
+
+    public SwitchChannel(HomeMaticConnection conn) {
+        super(conn);
+    }
     
-    static class SingleChangeUpdater implements ResourceValueListener<Resource> {
+    class SingleChangeUpdater implements ResourceValueListener<Resource> {
         
-        protected final HomeMaticDriver hm;
         protected final String address;
         protected final String valueKey;
         
-        public SingleChangeUpdater(HomeMaticDriver hm, String address, String valueKey) {
-            this.hm = hm;
+        public SingleChangeUpdater(String address, String valueKey) {
             this.address = address;
             this.valueKey = valueKey;
         }
@@ -58,16 +62,16 @@ public class SwitchChannel implements ChannelHandler {
             logger.debug("OGEMA value changed for HomeMatic {}/{}", address, valueKey);
             if (res instanceof FloatResource) {
                 float value = ((FloatResource) res).getValue();
-                hm.performSetValue(address, valueKey, value);
+                conn.performSetValue(address, valueKey, value);
             } else if (res instanceof IntegerResource) {
                 int value = ((IntegerResource) res).getValue();
-                hm.performSetValue(address, valueKey, value);
+                conn.performSetValue(address, valueKey, value);
             } else if (res instanceof StringResource) {
                 String value = ((StringResource) res).getValue();
-                hm.performSetValue(address, valueKey, value);
+                conn.performSetValue(address, valueKey, value);
             } else if (res instanceof BooleanResource) {
                 boolean value = ((BooleanResource) res).getValue();
-                hm.performSetValue(address, valueKey, value);
+                conn.performSetValue(address, valueKey, value);
             } else {
                 LoggerFactory.getLogger(SwitchChannel.class).warn("HomeMatic parameter resource is of unsupported type: {}", res.getResourceType());
             }
@@ -105,14 +109,14 @@ public class SwitchChannel implements ChannelHandler {
     }
     
     @Override
-    public void setup(HmDevice parent, HomeMaticDriver hm, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
+    public void setup(HmDevice parent, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
         LoggerFactory.getLogger(getClass()).debug("setup SWITCH handler for address {}", desc.getAddress());
-        String swName = HomeMaticDriver.sanitizeResourcename("SWITCH_" + desc.getAddress());
+        String swName = ResourceUtils.getValidResourceName("SWITCH_" + desc.getAddress());
         OnOffSwitch sw = parent.addDecorator(swName, OnOffSwitch.class);
         sw.stateControl().create();
         sw.stateFeedback().create();
-        sw.stateControl().addValueListener(new SingleChangeUpdater(hm, desc.getAddress(), "STATE"));
-        hm.getHomeMaticService().addEventListener(new SwitchEventListener(sw, desc.getAddress()));
+        sw.stateControl().addValueListener(new SingleChangeUpdater(desc.getAddress(), "STATE"));
+        conn.addEventListener(new SwitchEventListener(sw, desc.getAddress()));
         sw.activate(true);
     }
     

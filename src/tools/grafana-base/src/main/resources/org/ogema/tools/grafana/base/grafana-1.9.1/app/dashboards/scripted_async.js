@@ -23,7 +23,7 @@ return function(callback) {
 
 	// Setup some variables
 	var SERVLET_ADDRESS = "/apps/ogema/grafanatest/fake_influxdb";
-	
+
 	var dashboard;
 
 
@@ -53,10 +53,10 @@ return function(callback) {
 	//dashboard.refresh = "5s";  // set below
 
 	var refreshBak;
-	
+
 	$.ajax({
 		method: 'GET',
-	    url: SERVLET_ADDRESS + '/series?parameters=',  
+	    url: SERVLET_ADDRESS + '/series?user=' + otusr + '&pw=' + otpwd + '&parameters=',
 	    contentType: 'application/json'
 	})
 	.done(function(paramsResult) {
@@ -64,16 +64,16 @@ return function(callback) {
 	   var params = JSON.parse(paramsResult)[0].parameters;
 	   var refr = params.updateInterval;
 	   dashboard.refresh = "1s";
-           
+
            dashboard.time = {
             from: params.frameworktimeStart,
             to: params.frameworktimeEnd
            };
-           
+
 	   if (refr > 0) {
 		  // dashboard.refresh = String(refr/1000) + "s";
 		  refreshBak = String(refr/1000) + "s";
-	   } 
+	   }
 	   var rows = params.panels;
 	   var panels = {};
 	   var isReady = {};
@@ -94,7 +94,7 @@ return function(callback) {
          if (divisor > 4) {
         	 divisor = 4;
          }
-         span[rowName] = span[rowName]/divisor;    
+         span[rowName] = span[rowName]/divisor;
          var rowRestr = {};
          if (restrictions.hasOwnProperty(rowName)) {
          	rowRestr = restrictions[rowName];
@@ -104,19 +104,19 @@ return function(callback) {
         // for (var ct=0;ct<resourceTypes.length;ct++) {
         	 var resType  = resourceTypes[pnl];
         	 var isarray = Array.isArray(resType);
-        	 var queryParam;
+        	 var queryParam = '?user=' + otusr + '&pw=' + otpwd;
         	 if (isarray) {
-        		 queryParam = 'row=' + rowName + '&panel=' + pnl;
+        		 queryParam += '&row=' + rowName + '&panel=' + pnl;
         	 } else {
-        		 queryParam  = 'resourceType=' + resType;
+        		 queryParam  += '&resourceType=' + resType;
         	 }
         	 if (rowRestr.hasOwnProperty(pnl)) {
-        	 	queryParam = queryParam + '&restrictions=' + rowRestr[pnl]; 
+        	 	queryParam = queryParam + '&restrictions=' + rowRestr[pnl];
         	 }
         	console.log("   queryParam",queryParam);
 	       	 $.ajax({
 				    method: 'GET',
-				    url:  SERVLET_ADDRESS + '/series?' + queryParam, 
+				    url:  SERVLET_ADDRESS + '/series' + queryParam,
 				    contentType: 'application/json'
 			  })
 			  .done(function(result) {
@@ -144,8 +144,8 @@ return function(callback) {
         		 	if (mode === "STEPS") steps = true;
         		 	else if (mode === "NONE") lines = false; // TODO NEAREST; default: linear
         		 }
-        		 
-				 var panel =    
+
+				 var panel =
 				      {
 					        id: panelId,
 						 	title: pnl,
@@ -170,7 +170,7 @@ return function(callback) {
 					        }
 				      };
 				 panelId++;
-				 panels[rowName].push(panel);					    
+				 panels[rowName].push(panel);
 			//	 console.log("targets",targets);
 				 counter[rowName] = counter[rowName] + 1;
 			//	 console.log("counter(" + rowName + ") = " + String(counter[rowName]) + ". Target " + String(Object.keys(resourceTypes).length));
@@ -187,7 +187,7 @@ return function(callback) {
 	  var waitCounter = 0;
 	  var tick = function() {
   		waitCounter++;
-  		setTimeout(function() { 
+  		setTimeout(function() {
   			if (counter[rowName] == Object.keys(resourceTypes).length) {
   	//		  console.log("panels[" + rowName + "]",panels[rowName]);
   			  if (newRow.panels.length == 0) {
@@ -200,9 +200,9 @@ return function(callback) {
   		//		console.log("row not yet finished... waiting another 100ms");
   				tick();
   			}
-  	    }, 100);	
-  	  }; 
-	  tick(); 
+  	    }, 100);
+  	  };
+	  tick();
     });  // end rows loop
 
 	// make sure values are received once, then set update interval to desired value
@@ -212,9 +212,9 @@ return function(callback) {
     	}
     	else {
     		helper.set_interval(refreshBak);
-  	 	}  
+  	 	}
     }   ,2000);
-    
+
     // when dashboard is composed call the callback function and pass the dashboard
     callback(dashboard);
   });

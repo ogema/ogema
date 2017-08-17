@@ -23,6 +23,10 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Method;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -35,10 +39,7 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
-import javax.xml.bind.Unmarshaller;
 import javax.xml.namespace.QName;
-import javax.xml.transform.Source;
-import javax.xml.transform.stream.StreamSource;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.model.Resource;
@@ -79,6 +80,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import java.util.Objects;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 
 /**
  * Conversion tool between OGEMA objects and text strings. This is a singleton
@@ -96,34 +101,40 @@ final class SerializationCore {
 
 	// experimental json serializer; note: non-fast serializer fails on
 	// schedules (even worse than the fast one)
+    @SuppressWarnings("deprecation")
 	private final FastJsonGenerator fastJsonGenerator;
 	private final boolean useFastJsonGenerator = true;
 
-	private final Unmarshaller unmarshaller;
 	private final Marshaller marshaller;
 	private final Marshaller collectionsMarshaller;
-//	private final Unmarshaller collectionsUnmarshaller;
+
 	final ResourceAccess resacc;
 	final ResourceManagement resman;
-	final static Logger logger = LoggerFactory.getLogger(SerializationCore.class);
+	final static Logger LOGGER = LoggerFactory.getLogger(SerializationCore.class);
 	// JAXBContext is thread safe and expensive to build, initialize only once.
-	private final static JAXBContext marshallingContext = createMarshallingContext();
-	private final static JAXBContext unmarshallingContext = createUnmarshallingContext();
+	private final static JAXBContext MARSHALLING_CONTEXT = createMarshallingContext();
+	private final static JAXBContext UNMARSHALLING_CONTEXT = createUnmarshallingContext();
+	private final static JAXBContext COLLECTIONS_MARSHALLING_CONTEXT = createCollectionsMarshallingContext();
+    private final static XMLInputFactory INPUT_FACTORY = XMLInputFactory.newFactory();
+    
+    static {
+        /* XXE prevention: disable external entities, but keep DTD support for
+        normal entities => Documents with external entities will load, but the
+        external entity will be empty */
+        INPUT_FACTORY.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+        INPUT_FACTORY.setProperty(XMLInputFactory.SUPPORT_DTD, true);
+    }
 
+    @SuppressWarnings("deprecation")
 	private SerializationCore(ResourceAccess resacc, ResourceManagement resman, Logger logger) {
 		mapper = createJacksonMapper(true);
 		this.resacc = resacc;
 		this.resman = resman;
 		try {
-			unmarshaller = unmarshallingContext.createUnmarshaller();
-			marshaller = marshallingContext.createMarshaller();
+			marshaller = MARSHALLING_CONTEXT.createMarshaller();
 			marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
 			fastJsonGenerator = new FastJsonGenerator();
-			
-			JAXBContext c = JAXBContext.newInstance(JaxbResourceCollection.class.getPackage().getName(), JaxbResourceCollection.class.getClassLoader());
-			collectionsMarshaller = c.createMarshaller();
-//			c = JAXBContext.newInstance("org.ogema.serialization.jaxb", ResourceCollection.class.getClassLoader());
-//			collectionsUnmarshaller = c.createUnmarshaller();
+			collectionsMarshaller = COLLECTIONS_MARSHALLING_CONTEXT.createMarshaller();
 		} catch (JAXBException ex) {
 			logger.error("Failed to create SerializationCore", ex);
 			throw new RuntimeException(ex);
@@ -133,12 +144,21 @@ final class SerializationCore {
 	protected SerializationCore(ResourceAccess resacc, ResourceManagement resman) {
 		this(resacc, resman, org.slf4j.LoggerFactory.getLogger(SerializationCore.class));
 	}
+	
+	private static JAXBContext createCollectionsMarshallingContext() {
+		try {
+			return JAXBContext.newInstance(JaxbResourceCollection.class.getPackage().getName(), JaxbResourceCollection.class.getClassLoader());
+		} catch (JAXBException ex) {
+			LOGGER.error("could not create JAXB marshalling context", ex);
+			throw new RuntimeException(ex);
+		}
+	}
 
 	private static JAXBContext createMarshallingContext() {
 		try {
 			return JAXBContext.newInstance("org.ogema.serialization", JaxbResource.class.getClassLoader());
 		} catch (JAXBException ex) {
-			logger.error("could not create JAXB marshalling context", ex);
+			LOGGER.error("could not create JAXB marshalling context", ex);
 			throw new RuntimeException(ex);
 		}
 	}
@@ -148,7 +168,7 @@ final class SerializationCore {
 			return JAXBContext.newInstance("org.ogema.serialization.jaxb",
 					org.ogema.serialization.jaxb.Resource.class.getClassLoader());
 		} catch (JAXBException ex) {
-			logger.error("could not create JAXB unmarshalling context", ex);
+			LOGGER.error("could not create JAXB unmarshalling context", ex);
 			throw new RuntimeException(ex);
 		}
 	}
@@ -182,7 +202,7 @@ final class SerializationCore {
 			}
 
 		} catch (IOException ioex) {
-			logger.error("JSON serialization failed", ioex);
+			LOGGER.error("JSON serialization failed", ioex);
 			return null;
 		}
 	}
@@ -197,7 +217,7 @@ final class SerializationCore {
 			writeJson(output, object, manager);
 			return output.toString();
 		} catch (IOException ioex) {
-			logger.error("JSON serialization failed", ioex);
+			LOGGER.error("JSON serialization failed", ioex);
 			return null;
 		}
 	}
@@ -212,7 +232,7 @@ final class SerializationCore {
 			marshaller.marshal(e, sw);
 		} catch (JAXBException jaxb) {
 			// XXX
-			logger.warn("XML serialization failed", jaxb);
+			LOGGER.warn("XML serialization failed", jaxb);
 		}
 		return sw.toString();
 	}
@@ -270,7 +290,7 @@ final class SerializationCore {
 			writeJson(output, sched, start, end, sman);
 			return output.toString();
 		} catch (IOException ioex) {
-			logger.error("JSON serialization failed", ioex);
+			LOGGER.error("JSON serialization failed", ioex);
 			return null;
 		}
 	}
@@ -281,7 +301,7 @@ final class SerializationCore {
 			writeXml(output, sched, start, end, sman);
 			return output.toString();
 		} catch (IOException ioex) {
-			logger.error("XML serialization failed", ioex);
+			LOGGER.error("XML serialization failed", ioex);
 			return null;
 		}
 	}
@@ -318,7 +338,7 @@ final class SerializationCore {
 		try {
 			apply(deserializeJson(jsonReader), resource, forceUpdate);
 		} catch (IOException | ClassNotFoundException ex) {
-			logger.error("import of JSON resource into OGEMA failed", ex);
+			LOGGER.error("import of JSON resource into OGEMA failed", ex);
 		}
 	}
 
@@ -330,7 +350,7 @@ final class SerializationCore {
 		try {
 			apply(deserializeXml(xmlReader), resource, forceUpdate);
 		} catch (IOException | ClassNotFoundException ex) {
-			logger.error("import of XML resource into OGEMA failed", ex);
+			LOGGER.error("import of XML resource into OGEMA failed", ex);
 		}
 	}
 
@@ -355,24 +375,61 @@ final class SerializationCore {
 	}
 
 	protected org.ogema.serialization.jaxb.Resource deserializeXml(Reader reader) throws IOException {
-		Source src = new StreamSource(reader);
+        final XMLStreamReader src;
+        try {
+            src = INPUT_FACTORY.createXMLStreamReader(reader);
+        } catch (XMLStreamException ex) {
+            throw new IOException(ex);
+        }
 		try {
-			return (org.ogema.serialization.jaxb.Resource) ((JAXBElement) unmarshallingContext.createUnmarshaller()
-					.unmarshal(src)).getValue();
-			/*
-			 * return unmarshallingContext.createUnmarshaller() .unmarshal(src,
-			 * org.ogema.serialization.jaxb.Resource.class).getValue();
-			 */
-		} catch (JAXBException ex) {
-			throw new IOException(ex);
+			return (org.ogema.serialization.jaxb.Resource) AccessController.doPrivileged(new PrivilegedExceptionAction<Object>() {
+
+				@SuppressWarnings("rawtypes")
+				@Override
+				public Object run() throws JAXBException {
+					return ((JAXBElement) UNMARSHALLING_CONTEXT.createUnmarshaller()
+							.unmarshal(src)).getValue();
+				}
+
+				
+			});
+		} catch (PrivilegedActionException e) {
+			throw new IOException(e.getCause());
 		}
 	}
+    
+    protected <T extends Resource> T create(org.ogema.serialization.jaxb.Resource input, Resource target) {
+        Set<LinkInfo> unresolvedLinks = new HashSet<>();
+        T rval = createInternal(input, target, unresolvedLinks);
+        for (LinkInfo link: unresolvedLinks) {
+            // create missing links between different top level resources
+            //XXX works outside of activation transactions.
+            Resource linkParent = resacc.getResource(link.parent);
+            if (linkParent == null || !linkParent.exists()) {
+                LOGGER.warn("invalid link: link parent '{}' does not exist", link.parent);
+                continue;
+            }
+            Resource linkTarget = resacc.getResource(link.target);
+            if (linkTarget == null || !linkTarget.exists()) {
+                LOGGER.warn("invalid link: link target '{}' does not exist", link.parent);
+                continue;
+            }
+            Class<? extends Resource> linkType;
+            try {
+                linkType = Class.forName(link.type).asSubclass(Resource.class);
+                linkParent.getSubResource(link.name, linkType).setAsReference(linkTarget);
+            } catch (ClassNotFoundException ex) {
+                LOGGER.warn("invalid link: unknown type: {}", link.type);
+            }
+        }
+        return rval;
+    }
 
 	/**
 	 * create the input resource as new subresource of target, or as new top
 	 * level resource if target is null.
 	 */
-	protected <T extends Resource> T create(org.ogema.serialization.jaxb.Resource input, Resource target) {
+	protected <T extends Resource> T createInternal(org.ogema.serialization.jaxb.Resource input, Resource target, Set<LinkInfo> unresolvedLinks) {
 		try {
 			@SuppressWarnings("unchecked")
 			final Class<? extends Resource> inputOgemaType = (Class<? extends Resource>) Class.forName(input.getType());
@@ -387,9 +444,9 @@ final class SerializationCore {
 				// add to root
 				for (Object o : input.getSubresources()) {
 					if (o instanceof org.ogema.serialization.jaxb.Resource) {
-						create((org.ogema.serialization.jaxb.Resource) o, null);
+						createInternal((org.ogema.serialization.jaxb.Resource) o, null, unresolvedLinks);
 					} else {
-						logger.error("trying to create top level link: {}", o.getClass());
+						LOGGER.error("trying to create top level link: {}", o.getClass());
 					}
 				}
 				@SuppressWarnings("unchecked")
@@ -412,7 +469,7 @@ final class SerializationCore {
 					}
 					target = sub;
 				}
-				apply(input, target, true);
+				unresolvedLinks.addAll(apply(input, target, true));
 			}
 			@SuppressWarnings("unchecked")
 			T rval = resacc.getResource(target.getPath());// (T) target;
@@ -441,10 +498,10 @@ final class SerializationCore {
 	 */
 	// TODO exception handling
 	@SuppressWarnings("unchecked")
-	protected void apply(org.ogema.serialization.jaxb.Resource input, Resource target, boolean forceUpdate)
+	protected Set<LinkInfo> apply(org.ogema.serialization.jaxb.Resource input, Resource target, boolean forceUpdate)
 			throws ClassNotFoundException {
-		Set<String> unresolvedLinks = Collections.emptySet();
-		Set<String> lastUnresolvedLinks;
+		Set<LinkInfo> unresolvedLinks = Collections.emptySet();
+		Set<LinkInfo> lastUnresolvedLinks;
         @SuppressWarnings("deprecation")
 		org.ogema.core.resourcemanager.Transaction trans = resacc.createTransaction();
 		Collection<Resource> resourcesToActivate = new HashSet<>();
@@ -456,7 +513,7 @@ final class SerializationCore {
 			// repeat until there are no more unresolved links, or the set
 			// of unresolved links doesn't change any more (-> input broken or
 			// refering to deleted resources)
-		} while (!(unresolvedLinks.isEmpty() || (unresolvedLinks.equals(lastUnresolvedLinks))));
+		} while (!(unresolvedLinks.isEmpty() || unresolvedLinks.equals(lastUnresolvedLinks)));
         @SuppressWarnings("deprecation")
 		org.ogema.core.resourcemanager.Transaction deactivate = resacc.createTransaction();
 		deactivate.addResources(resourcesToDeactivate);
@@ -468,15 +525,66 @@ final class SerializationCore {
 		org.ogema.core.resourcemanager.Transaction activate = resacc.createTransaction();
 		activate.addResources(resourcesToActivate);
 		activate.activate();
+        
+        return unresolvedLinks;
 	}
+    
+    static class LinkInfo {
+        
+        final String parent;
+        final String name;
+        final String target;
+        final String type;
+
+        public LinkInfo(String parent, String name, String target, String type) {
+            this.name = name;
+            this.parent = parent;
+            this.target = target;
+            this.type = type;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 3;
+            hash = 47 * hash + Objects.hashCode(this.parent);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final LinkInfo other = (LinkInfo) obj;
+            if (!Objects.equals(this.parent, other.parent)) {
+                return false;
+            }
+            if (!Objects.equals(this.name, other.name)) {
+                return false;
+            }
+            if (!Objects.equals(this.target, other.target)) {
+                return false;
+            }
+            if (!Objects.equals(this.type, other.type)) {
+                return false;
+            }
+            return true;
+        }
+        
+        
+        
+    }
 
 	// returns the set of unresolved (not existing) links contained in the
 	// serialized input
 	@SuppressWarnings("unchecked")
-	private Set<String> applyInternal(org.ogema.serialization.jaxb.Resource input, Resource target, boolean forceUpdate,
+	private Set<LinkInfo> applyInternal(org.ogema.serialization.jaxb.Resource input, Resource target, boolean forceUpdate,
 			@SuppressWarnings("deprecation") org.ogema.core.resourcemanager.Transaction trans, Collection<Resource> resourcesToActivate, Collection<Resource> resourcesToDeactivate)
 			throws ClassNotFoundException {
-		Set<String> unresolvedLinks = new HashSet<>();
+		Set<LinkInfo> unresolvedLinks = new HashSet<>();
 		final Class<?> inputOgemaType = Class.forName(input.getType());
 		if (!Resource.class.isAssignableFrom(inputOgemaType)) {
 			throw new IllegalArgumentException("illegal type in input data structure: " + inputOgemaType);
@@ -535,7 +643,7 @@ final class SerializationCore {
 				ResourceLink link = (ResourceLink) o;
 				Resource linkedResource = resacc.getResource(link.getLink());
 				if (linkedResource == null || !linkedResource.exists()) {
-					unresolvedLinks.add(link.getLink());
+					unresolvedLinks.add(new LinkInfo(target.getPath(), link.getName(), link.getLink(), link.getType()));
 					continue;
 				}
 				Resource ogemaSubRes = target.getSubResource(link.getName());
@@ -564,7 +672,7 @@ final class SerializationCore {
 	}
 
 	@SuppressWarnings("deprecation")
-	protected void saveSimpleTypeData(org.ogema.serialization.jaxb.Resource input, Resource target, boolean forceUpdate,
+	protected static void saveSimpleTypeData(org.ogema.serialization.jaxb.Resource input, Resource target, boolean forceUpdate,
 			org.ogema.core.resourcemanager.Transaction trans) throws ClassNotFoundException {
 		Class<?> inputType = Class.forName(input.getType());
 		if (!target.getResourceType().isAssignableFrom(inputType)
@@ -641,7 +749,7 @@ final class SerializationCore {
 		}
 	}
 
-	private void saveScheduleData(org.ogema.serialization.jaxb.Resource input, Resource target, @SuppressWarnings("deprecation") org.ogema.core.resourcemanager.Transaction trans) {
+	private static void saveScheduleData(org.ogema.serialization.jaxb.Resource input, Resource target, @SuppressWarnings("deprecation") org.ogema.core.resourcemanager.Transaction trans) {
 		ScheduleResource jaxbSchedule = (ScheduleResource) input;
 		Schedule ogemaSchedule = (Schedule) target;
 
@@ -669,7 +777,7 @@ final class SerializationCore {
 		}
 	}
 
-	private void saveArrayTypeData(org.ogema.serialization.jaxb.Resource input, Resource target, boolean forceUpdate,
+	private static void saveArrayTypeData(org.ogema.serialization.jaxb.Resource input, Resource target, boolean forceUpdate,
 			@SuppressWarnings("deprecation") org.ogema.core.resourcemanager.Transaction trans) throws ClassNotFoundException {
 		Class<?> inputType = Class.forName(input.getType());
 		if (input instanceof org.ogema.serialization.jaxb.BooleanArrayResource) {
@@ -732,62 +840,37 @@ final class SerializationCore {
 			}
 
 		} catch (IOException ioex) {
-			logger.error("JSON serialization failed", ioex);
+			LOGGER.error("JSON serialization failed", ioex);
 			return null;
 		}
 	}
 
 	// FIXME context is expensive and should be recycled
 	String toXml(Collection<Resource> resources, SerializationManager manager) {
-		StringWriter sw = new StringWriter(200);
+		final StringWriter sw = new StringWriter(200);
 		try {
 			final JaxbResourceCollection jres = JaxbFactory.createJaxbResources(resources, manager);
 			// wrapping is required for 'xsi:type' attribute.
-			JAXBElement<?> e = new JAXBElement<>(
+			final JAXBElement<?> e = new JAXBElement<>(
 					new QName(NS_OGEMA_REST, "resources", "og"),
 					JaxbResourceCollection.class, jres);
 //			collectionsMarshaller.marshal(e, sw);
-			JAXBContext c = JAXBContext.newInstance(JaxbResourceCollection.class);
-			c.createMarshaller().marshal(e, sw);
-		} catch (JAXBException jaxb) {
+			AccessController.doPrivileged(new PrivilegedExceptionAction<Void>() {
+
+				@Override
+				public Void run() throws JAXBException {
+					JAXBContext c = JAXBContext.newInstance(JaxbResourceCollection.class);
+					c.createMarshaller().marshal(e, sw);
+					return null;
+				}
+			});
+		} catch (PrivilegedActionException jaxb) {
 			// XXX
-			logger.warn("XML serialization failed", jaxb);
+			LOGGER.warn("XML serialization failed", jaxb.getCause());
 		}
 		return sw.toString();
 	}
 
-	protected void apply(Collection<org.ogema.serialization.jaxb.Resource> inputs, Resource target, boolean forceUpdate)
-			throws ClassNotFoundException {
-		Set<String> unresolvedLinks = Collections.emptySet();
-		Set<String> lastUnresolvedLinks;
-        @SuppressWarnings("deprecation")
-		org.ogema.core.resourcemanager.Transaction trans = resacc.createTransaction();
-		Collection<Resource> resourcesToActivate = new HashSet<>();
-		Collection<Resource> resourcesToDeactivate = new HashSet<>();
-		do {
-			lastUnresolvedLinks = unresolvedLinks;
-			unresolvedLinks = Collections.emptySet();
-			for (org.ogema.serialization.jaxb.Resource input: inputs) {
-				unresolvedLinks.addAll(applyInternal(input, target, forceUpdate, trans, resourcesToActivate,
-						resourcesToDeactivate));
-				// repeat until there are no more unresolved links, or the set
-				// of unresolved links doesn't change any more (-> input broken or
-				// refering to deleted resources)
-			}
-		} while (!(unresolvedLinks.isEmpty() || (unresolvedLinks.equals(lastUnresolvedLinks))));
-        @SuppressWarnings("deprecation")
-		org.ogema.core.resourcemanager.Transaction deactivate = resacc.createTransaction();
-		deactivate.addResources(resourcesToDeactivate);
-		// FIXME deactivation, setting of values and activation are not
-		// synchronized
-		deactivate.deactivate();
-		trans.write();
-        @SuppressWarnings("deprecation")
-		org.ogema.core.resourcemanager.Transaction activate = resacc.createTransaction();
-		activate.addResources(resourcesToActivate);
-		activate.activate();
-	}
-	
 	private static final TypeReference<Collection<org.ogema.serialization.jaxb.Resource>> typeRef 
 		= new TypeReference<Collection<org.ogema.serialization.jaxb.Resource>>() {};
 	
@@ -796,19 +879,27 @@ final class SerializationCore {
 		return (Collection<org.ogema.serialization.jaxb.Resource>) mapper.readValue(reader, typeRef);
 	}
 
-	// TODO test
-	@SuppressWarnings({ "rawtypes"})
-	protected ResourceCollection deserializeXmlCollection(Reader reader) throws IOException {
-		Source src = new StreamSource(reader);
+	protected static ResourceCollection deserializeXmlCollection(Reader reader) throws IOException {
+		final XMLStreamReader src;
+        try {
+            src = INPUT_FACTORY.createXMLStreamReader(reader);
+        } catch (XMLStreamException ex) {
+            throw new IOException(ex);
+        }
 		try {
-			return (ResourceCollection) ((JAXBElement) unmarshallingContext.createUnmarshaller()
-					.unmarshal(src)).getValue();
-			/*
-			 * return unmarshallingContext.createUnmarshaller() .unmarshal(src,
-			 * org.ogema.serialization.jaxb.Resource.class).getValue();
-			 */
-		} catch (JAXBException ex) {
-			throw new IOException(ex);
+			return (ResourceCollection) AccessController.doPrivileged(new PrivilegedExceptionAction<Object>() {
+
+				@SuppressWarnings("rawtypes")
+				@Override
+				public Object run() throws JAXBException {
+					return ((JAXBElement) UNMARSHALLING_CONTEXT.createUnmarshaller()
+							.unmarshal(src)).getValue();
+				}
+
+				
+			});
+		} catch (PrivilegedActionException e) {
+			throw new IOException(e.getCause());
 		}
 	}
 	
@@ -820,7 +911,7 @@ final class SerializationCore {
 				if (result != null)
 					resources.add(result);
 			} catch (Exception e) {
-				logger.error("Error deserializing a collection of resources",e);
+				LOGGER.error("Error deserializing a collection of resources",e);
 			}
 		}
 		return resources;
@@ -834,7 +925,7 @@ final class SerializationCore {
 				if (result != null)
 					resources.add(result);
 			} catch (Exception e) {
-				logger.error("Error deserializing a collection of resources",e);
+				LOGGER.error("Error deserializing a collection of resources",e);
 			}
 		}
 		return resources;

@@ -16,14 +16,14 @@
 package org.ogema.core.channelmanager.measurements;
 
 /**
- * Quality of a {@link SampledValue} (e.g. a measurement). A Quality.GOOD inidcates
- * that the value reported is considered correct and reliable. In the context of schedules
- * Quality.BAD can be used to model definition gaps. In case of measurements reported,
- * it is up to the application how they treat a measurement that was reported as 
- * Quality.BAD. <br>
- * 
- * Usually, if one or more values involved in a calculation are Quality.BAD the result should
- * be considered of Quality.BAD, too.
+ * Quality of a {@link SampledValue} (e.g. a measurement). A Quality.GOOD indicates
+ * that the value shall be used for further processing. This means it is considered
+ * correct and reliable.<br>
+ * In the context of schedules and most of the OGEMA TimeSeries API Quality.BAD is
+ * used to model definition gaps. If, in case of measurements reported, applications
+ * provide data where Quality.BAD does not indicate a gap but just doubtful measurement
+ * quality and the values marked with Quality.BAD shall still be used in a standard API
+ * method set the QualityBadEffect.IGNORE_QUALITY flag of the method.
  */
 public enum Quality {
 

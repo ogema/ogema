@@ -1,0 +1,9 @@
+This folder contains configuration files for a simple remote logging configuration.
+On the client, an additional logger appender is configured ("SOCKET"), whose log messages are
+transferred to the server and added to the server logs. The corresponding server component
+is a logback receiver.
+Note that this basic example uses HTTP only; in a production setting TLS should be enabled.
+For TLS and other settings, see 
+https://logback.qos.ch/manual/appenders.html
+https://logback.qos.ch/manual/receivers.html
+https://logback.qos.ch/manual/usingSSL.html

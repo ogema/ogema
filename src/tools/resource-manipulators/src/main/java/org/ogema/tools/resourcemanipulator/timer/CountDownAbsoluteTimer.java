@@ -33,9 +33,14 @@ public class CountDownAbsoluteTimer implements TimerListener {
 	private final Timer timer;
 	private final TimerListener listener;
 	long interval;
-	//private boolean callOnPast;
-	//private ApplicationManager appMan;
 	
+	/** Create and start CountDownAbsoluteTimer
+	 * 
+	 * @param appMan
+	 * @param absoluteTime time in milliseconds since epoch when listener.timerElapsed shall
+	 * 		be called
+	 * @param listener listener that shall be called once at the absolute time specified
+	 */
 	public CountDownAbsoluteTimer(ApplicationManager appMan, long absoluteTime,
 			TimerListener listener) {
 		this(appMan, absoluteTime, false, listener);

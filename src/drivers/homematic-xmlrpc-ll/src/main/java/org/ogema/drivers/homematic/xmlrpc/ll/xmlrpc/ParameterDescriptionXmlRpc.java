@@ -42,12 +42,6 @@ public class ParameterDescriptionXmlRpc<T extends Object> extends MapXmlRpcStruc
     }
 
     @Override
-    public String toString() {
-        return struct.toString();
-    
-    }
-
-    @Override
     @SuppressWarnings("unchecked")
     public T getDefault() {
         return (T) getValue(KEYS.DEFAULT.name());
@@ -63,9 +57,34 @@ public class ParameterDescriptionXmlRpc<T extends Object> extends MapXmlRpcStruc
         Map<String, T> rval = new HashMap<>();
         for (Object o: svals) {
             Map<String, Object> vstruct = (Map<String, Object>) o;
-            rval.put(String.valueOf(vstruct.get(SPECIAL.ID.name())), (T) vstruct.get(SPECIAL.VALUE.name()));
+            rval.put(String.valueOf(vstruct.get(SPECIAL_KEYS.ID.name())), (T) vstruct.get(SPECIAL_KEYS.VALUE.name()));
         }
         return rval;
-    }    
+    }
+    
+    @Override
+    public int getOperations() {
+        return getInt(KEYS.OPERATIONS.name());
+    }
+
+    @Override
+    public boolean isReadable() {
+        return (getOperations() & 0x01) != 0;
+    }
+
+    @Override
+    public boolean isWritable() {
+        return (getOperations() & 0x02) != 0;
+    }
+
+    @Override
+    public boolean isEvent() {
+        return (getOperations() & 0x04) != 0;
+    }
+
+    @Override
+    public String getUnit() {
+        return getString(KEYS.UNIT.name());
+    }
     
 }

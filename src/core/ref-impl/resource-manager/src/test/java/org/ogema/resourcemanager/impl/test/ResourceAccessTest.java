@@ -23,6 +23,7 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Test;
 import org.ogema.core.model.Resource;
+import org.ogema.model.actors.Actor;
 import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.metering.ElectricityMeter;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
@@ -73,6 +74,18 @@ public class ResourceAccessTest extends OsgiTestBase {
 		Resource r2 = resMan.createResource(RESNAME + counter++, ElectricityMeter.class);
 		Resource r3 = r2.addDecorator("decor", OnOffSwitch.class);
 		List<? extends Resource> all = resAcc.getResources(OnOffSwitch.class);
+		assertTrue(all.size() >= 2);
+		assertTrue(all.contains(r1));
+		assertFalse(all.contains(r2));
+		assertTrue(all.contains(r3));
+	}
+    
+    @Test
+	public void getResourcesReturnsSubtypes() {
+		Resource r1 = resMan.createResource(RESNAME + counter++, OnOffSwitch.class);
+		Resource r2 = resMan.createResource(RESNAME + counter++, ElectricityMeter.class);
+		Resource r3 = r2.addDecorator("decor", OnOffSwitch.class);
+		List<? extends Resource> all = resAcc.getResources(Actor.class);
 		assertTrue(all.size() >= 2);
 		assertTrue(all.contains(r1));
 		assertFalse(all.contains(r2));

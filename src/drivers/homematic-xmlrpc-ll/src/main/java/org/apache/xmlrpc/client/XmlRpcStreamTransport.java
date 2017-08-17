@@ -193,7 +193,7 @@ public abstract class XmlRpcStreamTransport extends XmlRpcTransportImpl {
 
 	protected Object readResponse(XmlRpcStreamRequestConfig pConfig, InputStream pStream) throws XmlRpcException {
 		InputSource isource = new InputSource(pStream);
-                isource.setEncoding(pConfig.getEncoding()); //XXX jl
+        isource.setEncoding(pConfig.getEncoding()); //jl
 		XMLReader xr = newXMLReader();
 		XmlRpcResponseParser xp;
 		try {

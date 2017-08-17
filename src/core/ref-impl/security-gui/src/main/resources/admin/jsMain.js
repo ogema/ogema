@@ -100,7 +100,7 @@ $(function() {
 		width : $("div#sysApps").width(),
 		height : $(window).height() - 300
 	});
-	
+
 	$("#changeDefStartLevel").dialog({
 		autoOpen : false,
 		resizeable : true,
@@ -119,10 +119,10 @@ $(function() {
 		minWidth : 300,
 		minHeight : 100,
 		height : 300,
-		width: $("div#sysApps").width(),		
-		
+		width: $("div#sysApps").width(),
+
 	});
-	
+
 	$("#assignUserToAppstore").dialog({
 		autoOpen : false,
 		resizeable : true,
@@ -141,10 +141,10 @@ $(function() {
 		minWidth : 300,
 		minHeight : 100,
 		height : 250,
-		width: $("div#userDiv").width(),		
-		
+		width: $("div#userDiv").width(),
+
 	});
-	
+
 	$("#userAppstores").dialog({
 		autoOpen : false,
 		resizeable : true,
@@ -163,10 +163,10 @@ $(function() {
 		minWidth : 300,
 		minHeight : 100,
 		height : 250,
-		width: $("div#userDiv").width(),		
-		
+		width: $("div#userDiv").width(),
+
 	});
-	
+
 	$("#appstoreUsers").dialog({
 		autoOpen : false,
 		resizeable : true,
@@ -185,8 +185,8 @@ $(function() {
 		minWidth : 300,
 		minHeight : 100,
 		height : 250,
-		width: $("div#userDiv").width(),		
-		
+		width: $("div#userDiv").width(),
+
 	});
 
 	$("button#done").button({
@@ -199,35 +199,35 @@ $(function() {
 
 
 	// ------------ APP MANAGEMENT
-	
+
 	$("#installed").click(function() {
 
 		if($("#installed").hasClass("hover")){
-			$("#content_div").load("partials/installed.html");		
+			$("#content_div").load("partials/installed.html");
 			$("ul#navbar li").not(".hover").toggleClass("hover");
 			$("#installed").toggleClass("hover");
 		}
-		
+
 	});
 
 	$("#newInstall").click(function() {
-		
+
 		if($("#newInstall").hasClass("hover")){
-			$("#content_div").load("partials/appstores.html");			
+			$("#content_div").load("partials/appstores.html");
 			$("ul#navbar li").not(".hover").toggleClass("hover");
 			$("#newInstall").toggleClass("hover");
 		}
-		
+
 	});
-	
+
 	$("#users").click(function() {
-		
+
 		if($("#users").hasClass("hover")){
-			$("#content_div").load("partials/users.html");			
+			$("#content_div").load("partials/users.html");
 			$("ul#navbar li").not(".hover").toggleClass("hover");
 			$("#users").toggleClass("hover");
 		}
-		
+
 	});
 });
 
@@ -254,7 +254,7 @@ function diaAppstores(){
 				event.preventDefault();
 				$(this).prev().click();
 			});
-		});	
+		});
 		isInit = true;
 	}
 	$("#initUp").button({
@@ -284,9 +284,9 @@ function diaAppstores(){
 
 
 function showApps(){
-	
+
 	$("#content_div").load("partials/installed.html");
-	
+
 }
 
 
@@ -353,13 +353,13 @@ function listSysApps() {
 			primary : "ui-icon-wrench"
 		}
 	});
-	
+
 	$("div#sortableApps").html("");
-	$.getJSON("/security/config/installedapps?action=list", function(json) {
+	$.getJSON("/security/config/installedapps?action=list"+"&user=" + otusr + "&pw=" + otpwd, function(json) {
 		for (var v = 0; v < json.length; v++) {
 			$("div#sortableApps").append(
 					"<div class='column'> <div class='portlet'> <div class='portlet-header' id='" + json[v].id + "' title='" + json[v].description + "'>" +
-							"<img class='portlet-images' src='/security/config/geticon?id="+json[v].id+"' ></div> <div class='portlet-content'>"
+							"<img class='portlet-images' src='/security/config/geticon?id="+json[v].id+ "&user="+otusr+"&pw="+otpwd+"' ></div> <div class='portlet-content'>"
 							+ json[v].name + "</div> </div></div>");
 		}
 		$("div.portlet-header").tooltip({
@@ -387,13 +387,13 @@ function listSysApps() {
 				 "<li onclick='removeBundle()'>Remove Bundle</li><li onclick='editPerms()'>Edit Permissions</li>" +
 				 "<li onclick='listAllPerms()'>List Permissions</li><li onclick='showWebResources()'>Webresources</li>" +
 				 "<li onclick='showAppInfo()'>Info</li><li onclick='goToBundleUrl()'>Go to Page</li></ul>")
-		
+
 		$("#contextMenu").menu({
 			select: function(event, ui){
 			$("#contextMenu").hide();
 			}
 		});
-			
+
 		$("div.portlet-header").dblclick(function() {
 			$("div.portlet-header").removeClass("selectedPortlet");
 			$(this).addClass("selectedPortlet");
@@ -411,7 +411,7 @@ function listSysApps() {
 			$("#contextMenu").hide();
 			$("#contextMenu").removeData();
 		});
-		
+
 
 		$(".portlet-header").on("contextmenu", function (event) {
 			$("div.portlet-header").removeClass("selectedPortlet");
@@ -421,13 +421,13 @@ function listSysApps() {
 	        	collision: "none",
 	            my: "left top",
 	            of: event
-	        });	        	        
-	        return false;	       
+	        });
+	        return false;
 	    });
-		
+
 		if($("#nameFilter").val().length > 0 || $("#levelFilter").val().length > 0 || $("#appFilter").is(":checked") || $("#driverFilter").is(":checked")){
 			filterSysApps();
-		}	
+		}
 	});
 
 }
@@ -438,8 +438,8 @@ function listSysApps() {
  * If the ID is not in the response the bundle is hidden, else it is displayed
  */
 function filterSysApps(){
-	
-	var filter = "";	
+
+	var filter = "";
 	if($("#nameFilter").val().length > 0){
 		filter = filter + "&name="+$("#nameFilter").val();
 	}
@@ -452,38 +452,38 @@ function filterSysApps(){
 	if($("#driverFilter").is(":checked")){
 		filter = filter + "&drivers";
 	}
-		
-	$.getJSON("/security/config/installedapps?action=filter"+filter, function(json) {
+
+	$.getJSON("/security/config/installedapps?action=filter"+filter +"&user=" + otusr + "&pw=" + otpwd, function(json) {
 		var headers = $(".portlet-header")
-		
+
 		for(i=0; i<headers.length; i++){
 			if(json.indexOf(parseInt(headers[i].id)) == -1){
 				$(headers[i].parentNode.parentNode).hide();
 			}else{
 				$(headers[i].parentNode.parentNode).show();
 			}
-		}	
+		}
 	});
 }
 
 
 /**
  * fills the display for the chosen system-app with app-information
- * 
+ *
  * @param {String}
  *            appName Specific appname of the current chosen app
  */
 function fillInfoDisplay(appName, json) {
 	$("#appDisplay").html("");
-	
+
 	for(var i=0; i<json.length; i++){
 		var entry = json[i];
 		var keys = Object.keys(entry);
 		var key = keys[0];
-		
+
 		$("#appDisplay").append("<div id='prop"+i+"' class='prop'>"+key+": "+entry[key]);
-	}	
-	
+	}
+
 	if ($("#appDisplay").html() != "") {
 		$("#appDisplay").dialog("open");
 	}
@@ -498,20 +498,20 @@ function listUsersAndAppstores() {
 	$("#selectableUsers").html("");
 	$("#appstoreSelect").html("");
 	$("#appstoreSelect").selectmenu();
-	$.getJSON("/security/config/users", function(json){
+	$.getJSON("/security/config/users?user=" + otusr + "&pw=" + otpwd, function(json){
 		for (var i=0; i<json.length; i++){
 			$('#selectableUsers').append('<li class="userEntry entryHover">'+json[i]+'</li>');
-		} 
+		}
 		$(".userEntry").click(function() {
 			$(this).toggleClass("selected").siblings().removeClass("selected");
 		});
 	});
-	$.getJSON("/security/config/appstores", function(json) {
+	$.getJSON("/security/config/appstores?user=" + otusr + "&pw=" + otpwd, function(json) {
 		for (var i = 0; i < json.appstores.length; i++) {
 			$("#appstoreSelect").append("<option value='"+json.appstores[i]+"'>"+json.appstores[i]+"</option>").selectmenu("refresh");
 		}
 	});
-	
+
 	$("button#getUserInfo").button({
 		icons : {
 			primary : "ui-icon-info"
@@ -533,7 +533,7 @@ function listUsersAndAppstores() {
 function listAppstores(){
 	$("#installStore").html("");
 	$("#installStore").selectmenu();
-	$.getJSON("/security/config/appstores", function(json) {
+	$.getJSON("/security/config/appstores?user=" + otusr + "&pw=" + otpwd, function(json) {
 		for (var i = 0; i < json.appstores.length; i++) {
 			$("#installStore").append("<option value='"+json.appstores[i]+"'>"+json.appstores[i]+"</option>").selectmenu("refresh");
 		}
@@ -556,7 +556,7 @@ function showAppInfo() {
 			var portletID = $("#contextMenu").data('originalElement').id;
 			$("#contextMenu").removeData();
 		}
-		$.getJSON("/security/config/installedapps?action=getInfo&app=" + portletID, function(json, xhr) {
+		$.getJSON("/security/config/installedapps?action=getInfo&app=" + portletID+"&user=" + otusr + "&pw=" + otpwd, function(json, xhr) {
 			fillInfoDisplay(selectedApp, json);
 		}).fail(function(xhr, textStatus, errorThrown) {
 			console.log("FAIL : " + textStatus);
@@ -567,59 +567,75 @@ function showAppInfo() {
 }
 
 function changeDefaultStartLevel(){
-	
-	$.getJSON("/security/config/frameworkstartlevel", function(json, xhr){
+
+	$.getJSON("/security/config/frameworkstartlevel?user=" + otusr + "&pw=" + otpwd, function(json, xhr){
 		fillStartLevelDialog(json.defaultlvl, json.currentlvl);
 	}).fail(function(xhr, textStatus, errorThrown){
 		console.log("FAIL : " + textStatus);
 	});
-	
+
 }
 function appstoreUsersDlg(){
 	var appstore = $("#appstoreSelect").val();
-	
+
 	$("#appstoreUsers").html("");
 	$("#appstoreUsers").dialog({
 		title: "Users assigned to the appstore "+appstore
 		});
-	
-	$.getJSON("/security/config/appstoreusers?store="+appstore, function(json){
+
+	$.getJSON("/security/config/appstoreusers?store="+appstore+"&user=" + otusr + "&pw=" + otpwd, function(json){
 		if((json[0]!=false)){
 			$("#appstoreUsers").append("<ul id='appstoreUserList' class='users-list'></ul>")
-			
+
 			for (var i = 0; i<json.length; i++){
 				$("#appstoreUserList").append("<li class='userEntry dialogEntry'>"+json[i]+"</li>");
 			}
 		}else{
 			$("#appstoreUsers").append("<p class='nothingFound'>The appstore "+appstore+" has no users assigned.</p>");
 		}
-		
+
 		$("#appstoreUsers").dialog("open");
 
 	});
 }
+//https://stackoverflow.com/questions/5499078/fastest-method-to-escape-html-tags-as-html-entities
+function escapeHTML(html) {
+	if (typeof html !== "string")
+		return "";
+    var fn=function(tag) {
+        var charsToReplace = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&#34;'
+        };
+        return charsToReplace[tag] || tag;
+    }
+    return html.replace(/[&<>"]/g, fn);
+}
+
 function userAppstoresDlg(){
 	var user = $(".selected").text();
-	
+
 	$("#userAppstores").html("");
 	$("#userAppstores").dialog({
 		title: "Appstores assigned to the user "+user
 	});
-			
-	$.getJSON("/security/config/userappstores?user="+user, function(json){		
+
+	$.getJSON("/security/config/userappstores?usr="+user+"&user=" + otusr + "&pw=" + otpwd, function(json){
 		if(json[0]!=false){
 			$("#userAppstores").append("<ul id='userAppstoreList' class='users-list'></ul>");
-			
+
 			for (var i = 0; i<json.length; i++){
 				$("#userAppstoreList").append("<li class='userEntry dialogEntry'>"+json[i]+"</li>");
 			}
 		}else{
-			$("#userAppstores").append("<p class='nothingFound'>The user "+user+" is not assigned to any appstores.</p>");
+			$("#userAppstores").append("<p class='nothingFound'>The user "+escapeHTML(user)+" is not assigned to any appstores.</p>");
 		}
 	});
-	
+
 	$("#userAppstores").dialog("open");
-	
+
 }
 
 function assignUserDlg(){
@@ -629,15 +645,15 @@ function assignUserDlg(){
 	}
 	var user = $(".selected").text();
 	var appstore = $("#appstoreSelect").val();
-	
+
 	$("#assignUserToAppstore").html("");
-	
-	$("#assignUserToAppstore").append("<p>Choose the Password for the User:</p><p id='thisUserName'>"+user+"</p>" +
+
+	$("#assignUserToAppstore").append("<p>Choose the Password for the User:</p><p id='thisUserName'>"+escapeHTML(user)+"</p>" +
 			"<p> and Appstore:</p><p id='thisAppstore'>"+appstore+"</p>");
 	$("#assignUserToAppstore").append("<input id='pwd1' type='password'></input>");
 	$("#assignUserToAppstore").append("<input id='pwd2' type='password'></input>");
 	$("#assignUserToAppstore").append("<button id='applyAssign' type='button' onclick='applyAssignUser()'>Apply</button>");
-	
+
 	$("button#applyAssign").button({
 		icons : {
 			primary : "	ui-icon-check"
@@ -664,7 +680,7 @@ function applyAssignUser(){
 		$("#pwd2").val("");
 		return;
 	}
-	$.getJSON("/security/config/hasappstoreaccess?user="+user+"&store="+appstore, function(json){
+	$.getJSON("/security/config/hasappstoreaccess?usr="+user+"&store="+appstore+"&user=" + otusr + "&pw=" + otpwd, function(json){
 		if (json[0]==true){
 			var conf = confirm("The user "+user+" already has access to the appstore "+appstore+"\n " +
 			"Do you want to change the password?")
@@ -672,9 +688,9 @@ function applyAssignUser(){
 				return;
 			}
 		}
-		
-		$.post("/security/config/appstoreuser?user="+user+"&store="+appstore+"&pwd="+pwd,{
-			
+
+		$.post("/security/config/appstoreuser?usr="+user+"&store="+appstore+"&pwd="+pwd+"&user=" + otusr + "&pw=" + otpwd,{
+
 		}, function(data, status){
 			alert("Data send to server: Response: " + data);
 			if(data.indexOf("successfull")>-1){
@@ -697,12 +713,12 @@ function applyAssignUser(){
 function fillStartLevelDialog(defaultlvl, currentlvl){
 	$("#changeDefStartLevel").html("");
 	$("#changeDefStartLevel").append("<p id='currlvl' class='currentlvl'>The current Startlevel for newly installed Bundles is: "+currentlvl+"</p><br>");
-	
+
 	$("#changeDefStartLevel").append("<form name='changelvl' id='changelvlform'>Select the Startlevel for all Bundles which are installed after this point:"
 			+"<br><br><input id='newStartLevel' type='text' pattern='[0-9]*'></input><br><br>"
 			+"<submit id='applychange' onclick='applyStartLevel("+defaultlvl+")'>Change Startlevel</submit></form><br>");
-	
-	
+
+
 	if($("#changeDefStartLevel").html()!=""){
 		$("#changeDefStartLevel").dialog("open");
 		$("submit#applychange").button({
@@ -720,8 +736,8 @@ function fillStartLevelDialog(defaultlvl, currentlvl){
 function applyStartLevel(defaultlvl){
 	var newStartLevel = $("#newStartLevel").val();
 	if (newStartLevel>=defaultlvl){
-		$.post("/security/config/newstartlevel?level="+newStartLevel,{
-			
+		$.post("/security/config/newstartlevel?level="+newStartLevel+"&user=" + otusr + "&pw=" + otpwd,{
+
 		}, function(data, status){
 			alert("Data send to server: Response: " + data + "\nStatus: " + status);
 			$("#changeDefStartLevel").dialog("close");
@@ -743,7 +759,7 @@ function updateApp() {
 
 	if ($(".selectedPortlet")[0]) {
 		var portletID = $(".selectedPortlet")[0].id;
-		$.getJSON("/security/config/installedapps?action=update&app=" + portletID, function(json) {
+		$.getJSON("/security/config/installedapps?action=update&app=" + portletID+"&user=" + otusr + "&pw=" + otpwd, function(json) {
 			alert(json.statusInfo);
 		});
 	} else {
@@ -752,7 +768,7 @@ function updateApp() {
 }
 
 function removeBundle(){
-	
+
 	if ($(".selectedPortlet")[0] || $("#contextMenu").data('originalElement')!=undefined) {
 		if ($(".selectedPortlet")[0]){
 			var portletID = $(".selectedPortlet")[0].id;
@@ -760,21 +776,21 @@ function removeBundle(){
 			var portletID = $("#contextMenu").data('originalElement').id;
 			$("#contextMenu").removeData();
 		}
-		$.getJSON("/security/config/startlevel?id="+portletID, function(json) {
+		$.getJSON("/security/config/startlevel?id="+portletID+"&user=" + otusr + "&pw=" + otpwd, function(json) {
 			if (json.editable == false){
 				alert("Bundles that are a part of Ogema Core can not be removed.");
 				return;
 			}else{
-				$.getJSON("/security/config/installedapps?action=delete&app="+portletID, function(json){
+				$.getJSON("/security/config/installedapps?action=delete&app="+portletID+"&user=" + otusr + "&pw=" + otpwd, function(json){
 					alert(json.statusInfo);
 					listSysApps();
 				});
 			}
-		});		
+		});
 	} else {
 		alert("Wählen Sie ein Bundle!");
 	}
-	
+
 }
 
 function goToBundleUrl(){
@@ -785,14 +801,14 @@ function goToBundleUrl(){
 			var portletID = $("#contextMenu").data('originalElement').id;
 			$("#contextMenu").removeData();
 		}
-		$.getJSON("/security/config/installedapps?action=getURL&app=" + portletID, function(json) {
+		$.getJSON("/security/config/installedapps?action=getURL&app=" + portletID+"&user=" + otusr + "&pw=" + otpwd, function(json) {
 			if(json.url == null || json.url == "null"){
 				alert("Es ist keine Startseite für die App vorhanden!")
 			}else{
 				var win = window.open(json.url, "_blank");
 				win.focus();
 			}
-			
+
 		});
 	} else {
 		alert("Wählen Sie ein Bundle!");
@@ -808,7 +824,7 @@ function startBundle() {
 			var portletID = $("#contextMenu").data('originalElement').id;
 			$("#contextMenu").removeData();
 		}
-		$.getJSON("/security/config/installedapps?action=start&app=" + portletID, function(json) {
+		$.getJSON("/security/config/installedapps?action=start&app=" + portletID+"&user=" + otusr + "&pw=" + otpwd, function(json) {
 			alert(json.statusInfo);
 		});
 	} else {
@@ -825,7 +841,7 @@ function stopBundle() {
 			var portletID = $("#contextMenu").data('originalElement').id;
 			$("#contextMenu").removeData();
 		}
-		$.getJSON("/security/config/installedapps?action=stop&app=" + portletID, function(json) {
+		$.getJSON("/security/config/installedapps?action=stop&app=" + portletID+"&user=" + otusr + "&pw=" + otpwd, function(json) {
 			alert(json.statusInfo);
 		});
 	} else {
@@ -834,7 +850,7 @@ function stopBundle() {
 }
 
 function editPerms() {
-	
+
 	if ($(".selectedPortlet")[0] || $("#contextMenu").data('originalElement')!=undefined) {
 		if ($(".selectedPortlet")[0]){
 			var portletID = $(".selectedPortlet")[0].id;
@@ -842,7 +858,7 @@ function editPerms() {
 			var portletID = $("#contextMenu").data('originalElement').id;
 			$("#contextMenu").removeData();
 		}
-		$.getJSON("/security/config/startlevel?id="+portletID, function(json) {
+		$.getJSON("/security/config/startlevel?id="+portletID+"&user=" + otusr + "&pw=" + otpwd, function(json) {
 			if (json.editable == false){
 				alert("Bundles that are a part of Ogema Core can not be edited.");
 				return;
@@ -851,7 +867,7 @@ function editPerms() {
 				var win = window.open(url, '_blank');
 				win.focus();
 			}
-		});		
+		});
 	} else {
 		alert("Wählen Sie ein Bundle!");
 	}
@@ -874,11 +890,11 @@ function listAllPerms() {
 }
 
 function defaultPerms(){
-	
+
 		var url = "/security-gui/editperms.html?action=defaultpolicy"
 		var win = window.open(url, '_blank');
 		win.focus();
-	
+
 }
 
 function installPermsByID(portletID) {
@@ -888,8 +904,8 @@ function installPermsByID(portletID) {
 }
 
 function createNewPolicy(){
-	$.post("/security/config/newpolicy",{
-		
+	$.post("/security/config/newpolicy?user=" + otusr + "&pw=" + otpwd,{
+
 	}, function(data, status) { // if successfull
 		alert("Data send to server \nResponse: " + data + "\nStatus: " + status);
 	}).fail(function(xhr, textStatus, errorThrown) {
@@ -899,7 +915,7 @@ function createNewPolicy(){
 		} else {
 			alert("Error.");
 		}
-	});		
+	});
 }
 
 function showWebResources() {
@@ -920,7 +936,7 @@ function showWebResources() {
 						"stripes" : true
 					},
 					'data' : {
-						"url" : "/security/config/installedapps?action=webResources&app=" + portletID,
+						"url" : "/security/config/installedapps?action=webResources&app=" + portletID+"&user=" + otusr + "&pw=" + otpwd,
 						'data' : function(node) {
 							return {
 								'id' : node.id,
@@ -1049,7 +1065,7 @@ function uploadFile() {
 
 				};
 
-				client.open("POST", "/security/config/uploadApp");
+				client.open("POST", "/security/config/uploadApp?user=" + otusr + "&pw=" + otpwd);
 				client.send(formData);
 				client.onreadystatechange = function() {
 					if (client.readyState == 4 && client.status == 200) {
@@ -1080,7 +1096,7 @@ function uploadFile() {
 				client.onerror = function(e) {
 					alert("Error!");
 				};
-				client.open("POST", "/security/config/uploadApp");
+				client.open("POST", "/security/config/uploadApp?user=" + otusr + "&pw=" + otpwd);
 				client.send(formData);
 				client.onreadystatechange = function() {
 					if (client.readyState == 4 && client.status == 200) {
@@ -1131,5 +1147,5 @@ function validStartLevel(){
 		return;
 	}else{
 		filterSysApps();
-	}	
+	}
 }

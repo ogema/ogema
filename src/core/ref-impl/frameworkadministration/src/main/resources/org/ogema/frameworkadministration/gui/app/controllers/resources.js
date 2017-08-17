@@ -114,7 +114,7 @@ ngOGFrAdminApp.controller('ResourcesCtrl', ['$scope', 'ogemaGateway', '$interval
         
         $scope.getAllResources = function() {
             $scope.searchText = "";
-            var path = $scope.restPath+"?user="+$scope.restUser+"&pw="+$scope.restPwd
+            var path = $scope.restPath+"?user="+encodeURIComponent($scope.restUser)+"&pw="+encodeURIComponent($scope.restPwd)
             ogemaGateway.getJSON(path, {"depth":100}).then(function(result) {
                 $scope.resources = result;
               //  console.log("$scope.resources: ", $scope.resources);

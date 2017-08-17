@@ -99,7 +99,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		schedule.addValue(5L, new FloatValue(5f));
 	}
 
-	public void validateOgemaXml(String input) throws SAXException, IOException {
+	public static void validateOgemaXml(String input) throws SAXException, IOException {
 		SchemaUtil.getSchema().newValidator().validate(new StreamSource(new StringReader(input)));
 		System.out.println("validated");
 	}

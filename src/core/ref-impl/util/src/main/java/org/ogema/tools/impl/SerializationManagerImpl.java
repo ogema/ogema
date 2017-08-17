@@ -366,7 +366,7 @@ JsonGenerator jg = new JsonFactory().createJsonGenerator(writer).useDefaultPrett
 	public Collection<Resource> createResourcesFromXml(String xml) { // TODO method taking a reader
 		StringReader xmlReader = new StringReader(xml);
 		try {
-			return core.create(core.deserializeXmlCollection(xmlReader), null);
+			return core.create(SerializationCore.deserializeXmlCollection(xmlReader), null);
 		} catch (IOException | CloneNotSupportedException ioex) {
 			//TODO
 			throw new RuntimeException(ioex);
@@ -388,7 +388,7 @@ JsonGenerator jg = new JsonFactory().createJsonGenerator(writer).useDefaultPrett
 	public Collection<Resource> createResourcesFromXml(String xml, Resource parent) {
 		StringReader xmlReader = new StringReader(xml);
 		try {
-			return core.create(core.deserializeXmlCollection(xmlReader), parent);
+			return core.create(SerializationCore.deserializeXmlCollection(xmlReader), parent);
 		} catch (IOException | CloneNotSupportedException ioex) {
 			//TODO
 			throw new RuntimeException(ioex);

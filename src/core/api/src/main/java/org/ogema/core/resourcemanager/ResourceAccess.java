@@ -65,7 +65,8 @@ public interface ResourceAccess {
 	<T extends Resource> T getResource(String path) throws SecurityException;
 
 	/**
-	 * Get all resources of a given type for which access permissions exists.
+	 * Get all resources of a given type (or any subtype) which are readable
+     * by this application.
 	 * 
 	 * @param resourceType
 	 *            if null, return all resources for which view permission exists

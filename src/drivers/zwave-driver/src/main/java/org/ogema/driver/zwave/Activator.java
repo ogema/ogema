@@ -47,6 +47,7 @@ public class Activator {
 	@Activate
 	public synchronized void activate(final BundleContext context, Map<String, Object> config) throws Exception {
 		bundleIsRunning = true;
+		// FIXME not compatible with hardware manager updates
 		if (driver == null)
 			driver = new ZWaveDriver(hardwareManager);
 		driver.establishConnection();

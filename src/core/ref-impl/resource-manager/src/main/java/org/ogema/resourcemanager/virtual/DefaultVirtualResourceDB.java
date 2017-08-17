@@ -47,6 +47,9 @@ public class DefaultVirtualResourceDB implements VirtualResourceDB {
     final Logger logger = LoggerFactory.getLogger(getClass());
     final Cache<String, VirtualTreeElement> topLevelElementCache = 
             CacheBuilder.newBuilder().weakValues().build();
+    private final Object transactionLock = new Object();
+    // guarded by transactionLock
+    private int transactionCounter = 0;
 //new ConcurrentHashMap<>();
 
     private final RemovalListener<String, DefaultVirtualTreeElement> cacheListener = new RemovalListener<String, DefaultVirtualTreeElement>() {
@@ -70,7 +73,7 @@ public class DefaultVirtualResourceDB implements VirtualResourceDB {
         TreeElement te = realResources.addResource(name, type, appID);
         DefaultVirtualTreeElement dvte = getElement(te);
         // MemoryTreeElement updates
-        for (DefaultVirtualTreeElement child : dvte.virtualSubresources.asMap().values()) {
+        for (DefaultVirtualTreeElement child : dvte.virtualSubresources.values()) {
         	if (child.isVirtual()) {
         		((MemoryTreeElement) child.getEl()).setParent(dvte.getEl());
         	}
@@ -181,12 +184,20 @@ public class DefaultVirtualResourceDB implements VirtualResourceDB {
 
     @Override
     public void startTransaction() {
-        realResources.startTransaction();
+    	synchronized (transactionLock) {
+	    	if (transactionCounter++ == 0)
+	    		realResources.startTransaction();
+    	}
     }
 
     @Override
     public void finishTransaction() {
-        realResources.finishTransaction();
+    	synchronized (transactionLock) {
+    		if (--transactionCounter == 0)
+    			realResources.finishTransaction();
+    		else if (transactionCounter < 0)
+    			throw new IllegalStateException("finishTransaction has been called more often than startTransaction");
+    	}
     }
 
     @Override
@@ -250,6 +261,12 @@ public class DefaultVirtualResourceDB implements VirtualResourceDB {
 	public List<Class<? extends Resource>> getResourceTypesInstalled(Class<? extends Resource> cls) {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public void doStorage() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

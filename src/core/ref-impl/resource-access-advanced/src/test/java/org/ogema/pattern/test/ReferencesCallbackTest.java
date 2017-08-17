@@ -27,7 +27,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -40,7 +39,6 @@ import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.AccessPriority;
-import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.pattern.PatternListener;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.exam.PatternTestListener;
@@ -48,7 +46,6 @@ import org.ogema.exam.ResourceAssertions;
 
 import static org.ogema.exam.ResourceAssertions.assertActive;
 import static org.ogema.exam.ResourceAssertions.assertExists;
-import org.ogema.exam.StructureTestListener;
 import org.ogema.model.devices.buildingtechnology.Thermostat;
 import org.ogema.model.devices.generators.ElectricHeater;
 import org.ogema.model.locations.Room;

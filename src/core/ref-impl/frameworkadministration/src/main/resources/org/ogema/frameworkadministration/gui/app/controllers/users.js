@@ -30,11 +30,11 @@ ngOGFrAdminApp.controller('getUserListCtrl', ['$scope', 'ogemaGateway', '$rootSc
         $scope.initUser = function () {
 
             //   var path = "/install/installedapps";
-            /* 
+            /*
              ogemaGateway.getJSON(path, {"action": "listAll"}).then(function (result) {
              //    $rootScope.loading--;
            //  console.log("BundlesCtrl: ListAll SUCCESS", result);
-             
+
              $rootScope.users.apps = result;
              });
              */
@@ -49,7 +49,7 @@ ngOGFrAdminApp.controller('getUserListCtrl', ['$scope', 'ogemaGateway', '$rootSc
             $rootScope.editUsername = user;
 
          //   console.log("$rootScope.editUsername", $rootScope.editUsername);
-            //path = "/apps/ogema/frameworkadmin"; // "userlist.json"; // 
+            //path = "/apps/ogema/frameworkadmin"; // "userlist.json"; //
 
             var modalInstance = $modal.open({
                 templateUrl: 'editUser',
@@ -70,19 +70,19 @@ ngOGFrAdminApp.controller('getUserListCtrl', ['$scope', 'ogemaGateway', '$rootSc
             $scope.newpolicy = {"accessDecision": "allow","permissionName":"org.ogema.accesscontrol.ResourcePermission","uniqueName":null, "resourcePath": "", "resourceType": null, "permissionActions": []};
 
             $scope.initUserData = function () {
-                ogemaGateway.getJSON(path, {"action": "getUserData", "user": $rootScope.editUsername}).then(function (result) {
+                ogemaGateway.getJSON(path, {"action": "getUserData", "usr": $rootScope.editUsername}).then(function (result) {
                  //   console.log("getUserData", result);
                     $scope.userData = result
                 });
             }
 
-            ogemaGateway.getJSON(path, {"action": "getUserPermittedApps", "user": $rootScope.editUsername}).then(function (result) {
+            ogemaGateway.getJSON(path, {"action": "getUserPermittedApps", "usr": $rootScope.editUsername}).then(function (result) {
              //   console.log("getUserPermittedApps", result);
                 $scope.userPermittedApps = result
             });
 
             $scope.initUserPolicies = function () {
-                ogemaGateway.getJSON(path, {"action": "getUserPolicies", "user": $rootScope.editUsername}).then(function (result) {
+                ogemaGateway.getJSON(path, {"action": "getUserPolicies", "usr": $rootScope.editUsername}).then(function (result) {
                 //    console.log("getUserPolicies", result);
                     $scope.userPolicies = $scope.reformatGetPolicies(result);
                 });
@@ -133,11 +133,11 @@ ngOGFrAdminApp.controller('getUserListCtrl', ['$scope', 'ogemaGateway', '$rootSc
                 app.permitted = !app.permitted;
                 $scope.userPermittedApps.role = null;
                 $scope.userPermittedApps.apps = [app];
-                
-                
+
+
 
                 ogemaGateway.postData("/apps/ogema/frameworkadminuser/setPermittedApps", $scope.userPermittedApps).then(function (result) {
-                    ogemaGateway.getJSON(path, {"action": "getUserPermittedApps", "user": $rootScope.editUsername}).then(function (result) {
+                    ogemaGateway.getJSON(path, {"action": "getUserPermittedApps", "usr": $rootScope.editUsername}).then(function (result) {
                      //   console.log("refreshUserPermittedApps", result);
                         $scope.userPermittedApps = result
                     });
@@ -152,7 +152,7 @@ ngOGFrAdminApp.controller('getUserListCtrl', ['$scope', 'ogemaGateway', '$rootSc
                     action = "revokeAdminRights"
                 }
 
-                ogemaGateway.getJSON("/apps/ogema/frameworkadminuser", {"action": action, "user": user.name}).then(function (result) {
+                ogemaGateway.getJSON("/apps/ogema/frameworkadminuser", {"action": action, "usr": user.name}).then(function (result) {
                     $scope.initUserData();
                 });
             }
@@ -228,6 +228,10 @@ ngOGFrAdminApp.controller('getUserListCtrl', ['$scope', 'ogemaGateway', '$rootSc
             //    console.log('DELETE Modal dismissed at: ' + new Date());
             });
         };
+
+		$scope.retrieveIcon = function(bundleId) {
+			return '/install/installedapps?action=getIcon&app=' + bundleId + '&user=' + otusr +'&pw=' + otpwd;
+		}
 
         var deleteUserCtrl = function ($scope, $modalInstance) {
 

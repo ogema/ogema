@@ -45,6 +45,7 @@ import java.util.List;
 import junit.framework.Assert;
 import static org.junit.Assert.assertNull;
 
+import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
@@ -75,7 +76,7 @@ public abstract class TimeSeriesTests {
 	 */
 	public abstract Value getValue(float x);
 
-	public SampledValue getSampledValue(Value value, long t, Quality q) {
+	public static SampledValue getSampledValue(Value value, long t, Quality q) {
 		return new SampledValue(value, t, q);
 	}
 
@@ -130,6 +131,9 @@ public abstract class TimeSeriesTests {
 		testReplaceValueFixedStep();
 		testAddValuesWorks();
 		testReplaceValuesWorks();
+		testIntervalDeletion();
+		testGetPreviousValueWorks();
+		testIsEmptyAndSizeWork();
 	}
 
 	/**
@@ -232,6 +236,16 @@ public abstract class TimeSeriesTests {
 		scheduleValues = m_timeSeries.getValues(0);
 		assert scheduleValues.isEmpty();
 	}
+	
+	public void testIntervalDeletion() {
+		m_timeSeries.deleteValues();
+		List<SampledValue> values = getValuesScheduleLinear(-100, 100, 10, 1, 0);
+		m_timeSeries.addValues(values);
+		assert m_timeSeries.getValues(-40, 40).size() > 0 : "Time series values missing";
+		m_timeSeries.deleteValues(-50, 50);
+		assert m_timeSeries.getValues(-40, 40).isEmpty() : "Time series contains deleted values";
+		assert m_timeSeries.getValues(-100,100).size() > 0 : "Time series values missing";
+	}
 
 	public void testReplaceValueFixedStep() {
         m_timeSeries.deleteValues();
@@ -304,4 +318,51 @@ public abstract class TimeSeriesTests {
         SampledValue shiftedValue = shiftedEntries.get(0);
         assertEquals(getFloat(shiftedValue.getValue()), 2.f, 0.01f);
     }
+	
+	public void testGetPreviousValueWorks() {
+		m_timeSeries.deleteValues();
+		SampledValue sv = m_timeSeries.getPreviousValue(Long.MAX_VALUE);
+		Assert.assertNull(sv);
+		SampledValue sv1 = new SampledValue(new FloatValue(34), 10, Quality.GOOD);
+		SampledValue sv2 = new SampledValue(new FloatValue(52), 20, Quality.GOOD);
+		SampledValue sv3 = new SampledValue(new FloatValue(100), 30, Quality.BAD);
+		m_timeSeries.addValue(sv1);
+		m_timeSeries.addValue(sv2);
+		m_timeSeries.addValue(sv3);
+		sv = m_timeSeries.getPreviousValue(25);
+		Assert.assertEquals(sv2, sv);
+		sv = m_timeSeries.getPreviousValue(Long.MAX_VALUE);
+		Assert.assertEquals(sv3, sv);
+		sv = m_timeSeries.getPreviousValue(0);
+		Assert.assertNull(sv);
+	}
+	
+	public void testIsEmptyAndSizeWork() {
+		m_timeSeries.deleteValues();
+		Assert.assertTrue(m_timeSeries.isEmpty());
+		Assert.assertTrue(m_timeSeries.isEmpty(Long.MIN_VALUE, Long.MAX_VALUE));
+		Assert.assertEquals(0, m_timeSeries.size());
+		Assert.assertEquals(0, m_timeSeries.size(Long.MIN_VALUE, Long.MAX_VALUE));
+		
+		long start = 0;
+		long end = 1000;
+		
+		List<SampledValue> values = getValuesScheduleLinear(start, end, 5, 2, 1);
+		final int size = values.size();
+		m_timeSeries.addValues(values);
+		
+		Assert.assertFalse(m_timeSeries.isEmpty());
+		Assert.assertFalse(m_timeSeries.isEmpty(Long.MIN_VALUE, Long.MAX_VALUE));
+		Assert.assertEquals(size, m_timeSeries.size());
+		Assert.assertEquals(size, m_timeSeries.size(Long.MIN_VALUE, Long.MAX_VALUE));
+		
+		Assert.assertTrue(m_timeSeries.isEmpty(Long.MIN_VALUE, start-1));
+		Assert.assertEquals(0, m_timeSeries.size(Long.MIN_VALUE, start-1));
+		Assert.assertTrue(m_timeSeries.isEmpty(end+1,Long.MAX_VALUE));
+		Assert.assertEquals(0, m_timeSeries.size(end+1,Long.MAX_VALUE));
+		
+		Assert.assertFalse(m_timeSeries.isEmpty(100,200));
+		Assert.assertEquals(20, m_timeSeries.size(100,199));
+		
+	}
 }

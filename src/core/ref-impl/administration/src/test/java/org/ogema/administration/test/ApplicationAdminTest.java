@@ -29,7 +29,6 @@ import org.ogema.core.application.AppID;
 import org.ogema.core.application.Timer;
 import org.ogema.core.application.TimerListener;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceDemandListener;

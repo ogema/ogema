@@ -348,6 +348,7 @@ struct devicesArray * getHandles(struct NativeAccessData *data)
         /* If we found an usb-serial, it is listed directly behind the parent
            usb device. Overwrite the parent with the more specific tty entry */
         if (result->current > 0
+		  && TYPE_USB == result->devices[result->current - 1].type
           && 0 != strstr(path, result->devices[result->current - 1].string))
           result = arrayOverwrite(result, path, TYPE_USB);
         else

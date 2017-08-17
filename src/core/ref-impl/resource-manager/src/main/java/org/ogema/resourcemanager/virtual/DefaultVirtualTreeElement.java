@@ -17,6 +17,7 @@ package org.ogema.resourcemanager.virtual;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.MapMaker;
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.array.ArrayResource;
 import org.ogema.core.model.array.BooleanArrayResource;
 import org.ogema.core.model.array.ByteArrayResource;
@@ -60,7 +62,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
 
     final DefaultVirtualResourceDB resourceDB;
     //final Map<String, DefaultVirtualTreeElement> virtualSubresources = new HashMap<>();
-    final Cache<String, DefaultVirtualTreeElement> virtualSubresources;// = new HashMap<>();
+    final Map<String, DefaultVirtualTreeElement> virtualSubresources;// = new HashMap<>();
 
     private static final AtomicLong IDCOUNTER = new AtomicLong(0);
     final long id = IDCOUNTER.getAndIncrement();
@@ -70,7 +72,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
         this.el = getRealElement(el);
         resref = this.el.getResRef();
         this.resourceDB = resourceDB;
-        virtualSubresources = CacheBuilder.newBuilder().weakValues().build();
+        virtualSubresources = new MapMaker().weakValues().concurrencyLevel(2).initialCapacity(4).makeMap();
         parent = getParent();
     }
 
@@ -201,7 +203,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
                 );
             }
         }
-        virtualSubresources.invalidate(name);
+        virtualSubresources.remove(name);
         DefaultVirtualTreeElement newChild = resourceDB.getElement(newElement);
         if (existingResRef != null) {
             newChild.setResRef(existingResRef);
@@ -225,11 +227,11 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
             reference = resourceDB.getElement(getEl().addReference(direktRef, name, isDecorating));
         }
 
-        DefaultVirtualTreeElement existingVirtualChild = virtualSubresources.getIfPresent(name);
+        DefaultVirtualTreeElement existingVirtualChild = virtualSubresources.get(name);
         if (existingVirtualChild != null) {
             TreeElement newRealElement = getEl().getChild(name);
             existingVirtualChild.realizedBy(newRealElement);
-            virtualSubresources.invalidate(name);
+            virtualSubresources.remove(name);
         }
 
         return reference;
@@ -239,13 +241,13 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
     private void realizedBy(TreeElement e) {
         assert e.getName().equals(getName()) : "name mismatch: " + getPath() + " / " + e.getPath();
         for (TreeElement child : e.getChildren()) {
-            DefaultVirtualTreeElement vChild = virtualSubresources.getIfPresent(child.getName());
+            DefaultVirtualTreeElement vChild = virtualSubresources.get(child.getName());
             if (vChild != null) {
                 vChild.realizedBy(child);
-                virtualSubresources.invalidate(child.getName());
+                virtualSubresources.remove(child.getName());
             }
         }
-        for (DefaultVirtualTreeElement vChild : virtualSubresources.asMap().values()) {
+        for (DefaultVirtualTreeElement vChild : virtualSubresources.values()) {
         	MemoryTreeElement mtw = (MemoryTreeElement) vChild.getEl();
         	mtw.setParent(e);
         }
@@ -263,15 +265,15 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
     }
 
     Collection<DefaultVirtualTreeElement> getVirtualChildren() {
-        return virtualSubresources.asMap().values();
+        return virtualSubresources.values();
     }
 
     /** @return all real and virtual children. */
     public List<TreeElement> getAllChildren() {
         List<TreeElement> realChildren = getChildren();
-        List<TreeElement> allChildren = new ArrayList<>(realChildren.size() + (int) virtualSubresources.size());
+        List<TreeElement> allChildren = new ArrayList<>(realChildren.size() + virtualSubresources.size());
         allChildren.addAll(realChildren);
-        allChildren.addAll(virtualSubresources.asMap().values());
+        allChildren.addAll(virtualSubresources.values());
         return allChildren;
     }
 
@@ -315,7 +317,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
     }
 
     protected synchronized DefaultVirtualTreeElement getVirtualChild(String name) {
-        DefaultVirtualTreeElement child = virtualSubresources.getIfPresent(name);
+        DefaultVirtualTreeElement child = virtualSubresources.get(name);
         if (child != null) {
         	assert child.getParent().equals(this) : "Child resource has multiple parents";
         	assert child.el instanceof MemoryTreeElement : "Virtual resource has invalid tree element; this: " + getPath() 
@@ -337,7 +339,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
 
     @Override
     public synchronized VirtualTreeElement getChild(String name, Class<? extends Resource> type) {
-        DefaultVirtualTreeElement child = virtualSubresources.getIfPresent(name);
+        DefaultVirtualTreeElement child = virtualSubresources.get(name);
         if (child != null) {
         	assert child.getParent().equals(this) : "Child resource has multiple parents";
         	assert child.el instanceof MemoryTreeElement : "Virtual resource has invalid tree element: " + child.el.getPath(); 
@@ -381,7 +383,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
     public synchronized boolean create() {
         if (isVirtual()) {
             DefaultVirtualTreeElement parent = getParent();
-            assert parent != null;
+            assert parent != null : "Virtual resource parent is null";
 
             if (parent.isVirtual()) {
                 parent.create();
@@ -409,7 +411,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
     /* after a create, the MemoryTreeElements in virtual subresources need to
     be replaced with elements containing the new parent resource */
     private static void rebuildVirtualSubtree(DefaultVirtualTreeElement e) {
-        for (Map.Entry<String, DefaultVirtualTreeElement> entrySet : e.virtualSubresources.asMap().entrySet()) {
+        for (Map.Entry<String, DefaultVirtualTreeElement> entrySet : e.virtualSubresources.entrySet()) {
             DefaultVirtualTreeElement value = entrySet.getValue();
             if (value.el instanceof MemoryTreeElement) {
             	value.el = new MemoryTreeElement((MemoryTreeElement) value.el, e);
@@ -445,18 +447,40 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
     public String getPath() {
         return el.getPath();
     }
+    
+    // try to determine this elements type according to the type of its parent
+    protected final Class<? extends Resource> findDefinedType() {
+        Class<? extends Resource> definedType = null;
+        if (getParent() != null) {
+            Class<? extends Resource> parentType = getParent().getType();
+            definedType = findOptionalElementType(parentType, getName());
+            if (definedType == null) {
+                if (ResourceList.class.isAssignableFrom(parentType)) {
+                    if (getParent().getResourceListType() != null && getParent().getResourceListType().isAssignableFrom(getType())){
+                        definedType = getParent().getResourceListType();
+                    }
+                }
+            }
+        }
+        return definedType;
+    }
 
     @Override
     @SuppressWarnings("deprecation")
     public synchronized void delete() {
         //System.out.println("deleting " + this);
         if (isVirtual()) {
-        	// XXX if it is virtual already, why still need to call deleteResource?
-            resourceDB.deleteResource(this);
             return;
         }
+        
+        Class<? extends Resource> definedType = findDefinedType();
+        
         resourceDB.deleteResource(this);
         registerAsVirtualChild();
+        
+        if (definedType != null) {
+            ((MemoryTreeElement) getEl()).setType(definedType);
+        }
 
         final String thisPath = getPath();
         for (Map.Entry<String, DefaultVirtualTreeElement> e : resourceDB.elements.asMap().entrySet()) {
@@ -475,7 +499,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
                    MemoryTreeElement replacement;
                     if (org.ogema.core.model.SimpleResource.class.isAssignableFrom(childEl.getType())) {
                         SimpleResourceData data;
-                        data = new DefaultSimpleResourceData(); //XXX?
+                        data = new DefaultSimpleResourceData();
                         replacement = new MemoryTreeElement(childEl.getName(), childEl.getType(), parent, childEl.isDecorator(), data);
                     } else {
                         replacement = new MemoryTreeElement(childEl.getName(), childEl.getType(), parent, childEl.isDecorator());
@@ -485,21 +509,12 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
                     }
                     childEl.setEl(replacement);
                 } else {
-                    childEl.setEl(childEl.el);
+                    childEl.setEl(childEl.el); //xxx why?
                 }
             }
         }
-
         assert isVirtual() : "not virtual after delete: " + el;
         assert getParent() == null || getParent().getChild(getName()).isVirtual() : "after delete: parent has wrong child element";
-        
-        // MemoryTreeElement updates // moved to DefaultVirtualResourceDB#makeVirtual
-//    	for (DefaultVirtualTreeElement dvte : virtualSubresources.asMap().values()) {
-//    		assert dvte.isVirtual() : "Subresource of virtual resource not virtual: " + dvte.getPath(); 
-//    		((MemoryTreeElement) dvte.getEl()).setParent(this.el);
-//    		
-//    	}
-        
     }
 
     private synchronized void registerAsVirtualChild() {
@@ -562,4 +577,18 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
         return el.getLocation();
     }
 
+    @Override
+    public synchronized void constrainType(Class<? extends Resource> type) {
+        Objects.requireNonNull(type, "type must not be null");
+        if (!type.equals(getType())) {
+            if (!isVirtual()) {
+                throw new IllegalStateException("cannot constrain type: resource exists");
+            }
+            if (!getType().isAssignableFrom(type)) {
+                throw new IllegalStateException(String.format("cannot constrain type: %s is not a sub type of %s", type, getType()));
+            }
+            ((MemoryTreeElement)getEl()).setType(type);
+        }
+    }
+    
 }

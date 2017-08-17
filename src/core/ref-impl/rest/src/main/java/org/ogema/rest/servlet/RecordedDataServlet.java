@@ -16,6 +16,12 @@
 package org.ogema.rest.servlet;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,7 +33,6 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
-import org.joda.time.DateTime;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.application.Application;
@@ -95,6 +100,8 @@ public class RecordedDataServlet extends HttpServlet implements Application {
         restAcc = null;
     }
 
+    // two alternative ways to restrict the time interval: either append "/" + timestamp; OR use request
+    // parameters: ?start=<START_TIME>&end=<END_TIME>
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         final String pathInfo = req.getPathInfo();
@@ -118,6 +125,13 @@ public class RecordedDataServlet extends HttpServlet implements Application {
                     start = parseTimestamp(m1.group(1));
                 }
             }
+
+            String startTimestamp = req.getParameter(PARAM_START);
+            if (startTimestamp != null) 
+                start = parseTimestamp(startTimestamp);
+            String endTimestamp = req.getParameter(PARAM_END);
+            if (endTimestamp != null)
+                end = parseTimestamp(endTimestamp);
 
             RecordedDataStorage rds = rda.getRecordedDataStorage(id);
             Resource res = app.getResourceAccess().getResource(id);
@@ -179,9 +193,65 @@ public class RecordedDataServlet extends HttpServlet implements Application {
         try {
             rval = Long.parseLong(ts);
         } catch (NumberFormatException nfe) {
-            rval = DateTime.parse(ts).getMillis();
+        	// no need to introduce joda just for this purpose...
+//            rval = org.joda.time.DateTime.parse(ts).getMillis();
+            rval = parseDate(ts);
         }
         return rval;
+    }
+    
+    /**
+     * Parses strings of the form
+     * <ul>
+     * 	<li>2017-08-07
+     *  <li>2017-08-07T01
+     *  <li>2017-08-07T01:14
+     *  <li>2017-08-07T01:14:02
+     *  <li>2017-08-07T01:14:02.234
+     * </ul>
+     * Furthermore, a time zone may be added in the format "+0200" or "-0300" (note that '+' must be escaped by "%2B" in an URL), 
+     * or "Z" for UTC
+     * @param ts
+     * @return
+     */
+    private static long parseDate(String ts) {
+    	Calendar cal = Calendar.getInstance();
+    	final Date date;
+        ts = ts.replace("Z", "+0000");
+        final boolean containsTimezone = (ts.contains("-") && ts.lastIndexOf('-') > 7) || ts.contains("+");
+        final int length;
+        if (containsTimezone) {
+        	final int idx = ts.contains("+") ? ts.indexOf('+') : ts.lastIndexOf('-');
+        	length = idx;
+        } else
+        	length = ts.length();
+    	try {
+			date = getDateFormat(length,containsTimezone).parse(ts);
+		} catch (ParseException e) {
+			throw new IllegalArgumentException("Date not parseable: " + ts);
+		}
+		cal.setTime(date);
+		return cal.getTimeInMillis();
+    }
+    
+    private static SimpleDateFormat getDateFormat(int length, boolean containsTimezone) {
+    	final StringBuilder sb= new StringBuilder();
+    	sb.append("yyyy-MM-dd");
+    	if (length > 10) {
+    		sb.append("'T'HH");
+    		if (length > 13) {
+    			sb.append(":mm");
+    			if (length > 16) {
+    				sb.append(":ss");
+    				if (length > 19) {
+    					sb.append(".SSS");
+    				}
+    			}
+    		}
+    	}
+    	if (containsTimezone)
+    		sb.append('Z');
+    	return new SimpleDateFormat(sb.toString(), Locale.ENGLISH);
     }
 
     protected void outputRecordedDataIDs(HttpServletRequest req, HttpServletResponse resp) throws ServletException,

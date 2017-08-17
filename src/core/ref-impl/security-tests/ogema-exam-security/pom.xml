@@ -1,130 +1,153 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <artifactId>ref-impl</artifactId>
-        <groupId>org.ogema.ref-impl</groupId>
-        <version>2.1.0</version>
-        <relativePath>../../pom.xml</relativePath>
-    </parent>
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<artifactId>ref-impl</artifactId>
+		<groupId>org.ogema.ref-impl</groupId>
+		<version>2.1.1</version>
+		<relativePath>../../pom.xml</relativePath>
+	</parent>
 
-    <artifactId>ogema-exam-security</artifactId>
-    <packaging>bundle</packaging>
+	<artifactId>ogema-exam-security</artifactId>
+	<packaging>bundle</packaging>
 
-    <name>OGEMA ref-impl :: ogema-exam-security</name>
-    <description>Pax Exam based integration tests for the OGEMA security
+	<name>OGEMA ref-impl :: ogema-exam-security</name>
+	<description>Pax Exam based integration tests for the OGEMA security
         features</description>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <exam.version>4.2.0</exam.version>
-    </properties>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<exam.version>4.2.0</exam.version>
+	</properties>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.felix</groupId>
-                <artifactId>maven-scr-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.felix</groupId>
-                <artifactId>maven-bundle-plugin</artifactId>
-                <extensions>true</extensions>
-                <configuration>
-                    <instructions>
-                    </instructions>
-                </configuration>
-            </plugin>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-scr-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+				<extensions>true</extensions>
+				<configuration>
+					<instructions>
+					</instructions>
+				</configuration>
+			</plugin>
 
-            <plugin>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>default-test</id>
-                        <phase>test</phase>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <argLine>-ea -DforkCount=0 -Djava.security.policy=all.policy</argLine>
-                </configuration>
-            </plugin>
+			<plugin>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>default-test</id>
+						<phase>test</phase>
+						<goals>
+							<goal>test</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<argLine>-ea -DforkCount=0 -Djava.security.policy=all.policy
+						-Dorg.osgi.framework.storage.clean=onFirstInit
+					</argLine>
+				</configuration>
+			</plugin>
 
-        </plugins>
-    </build>
+		</plugins>
+	</build>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.ogema.core</groupId>
-            <artifactId>api</artifactId>
-        </dependency>
-        <!-- use the OGEMA logger as slf4j implementation -->
-        <dependency>
-            <groupId>org.ogema.ref-impl</groupId>
-            <artifactId>ogema-logger</artifactId>
-            <version>2.1.0</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>ch.qos.logback</groupId>
-                    <artifactId>logback-classic</artifactId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>logback-core</artifactId>
-                    <groupId>ch.qos.logback</groupId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>org.osgi.core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>org.osgi.compendium</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.11</version>
-        </dependency>
+	<dependencies>
+		<dependency>
+			<groupId>org.ogema.core</groupId>
+			<artifactId>api</artifactId>
+		</dependency>
+		<!-- use the OGEMA logger as slf4j implementation -->
+		<dependency>
+			<groupId>org.ogema.ref-impl</groupId>
+			<artifactId>internal-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.ogema.ref-impl</groupId>
+			<artifactId>permission-admin</artifactId>
+			<version>2.1.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.ogema.ref-impl</groupId>
+			<artifactId>ogema-logger</artifactId>
+			<version>2.1.1</version>
+			<exclusions>
+				<exclusion>
+					<groupId>ch.qos.logback</groupId>
+					<artifactId>logback-classic</artifactId>
+				</exclusion>
+				<exclusion>
+					<artifactId>logback-core</artifactId>
+					<groupId>ch.qos.logback</groupId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.compendium</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.11</version>
+		</dependency>
 
-        <!-- dependencies for tests -->
-        <dependency>
-            <groupId>org.ogema.ref-impl</groupId>
-            <artifactId>ogema-exam-base</artifactId>
-            <scope>test</scope>
-            <!-- using equinox for security tests -->
-<!--             <exclusions>  -->
-<!--                 <exclusion>  -->
-<!--                     <artifactId>org.apache.felix.framework</artifactId>  -->
-<!--                     <groupId>org.apache.felix</groupId>  -->
-<!--                 </exclusion>  -->
-<!--             </exclusions> -->
-        </dependency>
-        <dependency>
+		<!-- dependencies for tests -->
+		<dependency>
+			<groupId>org.ogema.ref-impl</groupId>
+			<artifactId>ogema-exam-base</artifactId>
+			<scope>test</scope>
+			<!-- using equinox for security tests -->
+			<!-- <exclusions> -->
+			<!-- <exclusion> -->
+			<!-- <artifactId>org.apache.felix.framework</artifactId> -->
+			<!-- <groupId>org.apache.felix</groupId> -->
+			<!-- </exclusion> -->
+			<!-- </exclusions> -->
+		</dependency>
+		<dependency>
 			<groupId>org.ogema.core</groupId>
 			<artifactId>models</artifactId>
 			<scope>test</scope>
 		</dependency>
-    </dependencies>
+		<dependency>
+			<groupId>org.apache.felix</groupId>
+			<artifactId>org.apache.felix.framework</artifactId>
+			<version>5.6.1</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.felix</groupId>
+			<artifactId>org.apache.felix.framework.security</artifactId>
+			<version>2.6.0</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
 
-<!--     <profiles>  -->
-<!--         <profile>  -->
-<!--             <activation>  -->
-<!--                 <activeByDefault>true</activeByDefault>  -->
-<!--             </activation>  -->
-<!--             <id>equinox</id>  -->
-<!--             <dependencies>  -->
-<!--                 <dependency>  -->
-<!--                     <groupId>org.eclipse.tycho</groupId>  -->
-<!--                     <artifactId>org.eclipse.osgi</artifactId>  -->
-<!--                     <version>3.9.1.v20130814-1242</version>  -->
-<!--                 </dependency>  -->
-<!--             </dependencies>  -->
-<!--         </profile>  -->
-<!--     </profiles> -->
+	<!-- <profiles> -->
+	<!-- <profile> -->
+	<!-- <activation> -->
+	<!-- <activeByDefault>true</activeByDefault> -->
+	<!-- </activation> -->
+	<!-- <id>equinox</id> -->
+	<!-- <dependencies> -->
+	<!-- <dependency> -->
+	<!-- <groupId>org.eclipse.tycho</groupId> -->
+	<!-- <artifactId>org.eclipse.osgi</artifactId> -->
+	<!-- <version>3.9.1.v20130814-1242</version> -->
+	<!-- </dependency> -->
+	<!-- </dependencies> -->
+	<!-- </profile> -->
+	<!-- </profiles> -->
 
 </project>

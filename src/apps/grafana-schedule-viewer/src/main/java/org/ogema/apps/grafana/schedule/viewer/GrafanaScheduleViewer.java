@@ -38,7 +38,6 @@ public class GrafanaScheduleViewer implements Application, ResourceDemandListene
 
 	protected OgemaLogger logger;
 	protected ApplicationManager am;
-	protected ResourceManagement rm;
 	protected ResourceAccess ra;
 	protected List<Class<? extends Resource>> forecastScheduleTypes, programScheduleTypes, otherScheduleTypes;
 	protected InfluxFake infl;
@@ -53,7 +52,6 @@ public class GrafanaScheduleViewer implements Application, ResourceDemandListene
     public void start(ApplicationManager am) {
         this.am = am;
         this.logger = am.getLogger();
-        this.rm = am.getResourceManagement();
         this.ra = am.getResourceAccess();
         this.forecastScheduleTypes = new ArrayList<>();
         this.programScheduleTypes = new ArrayList<>();
@@ -87,9 +85,21 @@ public class GrafanaScheduleViewer implements Application, ResourceDemandListene
 	@Override
 	public void stop(AppStopReason reason) {
 		//    	am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
-		am.getWebAccessManager().unregisterWebResourcePath("");
-		am.getWebAccessManager().unregisterWebResource(servletPath);
-		ra.removeResourceDemand(Schedule.class, this);
+		if (am != null) {
+			am.getWebAccessManager().unregisterWebResourcePath("");
+			am.getWebAccessManager().unregisterWebResource(servletPath);
+		}
+		if (ra != null)
+			ra.removeResourceDemand(Schedule.class, this);
+		am = null;
+		ra = null;
+		logger = null;
+		infl = null;
+		forecastScheduleTypes= null;
+		programScheduleTypes = null;
+		otherScheduleTypes = null;
+		restrictions = null;
+		panels=  null;
 	}
 
 	private void tryAddScheduleType(List<Class<? extends Resource>> targetList, Class<? extends Resource> parentType, String prefix, Schedule schedule) {

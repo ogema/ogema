@@ -19,22 +19,23 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Vector;
 
 import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.recordeddata.slotsdb.SlotsDbCache.RecordedDataCache;
 
 public class ConstantIntervalFileObject extends FileObject {
 
-	public ConstantIntervalFileObject(File file) throws IOException {
-		super(file);
+	protected ConstantIntervalFileObject(File file, RecordedDataCache cache) throws IOException {
+		super(file, cache);
 	}
 
-	public ConstantIntervalFileObject(String fileName) throws IOException {
-		super(fileName);
+	protected ConstantIntervalFileObject(String fileName, RecordedDataCache cache) throws IOException {
+		super(fileName, cache);
 	}
 
 	/**
@@ -158,7 +159,7 @@ public class ConstantIntervalFileObject extends FileObject {
 	public SampledValue read(long timestamp) throws IOException {
 
 		if ((timestamp - startTimeStamp) % storagePeriod == 0) {
-			if (timestamp >= startTimeStamp && timestamp <= getTimestampForLatestValue()) {
+			if (timestamp >= startTimeStamp && timestamp <= getTimestampForLatestValueInternal()) {
 				if (!canRead) {
 					enableInput();
 				}
@@ -182,21 +183,22 @@ public class ConstantIntervalFileObject extends FileObject {
 	 * @throws IOException
 	 */
 	@Override
-	public List<SampledValue> read(long start, long end) throws IOException {
+	protected List<SampledValue> readInternal(long start, long end) throws IOException {
 		start = getClosestTimestamp(start); // round to: startTimestamp +
 		// n*stepIntervall
 		long endRounded = getClosestTimestamp(end); // round to: startTimestamp +
 		// n*stepIntervall
 
-		List<SampledValue> toReturn = new Vector<>();
+//		List<SampledValue> toReturn = new Vector<>();
+		final List<SampledValue> toReturn = new ArrayList<>();
 
 		if (start < end) {
 			if (start < startTimeStamp) {
 				// of this file.
 				start = startTimeStamp;
 			}
-			if (endRounded > getTimestampForLatestValue()) {
-				endRounded = getTimestampForLatestValue();
+			if (endRounded > getTimestampForLatestValueInternal()) {
+				endRounded = getTimestampForLatestValueInternal();
 			}
 
 			if (!canRead) {
@@ -227,15 +229,15 @@ public class ConstantIntervalFileObject extends FileObject {
 		}
 		else if (start == end) {
 			toReturn.add(read(start));
-			toReturn.removeAll(Collections.singleton(null));
+			toReturn.removeAll(Collections.singleton(null)); // ?
 		}
 		return toReturn; // Always return a list -> might be empty -> never is
 		// null, to avoid NP's
 	}
 
 	@Override
-	public List<SampledValue> readFully() throws IOException {
-		return read(startTimeStamp, getTimestampForLatestValue());
+	protected List<SampledValue> readFullyInternal() throws IOException {
+		return readInternal(startTimeStamp, getTimestampForLatestValueInternal());
 	}
 
 	@Override
@@ -243,9 +245,9 @@ public class ConstantIntervalFileObject extends FileObject {
 		// Calculate next Value, round Timestamp to next Value
 		timestamp = timestamp + (storagePeriod - ((timestamp - startTimeStamp) % storagePeriod));
 		long startPos = getBytePosition(timestamp);
-		long endPos = getBytePosition(getTimestampForLatestValue());
+		long endPos = getBytePosition(getTimestampForLatestValueInternal());
 		for (int i = 0; i <= (endPos - startPos) / 9; i++) {
-			if (timestamp >= startTimeStamp && timestamp <= getTimestampForLatestValue()) {
+			if (timestamp >= startTimeStamp && timestamp <= getTimestampForLatestValueInternal()) {
 				if (!canRead) {
 					enableInput();
 				}
@@ -259,4 +261,69 @@ public class ConstantIntervalFileObject extends FileObject {
 		}
 		return null;
 	}
+	
+	@Override
+	public SampledValue readPreviousValue(long timestamp) throws IOException {
+		// Calculate next Value, round Timestamp to next Value
+		timestamp = timestamp + (storagePeriod - ((timestamp - startTimeStamp) % storagePeriod)); // what if storagePeriod changes?
+		long startPos = getBytePosition(startTimeStamp);
+		long endPos = getBytePosition(timestamp);
+		
+		for (int i = 0; i <= (endPos - startPos) / 9; i++) {
+			if (timestamp >= startTimeStamp && timestamp <= getTimestampForLatestValueInternal()) {
+				if (!canRead) {
+					enableInput();
+				}
+				fis.getChannel().position(getBytePosition(timestamp));
+				Double toReturn = dis.readDouble();
+				if (!Double.isNaN(toReturn)) {
+					return new SampledValue(new DoubleValue(toReturn), timestamp, Quality.getQuality(dis.readByte()));
+				}
+				timestamp -= storagePeriod;
+			}
+		}
+		return null;
+	}
+	
+    @Override
+    public int getDataSetCount() {
+    	return (int) ((length - 16) / 9);
+    }
+    
+	@Override
+	public int getDataSetCount(long start, long end) {
+		long fileEnd = getTimestampForLatestValueInternal();
+		if (start <= startTimeStamp && end >= fileEnd)
+			return getDataSetCountInternal();
+		else if (start > fileEnd || end < startTimeStamp)
+			return 0;
+		long startPos = 16;
+		long endPos = length;
+		if (start > startTimeStamp)
+			startPos = getBytePosition(start);
+		if (end < fileEnd) 
+			endPos = getBytePosition(end);
+    	return (int) (endPos - startPos)/ 9;
+    	
+    }
+	
+	/*
+	 * Methods not required; internal methods not requiring file access
+	 */
+	
+	@Override
+	protected int getDataSetCountInternal() {
+		return getDataSetCount();
+	}
+	
+	@Override
+	protected int getDataSetCountInternal(long start, long end) throws IOException {
+		return getDataSetCount();
+	}
+	
+	@Override
+	protected long getTimestampForLatestValueInternal() {
+		return getTimestampForLatestValue();
+	}
+	
 }

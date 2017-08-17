@@ -29,6 +29,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.BooleanResource;
@@ -383,7 +384,7 @@ public class CommonServlet extends HttpServlet {
 				result = isReadOnly(node, sb);
 				break;
 			case SimpleResourceData.TYPE_KEY_STRING:
-				sb.append(node.getData().getString());
+				sb.append(StringEscapeUtils.escapeHtml4(node.getData().getString()));
 				result = isReadOnly(node, sb);
 				break;
 			case SimpleResourceData.TYPE_KEY_LONG:
@@ -411,7 +412,12 @@ public class CommonServlet extends HttpServlet {
 				sb.append(node.getData().getBooleanArr());
 				break;
 			case SimpleResourceData.TYPE_KEY_STRING_ARR:
-				sb.append(node.getData().getStringArr());
+				final String[] arr = node.getData().getStringArr();
+				final String[] arrCopy = new String[arr.length];
+				int cnt = 0;
+				for (String str : arr)
+					arrCopy[cnt++]=StringEscapeUtils.escapeHtml4(str);
+				sb.append(arrCopy);
 				break;
 			case SimpleResourceData.TYPE_KEY_COMPLEX:
 				sb.append("Instance of ");

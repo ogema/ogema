@@ -5,8 +5,7 @@ import java.util.List;
 
 import org.ogema.core.channelmanager.ChannelAccess;
 import org.ogema.core.channelmanager.ChannelAccessException;
-import org.ogema.core.channelmanager.ChannelConfigurationException;
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.driverspi.ValueContainer;
 import org.ogema.core.channelmanager.measurements.IntegerValue;
 import org.ogema.core.model.Resource;
@@ -18,7 +17,7 @@ public class DigitalOutImpl implements DigitalOut {
 	int wordOffset;
 	int bitOffset;
 	short pmask, nmask;
-	private ChannelLocator channel;
+	private ChannelConfiguration channel;
 	private ChannelAccess channelAccess;
 	public BusCoupler pi;
 	private BooleanResource resource;
@@ -26,15 +25,15 @@ public class DigitalOutImpl implements DigitalOut {
 	ValueContainer svc;
 
 	@Override
-	public void setChannel(ChannelAccess ca, final ChannelLocator cl, Resource res) {
+	public void setChannel(ChannelAccess ca, final ChannelConfiguration cfg, Resource res) {
 		if (!(res instanceof BooleanResource)) {
 			throw new RuntimeException("Wrong resource type assigned to DigitalOut device");
 		}
-		this.channel = cl;
+		this.channel = cfg;
 		this.channelAccess = ca;
 		this.resource = (BooleanResource) res;
 
-		svc = new ValueContainer(cl, new IntegerValue(0));
+		svc = new ValueContainer(cfg.getChannelLocator(), new IntegerValue(0));
 		this.channels.add(svc);
 
 		ResourceValueListener<BooleanResource> rvl = new ResourceValueListener<BooleanResource>() {
@@ -76,10 +75,6 @@ public class DigitalOutImpl implements DigitalOut {
 	@Override
 	public void shutdown() {
 		resource.setValue(false);
-		try {
-			channelAccess.deleteChannel(channel);
-		} catch (ChannelConfigurationException e) {
-			e.printStackTrace();
-		}
+		channelAccess.deleteChannel(channel);
 	}
 }

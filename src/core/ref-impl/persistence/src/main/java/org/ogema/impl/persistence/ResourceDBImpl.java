@@ -70,12 +70,6 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	final ConcurrentHashMap<String, TreeElementImpl> root;
 
 	/**
-	 * Table of all tree elements with resource id as key. All top level and sub resources are mapped with their
-	 * resource ids as key.
-	 */
-	// ConcurrentHashMap<Integer, String> resTable;
-
-	/**
 	 * These counter help determining unique IDs for resource types resources and sub resources. At the boot time the
 	 * stored ids are observed and the counter are initialized with maximum detected id plus 1. nexttypeID starts at
 	 * 1024 so the range 0-1024 could be used for standard types constantly.
@@ -136,7 +130,6 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		else
 			activatePersistence = false;
 		init();
-		this.inited = true;
 	}
 
 	synchronized void init() {
@@ -151,10 +144,22 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 			this.storageLock = persistence.getStorageLock();
 			resourceIO.parseResources();
 			persistence.startStorage();
+
+			/*
+			 * Remove ResourceLists, their types is not yet specified
+			 */
+			// for (TreeElementImpl te : resourceIO.resourceLists) {
+			// if (te.type == ResourceList.class) {
+			// removeTree(te, true);
+			// if (activatePersistence)
+			// persistence.store(te.resID, ChangeInfo.DELETED);
+			// }
+			// }
 		}
 		else
 			this.storageLock = new Object();
 		dbReady = true;
+		this.inited = true;
 	}
 
 	int getNextresourceID() {
@@ -246,6 +251,8 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 			ifaces = superModel.getInterfaces();
 			superModel = ifaces[0];
 		}
+		node.flagsChildren = getChildFlags(node.type);
+		node.typeChildren = getChildTypes(node.type);
 	}
 
 	/*
@@ -322,78 +329,10 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	 * Parse all direct children of a type each in an instance of TreeElementImpl as optionals of this TreeElement.
 	 */
 	private void parseComplex(final Class<?> type, TreeElementImpl node) {
-		Class<?> clazz;
-		String name;
 		typeClassByName.put(node.typeName, node.type);
-		Method[] methods = AccessController.doPrivileged(new PrivilegedAction<Method[]>() {
-			public Method[] run() {
-				return type.getDeclaredMethods();
-			}
-		});
 
-		Annotation an;
-		for (Method m : methods) {
-			if (m.isBridge() || m.isSynthetic()) {
-				continue; // skip overridden methods.
-			}
-			/*
-			 * Type elements are detected as return type of a method which is derived from Resource
-			 */
-			clazz = m.getReturnType();
-			name = m.getName();
-			if (isValidType(clazz)) {
-				// save the type class
-				int typekey = getTypeKeyFromClass(clazz);
-				// If neither SimpleResource nor Resource nor another complex
-				// resource
-				// is inherited by the data model
-				// its an invalid one.
-				if (typekey == DBConstants.TYPE_KEY_INVALID)
-					throw new InvalidResourceTypeException(type.getName());
-
-				/*
-				 * if its a ComplexResourceType set the type of the elements as the type of the node.
-				 */
-				if (typekey == DBConstants.TYPE_KEY_COMPLEX_ARR) {
-
-					Type genericType = m.getGenericReturnType();
-					if (genericType instanceof ParameterizedType) {
-						Type[] actualTypes = ((ParameterizedType) genericType).getActualTypeArguments();
-						if (actualTypes.length > 0) {
-							clazz = (Class<?>) actualTypes[0];
-						}
-					}
-				}
-				Class<?> cls = node.typeChildren.get(name);
-				if (cls == null)
-					node.typeChildren.put(name, clazz);
-
-				Integer flags = node.flagsChildren.get(name);
-
-				an = m.getAnnotation(ModelModifiers.NonPersistent.class);
-				if (an != null) {
-
-					if (flags == null)
-						flags = DBConstants.RES_NONPERSISTENT;
-					else
-						flags |= DBConstants.RES_NONPERSISTENT;
-				}
-				if (flags == null)
-					flags = DBConstants.RES_ISCHILD;
-				else
-					flags |= DBConstants.RES_ISCHILD;
-				node.flagsChildren.put(name, flags);
-				// register type definition of the child in the table of known
-				// model definitions
-				typeClassByName.put(clazz.getName(), clazz);
-			}
-			else {
-				// method doesn't represent a type element but its a
-				// regular interface method. Such methods are ignored.
-				if (Configuration.LOGGING)
-					logger.debug("Invalid sub resource type ignored " + clazz.getName());
-			}
-		}
+		node.typeChildren = getChildTypes(type);
+		node.flagsChildren = getChildFlags(type);
 	}
 
 	/*
@@ -455,7 +394,8 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 
 	@Override
 	public boolean hasResourceType(String name) {
-		return (typeClassByName.get(name) != null);
+		Class<?> res = typeClassByName.get(name);
+		return (res != null);
 	}
 
 	Class<?> getResourceType(String name) {
@@ -478,7 +418,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	public List<Class<? extends Resource>> getResourceTypesInstalled(Class<? extends Resource> cls) {
 		List<Class<? extends Resource>> rval = new ArrayList<>(typeClassByName.size());
 		for (Class<?> clazz : typeClassByName.values()) {
-			if (cls.isAssignableFrom(clazz))
+			if (cls == null || cls.isAssignableFrom(clazz))
 				rval.add(clazz.asSubclass(Resource.class));
 		}
 		return rval;
@@ -545,7 +485,9 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		registerRes(e);
 
 		// inform persistence policy about the change
-		if (activatePersistence)
+		// The first creation of a ResourceList is not relevant for persistence. ResourceLists's are persisted only if
+		// the list type is set.
+		if (activatePersistence && !e.complexArray)
 			persistence.store(id, ChangeInfo.NEW_RESOURCE);
 
 		return e;
@@ -576,7 +518,8 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 				resIDsByType.put(name, v);
 			}
 
-			v.add(e.resID);
+			if (!v.contains(e.resID))
+				v.add(e.resID);
 		}
 
 		// register in table of nodes by id as type
@@ -720,6 +663,13 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 
 	@Override
 	public TreeElement getToplevelResource(String name) {
+		// Check if an unloadable custom resource (UCR) is pending
+		TreeElementImpl e;
+		if (activatePersistence) {
+			e = resourceIO.handleUCR(name, null);
+			if (e != null)
+				return e;
+		}
 		return root.get(name);
 	}
 
@@ -884,12 +834,14 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 
 	@Override
 	public void finishTransaction() {
-		persistence.finishTransaction(0);
+		if (activatePersistence)
+			persistence.finishTransaction(0);
 	}
 
 	@Override
 	public void startTransaction() {
-		persistence.startTransaction(0);
+		if (activatePersistence)
+			persistence.startTransaction(0);
 	}
 
 	@Override
@@ -917,8 +869,10 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		}
 		registration = null;
 		if (activatePersistence) {
-			if (persistence != null)
+			if (persistence != null) {
+				persistence.triggerStorage();
 				persistence.stopStorage();
+			}
 			if (resourceIO != null)
 				resourceIO.closeAll();
 		}
@@ -947,9 +901,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	/*
 	 * Used by the tests only
 	 */
-	synchronized void restart() {
-		this.inited = false;
-		logger.debug("Restart DB!");
+	synchronized void stopStorage() {
 		logger.debug(((TimedPersistence) persistence).storageTask.toString());
 		persistence.stopStorage();
 		while (((TimedPersistence) persistence).running) {
@@ -958,9 +910,19 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 			} catch (InterruptedException e) {
 			}
 		}
+	}
+
+	/*
+	 * Used by the tests only
+	 */
+	synchronized void restart() {
+		if (activatePersistence)
+			stopStorage();
+		logger.debug("Restart DB!");
 		if (resourceIO != null)
 			resourceIO.closeAll();
 		root.clear();
+		this.inited = false;
 		typeClassByName = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
 		resIDByName = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
 		resNodeByID = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
@@ -1046,7 +1008,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 
 	static final Class<?>[] emptyParams = {};
 
-	public Class<?> getListType(TreeElementImpl parent, final String chName) {
+	Class<?> getListType(TreeElementImpl parent, final String chName) {
 		Class<?> clazz;
 		final Class<?> type = parent.type;
 		Method m = AccessController.doPrivileged(new PrivilegedAction<Method>() {
@@ -1075,5 +1037,119 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 			}
 			return clazz;
 		}
+	}
+
+	Map<Class<?>, Map<String, Class<?>>> childTypes = new ConcurrentHashMap<>();
+	Map<Class<?>, Map<String, Integer>> childFlags = new ConcurrentHashMap<>();
+
+	protected Map<String, Class<?>> getChildTypes(Class<?> baseType) {
+		Map<String, Class<?>> rval = childTypes.get(baseType);
+		if (rval == null) {
+			initChildMaps(baseType);
+			rval = childTypes.get(baseType);
+		}
+		assert rval != null;
+		return rval;
+	}
+
+	protected Map<String, Integer> getChildFlags(Class<?> baseType) {
+		Map<String, Integer> rval = childFlags.get(baseType);
+		if (rval == null) {
+			initChildMaps(baseType);
+			rval = childFlags.get(baseType);
+		}
+		assert rval != null;
+		return rval;
+	}
+
+	private void initChildMaps(final Class<?> type) {
+		Class<?> clazz;
+		String name;
+		Method[] methods = AccessController.doPrivileged(new PrivilegedAction<Method[]>() {
+			public Method[] run() {
+				return type.getMethods();
+			}
+		});
+
+		Map<String, Class<?>> typesMap = new HashMap<>();
+		Map<String, Integer> flagsMap = new HashMap<>();
+
+		Annotation an;
+		for (Method m : methods) {
+			if (m.getDeclaringClass().equals(Resource.class)) {
+				continue;
+			}
+			/*
+			 * if (m.isBridge() || m.isSynthetic()) { continue; // skip overridden methods. }
+			 */
+			/*
+			 * Type elements are detected as return type of a method which is derived from Resource
+			 */
+			clazz = m.getReturnType();
+			name = m.getName();
+			if (isValidType(clazz)) {
+				// save the type class
+				int typekey = getTypeKeyFromClass(clazz);
+				// If neither SimpleResource nor Resource nor another complex
+				// resource
+				// is inherited by the data model
+				// its an invalid one.
+				if (typekey == DBConstants.TYPE_KEY_INVALID)
+					throw new InvalidResourceTypeException(type.getName());
+
+				/*
+				 * if its a ComplexResourceType set the type of the elements as the type of the node.
+				 */
+				if (typekey == DBConstants.TYPE_KEY_COMPLEX_ARR) {
+
+					Type genericType = m.getGenericReturnType();
+					if (genericType instanceof ParameterizedType) {
+						Type[] actualTypes = ((ParameterizedType) genericType).getActualTypeArguments();
+						if (actualTypes.length > 0) {
+							clazz = (Class<?>) actualTypes[0];
+						}
+					}
+				}
+				Class<?> cls = typesMap.get(name);
+				if (cls == null)
+					typesMap.put(name, clazz);
+
+				Integer flags = flagsMap.get(name);
+
+				an = m.getAnnotation(ModelModifiers.NonPersistent.class);
+				if (an != null) {
+
+					if (flags == null)
+						flags = DBConstants.RES_NONPERSISTENT;
+					else
+						flags |= DBConstants.RES_NONPERSISTENT;
+				}
+				if (flags == null)
+					flags = DBConstants.RES_ISCHILD;
+				else
+					flags |= DBConstants.RES_ISCHILD;
+				flagsMap.put(name, flags);
+				// register type definition of the child in the table of known
+				// model definitions
+				typeClassByName.put(clazz.getName(), clazz);
+				// register type definition of the child in the table of known
+				// model definitions
+				typeClassByName.put(clazz.getName(), clazz);
+			}
+			else {
+				// method doesn't represent a type element but its a
+				// regular interface method. Such methods are ignored.
+				if (Configuration.LOGGING)
+					logger.debug("Invalid sub resource type ignored " + clazz.getName());
+			}
+		}
+		childTypes.put(type, typesMap);
+		childFlags.put(type, flagsMap);
+	}
+
+	@Override
+	public void doStorage() {
+		if (activatePersistence)
+			persistence.triggerStorage();
 	}
 }

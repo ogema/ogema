@@ -18,6 +18,8 @@ package org.ogema.core.model.simple;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.recordeddata.RecordedData;
+import org.ogema.core.resourcemanager.ResourceAccessException;
+import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.core.timeseries.TimeSeries;
 
 /**
@@ -35,7 +37,39 @@ public interface FloatResource extends SingleValueResource {
 	 * @return returns true if the value could be written, false if not (e.g. if access mode is read-only).
 	 */
 	boolean setValue(float value);
+	
+	/**
+	 * Atomically sets to the given value and returns the previous value.
+	 * 
+	 * @param value
+	 * 		the new value to be set
+	 * @return
+	 * 		the previous value
+	 * @throws VirtualResourceException
+	 * 		if the resource is virtual
+	 * @throws SecurityException
+	 * 		if the caller does not have the read and write permission for this resource
+	 * @throws ResourceAccessException
+	 * 		if access mode is read-only
+	 */
+	float getAndSet(float value) throws VirtualResourceException, SecurityException, ResourceAccessException;
 
+	/**
+	 * Atomically adds the given value and returns the previous value.
+	 * 
+	 * @param value
+	 * 		the value to be added
+	 * @return
+	 * 		the previous value
+	 * @throws VirtualResourceException
+	 * 		if the resource is virtual
+	 * @throws SecurityException
+	 * 		if the caller does not have the read and write permission for this resource
+	 * @throws ResourceAccessException 
+	 * 		if access mode is read-only
+	 */
+	float getAndAdd(float value) throws VirtualResourceException, SecurityException, ResourceAccessException;
+	
 	/**
 	 * Gets an access to the value's logged data.
 	 */

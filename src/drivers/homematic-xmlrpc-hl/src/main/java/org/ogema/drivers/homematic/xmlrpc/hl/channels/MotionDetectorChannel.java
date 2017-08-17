@@ -15,10 +15,10 @@
  */
 package org.ogema.drivers.homematic.xmlrpc.hl.channels;
 
+import org.ogema.drivers.homematic.xmlrpc.hl.api.AbstractDeviceHandler;
 import java.util.List;
 import java.util.Map;
 
-import org.ogema.drivers.homematic.xmlrpc.hl.HomeMaticDriver;
 import org.ogema.drivers.homematic.xmlrpc.hl.types.HmDevice;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.DeviceDescription;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.HmEvent;
@@ -27,12 +27,14 @@ import org.ogema.drivers.homematic.xmlrpc.ll.api.ParameterDescription;
 import org.ogema.model.sensors.OccupancySensor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.HomeMaticConnection;
+import org.ogema.tools.resource.util.ResourceUtils;
 
 /**
  *
  * @author jlapp
  */
-public class MotionDetectorChannel implements ChannelHandler {
+public class MotionDetectorChannel extends AbstractDeviceHandler {
 
     Logger logger = LoggerFactory.getLogger(getClass());
     enum PARAMS {
@@ -43,6 +45,10 @@ public class MotionDetectorChannel implements ChannelHandler {
 
     }
 
+    public MotionDetectorChannel(HomeMaticConnection conn) {
+        super(conn);
+    }
+    
     class MotionEventListener implements HmEventListener {
 
         final OccupancySensor sens;
@@ -77,9 +83,9 @@ public class MotionDetectorChannel implements ChannelHandler {
     }
 
     @Override
-    public void setup(HmDevice parent, HomeMaticDriver hm, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
+    public void setup(HmDevice parent, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
         logger.debug("setup MOTION_DETECTOR handler for address {}", desc.getAddress());
-        String swName = HomeMaticDriver.sanitizeResourcename("MOTION_DETECTOR" + desc.getAddress());
+        String swName = ResourceUtils.getValidResourceName("MOTION_DETECTOR" + desc.getAddress());
         Map<String, ParameterDescription<?>> values = paramSets.get(ParameterDescription.SET_TYPES.VALUES.name());
         if (values == null) {
             logger.warn("received no VALUES parameters for device {}", desc.getAddress());
@@ -88,7 +94,7 @@ public class MotionDetectorChannel implements ChannelHandler {
         OccupancySensor sens = parent.addDecorator(swName, OccupancySensor.class);
         sens.reading().create();
         sens.activate(true);
-        hm.getHomeMaticService().addEventListener(new MotionEventListener(sens, desc.getAddress()));
+        conn.addEventListener(new MotionEventListener(sens, desc.getAddress()));
     }
 
 }

@@ -15,21 +15,28 @@
  */
 package org.ogema.impl.security;
 
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.Enumeration;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 import org.ogema.core.application.AppID;
 import org.ogema.core.security.WebAccessManager;
+import org.osgi.framework.Bundle;
 import org.osgi.service.http.NamespaceException;
 
 /**
  * WebAccessManager implementation that holds web resources for a single Application. Instances are created by
  * {@link ApplicationWebAccessFactory#createApplicationWebAccessManager(org.ogema.core.application.AppID) }.
- * 
+ *
  * @author jlapp
  */
 public class ApplicationWebAccessManager implements WebAccessManager {
@@ -51,7 +58,7 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 		}
 		return ctx;
 	}
-	
+
 	synchronized void close() {
 		if (ctx != null)
 			ctx.close();
@@ -101,7 +108,7 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 		} catch (NamespaceException e) {
 			throw new RuntimeException("Servlet path already in use: " + alias);
 		} catch (ServletException e) {
-			throw new RuntimeException("Servlet exception " + alias,e);
+			throw new RuntimeException("Servlet exception " + alias, e);
 		}
 		httpCon.servlets.put(result, appId.getIDString());
 
@@ -148,7 +155,7 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 	public boolean unregisterWebResourcePath(String alias) {
 		alias = normalizePath(alias);
 		String newAlias = extendPath(alias);
-//		OgemaHttpContext httpContext = getOrCreateHttpContext();
+		// OgemaHttpContext httpContext = getOrCreateHttpContext();
 		if (ctx != null) { // only happens if framework is shutting down
 			ctx.resources.remove(newAlias);
 			ctx.servlets.remove(newAlias);
@@ -175,11 +182,11 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 		return newAlias;
 	}
 
-	private String normalizePath(String alias) {
+	private static String normalizePath(String alias) {
 		char seperator = '/';
 
 		// always add "/" as prefix
-		if (alias.length() > 0 && alias.charAt(0) != seperator) {
+		if (!alias.isEmpty() && alias.charAt(0) != seperator) {
 			alias = seperator + alias;
 		}
 
@@ -201,9 +208,17 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 		}
 		else {
 			Map<String, String> registeredResources = getRegisteredResources(appId);
-			// take the first webresource we find. this is ok because we dont know which resource is correct.
-			for (String url : registeredResources.keySet()) {
-				return url + "/index.html";
+			Bundle b = appId.getBundle();
+			// Look for the first occurrence of index.html within the registered paths.
+			Set<Entry<String, String>> entries = registeredResources.entrySet();
+			for (Entry<String, String> e : entries) {
+				String alias = e.getKey();
+				String path = e.getValue();
+				Enumeration<URL> urls = b.findEntries(path, "index.html", true);
+				if (urls != null) {
+					String url = urls.nextElement().getPath();
+					return url.replaceFirst(path, alias);
+				}
 			}
 		}
 
@@ -258,6 +273,17 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 	@Override
 	public boolean authenticate(HttpSession ses, String usr, String pwd) {
 		return fac.authenticate(ses, usr, pwd);
+	}
+
+	/**
+	 * Proposal for a new API method: register a servlet as a static web page
+	 * @param servlet
+	 * @param req
+	 * @return
+	 * 		null if not logged in, a size two String array {user, one-time-password} otherwise
+	 */
+	public String[] registerStaticResource(HttpServlet servlet, HttpServletRequest req) {
+		return fac.registerStaticResource(servlet, req, appId);
 	}
 
 }

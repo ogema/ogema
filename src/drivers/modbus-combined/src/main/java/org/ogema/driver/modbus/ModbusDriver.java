@@ -223,10 +223,8 @@ public class ModbusDriver implements ChannelDriver, HardwareListener {
 			result = channel.readValue(con);
 
 		} catch (IOException e) {
-			logger.error("could not read channel {} because of io errors",
-					channelLocator);
-			result = new SampledValue(null, System.currentTimeMillis(),
-					Quality.BAD);
+			logger.error(String.format("could not read channel {} because of io errors", channelLocator), e);
+			result = new SampledValue(null, System.currentTimeMillis(), Quality.BAD);
 		} catch (NullPointerException e) {
 			// log message already printed
 			result = new SampledValue(null, System.currentTimeMillis(),

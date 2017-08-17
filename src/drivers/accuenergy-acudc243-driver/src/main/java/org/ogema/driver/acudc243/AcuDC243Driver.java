@@ -18,12 +18,11 @@
  */
 package org.ogema.driver.acudc243;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Service;
-import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
@@ -39,10 +38,9 @@ import org.ogema.core.resourcemanager.ResourceDemandListener;
 public class AcuDC243Driver implements ResourceDemandListener<AcuDC243Configuration> {
 	private ApplicationManager appManager;
 	private OgemaLogger logger;
-	private Map<AcuDC243Configuration, AcuDC243Device> devices = new HashMap<AcuDC243Configuration, AcuDC243Device>();
+	private List<AcuDC243Device> devices = new ArrayList<AcuDC243Device>();
 
-	
-public AcuDC243Driver(ApplicationManager appManager) {
+	public AcuDC243Driver(ApplicationManager appManager) {
 
 		this.appManager = appManager;
 		this.logger = appManager.getLogger();
@@ -53,13 +51,12 @@ public AcuDC243Driver(ApplicationManager appManager) {
 		appManager.getResourceAccess().addResourceDemand(AcuDC243Configuration.class, this);
 	}
 
-
 	public void shutdown() {
 		logger.info("AcuDC243-driver stopped");
 
 		appManager.getResourceAccess().removeResourceDemand(AcuDC243Configuration.class, this);
 
-		for (AcuDC243Device device : devices.values()) {
+		for (AcuDC243Device device : devices) {
 			device.close();
 		}
 
@@ -69,16 +66,20 @@ public AcuDC243Driver(ApplicationManager appManager) {
 	@Override
 	public void resourceAvailable(AcuDC243Configuration resource) {
 		AcuDC243Device device = new AcuDC243Device(appManager, resource);
-
-		devices.put(resource, device);
+		devices.add(device);
 	}
 
 	@Override
 	public void resourceUnavailable(AcuDC243Configuration resource) {
-		AcuDC243Device device = devices.remove(resource);
-
-		if (device != null) {
-			device.close();
+		for (AcuDC243Device device : devices) {
+			if (device.configurationResource.equals(resource)) {
+				devices.remove(device);
+				device.close();
+			}
 		}
+	}
+
+	public List<AcuDC243Device> getDevices() {
+		return devices;
 	}
 }

@@ -33,8 +33,8 @@ import java.util.Collection;
  * on hub device). Example: a FTDI serial adapter connected to port 1 of an intermediate hub, connected to root hub 1
  * "usb:1.1:1.0:0x0403:0x06001:FTU74ZQE" "connection type: physical bus location: vendor id: product id: serial number"
  * 
- * --- Serial --- A serial identifier string simply list the number/name of the port: "serial:1"
- * "connection type: port number"
+ * --- Serial --- A serial identifier string simply list the number/name of the port: "serial:1" "connection type: port
+ * number"
  * 
  * --- Digital IO --- A digitalIO identifier string has the format: "digitalIO:in:portID:pinID"
  * 
@@ -90,4 +90,20 @@ public interface HardwareManager {
 	 * @return Collection of the descriptors.
 	 */
 	public Collection<HardwareDescriptor> getHardwareDescriptors(String pattern);
+
+	/**
+	 * Looks for a port after the specified parameter. The method firstly looks for a port it'S name is specified as the
+	 * value of the system property portNameProp. In case of no success a port is searched its descriptor maps to
+	 * descriptorRegEx. If the second try is unsuccessful too, the specified {@link HardwareListener} list is
+	 * registered.
+	 * 
+	 * @param portNameProp
+	 *            Name String of the system property its value contains the port name.
+	 * @param descriptorRegEx
+	 *            Regular expression that should map the ports descriptor string.
+	 * @param list
+	 *            {@link HardwareListener} instance that is registered only if no port is found.
+	 * @return
+	 */
+	public String getPortName(String portNameProp, String descriptorRegEx, HardwareListener list);
 }

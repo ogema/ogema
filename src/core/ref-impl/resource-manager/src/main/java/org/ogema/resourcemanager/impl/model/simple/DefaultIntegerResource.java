@@ -18,9 +18,13 @@ package org.ogema.resourcemanager.impl.model.simple;
 import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.recordeddata.RecordedData;
+import org.ogema.core.resourcemanager.AccessMode;
+import org.ogema.core.resourcemanager.ResourceAccessException;
+import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.resourcemanager.impl.model.schedule.HistoricalSchedule;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
+import org.ogema.resourcetree.SimpleResourceData;
 
 /**
  * 
@@ -40,13 +44,20 @@ public class DefaultIntegerResource extends SingleValueResourceBase implements I
 
 	@Override
 	public boolean setValue(int value) {
-		if (!exists() || !hasWriteAccess()) {
-			return false;
+		resMan.lockRead();
+		try {
+			final VirtualTreeElement el = getEl();
+			if (el.isVirtual() || getAccessModeInternal() == AccessMode.READ_ONLY) {
+				return false;
+			}
+			checkWritePermission();
+			final SimpleResourceData data = el.getData();
+			boolean changed = value != data.getInt();
+			data.setInt(value);
+			handleResourceUpdateInternal(changed);
+		} finally {
+			resMan.unlockRead();
 		}
-		checkWritePermission();
-		boolean changed = value != getTreeElement().getData().getInt();
-		getTreeElement().getData().setInt(value);
-		handleResourceUpdate(changed);
 		return true;
 	}
 
@@ -69,6 +80,32 @@ public class DefaultIntegerResource extends SingleValueResourceBase implements I
 	@Override
 	public AbsoluteSchedule historicalData() {
 		return getSubResource(HistoricalSchedule.PATH_IDENTIFIER, AbsoluteSchedule.class);
+	}
+
+	@Override
+	public int getAndSet(final int value) throws VirtualResourceException, SecurityException, ResourceAccessException {
+		return getAndWriteInternal(value, false);
+	}
+
+	@Override
+	public int getAndAdd(final int value) throws VirtualResourceException, SecurityException, ResourceAccessException {
+		return getAndWriteInternal(value, true);
+	}
+	
+	private final int getAndWriteInternal(final int value, final boolean addOrSet) {
+		if (!exists())
+			throw new VirtualResourceException("Resource " + path + " is virtual, cannot set value");
+		checkWriteAccess();
+		// expensive; we make use of the fact that all access to the SimpleResourceData is 
+		// guarded by the resMan lock. 
+		resMan.lockWrite(); 
+		try {
+			final int val = getValue();
+			setValue(addOrSet ? (val + value) : value);
+			return val;
+		} finally {
+			resMan.unlockWrite();
+		}
 	}
 
 }

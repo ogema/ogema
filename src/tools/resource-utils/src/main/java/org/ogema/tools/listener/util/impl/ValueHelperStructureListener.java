@@ -30,7 +30,7 @@ public class ValueHelperStructureListener<T extends Resource> implements Resourc
 	@Override
 	public void resourceStructureChanged(ResourceStructureEvent event) {
 		// FIXME
-		System.out.println("   xxx structure event " + event.getType().name() + ", changed: " + event.getChangedResource());
+		//System.out.println("   xxx structure event " + event.getType().name() + ", changed: " + event.getChangedResource());
 		Resource changed = event.getChangedResource();
 		switch (event.getType()) {
 		case SUBRESOURCE_ADDED:

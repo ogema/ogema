@@ -28,86 +28,80 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-    "cod",
-    "message",
-    "city",
-    "cnt",
-    "list"
-})
+@JsonPropertyOrder({ "cod", "message", "city", "cnt", "list" })
 public class ForecastData {
 
-    @JsonProperty("cod")
-    private String cod;
-    @JsonProperty("message")
-    private float message;
-    @JsonProperty("city")
-    private City city;
-    @JsonProperty("cnt")
-    private int cnt;
-    @JsonProperty("list")
-    private java.util.List<org.ogema.apps.openweathermap.dao.List> list = new ArrayList<>();
-    @JsonIgnore
-    private Map<String, Object> additionalProperties = new HashMap<>();
+	@JsonProperty("cod")
+	private String cod;
+	@JsonProperty("message")
+	private float message;
+	@JsonProperty("city")
+	private City city;
+	@JsonProperty("cnt")
+	private int cnt;
+	@JsonProperty("list")
+	private java.util.List<org.ogema.apps.openweathermap.dao.List> list = new ArrayList<>();
+	@JsonIgnore
+	private Map<String, Object> additionalProperties = new HashMap<>();
 
-    @JsonProperty("cod")
-    public String getCod() {
-        return cod;
-    }
+	@JsonProperty("cod")
+	public String getCod() {
+		return cod;
+	}
 
-    @JsonProperty("cod")
-    public void setCod(String cod) {
-        this.cod = cod;
-    }
+	@JsonProperty("cod")
+	public void setCod(String cod) {
+		this.cod = cod;
+	}
 
-    @JsonProperty("message")
-    public float getMessage() {
-        return message;
-    }
+	@JsonProperty("message")
+	public float getMessage() {
+		return message;
+	}
 
-    @JsonProperty("message")
-    public void setMessage(float message) {
-        this.message = message;
-    }
+	@JsonProperty("message")
+	public void setMessage(float message) {
+		this.message = message;
+	}
 
-    @JsonProperty("city")
-    public City getCity() {
-        return city;
-    }
+	@JsonProperty("city")
+	public City getCity() {
+		return city;
+	}
 
-    @JsonProperty("city")
-    public void setCity(City city) {
-        this.city = city;
-    }
+	@JsonProperty("city")
+	public void setCity(City city) {
+		this.city = city;
+	}
 
-    @JsonProperty("cnt")
-    public int getCnt() {
-        return cnt;
-    }
+	@JsonProperty("cnt")
+	public int getCnt() {
+		return cnt;
+	}
 
-    @JsonProperty("cnt")
-    public void setCnt(int cnt) {
-        this.cnt = cnt;
-    }
+	@JsonProperty("cnt")
+	public void setCnt(int cnt) {
+		this.cnt = cnt;
+	}
 
-    @JsonProperty("list")
-    public java.util.List<org.ogema.apps.openweathermap.dao.List> getList() {
-        return list;
-    }
+	@JsonProperty("list")
+	public java.util.List<org.ogema.apps.openweathermap.dao.List> getList() {
+		return list;
+	}
 
-    @JsonProperty("list")
-    public void setList(java.util.List<org.ogema.apps.openweathermap.dao.List> list) {
-        this.list = list;
-    }
+	@JsonProperty("list")
+	public void setList(java.util.List<org.ogema.apps.openweathermap.dao.List> list) {
+		this.list = list;
+	}
 
-    @JsonAnyGetter
-    public Map<String, Object> getAdditionalProperties() {
-        return this.additionalProperties;
-    }
+	@JsonAnyGetter
+	public Map<String, Object> getAdditionalProperties() {
+		return this.additionalProperties;
+	}
 
-    @JsonAnySetter
-    public void setAdditionalProperty(String name, Object value) {
-        this.additionalProperties.put(name, value);
-    }
+	@JsonAnySetter
+	public void setAdditionalProperty(String name, Object value) {
+		this.additionalProperties.put(name, value);
+	}
 
 }

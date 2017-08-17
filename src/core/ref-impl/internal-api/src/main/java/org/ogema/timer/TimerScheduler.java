@@ -40,4 +40,12 @@ public interface TimerScheduler {
 	 */
 	public Timer createTimer(Executor executor, Logger logger);
 
+	/**
+	 * @param logger Logger for uncaught exceptions.
+	 * @param executor Executor that will run the timer's listeners on an extra thread.
+	 * @param listener Listener that shall be informed when the timer is destroyed.
+	 * @return new Timer that will use the given Executor.
+	 */
+	public Timer createTimer(Executor executor, Logger logger, TimerRemovedListener listener);
+	
 }

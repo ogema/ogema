@@ -18,22 +18,14 @@
  */
 package org.ogema.tests.dumydriver.hld;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.ogema.core.channelmanager.ChannelAccess;
-import org.ogema.core.channelmanager.ChannelAccessException;
 import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.channelmanager.ChannelEventListener;
 import org.ogema.core.channelmanager.EventType;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
-import org.ogema.core.channelmanager.measurements.LongValue;
-import org.ogema.core.channelmanager.measurements.ObjectValue;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.simple.IntegerResource;
@@ -44,48 +36,28 @@ import org.ogema.model.locations.Room;
 public class WriteTimeListener implements ChannelEventListener, ThreadControl, ResourceValueListener<TimeResource> {
 	Room room;
 	private boolean running;
-	private ConcurrentHashMap<String, ChannelConfiguration> chconfs;
+	// private ConcurrentHashMap<String, ChannelConfiguration> chconfs;
 	private OgemaLogger logger;
 	private DummyHighLevelDriver hld;
-	private String id;
+	// private String id;
 	private int sumWrite;
 	private int writeCount;
+	private ChannelAccess chAccess;
+	private ChannelConfiguration chConfig;
 
-	public WriteTimeListener(Room r, final ChannelAccess ca, OgemaLogger logger, DummyHighLevelDriver hld, String id) {
+	public WriteTimeListener(Room r, final ChannelAccess ca, OgemaLogger logger, DummyHighLevelDriver hld,
+			ChannelConfiguration chCfg) {
 		this.room = r;
-		this.chconfs = new ConcurrentHashMap<>();
+		// this.chconfs = new ConcurrentHashMap<>();
+		this.chConfig=chCfg;
 		this.logger = logger;
 		this.hld = hld;
-		this.id = id;
+		// this.id = id;
+		this.chAccess = ca;
 		TimeResource write = r.getSubResource("write");
 		write.addValueListener(this, true);
 		final WriteTimeListener wrl = this;
 		final int sr = hld.readSamplingRate;
-		Thread t = new Thread(new Runnable() {
-
-			@Override
-			public void run() {
-				running = true;
-				while (running) {
-					Set<Entry<String, ChannelConfiguration>> entries = chconfs.entrySet();
-					for (Entry<String, ChannelConfiguration> e : entries) {
-						ChannelConfiguration chConf = e.getValue();
-						long TS1 = System.currentTimeMillis();
-						TimeStampContainer tsc = new TimeStampContainer();
-						tsc.TS1 = TS1;
-						try {
-							ca.setChannelValue(chConf, new ObjectValue(tsc));
-						} catch (ChannelAccessException e1) {
-							running = false;
-							break;
-						}
-					}
-					Thread.yield();
-				}
-			}
-		});
-		t.setName("Dummy-Driver-Writer-Thread" + id);
-		t.start();
 	}
 
 	@Override
@@ -94,10 +66,10 @@ public class WriteTimeListener implements ChannelEventListener, ThreadControl, R
 			if (room == null)
 				return;
 			ChannelLocator cl = container.getChannelLocator();
-			String devAddr = cl.getChannelAddress();
-			ChannelConfiguration chconf = chconfs.get(devAddr);
-			if (!cl.equals(chconf.getChannelLocator())) {
-				logger.error("Misleaded callback %s to %s", cl.toString(), chconf.toString());
+			String channelAddr = cl.getChannelAddress();
+			// ChannelConfiguration chconf = chconfs.get(channelAddr);
+			if (!cl.equals(chConfig.getChannelLocator())) {
+				logger.error("Misleaded callback %s to %s", cl.toString(), chConfig.toString());
 				continue;
 			}
 			SampledValue val = container.getSampledValue();
@@ -146,7 +118,10 @@ public class WriteTimeListener implements ChannelEventListener, ThreadControl, R
 		lt.setValue(loop);
 	}
 
-	public void addChannel(String devAddr, ChannelConfiguration chConf) {
-		chconfs.put(devAddr, chConf);
-	}
+	// List<ChannelConfiguration> list = new ArrayList<ChannelConfiguration>();
+
+	// public void addChannel(String channelAddr, ChannelConfiguration chConf) throws ChannelAccessException {
+	// chconfs.put(channelAddr, chConf);
+	//// list.add(chConf);
+	// }
 }

@@ -24,7 +24,10 @@ import org.ogema.core.timeseries.ReadOnlyTimeSeries;
  */
 public class FloatValue implements Value {
 
-	private float value;
+	public static final FloatValue NAN = new FloatValue(Float.NaN);
+	public static final FloatValue ZERO = new FloatValue(0);
+	
+	private final float value;
 
 	public FloatValue(float value) {
 		this.value = value;
@@ -67,7 +70,7 @@ public class FloatValue implements Value {
 
 	@Override
 	public Object getObjectValue() {
-		return value;
+		return new Float(value);
 	}
 
 	@Override

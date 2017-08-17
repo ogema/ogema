@@ -18,6 +18,7 @@ package org.ogema.drivers.homematic.xmlrpc.hl.types;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.IntegerResource;
+import org.ogema.model.devices.storage.ElectricityStorage;
 
 /**
  * Stores information from the channel 'Maintenance' that is available on
@@ -27,8 +28,20 @@ import org.ogema.core.model.simple.IntegerResource;
  */
 public interface HmMaintenance extends Resource {
     
+    IntegerResource errorCode();
+    
     IntegerResource rssiDevice();
     
+    IntegerResource rssiPeer();
+    
     BooleanResource batteryLow();
+    
+    /**
+     * A battery resource should only be created for devices that report
+     * an {@code OPERATING_VOLTAGE}, which will be available as
+     * {@link ElectricityStorage#internalVoltage() }.
+     * @return device battery
+     */
+    ElectricityStorage battery();
     
 }

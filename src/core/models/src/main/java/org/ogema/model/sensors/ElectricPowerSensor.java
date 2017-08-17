@@ -18,7 +18,9 @@ package org.ogema.model.sensors;
 import org.ogema.core.model.units.PowerResource;
 
 /**
- * Electrical active power sensor
+ * Electrical active power sensor. 
+ * Positive measured values represent power consumption, negative values
+ * represent power generation. See {@link #reading()}.
  */
 public interface ElectricPowerSensor extends PowerSensor {
 

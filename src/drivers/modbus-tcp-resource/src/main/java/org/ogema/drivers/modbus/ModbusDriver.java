@@ -136,7 +136,7 @@ public class ModbusDriver implements Application {
 				} catch (Exception e) {
 					logger.error("Error while initializing connection for "
 							+ pattern.model.getParent().getLocation()
-							+ " - message: " + e.getMessage());
+							+ " - message: " + e.getMessage(),e);
 				}
 			}
 		}

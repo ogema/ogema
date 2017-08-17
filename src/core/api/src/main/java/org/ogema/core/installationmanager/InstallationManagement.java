@@ -58,11 +58,4 @@ public interface InstallationManagement {
 	 * @return A new instance of InstallableApplication which is initialized with the bundles data
 	 */
 	public InstallableApplication createInstallableApp(Bundle b);
-
-	/**
-	 * Gets the path name of the storage area that belongs to the application its installation is currently processed.
-	 * 
-	 * @return The path name string
-	 */
-	public String getCurrentInstallStoragePath();
 }

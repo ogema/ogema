@@ -31,151 +31,141 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Generated("org.jsonschema2pojo")
-@JsonPropertyOrder({
-    "dt",
-    "main",
-    "weather",
-    "clouds",
-    "wind",
-    "rain",
-    "sys",
-    "dt_txt"
-})
-public class List implements Comparable<List>{ 
+@JsonPropertyOrder({ "dt", "main", "weather", "clouds", "wind", "rain", "sys", "dt_txt" })
+public class List implements Comparable<List> {
 
-    @JsonProperty("dt")
-    private long dt;
-    @JsonProperty("main")
-    private Main main;
-    @JsonProperty("weather")
-    private java.util.List<Weather> weather = new ArrayList<Weather>();
-    @JsonProperty("clouds")
-    private Clouds clouds;
-    @JsonProperty("wind")
-    private Wind wind;
-    @JsonProperty("rain")
-    private Rain rain;
-    @JsonProperty("sys")
-    private Sys sys;
-    @JsonProperty("irradiation")
-    private double irradiation;
-    @JsonProperty("dt_txt")
-    private String dtTxt;
-    @JsonIgnore
-    private Map<String, Object> additionalProperties = new HashMap<String, Object>();
+	@JsonProperty("dt")
+	private long dt;
+	@JsonProperty("main")
+	private Main main;
+	@JsonProperty("weather")
+	private java.util.List<Weather> weather = new ArrayList<Weather>();
+	@JsonProperty("clouds")
+	private Clouds clouds;
+	@JsonProperty("wind")
+	private Wind wind;
+	@JsonProperty("rain")
+	private Rain rain;
+	@JsonProperty("sys")
+	private Sys sys;
+	@JsonProperty("irradiation")
+	private double irradiation;
+	@JsonProperty("dt_txt")
+	private String dtTxt;
+	@JsonIgnore
+	private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
-    @JsonProperty("dt")
-    public long getDt() {
-        return dt;
-    }
+	@JsonProperty("dt")
+	public long getDt() {
+		return dt;
+	}
 
-    @JsonProperty("dt")
-    public void setDt(long dt) {
-        this.dt = dt;
-    }
+	@JsonProperty("dt")
+	public void setDt(long dt) {
+		this.dt = dt;
+	}
 
-    @JsonProperty("main")
-    public Main getMain() {
-        return main;
-    }
+	@JsonProperty("main")
+	public Main getMain() {
+		return main;
+	}
 
-    @JsonProperty("main")
-    public void setMain(Main main) {
-        this.main = main;
-    }
+	@JsonProperty("main")
+	public void setMain(Main main) {
+		this.main = main;
+	}
 
-    @JsonProperty("weather")
-    public java.util.List<Weather> getWeather() {
-        return weather;
-    }
+	@JsonProperty("weather")
+	public java.util.List<Weather> getWeather() {
+		return weather;
+	}
 
-    @JsonProperty("weather")
-    public void setWeather(java.util.List<Weather> weather) {
-        this.weather = weather;
-    }
+	@JsonProperty("weather")
+	public void setWeather(java.util.List<Weather> weather) {
+		this.weather = weather;
+	}
 
-    @JsonProperty("clouds")
-    public Clouds getClouds() {
-        return clouds;
-    }
+	@JsonProperty("clouds")
+	public Clouds getClouds() {
+		return clouds;
+	}
 
-    @JsonProperty("clouds")
-    public void setClouds(Clouds clouds) {
-        this.clouds = clouds;
-    }
+	@JsonProperty("clouds")
+	public void setClouds(Clouds clouds) {
+		this.clouds = clouds;
+	}
 
-    @JsonProperty("wind")
-    public Wind getWind() {
-        return wind;
-    }
+	@JsonProperty("wind")
+	public Wind getWind() {
+		return wind;
+	}
 
-    @JsonProperty("wind")
-    public void setWind(Wind wind) {
-        this.wind = wind;
-    }
+	@JsonProperty("wind")
+	public void setWind(Wind wind) {
+		this.wind = wind;
+	}
 
-    @JsonProperty("rain")
-    public Rain getRain() {
-        return rain;
-    }
+	@JsonProperty("rain")
+	public Rain getRain() {
+		return rain;
+	}
 
-    @JsonProperty("rain")
-    public void setRain(Rain rain) {
-        this.rain = rain;
-    }
+	@JsonProperty("rain")
+	public void setRain(Rain rain) {
+		this.rain = rain;
+	}
 
-    @JsonProperty("sys")
-    public Sys getSys() {
-        return sys;
-    }
+	@JsonProperty("sys")
+	public Sys getSys() {
+		return sys;
+	}
 
-    @JsonProperty("sys")
-    public void setSys(Sys sys) {
-        this.sys = sys;
-    }
+	@JsonProperty("sys")
+	public void setSys(Sys sys) {
+		this.sys = sys;
+	}
 
-    @JsonIgnore
-    public double getIrradiation() {
-        return irradiation;
-    }
-    
-    @JsonIgnore
-    public void setIrradiation(double irradiation) {
-        this.irradiation = irradiation;
-    }
-    
-    
+	@JsonIgnore
+	public double getIrradiation() {
+		return irradiation;
+	}
 
-    @JsonProperty("dt_txt")
-    public String getDtTxt() {
-        return dtTxt;
-    }
+	@JsonIgnore
+	public void setIrradiation(double irradiation) {
+		this.irradiation = irradiation;
+	}
 
-    @JsonProperty("dt_txt")
-    public void setDtTxt(String dtTxt) {
-        this.dtTxt = dtTxt;
-    }
+	@JsonProperty("dt_txt")
+	public String getDtTxt() {
+		return dtTxt;
+	}
 
-    @JsonAnyGetter
-    public Map<String, Object> getAdditionalProperties() {
-        return this.additionalProperties;
-    }
+	@JsonProperty("dt_txt")
+	public void setDtTxt(String dtTxt) {
+		this.dtTxt = dtTxt;
+	}
 
-    @JsonAnySetter
-    public void setAdditionalProperty(String name, Object value) {
-        this.additionalProperties.put(name, value);
-    }
+	@JsonAnyGetter
+	public Map<String, Object> getAdditionalProperties() {
+		return this.additionalProperties;
+	}
 
-    @Override
-    public int compareTo(List o) {
-        
-        if(dt>o.getDt()){
-            return 1;
-        }else if (dt > o.getDt()){
-            return -1;
-        }
-        return 0;
-    }
+	@JsonAnySetter
+	public void setAdditionalProperty(String name, Object value) {
+		this.additionalProperties.put(name, value);
+	}
+
+	@Override
+	public int compareTo(List o) {
+
+		if (dt > o.getDt()) {
+			return 1;
+		}
+		else if (dt > o.getDt()) {
+			return -1;
+		}
+		return 0;
+	}
 
 	@Override
 	public String toString() {

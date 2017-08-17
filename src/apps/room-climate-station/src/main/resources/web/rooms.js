@@ -79,7 +79,13 @@ function room() {
 function pollData() {
 	if(!inOperation){
 	inOperation=true;
-	$.getJSON("/rcsservice/getData" + window.location.search, function(data) {
+	var url = '/rcsservice/getData' + window.location.search;
+	if (url.indexOf('?') > 0)
+		url += '&';
+	else 
+		url += '?'
+	url += "user=" + otusr + "&pw=" + otpwd;
+	$.getJSON(url, function(data) {
 
 		// upper-right corner
 		if (data.tempOut != null && data.tempOut != undefined && !isNaN(data.tempOut)) {

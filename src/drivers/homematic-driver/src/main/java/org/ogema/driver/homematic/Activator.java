@@ -49,7 +49,6 @@ public class Activator {
 	public synchronized void deactivate(Map<String, Object> config) throws Exception {
 		bundleIsRunning = false;
 		if (driver != null) {
-			hardwareManager.removeListener(driver);
 			for (Map.Entry<String, Connection> entry : driver.getConnections().entrySet()) {
 				entry.getValue().close();
 			}

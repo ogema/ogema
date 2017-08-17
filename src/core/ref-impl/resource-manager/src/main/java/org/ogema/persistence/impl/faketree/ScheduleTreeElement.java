@@ -17,6 +17,7 @@ package org.ogema.persistence.impl.faketree;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -52,6 +53,8 @@ import org.ogema.resourcetree.SimpleResourceData;
 import org.ogema.resourcetree.TreeElement;
 import org.ogema.tools.timeseries.api.MemoryTimeSeries;
 import org.ogema.tools.timeseries.implementations.TreeTimeSeries;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tree element representing a schedule. The schedule data are stored in
@@ -69,7 +72,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 			CALCULATION_TIME_NAME = "+c", INTERPOLATION_NAME = "+i", VALUE_NAME = "+v";
 
 	// actual tree element and element attached to realElement that contains actual schedule data.
-	private final VirtualTreeElement baseElement;
+	final VirtualTreeElement baseElement;
     private final VirtualTreeElement scheduleDataElement;
 
 	// actual data in memory, also provides the schedule functionalities.
@@ -82,15 +85,20 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 
 	// Synchronization
 	private final ReadWriteLock m_lock = new ReentrantReadWriteLock();
+    
+    private static final Logger LOGGER = LoggerFactory.getLogger(ScheduleTreeElement.class);
 
-	public ScheduleTreeElement(VirtualTreeElement element) {
+	protected ScheduleTreeElement(VirtualTreeElement element) {
+        LOGGER.debug("creating new ScheduleTreeElement for {}", element.getPath());
 		baseElement = element;
 		final VirtualTreeElement existingPseudoElement = element.getChild(OWN_NAME);
 		if (existingPseudoElement != null) {
 			scheduleDataElement = existingPseudoElement;
 		}
 		else {
-			scheduleDataElement = (VirtualTreeElement) element.addChild(OWN_NAME, PseudoSchedule.class, true);
+			// if we used a custom type we'd also need to export the package
+//			scheduleDataElement = (VirtualTreeElement) element.addChild(OWN_NAME, PseudoSchedule.class, true);
+			scheduleDataElement = (VirtualTreeElement) element.addChild(OWN_NAME, Resource.class, true);
 		}
 
 		// Read in or create the sub-treenodes
@@ -140,12 +148,14 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 		else {
 			m_interpolationMode = existingInterpolationMode;
 		}
-
+        if (!baseElement.isVirtual()) {
+            create();
+        }
 		// load existing data into memory schedule, if applicable.
 		load();
 	}
 
-	public void create() {
+	public final void create() {
 		((VirtualTreeElement) m_calculationTime).create();
 		((VirtualTreeElement) m_interpolationMode).create();
 		((VirtualTreeElement) m_qualities).create();
@@ -276,6 +286,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 	 * @return
 	 */
 	private List<SampledValue> getFloatValues() {
+		assert baseElement.isVirtual()  || !((VirtualTreeElement) m_values).isVirtual() : "Schedule state inconsistent";
         final long[] times = m_times.getData().getLongArr();
         final float[] values = m_values.getData().getFloatArr();
         final int[] qualities = m_qualities.getData().getIntArr();
@@ -290,6 +301,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
     }
 
 	private List<SampledValue> getBooleanValues() {
+		assert baseElement.isVirtual()  || !((VirtualTreeElement) m_values).isVirtual() : "Schedule state inconsistent";
         final long[] times = m_times.getData().getLongArr();
         final boolean[] values = m_values.getData().getBooleanArr();
         final int[] qualities = m_qualities.getData().getIntArr();
@@ -304,6 +316,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
     }
 
 	private List<SampledValue> getIntegerValues() {
+		assert baseElement.isVirtual()  || !((VirtualTreeElement) m_values).isVirtual() : "Schedule state inconsistent";
         final long[] times = m_times.getData().getLongArr();
         final int[] values = m_values.getData().getIntArr();
         final int[] qualities = m_qualities.getData().getIntArr();
@@ -318,6 +331,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
     }
 
 	private List<SampledValue> getLongValues() {
+		assert baseElement.isVirtual()  || !((VirtualTreeElement) m_values).isVirtual() : "Schedule state inconsistent";
         final long[] times = m_times.getData().getLongArr();
         final long[] values = m_values.getData().getLongArr();
         final int[] qualities = m_qualities.getData().getIntArr();
@@ -332,6 +346,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
     }
 
 	private List<SampledValue> getStringValues() {
+		assert baseElement.isVirtual()  || !((VirtualTreeElement) m_values).isVirtual() : "Schedule state inconsistent";
         final long[] times = m_times.getData().getLongArr();
         final String[] values = m_values.getData().getStringArr();
         final int[] qualities = m_qualities.getData().getIntArr();
@@ -346,6 +361,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
     }
 
 	private void writeFloatValues(List<SampledValue> entries) {
+		assert entries.isEmpty() || baseElement.isVirtual()  || !((VirtualTreeElement) m_values).isVirtual() : "Schedule state inconsistent"; // 1st case on delete
 		final int size = entries.size();
 		final long[] times = new long[size];
 		final int[] qualities = new int[size];
@@ -362,6 +378,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 	}
 
 	private void writeBooleanValues(List<SampledValue> entries) {
+		assert entries.isEmpty() || baseElement.isVirtual()  || !((VirtualTreeElement) m_values).isVirtual() : "Schedule state inconsistent"; // 1st case on delete
 		final int size = entries.size();
 		final long[] times = new long[size];
 		final int[] qualities = new int[size];
@@ -378,6 +395,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 	}
 
 	private void writeIntegerValues(List<SampledValue> entries) {
+		assert entries.isEmpty() || baseElement.isVirtual()  || !((VirtualTreeElement) m_values).isVirtual() : "Schedule state inconsistent"; // 1st case on delete
 		final int size = entries.size();
 		final long[] times = new long[size];
 		final int[] qualities = new int[size];
@@ -394,6 +412,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 	}
 
 	private void writeLongValues(List<SampledValue> entries) {
+		assert entries.isEmpty() || baseElement.isVirtual()  || !((VirtualTreeElement) m_values).isVirtual() : "Schedule state inconsistent"; // 1st case on delete
 		final int size = entries.size();
 		final long[] times = new long[size];
 		final int[] qualities = new int[size];
@@ -410,6 +429,7 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 	}
 
 	private void writeStringValues(List<SampledValue> entries) {
+		assert entries.isEmpty() || baseElement.isVirtual()  || !((VirtualTreeElement) m_values).isVirtual() : "Schedule state inconsistent"; // 1st case on delete
 		final int size = entries.size();
 		final long[] times = new long[size];
 		final int[] qualities = new int[size];
@@ -810,4 +830,68 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
         return scheduleDataElement;
     }
 
+    @Override
+    public SampledValue getPreviousValue(long time) {
+    	m_lock.readLock().lock();
+		try {
+			return m_schedule.getPreviousValue(time);
+		} finally {
+			m_lock.readLock().unlock();
+		}
+    }
+
+	@Override
+	public boolean isEmpty() {
+    	m_lock.readLock().lock();
+		try {
+			return m_schedule.isEmpty();
+		} finally {
+			m_lock.readLock().unlock();
+		}
+	}
+
+	@Override
+	public boolean isEmpty(long startTime, long endTime) {
+    	m_lock.readLock().lock();
+		try {
+			return m_schedule.isEmpty(startTime, endTime);
+		} finally {
+			m_lock.readLock().unlock();
+		}
+	}
+
+	@Override
+	public int size() {
+    	m_lock.readLock().lock();
+		try {
+			return m_schedule.size();
+		} finally {
+			m_lock.readLock().unlock();
+		}
+	}
+
+	@Override
+	public int size(long startTime, long endTime) {
+    	m_lock.readLock().lock();
+		try {
+			return m_schedule.size(startTime, endTime);
+		} finally {
+			m_lock.readLock().unlock();
+		}
+	}
+
+	/**
+	 * This returns a non-fail-fast iterator. Intermediates changes to 
+	 * the schedule may or may not be reflected in the iterator. 
+	 */
+	@Override
+	public Iterator<SampledValue> iterator() {
+		return new ScheduleIterator(m_schedule, m_lock);
+	}
+
+	@Override
+	public Iterator<SampledValue> iterator(long startTime, long endTime) {
+		return new ScheduleIterator(m_schedule, m_lock, startTime, endTime);
+	}
+    
 }

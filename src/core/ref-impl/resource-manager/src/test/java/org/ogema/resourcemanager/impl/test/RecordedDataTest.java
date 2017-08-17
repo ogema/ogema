@@ -51,6 +51,7 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.simple.BooleanResource;
+import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.recordeddata.RecordedData;
@@ -63,6 +64,7 @@ import org.ogema.model.sensors.SolarIrradiationSensor;
 import org.ogema.recordeddata.DataRecorder;
 import org.ogema.recordeddata.DataRecorderException;
 import org.ogema.recordeddata.RecordedDataStorage;
+import org.ogema.tools.resource.util.LoggingUtils;
 import org.ops4j.pax.exam.Configuration;
 import org.ops4j.pax.exam.CoreOptions;
 import org.ops4j.pax.exam.Option;
@@ -798,6 +800,28 @@ public class RecordedDataTest extends OsgiAppTestBase {
 			assertTrue("Expected maximum value " + max + " but got " + result, Double.compare(max, result) == 0);
 		}
 	}
+	
+	@Test
+	public void loggingStopWorks() {
+		final FloatResource f = getApplicationManager().getResourceManagement().createResource(newResourceName()+ (int) (Math.random()*1000), FloatResource.class);
+		final RecordedData rd = f.getHistoricalData();
+		Assert.assertEquals(0,rd.size());
+		rd.setConfiguration(null);
+		Assert.assertEquals(0,rd.size());
+		final RecordedDataConfiguration conf = new RecordedDataConfiguration();
+		conf.setFixedInterval(Long.MAX_VALUE);
+		conf.setStorageType(RecordedDataConfiguration.StorageType.ON_VALUE_UPDATE);
+		rd.setConfiguration(conf);
+		f.activate(false);
+		f.setValue(23);
+		f.setValue(24);
+		f.setValue(25);
+		Assert.assertTrue(rd.size()>0);
+		rd.setConfiguration(null);
+		rd.size();
+		deleteRecordedDataStorage(f.getPath());
+		f.delete();
+	}
 
 	/**
 	 * @see #initReductionModeTest(int, List, Random, int, int, boolean,
@@ -938,6 +962,10 @@ public class RecordedDataTest extends OsgiAppTestBase {
 
 		RecordedDataStorage rds = rda.getRecordedDataStorage(id);
 		return rds;
+	}
+	
+	private void deleteRecordedDataStorage(String id) {
+		rda.deleteRecordedDataStorage(id);
 	}
 
 	private List<DoubleValue> generateRandomValues(int min, int max, int n, Random rnd) {

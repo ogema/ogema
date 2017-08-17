@@ -55,7 +55,7 @@ ngOGFrGui.controller('NavigationCtrl', [ '$scope', '$location', '$rootScope',
 				modalInstance.result.then(function(action) {
 					// console.log('SHOW LOGOUT Bundle dismissed at: ', action);
 					//$(location).attr('href', "/apps/ogema/framework/gui?action=logout");
-					
+
                     //window.location.replace("/apps/ogema/framework/gui?action=logout");
                     //
 					ogemaGateway.getJSON("/apps/ogema/framework/gui", {
@@ -106,6 +106,10 @@ ngOGFrGui.controller('BundlesCtrl', [
 
 			$scope.openApp = function(bundle) {
 				$window.open(bundle.webResourcePaths[0]);
+			}
+
+			$scope.retrieveIcon = function(bundleId) {
+				return '/apps/ogema/framework/gui/installedapps?action=getIcon&id=' + bundleId + '&user=' + otusr +'&pw=' + otpwd;
 			}
 
 			$scope.showBundleInfo = function(bundle) {
@@ -162,6 +166,12 @@ ngOGFrGui.controller('BundlesCtrl', [
 					// console.log('UPDATE Modal dismissed at: ' + new Date());
 				});
 			};
+	        function appendOtp(data) {
+	        	if (typeof otusr === "undefined")
+	        		return;
+	        	data.user = otusr;
+	        	data.pw = otpwd
+	        }
 
 			var updateBundleCtrl = function($scope, $modalInstance) {
 				if ($scope.updateBundle != null) {

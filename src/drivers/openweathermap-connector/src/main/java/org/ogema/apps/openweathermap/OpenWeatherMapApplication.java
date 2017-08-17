@@ -31,27 +31,40 @@ import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.pattern.PatternListener;
 import org.ogema.core.resourcemanager.pattern.ResourcePatternAccess;
+
 //import org.osgi.service.cm.ConfigurationAdmin;
+
 /**
  * 
- * Application main class. Application connect to the openweathermap services (www.openweathermap.com) and  store
- * weather information (temperature,cloudiness, humidity, rain) into OGEMA resources. Also calculate solar irradiation.
+ * Application main class. Application connect to the openweathermap services (www.openweathermap.com) and store weather
+ * information (temperature,cloudiness, humidity, rain) into OGEMA resources. Also calculate solar irradiation.
+ * 
  * @author brequardt
  */
 @Component(specVersion = "1.2", immediate = true)
-@Service({Application.class, OpenWeatherMapApplicationI.class})
+@Service({ Application.class, OpenWeatherMapApplicationI.class })
 public class OpenWeatherMapApplication implements OpenWeatherMapApplicationI {
+
+	/**
+	 * System property ({@value} ) holding the interval in ms at which weather data will be retrieved.
+	 */
+	public static final String UPDATE_INTERVAL = "org.ogema.drivers.openweathermap.getWeatherInfoRepeatTime";
+
+	/**
+	 * Default value ({@value} ) for {@link #UPDATE_INTERVAL}.
+	 */
+	public static final long UPDATE_INTERVAL_DEFAULT = 10 * 60 * 1000L;
 
 	public OgemaLogger logger;
 	protected ApplicationManager appMan;
 	protected ResourceManagement resMan;
-//	@Reference
-//	private ConfigurationAdmin configurationAdmin;
+	// @Reference
+	// private ConfigurationAdmin configurationAdmin;
 	public static OpenWeatherMapApplication instance;
 	EnvironmentCreater envCreater;
-	private List<RoomController> roomConntrollers = new ArrayList<RoomController>();
+	private List<RoomController> roomConntrollers = new ArrayList<>();
 	private ResourcePatternAccess advAcc;
-	
+
 	@Override
 	public void start(ApplicationManager appManager) {
 
@@ -63,26 +76,30 @@ public class OpenWeatherMapApplication implements OpenWeatherMapApplicationI {
 		envCreater.init(appManager);
 		String stdCity = System.getProperty("org.ogema.drivers.openweathermap.stdCity");
 		String stdCountry = System.getProperty("org.ogema.drivers.openweathermap.stdCountry");
-		if((stdCity != null)&&(stdCountry != null)) {
+		if ((stdCity != null) && (stdCountry != null)) {
 			envCreater.createResource("OpenWeatherMapData", stdCity, stdCountry);
 		}
 		advAcc = appManager.getResourcePatternAccess();
-		advAcc.addPatternDemand(RoomRad.class, roomListener,
-				AccessPriority.PRIO_DEVICEGROUPMAN);
+		advAcc.addPatternDemand(RoomRad.class, roomListener, AccessPriority.PRIO_DEVICEGROUPMAN);
 	}
 
 	@Override
 	public void stop(AppStopReason reason) {
-		
-		for(RoomController controller:roomConntrollers){
+
+		for (RoomController controller : roomConntrollers) {
 			controller.stop();
 		}
 	}
+
 	/**
 	 * Create an environment OGEMA resource for saving weather information.
-	 * @param name name of the environment  
-	 * @param city name of the city
-	 * @param country name of country (shortcuts) example: de for germany
+	 * 
+	 * @param name
+	 *            name of the environment
+	 * @param city
+	 *            name of the city
+	 * @param country
+	 *            name of country (shortcuts) example: de for germany
 	 * @return OGEMA resource
 	 */
 	@Override
@@ -117,9 +134,12 @@ public class OpenWeatherMapApplication implements OpenWeatherMapApplicationI {
 			roomConntrollers.remove(controller);
 		}
 	};
+
 	/**
-	 * return environment parameters 
-	 * @param name name of the environment information
+	 * return environment parameters
+	 * 
+	 * @param name
+	 *            name of the environment information
 	 * @return return information inside a map
 	 */
 	@Override
@@ -127,6 +147,5 @@ public class OpenWeatherMapApplication implements OpenWeatherMapApplicationI {
 		// TODO Auto-generated method stub
 		return envCreater.getParameters(name);
 	}
-	
-	
+
 }

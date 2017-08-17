@@ -62,7 +62,7 @@ function checkingInput(obj) {
 
 /**
  * Check if it is an AccessPerm. If it is, describe what it does to the system.
- * 
+ *
  * @param {String}
  *            name Name of the permission. return {boolean}
  */
@@ -75,7 +75,7 @@ function checkForResourcePerms(name) {
 // checking if the text typed in is a ressource
 /**
  * Check resource. There must be a resource plus Validation.
- * 
+ *
  * @param {Object}
  *            $(this) Current dialog
  * @return {boolean} True for okay. False if something is wrong.
@@ -96,7 +96,7 @@ function checkingRessourceInput(obj) {
 
 /**
  * Send permissions to server for current app.
- * 
+ *
  * @param {String}
  *            currentAppName Chosen app-name.
  * @param {String}
@@ -106,7 +106,7 @@ function sendPermsToServer(appid, permContentForApp, parentOfDialog, formOfDialo
 	sendPermsToServerWithRedirect(appid, permContentForApp, parentOfDialog, formOfDialog);
 }
 function sendPermsToServerWithRedirect(appid, permContentForApp, parentOfDialog, formOfDialog, url) {
-	if(appid==-1 && permContentForApp.indexOf("java.security.AllPermission") != -1){ 
+	if(appid==-1 && permContentForApp.indexOf("java.security.AllPermission") != -1){
 		if (permContentForApp.indexOf("deny")!=-1){
 			var tmppCFA = permContentForApp.substring(0, permContentForApp.indexOf("java.security.AllPermission"));
 			tmppCFA = tmppCFA.substr(tmppCFA.lastIndexOf("{"));
@@ -122,19 +122,19 @@ function sendPermsToServerWithRedirect(appid, permContentForApp, parentOfDialog,
 		}
 	}
 	tmpData = null;
-	$.post("/security/config/permissions?id=" + appid, {
+	$.post("/security/config/permissions?id=" + appid+"&user=" + otusr + "&pw=" + otpwd, {
 		permission : permContentForApp
 	}, function(data, status) { // if successfull
 		alert("Data send to server for appID: " + appid + "\nResponse: Policies commited successfully! \nStatus: " + status);
-		if (data!="Policies commited successfully!"){			
-			tmpData = data;	
+		if (data!="Policies commited successfully!"){
+			tmpData = data;
 		}
 		if (appid != -1){
 			getGrantedPerms(appid, parentOfDialog, formOfDialog, tmpData);
 		}else{
 			getDefaultPerms(appid, parentOfDialog, formOfDialog, tmpData);
 		}
-		
+
 		if(typeof url !== "undefined") {
 			$.post(url, {}, function(data, status) { // if successfull
 				alert("App started: " + appid + "\nResponse: " + data + "\nStatus: " + status);
@@ -171,7 +171,7 @@ function checkFiltered(){
 /**
  * get chosen permissions and transform them into a JSON-String for sending to
  * server. Executed when SAVE-button is clicked.
- * 
+ *
  * @param {Object}
  *            obj Current dialog. return {String} finalJSON JSON-String of the
  *            chosen permissions.
@@ -189,7 +189,7 @@ function getGrantedBack(obj) {
 	var arrayOfChecked = $("form > div div:first-child input.p:first-child:checked");
 	var permStringArray = [];
 	var oldActionArray = [];
-	
+
 	for (var x = 0; x < countChecked; x++) {
 		pName = "";
 		pRessource = "";
@@ -228,7 +228,7 @@ function getGrantedBack(obj) {
 				}
 			}
 			var newInput = divLastChild.find("input.newFilterInput[type='text']");
-			
+
 			if ($(newInput).length == 0){
 				pRessource = divLastChild.find("input.FilterInput[type='text']").val();
 			}else{
@@ -243,16 +243,16 @@ function getGrantedBack(obj) {
 				pMethod = divLastChild.find("input:checkbox:checked").map(function() {
 					return $(this).next("label").text().split(' ');
 				});
-				pOldMethod = divLastChild.find("input:checkbox").map(function() {					
+				pOldMethod = divLastChild.find("input:checkbox").map(function() {
 					if ($(this).next("label").context.id.indexOf('m') == 0){
 					return $(this).next("label").text().split(' ');
 					}
 				});
 			} else {
-				
+
 				pMethod = divLastChild.find("input[type='text']").next().next().next().val();
 			}
-			
+
 			if(divLastChild.find("input.newActionsInput[type='text']").length>0){
 				var addActions =divLastChild.find("input.newActionsInput[type='text']");
 				if ($(addActions).val().length>0){
@@ -288,10 +288,10 @@ function getGrantedBack(obj) {
 			}
 		}
 	}
-	
+
 	// create JSON-form
 	var jsonReturn = '{"permissions":[' + permStringArray + ']';
-	
+
 	//only return the oldpermissions if the Permissions are edited
 	if($("#dialogBundleName").text().indexOf("Permissions demanded")!=-1){
 		return jsonReturn +'}';
@@ -403,7 +403,7 @@ function isWildcard(value, selector) {
 
 /**
  * Transform permission-name/resource/method(s) to a string.
- * 
+ *
  * @param {String}
  *            name Permission name.
  * @param {String}
@@ -433,7 +433,7 @@ function transformInput(name, resource, methods, condition, conditionArgs, mode)
 			methodString = methods;
 		}
 	}
-	
+
 	// count of arguments
 	var argsMore;
 	var argArray;
@@ -475,7 +475,7 @@ function transformInput(name, resource, methods, condition, conditionArgs, mode)
 	var permString;
 
 	permString = '{"mode":"' + mode + '","name":"' + name+'"';
-	
+
 	if(resource!=undefined)
 		permString+= ',"filter":"' + resource + '"';
 	if(methodString!=undefined)
@@ -487,7 +487,7 @@ function transformInput(name, resource, methods, condition, conditionArgs, mode)
 }
 function transformOldPerms(oldPerms){
 	var oldPermString = '{"action":"';
-	
+
 	if (oldPerms != null || oldPerms != "") {
 		if (typeof (oldPerms) == 'object') {
 			for (var v = 0; v < oldPerms.length; v++) {
@@ -504,5 +504,5 @@ function transformOldPerms(oldPerms){
 	}
 	oldPermString += '}';
 	return oldPermString
-	
+
 }

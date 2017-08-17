@@ -15,9 +15,9 @@
  */
 package org.ogema.recordeddata.slotsdb;
 
+import java.io.IOException;
 import java.util.List;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -34,24 +34,15 @@ import org.ogema.recordeddata.RecordedDataStorage;
  * Interval: All data of a interval are aggregated to a new value
  * Tests of this class only perform aggregation on more than one interval. from, to is covers more than one interval
  */
-public class MultiplePartlyIntervalsTest extends SlotsDbTest {
+public class MultiplePartlyIntervalsTest extends DbTest {
 
 	private static final String STORAGE_NAME = "testMultiplePartlyIntervals";
 
 	private static RecordedDataStorage rds;
 
-	@AfterClass
-	public static void tearDown() {
-		deleteTestFiles();
-	}
-
 	@BeforeClass
-	public static void onlyOnce() throws DataRecorderException {
+	public static void onlyOnce() throws DataRecorderException, IOException {
 
-		deleteTestFiles();
-
-		SlotsDb sdb = new SlotsDb();
-		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);

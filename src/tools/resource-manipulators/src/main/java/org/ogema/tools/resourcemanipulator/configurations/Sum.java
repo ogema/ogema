@@ -27,7 +27,7 @@ import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.SingleValueResource;
 
 /**
- * Automatically-evaluated sum mapping {inputs} -> sum({inputs}) = result.
+ * Automatically-evaluated sum mapping {inputs} -&gt; sum({inputs}) = result.
  * Version for single values.
  * Inactive addends are ignored in the sum.
  * 

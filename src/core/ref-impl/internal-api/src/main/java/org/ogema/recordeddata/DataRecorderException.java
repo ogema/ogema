@@ -16,8 +16,13 @@
 package org.ogema.recordeddata;
 
 public class DataRecorderException extends Exception {
+	
 	public DataRecorderException(String message) {
 		super(message);
+	}
+	
+	public DataRecorderException(String message, Throwable cause) {
+		super(message, cause);
 	}
 
 	private static final long serialVersionUID = 6080994728561710089L;

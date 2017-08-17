@@ -36,8 +36,10 @@ public class DeviceAttribute {
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger("homematic-driver");
 	private AttributeChannel attributeChannel;
 	private boolean haslistener = false;
+	private Calendar calendar;
 
 	public DeviceAttribute(short identifier, String attributeName, boolean readOnly, boolean mandatory) {
+		this.calendar = Calendar.getInstance();
 		this.identifier = identifier;
 		this.attributeName = attributeName;
 		this.readOnly = readOnly;
@@ -93,7 +95,7 @@ public class DeviceAttribute {
 
 	public void setValue(Value value) {
 		this.value = value;
-		valueTimestamp = Calendar.getInstance().getTimeInMillis();
+		valueTimestamp = calendar.getTimeInMillis();
 		if (haslistener) {
 			attributeChannel.updateListener();
 		}

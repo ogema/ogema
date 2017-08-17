@@ -1,8 +1,24 @@
+/**
+ * This file is part of OGEMA.
+ *
+ * OGEMA is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
+ *
+ * OGEMA is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.ogema.resourcemanager.addon.test;
 
 import java.util.Random;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.schedule.AbsoluteSchedule;
@@ -17,11 +33,14 @@ import org.ops4j.pax.exam.spi.reactors.PerClass;
 
 @ExamReactorStrategy(PerClass.class)
 public class WeakReferencesTest extends OsgiAppTestBase {
+	
+	private final static boolean ignore = "true".equalsIgnoreCase(System.getenv("NO_LONG_TESTS")) || Boolean.getBoolean("NO_LONG_TESTS");
 
 	// long running test, ~ 1 minute; verifies that weak referencing of virtual resources does not cause a problem
 	// several related checks are performed in the same test; splitting it would overly increase the total test runtime
 	@Test
 	public void virtualSubresourcesAreNotReturnedAsNull() throws InterruptedException {
+		Assume.assumeFalse(ignore);
 		final int innerLoopLimit = 2000;
 		final int outerLoopLimit = 1000;
 		// run test for at most 1min; this is required, because otherwise the execution time of the test would

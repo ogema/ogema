@@ -19,21 +19,38 @@ import java.util.Comparator;
 import java.util.Map;
 
 /**
- *
+ * Represents a {@code ParameterDescription} as defined in the HomeMatic
+ * XML-RPC specification. {@code Paramsets} are respresented as
+ * {@code Map<String, ParameterDescription>}.
+ * 
+ * @param <T> data type of the described parameter.
+ * 
  * @author jlapp
  */
 public interface ParameterDescription<T extends Object> extends XmlRpcStruct {
     
-    public static final Comparator<ParameterDescription<?>> TAB_ORDER_COMPARATOR =
-            (ParameterDescription<?> o1, ParameterDescription<?> o2) -> Integer.compare(o1.getTabOrder(), o2.getTabOrder());
+    public static final Comparator<ParameterDescription<?>> TAB_ORDER_COMPARATOR = new Comparator<ParameterDescription<?>>() {
+        @Override
+        public int compare(ParameterDescription<?> o1, ParameterDescription<?> o2) {
+            return Integer.compare(o1.getTabOrder(), o2.getTabOrder());
+        }
+    };
     
-    public static enum SET_TYPES {
+    /**
+     * Paramset types for HomeMatic XML-RPC. Note that Paramsets of type {@link LINK}
+     * will actually use the device address of the link target as name, see
+     * {@link DeviceDescription#getParamsets() }.
+     */
+    public enum SET_TYPES {
         MASTER,
         LINK,
         VALUES
     }
     
-    public static enum TYPES {
+    /**
+     * Parameter types used by HomeMatic XML-RPC.
+     */
+    public enum TYPES {
         FLOAT,
         INTEGER,
         BOOL,
@@ -42,12 +59,19 @@ public interface ParameterDescription<T extends Object> extends XmlRpcStruct {
         ACTION
     }
     
-    public static enum SPECIAL {
+    /**
+     * Keys used by the XML-RPC structs in a ParameterDescription's
+     * {@link KEYS#SPECIAL } member.
+     */
+    public enum SPECIAL_KEYS {
         ID,
         VALUE
     }
 
-    public static enum KEYS {
+    /**
+     * Keys used by the ParameterDescription XML-RPC struct.
+     */
+    public enum KEYS {
 
         /** FLOAT, INTEGER, BOOL, ENUM */
         TYPE(String.class),
@@ -56,10 +80,10 @@ public interface ParameterDescription<T extends Object> extends XmlRpcStruct {
         OPERATIONS(int.class),
         
         /**
-         * 0x01: Visible <br />
-         * 0x02: Internal  <br />
-         * 0x04: Transform  <br />
-         * 0x08: Service <br />
+         * 0x01: Visible <br>
+         * 0x02: Internal  <br>
+         * 0x04: Transform  <br>
+         * 0x08: Service <br>
          * 0x10: Sticky
          */
         FLAGS(int.class),
@@ -103,24 +127,14 @@ public interface ParameterDescription<T extends Object> extends XmlRpcStruct {
     
     Map<String, T> getSpecial();
     
-    default int getOperations() {
-        return getInt(KEYS.OPERATIONS.name());
-    }
+    int getOperations();
 
-    default boolean isReadable() {
-        return (getOperations() & 0x01) != 0;
-    }
+    boolean isReadable();
     
-    default boolean isWritable() {
-        return (getOperations() & 0x02) != 0;
-    }
+    boolean isWritable();
     
-    default boolean isEvent() {
-        return (getOperations() & 0x04) != 0;
-    }
+    boolean isEvent();
     
-    default String getUnit() {
-        return getString(KEYS.UNIT.name());
-    }
+    String getUnit();
     
 }

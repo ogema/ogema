@@ -1,0 +1,8 @@
+# - output order for specifying loglevels is CONSOLE,FILE,CACHE; if just one level is provided, it is valid for the console
+# - default levels are info, debug, trace
+# - allowed values are trace, debug, info, warning, error, no_logging
+# - leave value empty to use default (e.g. org.apache.*=,,error)
+# - use full logger name to override wild card matches
+*=info,info,info
+# TODO
+

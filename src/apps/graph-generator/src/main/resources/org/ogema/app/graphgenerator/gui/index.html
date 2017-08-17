@@ -36,7 +36,7 @@
 
 <script type="text/javascript">
 $(document).ready(function() {
-	
+
 	var resTypeCallback = function(data, status) {
 		var list = "";
 		var i;
@@ -50,7 +50,7 @@ $(document).ready(function() {
 		if (list.length === 0)
 			list =  "<option value=\"org.ogema.core.model.Resource\">Resource</option>";
 		var typeSelector = $('#resourceType');
-		typeSelector.html(list);	
+		typeSelector.html(list);
 	};
 	sendGET(resTypeCallback);
 
@@ -59,10 +59,10 @@ $(document).ready(function() {
 		+ "<label for=\"phys_conf\"> <input type=\"checkbox\" id=\"phys_conf\"> Enable Physic Configurator </label> ";
 	generatorSelector.change(function() {
 		if($('#generator').val() === "graphviz") {
-			var downloadButtons = "<form action=\"/apps/ogema/graphgenerator\" method=\"post\"> <input type=\"submit\" value=\"ALL\"/>"
+			var downloadButtons = "<form action=\"/apps/ogema/graphgenerator?user=" + otusr +"&pw=" + otpwd +"\" method=\"post\"> <input type=\"submit\" value=\"ALL\"/>"
 					+ "<input type=\"hidden\" name=\"generator\" value=\"" + generatorSelector.val() + "\" /> "
 					+ "<input type=\"hidden\" name=\"plottype\" value=\"all\" /></form>"
-					+ "<form action=\"/apps/ogema/graphgenerator\" method=\"post\"> <input type=\"submit\" value=\"Connections\"/>"
+					+ "<form action=\"/apps/ogema/graphgenerator?user=" + otusr +"&pw=" + otpwd +"\" method=\"post\"> <input type=\"submit\" value=\"Connections\"/>"
 					+ "<input type=\"hidden\" name=\"generator\" value=\"" + generatorSelector.val() + "\" /> "
                     + "<input type=\"hidden\" name=\"plottype\" value=\"connections\" /></form>";
 			$('#buttonDiv').html(downloadButtons);
@@ -91,14 +91,14 @@ $(document).ready(function() {
     <br>
     <p>
         Select the toplevel resource type.
-    </p>   
+    </p>
     <select id="resourceType">
     	<option value="org.ogema.core.model.Resource">Resource</option>
     </select>
     <br/>
     <p>
         Start.
-    </p> 
+    </p>
     <div id="buttonDiv"></div>
 	<br/>
 	<br/>

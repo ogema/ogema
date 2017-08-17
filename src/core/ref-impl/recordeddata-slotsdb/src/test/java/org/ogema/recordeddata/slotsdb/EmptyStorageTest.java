@@ -15,11 +15,10 @@
  */
 package org.ogema.recordeddata.slotsdb;
 
+import java.io.IOException;
 import java.util.List;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.recordeddata.RecordedDataConfiguration;
@@ -31,28 +30,16 @@ import org.ogema.recordeddata.RecordedDataStorage;
 /**
  * Performs tests on an empty storage 
  */
-public class EmptyStorageTest extends SlotsDbTest {
-
-	@BeforeClass
-	public static void setUp() {
-		deleteTestFiles();
-	}
-
-	@AfterClass
-	public static void tearDown() {
-		deleteTestFiles();
-	}
-
+public class EmptyStorageTest extends DbTest {
 	/**
 	 * Creates a new storage which holds no data. Tests all ReductionModes. Result of the getValues(...) should be a
 	 * empty list.
+	 * @throws IOException 
 	 */
 	@Test
-	public void testAllReductionModesWithEmptyDataStorage() throws DataRecorderException {
+	public void testAllReductionModesWithEmptyDataStorage() throws DataRecorderException, IOException {
 
 		// create an empty storage
-		SlotsDb sdb = new SlotsDb();
-		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);
@@ -67,6 +54,7 @@ public class EmptyStorageTest extends SlotsDbTest {
 			List<SampledValue> recordedData = emptyStorage.getValues(start, end, interval, mode);
 			Assert.assertTrue(recordedData.isEmpty());
 		}
+		Assert.assertTrue(emptyStorage.isEmpty());
 	}
 
 }

@@ -73,6 +73,7 @@ public class Fifo<T> {
 		Object o = null;
 		if (count > 0) {
 			o = entries[getptr];
+			entries[getptr] = null;
 			getptr++;
 			getptr &= mask;
 			count--;
@@ -87,6 +88,7 @@ public class Fifo<T> {
 		count = 0;
 		putptr = 0;
 		getptr = 0;
+		entries = new Object[size];
 	}
 
 }

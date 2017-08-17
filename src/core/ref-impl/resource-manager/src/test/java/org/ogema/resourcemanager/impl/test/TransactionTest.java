@@ -446,6 +446,7 @@ public class TransactionTest extends OsgiTestBase {
 
 			MemoryTimeSeries result = new TreeTimeSeries(LongValue.class);
 			result.read(schedule);
+            assertFalse("transaction failed " + i, result.isEmpty());
 			assertEquals(result.getValue(0).getValue().getLongValue(), value);
 
 			transaction.read();
@@ -454,7 +455,7 @@ public class TransactionTest extends OsgiTestBase {
 			assertEquals(readResult.getValue(0).getValue().getLongValue(), value);
 		}
 	}
-
+    
 	@Test
 	public void settingValuesToUninitializedFieldsThrowsException() {
 		final FloatResource f1 = resMan.createResource("f1", FloatResource.class);

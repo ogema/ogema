@@ -15,8 +15,14 @@
  */
 package org.ogema.tools.timeseries.api;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
+import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 import org.ogema.core.timeseries.TimeSeries;
 
@@ -29,7 +35,7 @@ import org.ogema.core.timeseries.TimeSeries;
  * @author Timo Fischer, Fraunhofer IWES
  */
 public interface MemoryTimeSeries extends TimeSeries, Cloneable {
-
+	
 	/**
 	 * Returns the type of Value that this schedule takes. Note that there is
 	 * no setter for this method. The type must be defined on construction.
@@ -105,4 +111,199 @@ public interface MemoryTimeSeries extends TimeSeries, Cloneable {
 	 * Create a copy of this.
 	 */
 	MemoryTimeSeries clone();
+	
+	/*
+	 *******************************
+	 */
+	
+	/**
+	 * An empty MemoryTimeSeries. All write operations throw {@link UnsupportedOperationException}. 
+	 */
+	public final static MemoryTimeSeries EMPTY_TIME_SERIES = new MemoryTimeSeries() {
+		
+		@Override
+		public int size(long startTime, long endTime) {
+			return 0;
+		}
+		
+		@Override
+		public int size() {
+			return 0;
+		}
+		
+		@Override
+		public Iterator<SampledValue> iterator(long startTime, long endTime) {
+			return Collections.emptyIterator();
+		}
+		
+		@Override
+		public Iterator<SampledValue> iterator() {
+			return Collections.emptyIterator();
+		}
+		
+		@Override
+		public boolean isEmpty(long startTime, long endTime) {
+			return true;
+		}
+		
+		@Override
+		public boolean isEmpty() {
+			return true;
+		}
+		
+		@Override
+		public List<SampledValue> getValues(long startTime, long endTime) {
+			return Collections.emptyList();
+		}
+		
+		@Override
+		public List<SampledValue> getValues(long startTime) {
+			return Collections.emptyList();
+		}
+		
+		@Override
+		public SampledValue getValue(long time) {
+			return null;
+		}
+		
+		@Override
+		public Long getTimeOfLatestEntry() {
+			return null;
+		}
+		
+		@Override
+		public SampledValue getPreviousValue(long time) {
+			return null;
+		}
+		
+		@Override
+		public SampledValue getNextValue(long time) {
+			return null;
+		}
+		
+		@Override
+		public InterpolationMode getInterpolationMode() {
+			return InterpolationMode.NONE;
+		}
+
+		@Override
+		public boolean addValue(long timestamp, Value value) {
+			throw new UnsupportedOperationException("Empty time series does not support adding points");
+		}
+
+		@Override
+		public boolean addValues(Collection<SampledValue> values) {
+			throw new UnsupportedOperationException("Empty time series does not support adding points");
+		}
+
+		@Override
+		public boolean addValueSchedule(long startTime, long stepSize, List<Value> values) {
+			throw new UnsupportedOperationException("Empty time series does not support adding points");
+		}
+
+		@Override
+		public boolean addValue(long timestamp, Value value, long timeOfCalculation) {
+			throw new UnsupportedOperationException("Empty time series does not support adding points");
+		}
+
+		@Override
+		public boolean addValues(Collection<SampledValue> values, long timeOfCalculation) {
+			throw new UnsupportedOperationException("Empty time series does not support adding points");
+		}
+
+		@Override
+		public boolean addValueSchedule(long startTime, long stepSize, List<Value> values, long timeOfCalculation) {
+			throw new UnsupportedOperationException("Empty time series does not support adding points");
+		}
+
+		@Override
+		public Long getLastCalculationTime() {
+			return null;
+		}
+
+		@Override
+		public boolean deleteValues() {
+			return false;
+		}
+
+		@Override
+		public boolean deleteValues(long endTime) {
+			return false;
+		}
+
+		@Override
+		public boolean deleteValues(long startTime, long endTime) {
+			return false;
+		}
+
+		@Override
+		public boolean replaceValues(long startTime, long endTime, Collection<SampledValue> values) {
+			throw new UnsupportedOperationException("Empty time series does not support adding points");
+		}
+
+		@Override
+		public boolean replaceValuesFixedStep(long startTime, List<Value> values, long stepSize) {
+			throw new UnsupportedOperationException("Empty time series does not support adding points");
+		}
+
+		@Override
+		public boolean replaceValuesFixedStep(long startTime, List<Value> values, long stepSize,
+				long timeOfCalculation) {
+			throw new UnsupportedOperationException("Empty time series does not support adding points");
+		}
+
+		@Override
+		public boolean setInterpolationMode(InterpolationMode mode) {
+			throw new UnsupportedOperationException("Empty time series does not support setting the interpolation mode");
+		}
+
+		@Override
+		public Class<? extends Value> getValueType() {
+			return Value.class;
+		}
+
+		@Override
+		public SampledValue getValueSecure(long t) {
+			return null;
+		}
+
+		@Override
+		public void write(TimeSeries timeSeries) {
+			throw new UnsupportedOperationException("Empty time series does not support write");
+		}
+
+		@Override
+		public void write(TimeSeries timeSeries, long from, long to) {
+			throw new UnsupportedOperationException("Empty time series does not support write");
+		}
+
+		@Override
+		public MemoryTimeSeries read(ReadOnlyTimeSeries timeSeries) {
+			throw new UnsupportedOperationException("Empty time series does not support read");
+		}
+
+		@Override
+		public MemoryTimeSeries read(ReadOnlyTimeSeries timeSeries, long start, long end) {
+			throw new UnsupportedOperationException("Empty time series does not support read");
+		}
+
+		@Override
+		public MemoryTimeSeries readWithBoundaries(ReadOnlyTimeSeries timeSeries, long start, long end) {
+			throw new UnsupportedOperationException("Empty time series does not support read");
+		}
+
+		@Override
+		public void addValue(SampledValue value) {
+			throw new UnsupportedOperationException("Empty time series does not support adding points");
+		}
+
+		@Override
+		public void shiftTimestamps(long dt) {}
+
+		@Override
+		public MemoryTimeSeries clone() {
+			return this;
+		}
+		
+	};
 }

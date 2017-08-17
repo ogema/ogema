@@ -29,12 +29,9 @@ import org.ogema.core.model.array.BooleanArrayResource;
 import org.ogema.core.model.array.ByteArrayResource;
 import org.ogema.model.actors.MultiSwitch;
 import org.ogema.model.communication.KNXAddress;
-
-import org.ops4j.pax.exam.ProbeBuilder;
-import org.ops4j.pax.exam.TestProbeBuilder;
+import org.ogema.resourcemanager.impl.test.types.AllSimpleTypes;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
-import org.osgi.framework.Constants;
 
 /**
  * Test get and set on the different primitive array resource types (int, float, long (=time), boolean, String)
@@ -43,13 +40,7 @@ import org.osgi.framework.Constants;
  */
 @ExamReactorStrategy(PerClass.class)
 public class ArrayResourceTest extends OsgiTestBase {
-
-	@ProbeBuilder
-	public TestProbeBuilder buildCustomProbe(TestProbeBuilder builder) {
-		builder.setHeader(Constants.EXPORT_PACKAGE, "org.ogema.resourcemanager.impl.test");
-		return builder;
-	}
-
+	
 	@Test
 	public void settingByteArrayWorks() throws ResourceException {
 		ByteArrayResource bar = resMan.createResource(newResourceName(), ByteArrayResource.class);

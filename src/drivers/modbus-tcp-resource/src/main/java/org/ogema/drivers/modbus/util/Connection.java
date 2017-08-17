@@ -73,13 +73,19 @@ import com.ghgande.j2mod.modbus.util.BitVector;
 public class Connection {
 
 	private ModbusTCPTransaction transaction;
-	TCPMasterConnection con;
+	final TCPMasterConnection con;
 
 	public Connection(InetSocketAddress host) {
 
 		con = new TCPMasterConnection(host.getAddress());
 		con.setPort(host.getPort());
-		con.setTimeout(10000);
+		try {
+			con.connect();
+//			con.setTimeout(10000);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 	}
 

@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.ogema</groupId>
 	<artifactId>ogema</artifactId>
-	<version>2.1.0</version>
+	<version>2.1.1</version>
 	<packaging>pom</packaging>
 	<name>OGEMA</name>
 
@@ -10,13 +10,22 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven-source-plugin.version>3.0.0</maven-source-plugin.version>
 		<maven-javadoc-plugin.version>2.10.3</maven-javadoc-plugin.version>
+		<!-- max versions exclusive -->
+		<guava.version.min>19.0</guava.version.min>
+		<guava.version.max>24.0</guava.version.max>
+		<felix.service.command.version.min>0.0.0</felix.service.command.version.min>
+		<felix.service.command.version.max>2.0.0</felix.service.command.version.max>
+		<lang3.version.min>3.4</lang3.version.min>
+		<lang3.version.max>4.0</lang3.version.max>
+		<org.json.version.min>20160212</org.json.version.min>
+		<org.json.version.max>20170518</org.json.version.max>
 	</properties>
 
 	<scm>
 		<connection>scm:git:ssh://nat6.bouncezone.de/ogema</connection>
 		<developerConnection>scm:git:ssh://git@nat6.bouncezone.de/ogema</developerConnection>
 		<url>scm:git:ssh://nat6.bouncezone.de/ogema</url>
-	  <tag>ogema-2.1.0</tag>
+	  <tag>ogema-2.1.1</tag>
   </scm>
 
 	<repositories>
@@ -97,55 +106,59 @@
 			<dependency>
 				<groupId>org.ogema.core</groupId>
 				<artifactId>api</artifactId>
-				<version>2.1.0</version>
+				<version>2.1.1</version>
 			</dependency>
 			<dependency>
 				<groupId>org.ogema.core</groupId>
 				<artifactId>models</artifactId>
-				<version>2.1.0</version>
+				<version>2.1.1</version>
 			</dependency>
 
 			<!-- OGEMA Reference Implementation -->
 			<dependency>
 				<groupId>org.ogema.ref-impl</groupId>
 				<artifactId>internal-api</artifactId>
-				<version>2.1.0</version>
+				<version>2.1.1</version>
 			</dependency>
 			<dependency>
 				<groupId>org.ogema.ref-impl</groupId>
 				<artifactId>persistence</artifactId>
-				<version>2.1.0</version>
+				<version>2.1.1</version>
 			</dependency>
 			<dependency>
 				<groupId>org.ogema.ref-impl</groupId>
 				<artifactId>util</artifactId>
-				<version>2.1.0</version>
+				<version>2.1.1</version>
 			</dependency>
 			<dependency>
 				<groupId>org.ogema.ref-impl</groupId>
 				<artifactId>ogema-exam-base</artifactId>
-				<version>2.1.0</version>
+				<version>2.1.1</version>
 			</dependency>
 
 			<!-- OGEMA Tools and Services -->
 			<dependency>
 				<groupId>org.ogema.tools</groupId>
 				<artifactId>memory-timeseries</artifactId>
-				<version>2.1.0</version>
+				<version>2.1.1</version>
 			</dependency>
 			<dependency>
 				<groupId>org.ogema.tools</groupId>
 				<artifactId>resource-manipulators</artifactId>
-				<version>2.1.0</version>
+				<version>2.1.1</version>
 			</dependency>
 			<dependency>
 				<groupId>org.ogema.tools</groupId>
 				<artifactId>resource-utils</artifactId>
-				<version>2.1.0</version>
+				<version>2.1.1</version>
 			</dependency>
 
 			<!-- Others -->
-			<dependency>
+		<dependency>
+			<groupId>org.apache.felix</groupId>
+			<artifactId>org.apache.felix.framework</artifactId>
+			<version>5.4.0</version>
+		</dependency>			<dependency>
 				<groupId>javax.servlet</groupId>
 				<artifactId>servlet-api</artifactId>
 				<version>2.4</version>
@@ -158,20 +171,37 @@
 				<dependency>
 				<groupId>org.json</groupId>
 				<artifactId>json</artifactId>
-				<version>20160212</version>
+				<version>20170516</version>
 			</dependency>
+			<!-- we try to support also version 1.x.x, by specifying
+			the import package range in pom.xml files declaring a dependency to this;
+			must not build against 1.x.x., though, since this leads to an error in console-scripting -->			
+			<dependency>
+			    <groupId>org.apache.felix</groupId>
+			    <artifactId>org.apache.felix.gogo.runtime</artifactId>
+			    <version>0.16.2</version>
+			</dependency>
+			<!-- we try to support also versions > 19.0, by specifying
+			the import package range in pom.xml files declaring a dependency to this;
+			must not build against higher versions, though, since they require Java8 -->	
+			 <dependency>
+			 	<groupId>com.google.guava</groupId>
+			 	<artifactId>guava</artifactId>
+			 	<version>19.0</version>
+			 </dependency>
 		</dependencies>
 	</dependencyManagement>
 
 	<modules>
-		<module>apps</module>
+ 		<module>apps</module>
 		<module>archetypes</module>
 		<module>core</module>
 		<module>drivers</module>
 		<module>testapps</module>
 		<module>tools</module>
-		<module>external/org.apache.felix.useradmin.filestore</module>
+	<!-- <module>external/org.apache.felix.useradmin.filestore</module>
 		<module>external/org.apache.felix.useradmin</module>
+	-->
 	</modules>
 
 	<build>
@@ -396,7 +426,6 @@
 							<exclude>lib/**</exclude>
 							<exclude>libs/**</exclude>
 							<exclude>target/**</exclude>
-							<exclude>external/**</exclude> <!-- fails, because these projects do not have this pom as parent -->
 							<exclude>**/*.txt</exclude>
 							<exclude>**/data/**</exclude>
 							<exclude>**/MANIFEST.MF</exclude>

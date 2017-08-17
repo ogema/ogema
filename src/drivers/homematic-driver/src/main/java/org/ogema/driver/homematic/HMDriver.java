@@ -34,13 +34,11 @@ import org.ogema.core.channelmanager.driverspi.NoSuchInterfaceException;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.driverspi.ValueContainer;
 import org.ogema.core.channelmanager.measurements.Value;
-import org.ogema.core.hardwaremanager.HardwareDescriptor;
-import org.ogema.core.hardwaremanager.HardwareListener;
 import org.ogema.driver.homematic.manager.RemoteDevice;
 import org.ogema.driver.homematic.manager.RemoteDevice.InitStates;
 import org.slf4j.Logger;
 
-public class HMDriver implements ChannelDriver, HardwareListener {
+public class HMDriver implements ChannelDriver {
 
 	public final static Logger logger = org.slf4j.LoggerFactory.getLogger("homematic-driver");
 
@@ -242,22 +240,6 @@ public class HMDriver implements ChannelDriver, HardwareListener {
 		chan = dev.findChannel(channel);
 		if (chan != null)
 			dev.removeChannel(chan);
-	}
-
-	@Override
-	public void hardwareAdded(HardwareDescriptor descriptor) {
-		/* This function is responsible for what to do when new hardware(usb stick) is added */
-		logger.debug("hardware added: " + descriptor.getIdentifier().toString());
-	}
-
-	@Override
-	public void hardwareRemoved(HardwareDescriptor descriptor) {
-
-		/*
-		 * What to do when stick is removed: ChannelManager has to support Device removed callbacks to hand this
-		 * situation properly.
-		 */
-		logger.debug("hardware removed: " + descriptor.getIdentifier().toString());
 	}
 
 	volatile Thread pairing = null;

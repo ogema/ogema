@@ -16,6 +16,7 @@
 package org.ogema.tools.resourcemanipulator;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,8 @@ import java.util.Map;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.ResourceList;
+import org.ogema.core.resourcemanager.AccessMode;
+import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceManagement;
@@ -61,6 +64,7 @@ import org.osgi.framework.Bundle;
  */
 public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDemandListener<ResourceManipulatorModel> {
 
+	private final static String targetName = "RESOURCE_MANIPULATOR_CONFIGURATIONS";
     private final ApplicationManager appMan;
     private final ResourceManagement resMan;
     private final ResourceAccess resAcc;
@@ -89,8 +93,7 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
         // find the common root node.
         final List<CommonConfigurationNode> existingNodes = resAcc.getToplevelResources(CommonConfigurationNode.class);
         if (existingNodes.isEmpty()) {
-            final String targetName = "RESOURCE_MANIPULATOR_CONFIGURATIONS";
-            final String name = resMan.getUniqueResourceName(targetName);
+            final String name = resMan.getUniqueResourceName(targetName); // FIXME does this really work?
             commonConfigurationNode = resMan.createResource(name, CommonConfigurationNode.class);
             // instead of activating all resource lists immediately, although we might not need them,
             // we take care to create and activate them upon their first usage; see method #activate below
@@ -157,6 +160,12 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
     @Override
     @SuppressWarnings("unchecked")
     public <T extends ManipulatorConfiguration> List<T> getConfigurations(Class<T> type) {
+    	if (commonConfigurationNode == null) {
+    		final String name = resMan.getUniqueResourceName(targetName);
+    		commonConfigurationNode = resAcc.getResource(name);
+    		if (commonConfigurationNode == null)
+    			return Collections.emptyList();
+    	}
         
         // special case: Someone asked for ALL configurations
         if (type == ManipulatorConfiguration.class) {
@@ -266,7 +275,7 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
      *
      * @param <T>
      * @param type Resource type of the new resource to create.
-     * @return Newly-created resource instance of the given type. The field {@link ResourceManipulatorConfiguration#application()
+     * @return Newly-created resource instance of the given type. The field {@link ResourceManipulatorModel#application()
      * } is already created and set correctly, but no other sub-resources are
      * created.
      *
@@ -290,9 +299,10 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
         	activate(commonConfigurationNode.scheduleManagements());
         	result = commonConfigurationNode.scheduleManagements().add();
         } else {
-            throw new UnsupportedOperationException("Cannot create a resource instance for unknown or un-implemented configiuration type " + type.getName());
+            throw new UnsupportedOperationException("Cannot create a resource instance for unknown or un-implemented configuration type " + type.getName());
         }
         result.application().create();
+        result.application().requestAccessMode(AccessMode.EXCLUSIVE, AccessPriority.PRIO_HIGHEST);
         result.application().setValue(appId);
         return (T) result;
     }

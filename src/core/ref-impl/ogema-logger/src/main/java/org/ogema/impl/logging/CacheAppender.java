@@ -17,7 +17,7 @@ package org.ogema.impl.logging;
 
 import ch.qos.logback.classic.PatternLayout;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.AppenderBase;
+import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import ch.qos.logback.core.pattern.PatternLayoutBase;
 import ch.qos.logback.core.rolling.helper.FileNamePattern;
 import ch.qos.logback.core.util.FileSize;
@@ -38,19 +38,23 @@ import java.util.Queue;
  * 
  * @author jlapp
  */
-public class CacheAppender<E extends ILoggingEvent> extends AppenderBase<E> {
+//public class CacheAppender<E extends ILoggingEvent> extends AppenderBase<E> {
+public class CacheAppender<E extends ILoggingEvent> extends UnsynchronizedAppenderBase<E> {
 
 	protected final FileSize SIZELIMIT = FileSize.valueOf("10MB");
-	protected FileSize maxSize = FileSize.valueOf("2MB");
+	protected volatile FileSize maxSize = FileSize.valueOf("2MB");
+	// synchronized on buffer
 	protected int currentSize = 0;
 	protected final Queue<String> buffer = new ArrayDeque<>(2000);
 	protected final PatternLayoutBase<ILoggingEvent> layout = new PatternLayout();
-	protected String fileNamePattern = "cachedump_%d{yyyy-MM-dd-HH-mm.ss.SSS}.log";
+	protected volatile String fileNamePattern = "cachedump_%d{yyyy-MM-dd-HH-mm.ss.SSS}.log";
 
 	@Override
 	protected void append(E eventObject) {
+		// must be processed outside synchronized block, for risk of deadlock; calls arguments' toString method
+		eventObject.prepareForDeferredProcessing();
 		synchronized (buffer) {
-			eventObject.prepareForDeferredProcessing();
+//			eventObject.prepareForDeferredProcessing();
 			String s = layout.doLayout(eventObject);
 			int addedSize = sizeOf(s);
 			if (addedSize > maxSize.getSize()) {

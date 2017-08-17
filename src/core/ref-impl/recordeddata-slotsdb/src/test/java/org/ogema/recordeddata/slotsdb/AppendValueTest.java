@@ -15,9 +15,8 @@
  */
 package org.ogema.recordeddata.slotsdb;
 
-import org.junit.AfterClass;
+import java.io.IOException;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.Quality;
@@ -29,35 +28,25 @@ import org.ogema.recordeddata.DataRecorderException;
 /**
  * 
  */
-public class AppendValueTest extends SlotsDbTest {
-
-	@BeforeClass
-	public static void setUp() {
-		deleteTestFiles();
-	}
-
-	@AfterClass
-	public static void tearDown() {
-		deleteTestFiles();
-	}
+public class AppendValueTest extends DbTest {
 
 	/**
-	 * Test behaviour with wrong arguments
+	 * Test behaviour with wrong arguments -> nothing wrong here?
+	 * @throws IOException 
 	 */
 	@Test
-	public void testArguments() throws DataRecorderException {
+	public void testArguments() throws DataRecorderException, IOException {
 
-		SlotsDb sdb = new SlotsDb();
-		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);
 		SlotsDbStorage rds = (SlotsDbStorage) sdb.createRecordedDataStorage("appendValue", conf);
 
+		int size = rds.getValues(Long.MIN_VALUE).size();
 		rds.insertValue(new SampledValue(new DoubleValue(1.0), System.currentTimeMillis(), Quality.GOOD));
 
-		Assert.assertTrue(true);
-
+		size = rds.getValues(Long.MIN_VALUE).size() - size;
+		Assert.assertEquals("Unexpected number of log data entries", 1, size);
 	}
 
 }

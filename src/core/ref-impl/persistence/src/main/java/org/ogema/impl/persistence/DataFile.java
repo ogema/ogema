@@ -18,6 +18,7 @@ package org.ogema.impl.persistence;
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -53,10 +54,17 @@ public class DataFile {
 
 	public void close() {
 		try {
-			if (raf != null)
+			if (raf != null) {
+				FileDescriptor fd = raf.getFD();
+				fd.sync();
 				raf.close();
-			if (out != null)
+			}
+			if (out != null) {
+				FileDescriptor fd = fos.getFD();
+				fd.sync();
 				out.close();
+				fos.close();
+			}
 		} catch (IOException e) {
 		}
 	}

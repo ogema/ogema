@@ -19,11 +19,11 @@ package org.ogema.core.channelmanager.measurements;
  * Represents a sampled value. A sampled value always includes a quality and a timestamp attribute. The timestamp
  * represents the time when the sample was created.
  */
-public class SampledValue implements Comparable<SampledValue> {
+public final class SampledValue implements Comparable<SampledValue> {
 
-	private long timestamp;
-	private Value value;
-	private Quality quality;
+	private final long timestamp;
+	private final Value value;
+	private final Quality quality;
 
 	/**
 	 * Copy constructor: Attempts to create a copy of another SampledValue, including
@@ -33,7 +33,7 @@ public class SampledValue implements Comparable<SampledValue> {
 		try {
 			this.value = other.getValue().clone();
 		} catch (CloneNotSupportedException ex) {
-			ex.printStackTrace();
+			throw new RuntimeException(ex);
 		}
 		this.timestamp = other.getTimestamp();
 		this.quality = other.getQuality();
@@ -115,4 +115,17 @@ public class SampledValue implements Comparable<SampledValue> {
 			return +1;
 		return 0;
 	}
+	
+	/**
+	 * This is similar to a #clone-method, but returns the same instance if the value
+	 * field has a primitive value (i.e. is of type {@link FloatValue}, {@link DoubleValue}, 
+	 * {@link IntegerValue}, {@link LongValue}, {@link BooleanValue}, or {@link StringValue}).
+	 */
+	public SampledValue copyDefensively() {
+		if (value instanceof FloatValue || value instanceof DoubleValue || value instanceof IntegerValue
+				|| value instanceof LongValue || value instanceof BooleanValue || value instanceof StringValue)
+			return this;
+		return new SampledValue(this);
+	}
+	
 }

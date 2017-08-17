@@ -14,7 +14,6 @@
  * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ogema.tools.timeseries.implementations;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -63,25 +62,22 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 	 */
 	public FloatTreeTimeSeries(FloatTimeSeries other) {
 		super(other.getValueType());
-		synchronized (other) {
-			addValues(other.getValues(Long.MIN_VALUE));
-			setInterpolationMode(other.getInterpolationMode());
-		}
+		addValues(other.getValues(Long.MIN_VALUE));
+		setInterpolationMode(other.getInterpolationMode());
 	}
 
 	/**
 	 * Apply the bi-linear operator on all points of this. Second operator input
 	 * is taken from values. Store the values in this.
 	 */
-	protected void applyBilinearOperator(BilinearSampledValueOperator operator, FloatTimeSeries values) {
-        final FloatTimeSeries factors = new FloatTreeTimeSeries(values); // hidden double-synchronization.
-        final TimeSeriesMerger merger = new TimeSeriesMerger(this, factors);
-
+	public void applyBilinearOperator(BilinearSampledValueOperator operator, ReadOnlyTimeSeries values) {
+//        final FloatTimeSeries factors = new FloatTreeTimeSeries(values); 
+        final TimeSeriesMerger merger = new TimeSeriesMerger(this, values);
         // calculate the new values for this.
         final List<SampledValue> newValues = new ArrayList<>(merger.getTimestamps().size());
         for (Long t : merger.getTimestamps()) {
             final SampledValue v1 = this.getValueSecure(t);
-            final SampledValue v2 = factors.getValueSecure(t);
+            final SampledValue v2 = getValueSecure(values, t);
             final SampledValue newValue = operator.apply(v1, v2);
             newValues.add(newValue);
         }
@@ -93,11 +89,11 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
     }
 
 	/**
-	 * Apply an operator V->V to all points in this time series.
+	 * Apply an operator V-&gt;V to all points in this time series.
 	 *
-	 * @param factor
+	 * @param operator
 	 */
-	protected void applyLinearOperator(LinearSampledValueOperator operator) {
+	public void applyLinearOperator(LinearSampledValueOperator operator) {
         final SortedSet<SampledValue> values = getValues();
         final List<SampledValue> newValues = new ArrayList<>(values.size());
         for (SampledValue value : values) {
@@ -121,7 +117,7 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 	}
 
 	@Override
-	public synchronized void add(FloatTimeSeries addends) {
+	public synchronized void add(ReadOnlyTimeSeries addends) {
 		final BilinearSampledValueOperator operator = new BilinearFloatAddition();
 		applyBilinearOperator(operator, addends);
 	}
@@ -137,35 +133,47 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 	}
 
 	@Override
-	public synchronized void multiplyBy(FloatTimeSeries factor) {
+	public synchronized void multiplyBy(ReadOnlyTimeSeries factor) {
 		final BilinearSampledValueOperator operator = new BiliniearFloatMultiplication();
 		applyBilinearOperator(operator, factor);
 	}
 
 	@Override
 	public FloatTimeSeries plus(float addend) {
-		final FloatTimeSeries result = new FloatTreeTimeSeries(this);
+		final FloatTimeSeries result;
+		synchronized (this) {
+			result = new FloatTreeTimeSeries(this);
+		}
 		result.add(addend);
 		return result;
 	}
 
 	@Override
 	public FloatTimeSeries plus(FloatTimeSeries other) {
-		final FloatTreeTimeSeries result = new FloatTreeTimeSeries(this);
+		final FloatTimeSeries result;
+		synchronized (this) {
+			result = new FloatTreeTimeSeries(this);
+		}
 		result.add(other);
 		return result;
 	}
 
 	@Override
 	public FloatTimeSeries times(float factor) {
-		final FloatTreeTimeSeries result = new FloatTreeTimeSeries(this);
+		final FloatTimeSeries result;
+		synchronized (this) {
+			result = new FloatTreeTimeSeries(this);
+		}
 		result.multiplyBy(factor);
 		return result;
 	}
 
 	@Override
-	public FloatTimeSeries times(FloatTimeSeries other) {
-		final FloatTreeTimeSeries result = new FloatTreeTimeSeries(this);
+	public FloatTimeSeries times(ReadOnlyTimeSeries other) {
+		final FloatTimeSeries result;
+		synchronized (this) {
+			result = new FloatTreeTimeSeries(this);
+		}
 		result.multiplyBy(other);
 		return result;
 	}
@@ -203,14 +211,9 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 		}
 
 		final List<SampledValue> values = getValues(t0, t1);
-		values.add(getValue(t0));
+		values.add(getValue(t0)); 
 		if (dt > 1) {
 			values.add(getValue(t1 - 1));
-		}
-
-		if (getInterpolationMode() == InterpolationMode.NEAREST) {
-			// Problem: would have to set the timestamp between the support points
-			throw new UnsupportedOperationException("Case InterpolationMode.NEAREST is not yet implemented for getMax");
 		}
 
 		// result values.
@@ -229,10 +232,21 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 				q = value.getQuality();
 			}
 		}
+		SampledValue result = new SampledValue(new FloatValue(max), t, q);
 
-		return new SampledValue(new FloatValue(max), t, q);
+		if (getInterpolationMode() == InterpolationMode.NEAREST) {
+			// Problem: would have to set the timestamp between the support points
+//			throw new UnsupportedOperationException("Case InterpolationMode.NEAREST is not yet implemented for getMax");
+			SampledValue previous = getPreviousValue(t);
+			if (previous != null && previous.getQuality() == Quality.GOOD) {
+				// might cause an overflow... not relevant for real timestamps, though
+				long maxStamp = Math.max(t0, (t + previous.getTimestamp())/2 + 1);  
+				result = getValue(maxStamp);
+			}
+		}
+		return result;
 	}
-
+	
 	@Override
 	public synchronized SampledValue getMin(long t0, long t1) {
 		final FloatTreeTimeSeries f = new FloatTreeTimeSeries(this);
@@ -246,6 +260,7 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 	 * Sets the values of the result such that the resulting function is a
 	 * point-wise absolute magnitude copy of this.
 	 */
+	// XXX result is both argument and return value
 	private FloatTimeSeries getAbsoluteLinear(final FloatTimeSeries result) {
 		result.setInterpolationMode(InterpolationMode.LINEAR);
 		SampledValue lastValue = getValues().first();
@@ -579,6 +594,11 @@ public class FloatTreeTimeSeries extends TreeTimeSeries implements FloatTimeSeri
 		currentValue = currentValue/nrCurrentElements;
 		newValues.add(new SampledValue(new FloatValue(currentValue), lastTs, sv.getQuality()));
 		
+	}
+	
+	private final static SampledValue getValueSecure(ReadOnlyTimeSeries schedule, long t) {
+		final SampledValue v = schedule.getValue(t);
+		return (v != null ? v : new SampledValue(new FloatValue(Float.NaN), t, Quality.BAD));
 	}
 	
 }

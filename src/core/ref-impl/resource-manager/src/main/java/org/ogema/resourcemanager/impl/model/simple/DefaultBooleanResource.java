@@ -18,9 +18,13 @@ package org.ogema.resourcemanager.impl.model.simple;
 import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.recordeddata.RecordedData;
+import org.ogema.core.resourcemanager.AccessMode;
+import org.ogema.core.resourcemanager.ResourceAccessException;
+import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.resourcemanager.impl.model.schedule.HistoricalSchedule;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
+import org.ogema.resourcetree.SimpleResourceData;
 
 /**
  * 
@@ -37,16 +41,23 @@ public class DefaultBooleanResource extends SingleValueResourceBase implements B
 		checkReadPermission();
 		return getEl().getData().getBoolean();
 	}
-
+	
 	@Override
 	public boolean setValue(boolean value) {
-		if (!exists() || !hasWriteAccess()) {
-			return false;
+		resMan.lockRead();
+		try {
+			final VirtualTreeElement el = getEl();
+			if (el.isVirtual() || getAccessModeInternal() == AccessMode.READ_ONLY) {
+				return false;
+			}
+			checkWritePermission();
+			final SimpleResourceData data = el.getData();
+			boolean changed = value != data.getBoolean();
+			data.setBoolean(value);
+			handleResourceUpdateInternal(changed);
+		} finally {
+			resMan.unlockRead();
 		}
-		checkWritePermission();
-		boolean changed = value != getTreeElement().getData().getBoolean();
-		getTreeElement().getData().setBoolean(value);
-		handleResourceUpdate(changed);
 		return true;
 	}
 
@@ -69,6 +80,21 @@ public class DefaultBooleanResource extends SingleValueResourceBase implements B
 	@Override
 	public AbsoluteSchedule historicalData() {
 		return getSubResource(HistoricalSchedule.PATH_IDENTIFIER, AbsoluteSchedule.class);
+	}
+	
+	@Override
+	public boolean getAndSet(final boolean value) throws VirtualResourceException, SecurityException, ResourceAccessException {
+		if (!exists())
+			throw new VirtualResourceException("Resource " + path + " is virtual, cannot set value");
+		checkWriteAccess();
+		resMan.lockWrite(); 
+		try {
+			final boolean val = getValue();
+			setValue(value);
+			return val;
+		} finally {
+			resMan.unlockWrite();
+		}
 	}
 
 }

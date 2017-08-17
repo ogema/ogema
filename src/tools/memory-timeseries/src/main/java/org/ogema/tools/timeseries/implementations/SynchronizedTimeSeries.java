@@ -16,6 +16,7 @@
 package org.ogema.tools.timeseries.implementations;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
@@ -169,7 +170,7 @@ public class SynchronizedTimeSeries implements MemoryTimeSeries {
 	}
 
 	@Override
-	public InterpolationMode getInterpolationMode() {
+	public synchronized InterpolationMode getInterpolationMode() {
 		return m_schedule.getInterpolationMode();
 	}
 
@@ -205,8 +206,43 @@ public class SynchronizedTimeSeries implements MemoryTimeSeries {
 	}
 
 	@Override
-	public SampledValue getValueSecure(long t) {
+	public synchronized SampledValue getValueSecure(long t) {
 		return m_schedule.getValueSecure(t);
+	}
+	
+	@Override
+	public synchronized SampledValue getPreviousValue(long time) {
+		return m_schedule.getPreviousValue(time);
+	}
+
+	@Override
+	public synchronized boolean isEmpty() {
+		return m_schedule.isEmpty();
+	}
+
+	@Override
+	public synchronized boolean isEmpty(long startTime, long endTime) {
+		return m_schedule.isEmpty(startTime, endTime);
+	}
+
+	@Override
+	public synchronized int size() {
+		return m_schedule.size();
+	}
+
+	@Override
+	public synchronized int size(long startTime, long endTime) {
+		return m_schedule.size(startTime, endTime);
+	}
+
+	@Override
+	public synchronized Iterator<SampledValue> iterator() {
+		return m_schedule.iterator();
+	}
+
+	@Override
+	public synchronized Iterator<SampledValue> iterator(long startTime, long endTime) {
+		return m_schedule.iterator(startTime, endTime);
 	}
 
 }

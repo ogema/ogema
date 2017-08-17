@@ -296,4 +296,47 @@ public interface AccessManager {
 	 * @return true, if the user is not permitted to access any app or false, otherwise.
 	 */
 	public boolean isNoAppPermitted(String user);
+
+	/**
+	 * Gets if the user has access to the web interfaces of any app.
+	 *
+	 * @param user
+	 *            the user name.
+	 * @return true, if the user is not permitted to access any app or false, otherwise.
+	 */
+
+	final public static String OWNER_NAME = "fadmin";
+	final public static String SYSTEM_ID = "system";
+
+	/**
+	 * Gets all linear ancestors of the specified user, if the framework support hierarchical multi-cleint user
+	 * management as specified in security level 3 of Ogema.
+	 * 
+	 * @param userName
+	 *            Name of the user
+	 * @return List of all linear ancestors
+	 */
+	public List<String> getParents(String userName);
+
+	/**
+	 * Gets the name of the user, the current thread runs in its security scope.
+	 * 
+	 * @return The name String of the current user.
+	 */
+	public String getCurrentUser();
+
+	/**
+	 * Sets the user specified with its user name as the user, the current thread runs in its security scope.
+	 * 
+	 * @throws SecurityException
+	 *             if the calling context doesn't possess the org.ogema.accesscontrol.AdminPermission with the action
+	 *             "system"
+	 */
+	public void setCurrentUser(String userName);
+
+	/**
+	 * Resets the the current user to the initial value.
+	 */
+	public void removeCurrentUser();
+
 }

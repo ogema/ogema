@@ -15,6 +15,7 @@
  */
 package org.ogema.application.manager.impl;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -24,6 +25,8 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
+import org.ogema.core.administration.AdminApplication;
+import org.ogema.core.administration.RegisteredTimer;
 import org.ogema.core.application.Timer;
 import org.ogema.core.application.TimerListener;
 import org.ogema.exam.OsgiAppTestBase;
@@ -91,5 +94,27 @@ public class TimerTest extends OsgiAppTestBase {
 			counter.wait(200);
 		}
 		Assert.assertTrue("listener not called", counter.get() > c1);
+	}
+	
+	@Test
+	public void timerIsRemovedUponDestruction() throws InterruptedException {
+		AdminApplication app = getApplicationManager().getAdministrationManager().getAppById(getApplicationManager().getAppID().getIDString());
+		List<RegisteredTimer> timers = app.getTimers();
+		for (RegisteredTimer t: timers)
+			t.getTimer().destroy();
+		Assert.assertEquals("Timer removal failed",0, app.getTimers().size());
+		final CountDownLatch cdl = new CountDownLatch(1);
+		final TimerListener tl = new TimerListener() {
+			
+			@Override
+			public void timerElapsed(Timer timer) {
+				cdl.countDown();
+			}
+		};
+		Timer t = getApplicationManager().createTimer(100, tl);
+		Assert.assertEquals("Unexpected number of timers",1, app.getTimers().size());
+		Assert.assertTrue("Missing timer callback", cdl.await(5, TimeUnit.SECONDS));
+		t.destroy();
+		Assert.assertEquals("Timer removal failed",0, app.getTimers().size());
 	}
 }

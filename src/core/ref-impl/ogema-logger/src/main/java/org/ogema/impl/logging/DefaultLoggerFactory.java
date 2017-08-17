@@ -32,7 +32,9 @@ import ch.qos.logback.core.util.StatusPrinter;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.security.AccessController;
 import java.security.Permission;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -49,6 +51,7 @@ import org.ogema.core.logging.OgemaLogger;
  * 
  * @author jlapp
  */
+// TODO SocketAppender should be closed explicitly (maybe also others?) - https://logback.qos.ch/manual/appenders.html
 public enum DefaultLoggerFactory implements LoggerFactory {
 
 	// this singleton class is implemented as an enum.
@@ -65,6 +68,7 @@ public enum DefaultLoggerFactory implements LoggerFactory {
 	final protected Appender<ILoggingEvent> fileOutput;
 	final protected Appender<ILoggingEvent> cacheOutput;
 	final protected Appender<ILoggingEvent> consoleOutput;
+	final protected List<Appender<ILoggingEvent>> addOnAppenders; 
 	final protected LoggerContext context;
 
 	public static DefaultLoggerFactory getLoggerFactory() {
@@ -73,92 +77,148 @@ public enum DefaultLoggerFactory implements LoggerFactory {
 
 	@SuppressWarnings({ "unchecked", "rawtypes", "UseOfSystemOutOrSystemErr" })
 	private DefaultLoggerFactory() {
-		String configMessage = "logging configured with logback defaults";
-
+		final StringBuilder configMessage = new StringBuilder();
+		configMessage.append("logging configured with logback defaults");
 		context = new LoggerContext();
-		URL defaultConfig = getClass().getResource("/logback.xml");
-		String userConfig = System.getProperty("logback.configurationFile", "config/logback.xml");
+		AccessController.doPrivileged(new PrivilegedAction<Void>() {
 
-		// read configuration from file or, if file doesn't exist, from bundle default configuration.
-		try {
-			if (new File(userConfig).exists()) {
-				JoranConfigurator configurator = new JoranConfigurator();
-				configurator.setContext(context);
-				context.reset();
-				configurator.doConfigure(userConfig);
-				configMessage = "logging configured from file " + userConfig;
+			@Override
+			public Void run() {
+				final URL defaultConfig = getClass().getResource("/logback.xml");
+				final String userConfig =  System.getProperty("logback.configurationFile", "config/logback.xml");
+				final boolean configFileExists = new File(userConfig).exists();
+			// read configuration from file or, if file doesn't exist, from bundle default configuration.
+				try {
+					if (configFileExists) {
+						JoranConfigurator configurator = new JoranConfigurator();
+						configurator.setContext(context);
+						context.reset();
+						configurator.doConfigure(userConfig);
+						configMessage.append("logging configured from file ").append(userConfig);
+					}
+					else {
+						if (defaultConfig != null) {
+							JoranConfigurator configurator = new JoranConfigurator();
+							configurator.setContext(context);
+							context.reset();
+							configurator.doConfigure(defaultConfig);
+							configMessage.append("logging configured from OGEMA reference implementation bundle");
+						}
+						else {
+							// work on logback default config, setup fallback appenders below
+						}
+					}
+				} catch (JoranException je) {
+					// StatusPrinter will handle this
+				} finally {
+					StatusPrinter.printInCaseOfErrorsOrWarnings(context);
+				}
+				return null;
 			}
-			else {
-				if (defaultConfig != null) {
-					JoranConfigurator configurator = new JoranConfigurator();
-					configurator.setContext(context);
-					context.reset();
-					configurator.doConfigure(defaultConfig);
-					configMessage = "logging configured from OGEMA reference implementation bundle";
+		});
+		final Logger root = context.getLogger("ROOT");
+		final StringBuilder error = new StringBuilder();
+
+		String additionalAppenders = AccessController.doPrivileged(new PrivilegedAction<String>() {
+
+			@Override
+			public String run() {
+				return System.getProperty("org.ogema.logging.appenders");
+			}
+		});
+		final List<Appender<ILoggingEvent>> addOnAppenders =new ArrayList<>();
+		if (additionalAppenders != null) {
+			for (String appender: additionalAppenders.split(",")) {
+				appender = appender.trim().toUpperCase();
+				if (appender.isEmpty()) {
+					System.err.println("Invalid appender: empty");
+					continue;
+				}
+				Appender<ILoggingEvent> appenderObj = root.getAppender(appender);
+				if (appenderObj == null) { 
+					System.err.println("Specified logger appender " + appender +" does not exist -> this will likely lead to wrong configurations");
+					continue;
+				}
+				root.detachAppender(appenderObj);
+				addOnAppenders.add(appenderObj);
+			}
+		}
+		this.addOnAppenders = (!addOnAppenders.isEmpty() ? Collections.unmodifiableList(addOnAppenders) : null);
+
+		consoleOutput = AccessController.doPrivileged(new PrivilegedAction<Appender<ILoggingEvent>>() {
+
+			@Override
+			public Appender<ILoggingEvent> run() {
+				final Appender<ILoggingEvent> consoleOutput;
+				if (root.getAppender("CONSOLE") != null) {
+					consoleOutput = root.getAppender("CONSOLE");
+					root.detachAppender(consoleOutput);
 				}
 				else {
-					// work on logback default config, setup fallback appenders below
+					ConsoleAppender<ILoggingEvent> app = new ConsoleAppender<>();
+					PatternLayout pl = new PatternLayout();
+					pl.setPattern("%d{HH:mm:ss.SSS} %logger{36} [%thread] %-5level - %msg%n");
+					pl.setContext(context);
+					pl.start();
+					app.setName("CONSOLE");
+					app.setLayout(pl);
+					app.setContext(context);
+					app.start();
+					root.addAppender(app);
+					consoleOutput = app;
+					error.append("ERROR: broken logging configuration: CONSOLE appender not found\n");
 				}
+				return consoleOutput;
 			}
-		} catch (JoranException je) {
-			// StatusPrinter will handle this
-		} finally {
-			StatusPrinter.printInCaseOfErrorsOrWarnings(context);
-		}
+		});
+		fileOutput = AccessController.doPrivileged(new PrivilegedAction<Appender<ILoggingEvent>>() {
 
-		Logger root = context.getLogger("ROOT");
-		String error = "";
+			@Override
+			public Appender<ILoggingEvent> run() {
+				final Appender<ILoggingEvent> fileOutput;
 
-		if (root.getAppender("CONSOLE") != null) {
-			consoleOutput = root.getAppender("CONSOLE");
-			root.detachAppender(consoleOutput);
-		}
-		else {
-			ConsoleAppender<ILoggingEvent> app = new ConsoleAppender<>();
-			PatternLayout pl = new PatternLayout();
-			pl.setPattern("%d{HH:mm:ss.SSS} %logger{36} [%thread] %-5level - %msg%n");
-			pl.setContext(context);
-			pl.start();
-			app.setName("CONSOLE");
-			app.setLayout(pl);
-			app.setContext(context);
-			app.start();
-			root.addAppender(app);
-			consoleOutput = app;
-			error += "ERROR: broken logging configuration: CONSOLE appender not found\n";
-		}
+				if (root.getAppender("FILE") != null) {
+					fileOutput = root.getAppender("FILE");
+					root.detachAppender(fileOutput);
+				}
+				else {
+					fileOutput = new NOPAppender<>();
+					fileOutput.setName("FILE");
+					fileOutput.setContext(context);
+					fileOutput.start();
+					root.addAppender(fileOutput);
+					error.append("ERROR: broken logging configuration: FILE appender not found\n");
+				}
+				return fileOutput;
+			}
+		});
 
-		if (root.getAppender("FILE") != null) {
-			fileOutput = root.getAppender("FILE");
-			root.detachAppender(fileOutput);
-		}
-		else {
-			fileOutput = new NOPAppender<>();
-			fileOutput.setName("FILE");
-			fileOutput.setContext(context);
-			fileOutput.start();
-			root.addAppender(fileOutput);
-			error += "ERROR: broken logging configuration: FILE appender not found\n";
-		}
+		cacheOutput = AccessController.doPrivileged(new PrivilegedAction<Appender<ILoggingEvent>>() {
 
-		if (root.getAppender("CACHE") != null) {
-			cacheOutput = root.getAppender("CACHE");
-			root.detachAppender(cacheOutput);
-		}
-		else {
-			cacheOutput = new NOPAppender<>();
-			cacheOutput.setName("CACHE");
-			cacheOutput.setContext(context);
-			cacheOutput.start();
-			root.addAppender(cacheOutput);
-			error += "ERROR: broken logging configuration: CACHE appender not found\n";
-		}
-
-		if (!error.isEmpty()) {
-			context.getLogger(DEFAULTLOGGERNAME).error(error);
+			@Override
+			public Appender<ILoggingEvent> run() {
+				final Appender<ILoggingEvent> cacheOutput;
+				if (root.getAppender("CACHE") != null) {
+					cacheOutput = root.getAppender("CACHE");
+					root.detachAppender(cacheOutput);
+				}
+				else {
+					cacheOutput = new NOPAppender<>();
+					cacheOutput.setName("CACHE");
+					cacheOutput.setContext(context);
+					cacheOutput.start();
+					root.addAppender(cacheOutput);
+					error.append("ERROR: broken logging configuration: CACHE appender not found\n");
+				}
+				return cacheOutput;
+			}
+		});
+		final String errorStr = error.toString();
+		if (!errorStr.isEmpty()) {
+			context.getLogger(DEFAULTLOGGERNAME).error(errorStr);
 			System.err.println(error);
 		}
-		context.getLogger(DEFAULTLOGGERNAME).info(configMessage);
+		context.getLogger(DEFAULTLOGGERNAME).info(configMessage.toString());
 	}
 
 	public List<AdminLogger> getAdminLoggers() {
@@ -255,7 +315,7 @@ public enum DefaultLoggerFactory implements LoggerFactory {
 			RollingFileAppender<?> rfa = (RollingFileAppender) fileOutput;
 			RollingPolicy rp = rfa.getRollingPolicy();
 			if (rp instanceof HousekeepingPolicy) {
-				((HousekeepingPolicy) rp).setMaxTotalSize(size);
+				((HousekeepingPolicy) rp).setMaxTotalSizeLong(size);
 			}
 		}
 		else {

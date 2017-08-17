@@ -15,6 +15,9 @@
  */
 package org.ogema.core.model.schedule;
 
+import java.util.Iterator;
+
+import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.model.ValueResource;
 import org.ogema.core.timeseries.TimeSeries;
 
@@ -27,4 +30,31 @@ import org.ogema.core.timeseries.TimeSeries;
  * of values a schedule accepts is defined by the type of the simple resource the schedule is attached to. <br>
  */
 public interface Schedule extends ValueResource, TimeSeries {
+	
+	/**
+	 * Get an iterator over all points in the schedule.<br>
+	 * This iterator does not throw ConcurrentModificationException. If the schedule is changed during iteration, 
+	 * changes may or may not be reflected by the iterator. The returned values are always ordered chronologically,
+	 * though. <br>
+	 * The iterator does not support the <tt>remove</tt>-method.
+	 * @return
+	 */
+	@Override
+	Iterator<SampledValue> iterator();
+	
+	/**
+	 * Get an iterator over all points in the requested interval
+	 * This iterator does not throw ConcurrentModificationException. If the schedule is changed during iteration, 
+	 * changes may or may not be reflected by the iterator. The returned values are always ordered chronologically,
+	 * though. <br>
+	 * The iterator does not support the <tt>remove</tt>-method.
+	 * @param startTime 
+	 * 			Start time of the interval. Inclusive. 
+	 * @param endTime 
+	 * 			End time of the interval. Inclusive.
+	 * @return
+	 */
+	@Override
+	Iterator<SampledValue> iterator(long startTime, long endTime);
+	
 }

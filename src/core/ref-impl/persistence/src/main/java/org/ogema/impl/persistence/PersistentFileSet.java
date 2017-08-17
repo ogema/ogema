@@ -93,8 +93,9 @@ class PersistentFileSet {
 		File f = new File(dir, name1);
 		if (f.length() == 0) {
 			if (Configuration.LOGGING)
-				logger.debug("Deleting file: " + name1);
-			f.delete();
+				logger.debug("Deleting file: {}", name1);
+			if (!f.delete())
+				logger.info("File could not be deleted: " + f.getName());
 		}
 	}
 
@@ -121,14 +122,16 @@ class PersistentFileSet {
 		if (fileNew != null) {
 			fileNew.setWritable(true);
 			if (Configuration.LOGGING)
-				logger.debug("Deleting file: " + fileNew.getName());
-			fileNew.delete();
+				logger.debug("Deleting file: ", fileNew.getName());
+			if (!fileNew.delete())
+				logger.info("File could not be deleted: " + fileNew.getName());
 		}
 		if (fileOld != null) {
 			fileOld.setWritable(true);
 			if (Configuration.LOGGING)
-				logger.debug("Deleting file: " + fileOld.getName());
-			fileOld.delete();
+				logger.debug("Deleting file: {}", fileOld.getName());
+			if (!fileOld.delete())
+				logger.info("File could not be deleted: " + fileOld.getName());
 		}
 	}
 
@@ -136,16 +139,19 @@ class PersistentFileSet {
 		System.gc();
 		if (fileNew != null) {
 			fileNew.setWritable(true);
-			if (fileNew.length() == 0)
-				fileNew.delete();
+			if (fileNew.length() == 0) {
+				if (!fileNew.delete())
+					logger.info("File could not be deleted: " + fileNew.getName());
+			}
 			else {
 				fileNew.renameTo(new File(directory, "backup_" + fileNew.getName() + System.currentTimeMillis()));
 			}
 		}
 		if (fileOld != null) {
 			fileOld.setWritable(true);
-			if (fileOld.length() != 0) {
-				fileOld.delete();
+			if (fileOld.length() == 0) {
+				if (!fileOld.delete())
+					logger.info("File could not be deleted: " + fileOld.getName());
 			}
 			else {
 				fileOld.renameTo(new File(directory, "backup_" + fileOld.getName() + System.currentTimeMillis()));
@@ -156,8 +162,9 @@ class PersistentFileSet {
 
 	public void shiftB() {
 		if (Configuration.LOGGING)
-			logger.debug("Deleting file: " + fileNew.getName());
-		fileNew.delete();
+			logger.info("Deleting file: " + fileNew.getName());
+		if (!fileNew.delete())
+			logger.info("File could not be deleted: " + fileNew.getName());
 		fileNew = fileOld;
 		fileOld = null;
 	}
@@ -169,7 +176,7 @@ class PersistentFileSet {
 
 	public void shiftF() {
 		if (Configuration.LOGGING)
-			logger.debug("Create new file: " + namePrefix);
+			logger.debug("Create new file: {}",namePrefix);
 		File newFile = new File(directory, namePrefix + String.valueOf(nameSuffix));
 		nameSuffix++;
 		/*
@@ -177,8 +184,9 @@ class PersistentFileSet {
 		 */
 		if (fileOld != null) {
 			if (Configuration.LOGGING)
-				logger.debug("Deleting file: " + fileOld.getName());
-			fileOld.delete();
+				logger.debug("Deleting file: {}", fileOld.getName());
+			if (!fileOld.delete())
+				logger.info("File could not be deleted: " + fileOld.getName());
 		}
 		fileOld = fileNew;
 		fileNew = newFile;

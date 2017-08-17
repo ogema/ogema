@@ -25,7 +25,7 @@ import org.ogema.hardwaremanager.api.NativeAccess;
  */
 public class DummyNativeAccess implements NativeAccess {
 
-	private boolean exit;
+	private volatile boolean exit;
 
 	@Override
 	public Container[] getHandles() {
@@ -43,7 +43,8 @@ public class DummyNativeAccess implements NativeAccess {
 			}
 			exit = false;
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+//			e.printStackTrace();
+			Thread.currentThread().interrupt();
 		}
 		return container;
 	}

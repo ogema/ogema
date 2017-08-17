@@ -38,6 +38,11 @@ public interface DataRecorder {
 	RecordedDataStorage createRecordedDataStorage(String id, RecordedDataConfiguration configuration)
 			throws DataRecorderException;
 
+	/**
+	 * @param id
+	 * @return
+	 *    null, if not found
+	 */
 	RecordedDataStorage getRecordedDataStorage(String id);
 
 	/**

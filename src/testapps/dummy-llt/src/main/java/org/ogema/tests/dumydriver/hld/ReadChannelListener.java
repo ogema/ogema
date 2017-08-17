@@ -62,10 +62,11 @@ public class ReadChannelListener implements ChannelEventListener, ThreadControl 
 				}
 				SampledValue val = container.getSampledValue();
 				long value = val.getValue().getLongValue();
+				value=System.currentTimeMillis();
 				int jitterV = (int) (value - lastRead) - samplingRate;
 				TimeResource time = room.getSubResource("read");
 				IntegerResource jitter = time.getSubResource("jitter");
-				time.setValue(System.currentTimeMillis() - value);
+				time.setValue(value - lastRead);
 				jitter.setValue(jitterV);
 				lastRead = value;
 			}

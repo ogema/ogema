@@ -135,7 +135,8 @@ public class Device {
 	public void removeChannel(String channelAddress) {
 		Channel channel = channels.get(channelAddress);
 		try {
-			channel.removeUpdateListener();
+			if (!channelAddress.split(":")[1].equals("COMMAND"))
+				channel.removeUpdateListener();
 		} catch (UnsupportedOperationException | IOException e) {
 			e.printStackTrace();
 		}

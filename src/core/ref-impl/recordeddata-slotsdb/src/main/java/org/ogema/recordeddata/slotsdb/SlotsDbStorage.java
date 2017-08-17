@@ -22,6 +22,8 @@ import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.ogema.core.channelmanager.measurements.IllegalConversionException;
 import org.ogema.core.channelmanager.measurements.Quality;
@@ -38,10 +40,13 @@ import org.slf4j.LoggerFactory;
 
 class SlotsDbStorage implements RecordedDataStorage {
 
-	private volatile RecordedDataConfiguration configuration;
+	// guarded by lock
+	private RecordedDataConfiguration configuration;
 	private final String id;
 	private final SlotsDb recorder;
-
+	
+	private final ReadWriteLock lock = new ReentrantReadWriteLock();
+	
 	private final static Logger logger = LoggerFactory.getLogger(SlotsDbStorage.class);
 
 	public SlotsDbStorage(String id, RecordedDataConfiguration configuration, SlotsDb recorder) {
@@ -63,17 +68,21 @@ class SlotsDbStorage implements RecordedDataStorage {
 
 				@Override
 				public Void run() throws Exception {
-
+					lock.writeLock().lock();
 					try {
 						if (configuration != null) {
-							recorder.proxy.appendValue(id, value.getValue().getDoubleValue(), value.getTimestamp(),
+							recorder.getProxy().appendValue(id, value.getValue().getDoubleValue(), value.getTimestamp(),
 									(byte) value.getQuality().getQuality(), configuration);
 						}
-
 					} catch (IOException e) {
 						logger.error("", e);
 					} catch (IllegalConversionException e) {
 						logger.error("", e);
+					} catch (NullPointerException e) {
+						logger.error("NPE in SlotsdbStorage - recorder: {}, proxy: {}, id: {}, config: {}, value: {}", 
+								recorder, (recorder!=null? recorder.getProxy(): null), id, configuration, value,e);
+					} finally {
+						lock.writeLock().unlock();
 					}
 
 					return null;
@@ -94,12 +103,12 @@ class SlotsDbStorage implements RecordedDataStorage {
 
 				@Override
 				public Void run() throws Exception {
-
+					lock.writeLock().lock();
 					try {
 						if (configuration != null) {
 
 							for (SampledValue value : values) {
-								recorder.proxy.appendValue(id, value.getValue().getDoubleValue(), value.getTimestamp(),
+								recorder.getProxy().appendValue(id, value.getValue().getDoubleValue(), value.getTimestamp(),
 										(byte) value.getQuality().getQuality(), configuration);
 							}
 						}
@@ -107,8 +116,9 @@ class SlotsDbStorage implements RecordedDataStorage {
 						logger.error("", e);
 					} catch (IllegalConversionException e) {
 						logger.error("", e);
+					} finally {
+						lock.writeLock().unlock();
 					}
-
 					return null;
 				}
 
@@ -129,15 +139,18 @@ class SlotsDbStorage implements RecordedDataStorage {
 						public List<SampledValue> run() throws Exception {
 
 							List<SampledValue> records = null;
+							lock.readLock().lock();
 							try {
 								// long storageInterval = configuration.getFixedInterval();
-//								records = recorder.proxy.read(id, startTime, System.currentTimeMillis(), configuration);
+//								records = recorder.getProxy().read(id, startTime, System.currentTimeMillis(), configuration);
 								if (recorder.clock != null)
-									records = recorder.proxy.read(id, startTime, recorder.clock.getExecutionTime(), configuration);
+									records = recorder.getProxy().read(id, startTime, recorder.clock.getExecutionTime(), configuration);
 								else // only relevant for tests
-									records = recorder.proxy.read(id, startTime,  System.currentTimeMillis(), configuration);
+									records = recorder.getProxy().read(id, startTime,  System.currentTimeMillis(), configuration);
 							} catch (IOException e) {
 								logger.error("", e);
+							} finally {
+								lock.readLock().unlock();
 							}
 
 							return records;
@@ -165,10 +178,13 @@ class SlotsDbStorage implements RecordedDataStorage {
 							// --------------------------
 
 							List<SampledValue> records = null;
+							lock.readLock().lock();
 							try {
-								records = recorder.proxy.read(id, startTime, endTime - 1, configuration);
+								records = recorder.getProxy().read(id, startTime, endTime - 1, configuration);
 							} catch (IOException e) {
 								logger.error("", e);
+							} finally {
+								lock.readLock().unlock();
 							}
 							return records;
 
@@ -195,12 +211,14 @@ class SlotsDbStorage implements RecordedDataStorage {
 				public SampledValue run() throws Exception {
 
 					// ------
-
+					lock.readLock().lock();
 					try {
-						return recorder.proxy.read(id, timestamp, configuration);
+						return recorder.getProxy().read(id, timestamp, configuration);
 					} catch (IOException e) {
 						logger.error("", e);
 						return null;
+					} finally {
+						lock.readLock().unlock();
 					}
 
 					// ------
@@ -215,6 +233,7 @@ class SlotsDbStorage implements RecordedDataStorage {
 
 	}
 
+	// TODO more efficient implementation; might as well return an iterator?
 	@Override
 	public List<SampledValue> getValues(final long startTime, final long endTime, final long intervalSize,
 			final ReductionMode mode) {
@@ -245,8 +264,14 @@ class SlotsDbStorage implements RecordedDataStorage {
 								// Compromise: When the requested time period covers multiple days and therefore
 								// multiple log files, then a
 								// separate read data processing is performed for each file.
-								List<SampledValue> loggedValuesRaw = getLoggedValues(startTime, endTimeMinusOne);
-								List<SampledValue> loggedValues = removeQualityBad(loggedValuesRaw);
+								final List<SampledValue> loggedValues;
+								lock.readLock().lock();
+								try {
+									loggedValues = getLoggedValues(startTime, endTimeMinusOne);
+								} finally {
+									lock.readLock().unlock();
+								}
+//								List<SampledValue> loggedValues = removeQualityBad(loggedValuesRaw);
 
 								if (loggedValues.isEmpty()) {
 									// return an empty list since there are no logged values, so it doesn't make sense
@@ -255,11 +280,11 @@ class SlotsDbStorage implements RecordedDataStorage {
 								}
 
 								if (mode.equals(ReductionMode.NONE)) {
-									return loggedValues;
+									return removeQualityBad(loggedValues);
 								}
 
 								List<Interval> intervals = generateIntervals(startTime, endTimeMinusOne, intervalSize);
-								returnValues = generateReducedData(intervals, loggedValues, mode);
+								returnValues = generateReducedData(intervals, loggedValues.iterator(), mode);
 
 							}
 
@@ -284,9 +309,9 @@ class SlotsDbStorage implements RecordedDataStorage {
 	 * 
 	 * @return List of intervals which cover the entire period
 	 */
-	private List<Interval> generateIntervals(long periodStart, long periodEnd, long intervalSize) {
+	private static List<Interval> generateIntervals(long periodStart, long periodEnd, long intervalSize) {
 
-		List<Interval> intervals = new ArrayList<Interval>();
+		final List<Interval> intervals = new ArrayList<Interval>();
 
 		long start = periodStart;
 		long end;
@@ -302,10 +327,9 @@ class SlotsDbStorage implements RecordedDataStorage {
 		return intervals;
 	}
 
-	private List<SampledValue> generateReducedData(List<Interval> intervals, List<SampledValue> loggedValues,
-			ReductionMode mode) {
+	private static List<SampledValue> generateReducedData(List<Interval> intervals, List<SampledValue> loggedValues, ReductionMode mode) {
 
-		List<SampledValue> returnValues = new ArrayList<SampledValue>();
+		final List<SampledValue> returnValues = new ArrayList<SampledValue>();
 		List<SampledValue> reducedValues;
 
 		ReductionFactory reductionFactory = new ReductionFactory();
@@ -325,7 +349,8 @@ class SlotsDbStorage implements RecordedDataStorage {
 
 			while (timestamp >= interval.getStart() && timestamp <= interval.getEnd()) {
 
-				interval.add(loggedValue);
+				if (loggedValue.getQuality() == Quality.GOOD)
+					interval.add(loggedValue);
 
 				if (index < maxIndex) {
 					index++;
@@ -347,10 +372,61 @@ class SlotsDbStorage implements RecordedDataStorage {
 
 		return returnValues;
 	}
+	
+	// ignores bad quality values
+	private static List<SampledValue> generateReducedData(List<Interval> intervals, Iterator<SampledValue> loggedValues, ReductionMode mode) {
+
+		final List<SampledValue> returnValues = new ArrayList<SampledValue>();
+		if (!loggedValues.hasNext())
+			return returnValues;
+		List<SampledValue> reducedValues;
+
+		final ReductionFactory reductionFactory = new ReductionFactory();
+		final Reduction reduction = reductionFactory.getReduction(mode);
+
+		
+		SampledValue loggedValue = loggedValues.next();
+		long timestamp = loggedValue.getTimestamp();
+
+		Iterator<Interval> it = intervals.iterator();
+		Interval interval;
+		boolean done = false;
+		while (it.hasNext()) {
+
+			interval = it.next();
+			
+			while (   timestamp >= interval.getStart() && timestamp <= interval.getEnd()) {
+
+				if (loggedValue.getQuality() == Quality.GOOD)
+					interval.add(loggedValue);
+				if (!loggedValues.hasNext()) {
+					done = true;
+					break;
+				}
+				loggedValue = loggedValues.next();
+				timestamp = loggedValue.getTimestamp();
+				
+			}
+
+			reducedValues = reduction.performReduction(interval.getValues(), interval.getStart());
+			returnValues.addAll(reducedValues);
+			if (done) 
+				break;
+		}
+		while (it.hasNext()) {
+			interval = it.next();
+			reducedValues = reduction.performReduction(interval.getValues(), interval.getStart());
+			returnValues.addAll(reducedValues);
+		}
+
+		// debug_printIntervals(intervals);
+
+		return returnValues;
+	}
 
 	
 	@SuppressWarnings("unused")
-	private void debug_printIntervals(List<Interval> intervals) {
+	private static void debug_printIntervals(List<Interval> intervals) {
 
 		Iterator<Interval> it2 = intervals.iterator();
 		Interval interval2;
@@ -363,15 +439,14 @@ class SlotsDbStorage implements RecordedDataStorage {
 		}
 	}
 
-	private boolean validateArguments(long startTime, long endTime, long interval) {
-
+	private static boolean validateArguments(long startTime, long endTime, long interval) {
 		boolean result = false;
 
 		if (startTime > endTime) {
 			logger.warn("Invalid parameters: Start timestamp musst be smaller than end timestamp");
 		}
 		else if (interval < 0) {
-			logger.warn("Invalid arguments: interval musst be > 0");
+			logger.warn("Invalid arguments: interval must be > 0");
 		}
 		else {
 			result = true;
@@ -389,7 +464,7 @@ class SlotsDbStorage implements RecordedDataStorage {
 	 */
 	private List<SampledValue> getLoggedValues(long startTime, long endTime) {
 		try {
-			List<SampledValue> loggedValues = recorder.proxy.read(id, startTime, endTime, configuration);
+			List<SampledValue> loggedValues = recorder.getProxy().read(id, startTime, endTime, configuration);
 			return loggedValues;
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -397,7 +472,7 @@ class SlotsDbStorage implements RecordedDataStorage {
 		}
 	}
 
-	private List<SampledValue> removeQualityBad(List<SampledValue> toReduce) {
+	private static List<SampledValue> removeQualityBad(List<SampledValue> toReduce) {
 		List<SampledValue> result = new ArrayList<SampledValue>();
 		for (SampledValue val : toReduce) {
 			if (val.getQuality() != Quality.BAD) {
@@ -414,10 +489,10 @@ class SlotsDbStorage implements RecordedDataStorage {
 
 	@Override
 	public void setConfiguration(RecordedDataConfiguration configuration) {
-
-		this.configuration = configuration;
+		lock.writeLock().lock();
 
 		try {
+			this.configuration = configuration;
 			AccessController.doPrivileged(new PrivilegedExceptionAction<Void>() {
 
 				@Override
@@ -435,6 +510,8 @@ class SlotsDbStorage implements RecordedDataStorage {
 			});
 		} catch (PrivilegedActionException e) {
 			logger.error("", e);
+		} finally {
+			lock.writeLock().unlock();
 		}
 
 	}
@@ -454,12 +531,14 @@ class SlotsDbStorage implements RecordedDataStorage {
 				public SampledValue run() throws Exception {
 
 					// ------
-
+					lock.readLock().lock();
 					try {
-						return recorder.proxy.readNextValue(id, time, configuration);
+						return recorder.getProxy().readNextValue(id, time, configuration);
 					} catch (IOException e) {
 						logger.error("", e);
 						return null;
+					} finally {
+						lock.readLock().unlock();
 					}
 
 					// ------
@@ -473,6 +552,36 @@ class SlotsDbStorage implements RecordedDataStorage {
 		}
 
 	}
+	
+	@Override
+	public SampledValue getPreviousValue(final long time) {
+		try {
+			return AccessController.doPrivileged(new PrivilegedExceptionAction<SampledValue>() {
+
+				@Override
+				public SampledValue run() throws Exception {
+
+					// ------
+					lock.readLock().lock();
+					try {
+						return recorder.getProxy().readPreviousValue(id, time, configuration);
+					} catch (IOException e) {
+						logger.error("", e);
+						return null;
+					} finally {
+						lock.readLock().unlock();
+					}
+
+					// ------
+				}
+
+			});
+
+		} catch (PrivilegedActionException e) {
+			logger.error("", e);
+			return null;
+		}
+	}
 
 	@Override
 	public Long getTimeOfLatestEntry() {
@@ -485,14 +594,62 @@ class SlotsDbStorage implements RecordedDataStorage {
 		return InterpolationMode.NONE;
 	}
 
+	@Override
+	public boolean isEmpty() {
+		return getNextValue(Long.MIN_VALUE) == null;
+	}
+
+	@Override
+	public boolean isEmpty(long startTime, long endTime) {
+		SampledValue sv = getNextValue(startTime);
+		return (sv == null || sv.getTimestamp() > endTime);
+	}
+
+	@Override
+	public int size() {
+		return size(Long.MIN_VALUE, Long.MAX_VALUE);
+	}
+
+	@Override
+	public int size(final long startTime, final long endTime) {
+		try {
+			return AccessController.doPrivileged(new PrivilegedExceptionAction<Integer>() {
+
+				@Override
+				public Integer run() throws Exception {
+					lock.readLock().lock();
+					try {
+						return recorder.getProxy().size(id, startTime, endTime);
+					} finally {
+						lock.readLock().unlock();
+					}
+				}
+
+			});
+
+		} catch (PrivilegedActionException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	@Override
+	public Iterator<SampledValue> iterator() {
+		return new SlotsDbIterator(id, recorder, lock);
+	}
+
+	@Override
+	public Iterator<SampledValue> iterator(long startTime, long endTime) {
+		return new SlotsDbIterator(id, recorder, lock, startTime, endTime);
+	}
+
 }
 
 class Interval {
 
-	List<SampledValue> values = new ArrayList<SampledValue>();
+	final List<SampledValue> values = new ArrayList<SampledValue>();
 
-	private long start;
-	private long end;
+	private final long start;
+	private final long end;
 
 	public Interval(long start, long end) {
 		this.start = start;

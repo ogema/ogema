@@ -16,7 +16,7 @@
 package org.ogema.core.channelmanager.measurements;
 
 /**
- * A Exception thrown if a requested (implicit) conversion between different
+ * An Exception thrown if a requested (implicit) conversion between different
  * types of values is not possible.
  */
 public class IllegalConversionException extends RuntimeException {

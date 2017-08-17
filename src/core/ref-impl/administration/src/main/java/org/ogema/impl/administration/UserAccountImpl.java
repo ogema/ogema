@@ -16,6 +16,7 @@
 package org.ogema.impl.administration;
 
 import java.util.Dictionary;
+import java.util.Objects;
 
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.PermissionManager;
@@ -24,12 +25,14 @@ import org.osgi.service.useradmin.User;
 
 public class UserAccountImpl implements UserAccount {
 
-	private String name;
-	private AccessManager accMngr;
-	User usr;
+	private final String name;
+	private final AccessManager accMngr;
+	final User usr;
 	// private PermissionManager permMngr;
 
 	public UserAccountImpl(String name, boolean isnatural, PermissionManager pMan) {
+		Objects.requireNonNull(name);
+		Objects.requireNonNull(pMan);
 		this.name = name;
 		this.accMngr = pMan.getAccessManager();
 		this.accMngr.createUser(name, null, isnatural);
@@ -37,7 +40,11 @@ public class UserAccountImpl implements UserAccount {
 		// this.permMngr = pMan;
 	}
 
+	@Deprecated
 	public UserAccountImpl() {
+		this.name = null;
+		this.accMngr = null;
+		this.usr = null;
 	}
 
 	@Override
@@ -57,11 +64,11 @@ public class UserAccountImpl implements UserAccount {
 		UserAccountImpl res;
 		AccessManager accm = pm.getAccessManager();
 		User user = (User) accm.getRole(name);
-		if (user == null) {
+		if (user != null) {
 			res = new UserAccountImpl(name, natural, pm);
 		}
 		else {
-			res = new UserAccountImpl();
+			throw new RuntimeException("No UserAccount could be created!");
 		}
 		return res;
 	}

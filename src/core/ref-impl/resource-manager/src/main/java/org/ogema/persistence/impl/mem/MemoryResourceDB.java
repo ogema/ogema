@@ -195,4 +195,10 @@ public class MemoryResourceDB implements ResourceDB {
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	@Override
+	public void doStorage() {
+		// TODO Auto-generated method stub
+		
+	}
 }

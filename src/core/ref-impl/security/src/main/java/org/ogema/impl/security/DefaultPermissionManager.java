@@ -23,6 +23,7 @@ import java.security.PrivilegedAction;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Dictionary;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -31,6 +32,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
@@ -44,6 +48,7 @@ import org.ogema.accesscontrol.ChannelPermission;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.ResourceAccessRights;
 import org.ogema.accesscontrol.ResourcePermission;
+import org.ogema.accesscontrol.UserRightsProxy;
 import org.ogema.accesscontrol.Util;
 import org.ogema.applicationregistry.ApplicationRegistry;
 import org.ogema.core.administration.CredentialStore;
@@ -87,15 +92,15 @@ public class DefaultPermissionManager implements PermissionManager {
 	@Reference
 	UserAdmin ua;
 
-	@Reference
-	org.apache.felix.useradmin.RoleRepositoryStore store;
+//	@Reference
+//	org.apache.felix.useradmin.RoleRepositoryStore store;
 
 	@Reference
 	ApplicationRegistry appreg;
 
 	@Reference
 	CredentialStore cStore;
-	
+
 	@Reference
 	StaticPolicies staticPolicies;
 
@@ -108,7 +113,7 @@ public class DefaultPermissionManager implements PermissionManager {
 	public final ThreadLocal<AccessControlContext> currentAccessControlContext = new ThreadLocal<>();
 
 	AccessManagerImpl accessMan;
-	SecurityManager security;
+	volatile SecurityManager security;
 	HashSet<String> permNames;
 
 	ConditionalPermissionAdmin cpa;
@@ -117,7 +122,9 @@ public class DefaultPermissionManager implements PermissionManager {
 	private AppDomainCombiner domainCombiner;
 
 	AppPermissionImpl defaultPolicies;
-	private ShellCommands sc; 
+	private ShellCommands sc;
+
+	private HashMap<Application, AccessControlContext> accs = new HashMap<>();
 
 	@Override
 	public WebAccessManager getWebAccess() {
@@ -135,7 +142,7 @@ public class DefaultPermissionManager implements PermissionManager {
 		this.bc = bc;
 		// Get reference to ConditionalPermissionAdmin
 		ServiceReference<?> sRef = bc.getServiceReference(ConditionalPermissionAdmin.class.getName());
-		if (sRef != null) { // FIXME should we track hte cpa? What if it disappear?
+		if (sRef != null) {
 			cpa = (ConditionalPermissionAdmin) bc.getService(sRef);
 		}
 		else {
@@ -149,14 +156,59 @@ public class DefaultPermissionManager implements PermissionManager {
 			throw new BundleException("URPHandler registration failed.", e);
 		}
 
-		this.accessMan = new AccessManagerImpl(ua, bc, cStore, this,staticPolicies);
+		this.accessMan = new AccessManagerImpl(ua, bc, cStore, this, staticPolicies);
 		bc.addBundleListener(this.accessMan); // BundleListener is needed to
 												// manage storage area each app.
 		this.webAccess = new ApplicationWebAccessFactory(this, http, ua);
 
 		security = System.getSecurityManager();
+		// Create and set custom SecurityManager
+		if (security != null) {
+			try {
+				if (!registerSecurity().await(10, TimeUnit.SECONDS)) {
+					throw new TimeoutException(); // should not happen
+				}
+			} catch (InterruptedException | TimeoutException e) {
+				this.webAccess = null;
+				this.sc = null;
+				this.accessMan = null;
+				this.bc = null;
+				this.cpa = null;
+				this.security = null;
+				if (e instanceof InterruptedException)
+					Thread.currentThread().interrupt();
+				return;
+			}
+		}
 		this.domainCombiner = new AppDomainCombiner();
 		sc = new ShellCommands(this, bc);
+	}
+	
+	// this construction is a workaround to a NoClassDefFoundError in Felix component activator
+	// if the OgemaSecurityManager class (which is an optional dependency) is not available, and 
+	// one tries to register it in the activate method
+	private final CountDownLatch registerSecurity() {
+		final CountDownLatch l = new CountDownLatch(1);
+		try {
+			new Thread(new Runnable() {
+				
+				@Override
+				public void run() {
+					try {
+						security = new org.ogema.base.security.OgemaSecurityManager();
+						System.setSecurityManager(security);
+						logger.debug("OGEMA security manager installed: {}",security);
+					} finally {
+						l.countDown();
+					}
+				}
+			}).start();
+		} catch (NoClassDefFoundError e) {
+			// OgemaSecurityManager dependency is optional
+			l.countDown();
+			logger.warn("No OGEMA security manager found; OGEMA file permissions will not be available");
+		}
+		return l;
 	}
 
 	@Deactivate
@@ -168,15 +220,16 @@ public class DefaultPermissionManager implements PermissionManager {
 		if (context != null && accessMan != null) {
 			context.removeBundleListener(this.accessMan);
 		}
-		if (accessMan != null) 
+		if (accessMan != null)
 			accessMan.close();
 		unregisterURPHandler(context);
-//		currentAccessControlContext // are we sure instances are cleaned up?
+		// currentAccessControlContext // are we sure instances are cleaned up?
 		this.webAccess = null;
 		this.sc = null;
 		this.accessMan = null;
 		this.bc = null;
 		this.cpa = null;
+		this.security = null;
 	}
 
 	private ServiceRegistration<URLStreamHandlerService> urpHandlerRegistratrion;
@@ -263,11 +316,11 @@ public class DefaultPermissionManager implements PermissionManager {
 
 	@Override
 	public boolean handleSecurity(Permission perm) {
-		Application app = null;
-		AppID id = appreg.getContextApp(this.getClass());
-		if (id != null)
-			app = id.getApplication();
 		if (security != null) {
+			Application app = null;
+			AppID id = appreg.getContextApp(this.getClass());
+			if (id != null)
+				app = id.getApplication();
 			AccessControlContext acc = null;
 			try {
 				if (app != null) {
@@ -301,6 +354,27 @@ public class DefaultPermissionManager implements PermissionManager {
 	}
 
 	@Override
+	public boolean handleSecurity(String user, Permission perm) {
+
+		// check app perms
+		if (!handleSecurity(perm))
+			return false;
+
+		// check user perms
+		if (security != null) {
+			AccessControlContext acc = null;
+			try {
+				acc = getACC(user);
+				security.checkPermission(perm, acc);
+			} catch (SecurityException e) {
+				logger.info(e.getMessage());
+				return false;
+			}
+		}
+		return true;
+	}
+
+	@Override
 	public boolean checkCreateResource(final Application app, Class<? extends Resource> type, String name, int count) {
 		// Get the AccessControlContex of the involved app
 		AccessControlContext acc = getACC(app);
@@ -312,13 +386,38 @@ public class DefaultPermissionManager implements PermissionManager {
 		AccessControlContext acc = AccessController.doPrivileged(new PrivilegedAction<AccessControlContext>() {
 			public AccessControlContext run() {
 				if (app != null) {
-					ProtectionDomain[] pda = new ProtectionDomain[1];
-					pda[0] = app.getClass().getProtectionDomain();
-					return new AccessControlContext(new AccessControlContext(pda), domainCombiner);
+					AccessControlContext result = accs.get(app);
+					if (result == null) {
+						ProtectionDomain[] pda = new ProtectionDomain[1];
+						pda[0] = app.getClass().getProtectionDomain();
+						result = new AccessControlContext(new AccessControlContext(pda), domainCombiner);
+						accs.put(app, result);
+					}
+					return result;
 				}
 				else {
 					return null;
 				}
+			}
+		});
+		return acc;
+	}
+
+	private AccessControlContext getACC(final String user) {
+		AccessControlContext acc = AccessController.doPrivileged(new PrivilegedAction<AccessControlContext>() {
+			public AccessControlContext run() {
+				ProtectionDomain[] pda;
+				List<String> parents = accessMan.getParents(user);
+				parents.add(user);
+				List<UserRightsProxy> urps = new ArrayList<>();
+				for (String parent : parents) {
+					urps.add(accessMan.getUrp(parent));
+				}
+				pda = new ProtectionDomain[urps.size()];
+				for (int i = 0; i < urps.size(); i++) {
+					pda[i] = urps.get(i).getClass().getProtectionDomain();
+				}
+				return new AccessControlContext(new AccessControlContext(pda), domainCombiner);
 			}
 		});
 		return acc;
@@ -424,7 +523,7 @@ public class DefaultPermissionManager implements PermissionManager {
 			for (PermissionInfo pi : perms) {
 				if (pi.getType().equals(permtype)) {
 					String name = pi.getName();
-					if (permname != null && name == null || name.equals(permname)) {
+					if (permname != null && (name == null || name.equals(permname))) {
 						String acts = pi.getActions();
 						if (actions != null && acts != null) {
 							String[] tmpActions = acts.split(",");
@@ -637,6 +736,17 @@ public class DefaultPermissionManager implements PermissionManager {
 										changedPInfos = new ArrayList<>();
 									changedPInfos.add(tmpCpi);
 								}
+								result = true;
+							}
+							else if (compareStr(filterString, pinfo.getName()) == 0 // only actions are to be reduced
+									&& compareStr(actions, pinfo.getActions()) != 0) {
+								PermissionInfo[] tmpPinfos = new PermissionInfo[1];
+								tmpPinfos[0] = new PermissionInfo(permissionName, filterString, actions);
+								ConditionalPermissionInfo tmpCpi = cpa.newConditionalPermissionInfo(
+										"deny_" + System.currentTimeMillis(), cia, tmpPinfos, cpInfo.DENY);
+								if (changedPInfos == null)
+									changedPInfos = new ArrayList<>();
+								changedPInfos.add(tmpCpi);
 							}
 						}
 						match = false;
@@ -776,5 +886,126 @@ public class DefaultPermissionManager implements PermissionManager {
 	@Override
 	public ApplicationRegistry getApplicationRegistry() {
 		return appreg;
+	}
+
+	@Override
+	public boolean removePermissionManual(final ConditionalPermissionUpdate cpu, final Bundle b,
+			final String permissionName, final String filterString, final String actions) {
+
+		if (!handleSecurity(new AdminPermission(AdminPermission.APP))) {
+			throw new SecurityException("Access denied! org.ogema.accesscontrol.AdminPermission(APP) is required.");
+		}
+		/*
+		 * Scan permission table and and check for each ConditionalPermissionInfo if it match the location of the app.
+		 */
+		Boolean ap = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
+			public Boolean run() {
+				ArrayList<ConditionalPermissionInfo> changedPInfos = null;
+				boolean result = false;
+				boolean match = false;
+				boolean isDefaultPol = false;
+				String appLoc = "";
+				if (b == null) {
+					isDefaultPol = true;
+				}
+
+				if (b != null) {
+					appLoc = b.getLocation();
+				}
+				// First get the permissions table
+
+				List<ConditionalPermissionInfo> piList = cpu.getConditionalPermissionInfos();
+
+				for (Iterator<ConditionalPermissionInfo> it = piList.iterator(); it.hasNext();) {
+					ConditionalPermissionInfo cpInfo = it.next();
+					// for (ConditionalPermissionInfo cpInfo : piList) {
+					// Get the condition infos to check which of them match the
+					// given app location ...
+					ConditionInfo cia[] = cpInfo.getConditionInfos();
+					if (cia.length == 0 && !isDefaultPol) // if no conditions
+															// are set, its a
+					// default permission
+					{
+						// in this case the permission couldn't be removed
+						// rather a negative permission is to be added.
+						match = false;
+						continue;
+					}
+					else {
+						match = true;
+					}
+					if (!isDefaultPol) {
+						for (ConditionInfo tmpci : cia) {
+							match = false;
+							// ... and check for BundleLocationCondition
+							if (tmpci.getType().equals(BUNDLE_LOCATION_CONDITION_NAME)) {
+								String args[] = tmpci.getArgs();
+								int length = args.length;
+								if (length == 0)
+									continue; // should never happen
+								match = checkBCMatch(args, appLoc);
+								break;
+							}
+						}
+					}
+					if (match) {
+						// Check if the permission match
+						PermissionInfo[] pinfos = cpInfo.getPermissionInfos();
+						int length = pinfos.length;
+						int index = -1;
+
+						for (PermissionInfo pinfo : pinfos) {
+							index++;
+							String permType = pinfo.getType();
+							if (!permType.equals(permissionName))
+								continue;
+							if (compareStr(filterString, pinfo.getName()) == 0
+									&& compareStr(actions, pinfo.getActions()) == 0) {
+								logger.debug("Remove policy " + cpInfo.getEncoded());
+								it.remove();
+
+								if (length > 1) {
+									PermissionInfo[] tmpPinfos = new PermissionInfo[length - 1];
+									int index2 = 0, addidx = 0;
+									for (PermissionInfo tmppinfo : pinfos) {
+										if (index != index2) {
+											tmpPinfos[addidx++] = tmppinfo;
+										}
+										index2++;
+									}
+									ConditionalPermissionInfo tmpCpi = cpa.newConditionalPermissionInfo(
+											cpInfo.getName(), cia, tmpPinfos, cpInfo.getAccessDecision());
+									if (changedPInfos == null)
+										changedPInfos = new ArrayList<>();
+									changedPInfos.add(tmpCpi);
+								}
+								result = true;
+							}
+							else if (compareStr(filterString, pinfo.getName()) == 0 // only actions are to be reduced
+									&& compareStr(actions, pinfo.getActions()) != 0) {
+								PermissionInfo[] tmpPinfos = new PermissionInfo[1];
+								tmpPinfos[0] = new PermissionInfo(permissionName, filterString, actions);
+								ConditionalPermissionInfo tmpCpi = cpa.newConditionalPermissionInfo(
+										"deny_" + System.currentTimeMillis(), cia, tmpPinfos, cpInfo.DENY);
+								if (changedPInfos == null)
+									changedPInfos = new ArrayList<>();
+								changedPInfos.add(tmpCpi);
+							}
+
+						}
+						match = false;
+					}
+				}
+
+				if (changedPInfos != null && !changedPInfos.isEmpty()) {
+					piList.addAll(changedPInfos);
+				}
+
+				return result;
+			}
+
+		});
+		return ap;
+
 	}
 }

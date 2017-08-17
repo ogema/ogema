@@ -16,25 +16,16 @@
 package org.ogema.recordeddata.slotsdb;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Random;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.ogema.core.recordeddata.RecordedDataConfiguration;
 import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
 
 public class FileObjectTest extends SlotsDbTest {
-
-	@BeforeClass
-	public static void setUp() {
-		deleteTestFiles();
-	}
-
-	@AfterClass
-	public static void tearDown() {
-		deleteTestFiles();
-	}
 
 	/*
 	 * Verifies that the start time stamp of a new log file is always smaller than
@@ -53,9 +44,9 @@ public class FileObjectTest extends SlotsDbTest {
 	}
 
 	private void startTimeStampTest(long timestamp) throws IOException {
-        @SuppressWarnings("deprecation")
-		FileObjectProxy proxy = new FileObjectProxy(SlotsDb.DEFAULT_DB_ROOT_FOLDER);
-
+		Path path = Paths.get(SlotsDb.DB_TEST_ROOT_FOLDER);
+		Files.createDirectories(path);
+		FileObjectProxy proxy = new FileObjectProxy(path.toString());
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(5000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);

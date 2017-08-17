@@ -16,6 +16,7 @@
 package org.ogema.impl.persistence;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -39,8 +40,8 @@ public class TreeElementImpl implements TreeElement {
 	/*
 	 * List of all children which are part of the type definition.
 	 */
-	public ConcurrentHashMap<String, Class<?>> typeChildren;
-	public ConcurrentHashMap<String, Integer> flagsChildren;
+	public Map<String, Class<?>> typeChildren;
+	public Map<String, Integer> flagsChildren;
 
 	public Object resRef;
 	public TreeElementImpl parent;
@@ -88,9 +89,7 @@ public class TreeElementImpl implements TreeElement {
 
 	public TreeElementImpl(ResourceDBImpl db) {
 		this.db = db;
-		requireds = new ConcurrentHashMap<String, TreeElementImpl>();
-		typeChildren = new ConcurrentHashMap<String, Class<?>>();
-		flagsChildren = new ConcurrentHashMap<String, Integer>();
+		requireds = new ConcurrentHashMap<>();
 		typeKey = DBConstants.TYPE_KEY_INVALID;
 	}
 
@@ -404,10 +403,18 @@ public class TreeElementImpl implements TreeElement {
 		if (node.complexArray)
 			return node.addCompArrChild(chName, chType, isDecorating);
 
+		// Check if an unloadable custom resource (UCR) is pending
+		TreeElementImpl e;
+		if (db.activatePersistence) {
+			e = db.resourceIO.handleUCR(this.path + "/" + chName, chType);
+			if (e != null)
+				return e;
+		}
+
 		/*
 		 * if a decorator is to be added its name mustn't match the name of a model member
 		 */
-		TreeElementImpl e = initChild(chName, chType);// TreeElementImpl e = node.optionals.get(chName);
+		e = initChild(chName, chType);
 		Integer flags = flagsChildren.get(chName);
 		boolean isChild = flags != null && (flags & DBConstants.RES_ISCHILD) != 0;
 		boolean typeMatch = isChild
@@ -641,6 +648,9 @@ public class TreeElementImpl implements TreeElement {
 	}
 
 	void initDataContainer() {
+		// For complex and complex array resources is nothing todo
+		if (typeKey == DBConstants.TYPE_KEY_COMPLEX || typeKey == DBConstants.TYPE_KEY_COMPLEX_ARR)
+			return;
 		// if this is a reference than addChild to the reference
 		TreeElementImpl node = this;
 		LeafValue value = new LeafValue(this);
@@ -653,7 +663,8 @@ public class TreeElementImpl implements TreeElement {
 			value.footprint = 1;
 		case DBConstants.TYPE_KEY_FLOAT:
 		case DBConstants.TYPE_KEY_INT:
-			value.footprint = 4; //XXX why no break here?
+			value.footprint = 4;
+			break;
 		case DBConstants.TYPE_KEY_LONG:
 			value.footprint = 8;
 			break; // nothing to do
@@ -740,7 +751,7 @@ public class TreeElementImpl implements TreeElement {
 	}
 
 	void store(ChangeInfo change) {
-		if (!this.nonpersistent)
+		if (!this.nonpersistent || !change.equals(ChangeInfo.VALUE_CHANGED))
 			db.persistence.store(this.resID, change);
 	}
 
@@ -810,9 +821,10 @@ public class TreeElementImpl implements TreeElement {
 		String result = path;
 		TreeElement te = this;
 		while (true) {
-			try {
+			if (te.isReference()) {
 				te = te.getReference();
-			} catch (UnsupportedOperationException e) {
+			}
+			else {
 				result = te.getPath();
 				break;
 			}
@@ -845,10 +857,15 @@ public class TreeElementImpl implements TreeElement {
 			// init node
 			// a resourceID is generated if the child is added as a required
 			// child.
-			//e.type = clazz; //typeChildren.get(chName);
-            e.type = typeChildren.get(chName);
-			if (e.type != null)
-				e.typeName = e.type.getName();
+			/*
+			 * e.type = typeChildren.get(chName); if (e.type != null) e.typeName = e.type.getName();
+			 */
+			e.type = clazz;
+			Class<?> definedType = typeChildren.get(chName);
+			if (definedType != null) {
+				e.typeName = clazz.getName();
+			}
+
 			e.parent = this;
 			e.parentID = this.resID;
 			e.toplevel = false; // its a child of a parent node, so never

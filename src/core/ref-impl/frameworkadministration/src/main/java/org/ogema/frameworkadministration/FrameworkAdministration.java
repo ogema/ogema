@@ -90,7 +90,7 @@ public class FrameworkAdministration implements Application {
 
 		String aliasHtml = appManager.getWebAccessManager().registerWebResource("/ogema/frameworkadminindex",
 				"org/ogema/frameworkadministration/gui");
-
+		appManager.getWebAccessManager().registerStartUrl("/ogema/frameworkadminindex/index.html");
 		String aliasLoggerServlet = appManager.getWebAccessManager().registerWebResource("/apps/ogema/frameworkadmin",
 				new FAServletLogger());
 

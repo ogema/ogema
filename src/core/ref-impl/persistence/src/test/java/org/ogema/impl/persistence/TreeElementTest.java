@@ -15,7 +15,13 @@
  */
 package org.ogema.impl.persistence;
 
+import org.ogema.impl.persistence.testmodels.AbstractModel;
+import org.ogema.impl.persistence.testmodels.ModelImplNonResourceInterface;
+import org.ogema.impl.persistence.testmodels.NeverRegisterType;
 import org.ogema.impl.persistence.testmodels.TempStorageSwitchCapacity;
+import org.ogema.impl.persistence.testmodels.TestActor;
+import org.ogema.impl.persistence.testmodels.TestPhysicalDevice;
+import org.ogema.impl.persistence.testmodels.TestSensor;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -27,6 +33,7 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -86,22 +93,16 @@ public class TreeElementTest extends DBBasicTest {
 	public static void init() {
 		System.setProperty("org.ogema.persistence", "inactive");
 		System.setProperty(DBConstants.DB_PATH_PROP, "treeElementTest");
-		db = new ResourceDBImpl();
-		db.init();
 	}
 
 	@AfterClass
 	public static void wait4Storage() {
-		try {
-			Thread.sleep(3 * TimedPersistence.DEFAULT_STOREPERIOD);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
 	}
 
 	@Before
 	public void before() throws InterruptedException {
-
+		db = new ResourceDBImpl();
+		db.restart();
 	}
 
 	@After
@@ -114,7 +115,7 @@ public class TreeElementTest extends DBBasicTest {
 	Class<? extends Resource> type_TestPhysicalDevice_id = null;
 
 	final String type_PhysicalElement_name = "org.ogema.model.prototypes.PhysicalElement";
-	final String type_TestPhysicalDevice_name = "org.ogema.impl.persistence.TestPhysicalDevice";
+	final String type_TestPhysicalDevice_name = "org.ogema.impl.persistence.testmodels.TestPhysicalDevice";
 
 	final String testAppID = "MyTestApp";
 
@@ -628,137 +629,6 @@ public class TreeElementTest extends DBBasicTest {
 		TestCase.assertTrue(exception);
 	}
 
-	/**
-	 * abstract: as adding and deleting of types/resources works the DB is now populated with all types and resources
-	 * necessary to run the rest of the tests type: helper function
-	 */
-	@Test
-	public void testPopulateDB() {
-		System.out.println("Inside testPopulateDB");
-		boolean exception = false;
-		checkDynamicData();
-		// create two different top level resources before the type definitions
-		// are added which has to fail. @NOTE Adding of types is implicitly performed, so the following test hasn't
-		// longer to fail.
-		//
-		try {
-			resource_PhysicalElement_id_0 = (TreeElementImpl) db.addResource("resource_PhysicalElement_name_tmp",
-					NeverRegisterType.class, testAppID);
-		} catch (Throwable e) {
-			exception = true;
-		}
-		TestCase.assertTrue(!!/* @NOTE */db.hasResource("resource_PhysicalElement_name_tmp"));
-		TestCase.assertTrue(!/* @NOTE */exception);
-		exception = false;
-
-		// add the resource types
-		try {
-			type_PhysicalElement_id = db.addOrUpdateResourceType(org.ogema.model.prototypes.PhysicalElement.class);
-			type_TestPhysicalDevice_id = db
-					.addOrUpdateResourceType(org.ogema.impl.persistence.TestPhysicalDevice.class);
-			db.addOrUpdateResourceType(TempStorageSwitchCapacity.class);
-		} catch (Exception e1) {
-			TestCase.assertTrue(true);
-		}
-		TestCase.assertTrue(type_PhysicalElement_id == org.ogema.model.prototypes.PhysicalElement.class);
-		TestCase.assertTrue(type_TestPhysicalDevice_id == org.ogema.impl.persistence.TestPhysicalDevice.class);
-		TestCase.assertTrue(db.hasResourceType(type_PhysicalElement_name));
-		TestCase.assertTrue(db.hasResourceType(type_TestPhysicalDevice_name));
-
-		// create two different top level resources after the type definitions
-		// are added which has to succeed.
-		try {
-			resource_PhysicalElement_id_0 = (TreeElementImpl) db.addResource("resource_PhysicalElement_name",
-					org.ogema.model.prototypes.PhysicalElement.class, testAppID);
-			TestCase.assertTrue(db.hasResource("resource_PhysicalElement_name"));
-		} catch (Exception e) {
-			exception = true;
-		}
-		TestCase.assertFalse(exception);
-		try {
-			resource_TestPhysicalDevice_id_0 = (TreeElementImpl) db.addResource("resource_TestPhysicalDevice_name",
-					TestPhysicalDevice.class, testAppID);
-			TestCase.assertTrue(db.hasResource("resource_TestPhysicalDevice_name"));
-		} catch (Exception e) {
-			exception = true;
-		}
-		TestCase.assertFalse(exception);
-		exception = false;
-
-		// recreate of the resources with the same name must fail
-		try {
-			resource_PhysicalElement_id_0 = null;
-			resource_PhysicalElement_id_0 = (TreeElementImpl) db.addResource("resource_PhysicalElement_name",
-					org.ogema.model.prototypes.PhysicalElement.class, testAppID);
-			TestCase.assertTrue(resource_PhysicalElement_id_0 == null);
-
-		} catch (Exception e) {
-			exception = true;
-		}
-		// The resource is yet in the database
-		TestCase.assertTrue(db.hasResource("resource_PhysicalElement_name"));
-
-		TestCase.assertTrue(exception);
-		exception = false;
-		try {
-			resource_TestPhysicalDevice_id_0 = null;
-			resource_TestPhysicalDevice_id_0 = (TreeElementImpl) db.addResource("resource_TestPhysicalDevice_name",
-					TestPhysicalDevice.class, testAppID);
-			TestCase.assertTrue(resource_TestPhysicalDevice_id_0 == null);
-		} catch (Exception e) {
-			exception = true;
-		}
-		TestCase.assertTrue(exception);
-		exception = false;
-		// The resource is yet in the database
-		TestCase.assertTrue(db.hasResource("resource_TestPhysicalDevice_name"));
-
-		// two types are installed currently, verify it
-		getAllTypesInstalled();
-
-		// two new resources with different names but the same type as the
-		// existing resources
-		try {
-			resource_PhysicalElement_id_0 = null;
-			resource_PhysicalElement_id_0 = (TreeElementImpl) db.addResource("resource_PhysicalElement_name_0",
-					org.ogema.model.prototypes.PhysicalElement.class, testAppID);
-			TestCase.assertFalse(resource_PhysicalElement_id_0 == null);
-			TestCase.assertTrue(db.hasResource("resource_PhysicalElement_name_0"));
-
-		} catch (Exception e) {
-			exception = true;
-		}
-		TestCase.assertFalse(exception);
-		exception = false;
-
-		try {
-			resource_TestPhysicalDevice_id_0 = null;
-			resource_TestPhysicalDevice_id_0 = (TreeElementImpl) db.addResource("resource_TestPhysicalDevice_name_0",
-					TestPhysicalDevice.class, testAppID);
-			TestCase.assertTrue(resource_TestPhysicalDevice_id_0 != null);
-			TestCase.assertTrue(db.hasResource("resource_TestPhysicalDevice_name_0"));
-		} catch (Exception e) {
-			exception = true;
-		}
-		TestCase.assertFalse(exception);
-		exception = false;
-
-		setGetArray();
-
-		setGetValue();
-
-		getResourceName();
-
-		persistentOptional();
-
-		getResourceIdsAndNames();
-
-		deleteSubResource();
-
-		deleteTopLevelResource();
-		checkDynamicData();
-	}
-
 	@Test
 	public void testResourceLists() {
 		System.out.println("Inside testResourceLists");
@@ -1248,80 +1118,6 @@ public class TreeElementTest extends DBBasicTest {
 	}
 
 	/**
-	 * abstract: test the activation/deactivation of a resource test-id: scope: group tested functions of ResourceDB
-	 * interface:
-	 * 
-	 * isActive(int id) activateResource(int id) deactivateResource(int id)
-	 */
-	// @Test
-	// public void testActivity() {
-	//
-	// boolean exception_thrown = false;
-	// boolean active = false;
-	//
-	// // inexistent id
-	// try {
-	// db.activateResource(inexistent_id);
-	// } catch (ResourceNotFoundException e) {
-	// exception_thrown = true;
-	// TestCase.assertTrue(e.getClass() == ResourceNotFoundException.class);
-	// }
-	// TestCase.assertTrue(exception_thrown);
-	// exception_thrown = false;
-	//
-	// try {
-	// db.deactivateResource(inexistent_id);
-	// } catch (ResourceNotFoundException e) {
-	// exception_thrown = true;
-	// TestCase.assertTrue(e.getClass() == ResourceNotFoundException.class);
-	// }
-	// TestCase.assertTrue(exception_thrown);
-	// exception_thrown = false;
-	//
-	// try {
-	// db.isActive(inexistent_id);
-	// } catch (ResourceNotFoundException e) {
-	// exception_thrown = true;
-	// TestCase.assertTrue(e.getClass() == ResourceNotFoundException.class);
-	// }
-	// TestCase.assertTrue(exception_thrown);
-	// exception_thrown = false;
-	//
-	// // existent id
-	// try {
-	// db.activateResource(resource_PhysicalElement_id_0);
-	// } catch (ResourceNotFoundException e) {
-	// exception_thrown = true;
-	// }
-	// TestCase.assertFalse(exception_thrown);
-	//
-	// try {
-	// active = db.isActive(resource_PhysicalElement_id_0);
-	// } catch (ResourceNotFoundException e) {
-	// exception_thrown = true;
-	// }
-	// TestCase.assertFalse(exception_thrown);
-	// TestCase.assertTrue(active);
-	// exception_thrown = false;
-	// active = false;
-	//
-	// try {
-	// db.deactivateResource(resource_PhysicalElement_id_0);
-	// } catch (ResourceNotFoundException e) {
-	// exception_thrown = true;
-	// }
-	// TestCase.assertFalse(exception_thrown);
-	//
-	// try {
-	// active = db.isActive(resource_PhysicalElement_id_0);
-	// } catch (ResourceNotFoundException e) {
-	// exception_thrown = true;
-	// }
-	// TestCase.assertFalse(exception_thrown);
-	// TestCase.assertFalse(active);
-	//
-	// }
-	/**
 	 * abstract: test if a resource is optional and persistent test-id: scope: group tested functions of ResourceDB
 	 * interface:
 	 * 
@@ -1374,7 +1170,7 @@ public class TreeElementTest extends DBBasicTest {
 		boolean exception_thrown = false;
 		db.addOrUpdateResourceType(TestPhysicalDevice.class);
 		try {
-			list = db.getTypeChildren("org.ogema.impl.persistence.TestPhysicalDevice");
+			list = db.getTypeChildren(TestPhysicalDevice.class.getName());
 		} catch (InvalidResourceTypeException e) {
 			exception_thrown = true;
 		}
@@ -1424,59 +1220,6 @@ public class TreeElementTest extends DBBasicTest {
 	}
 
 	/**
-	 * abstract: test function decorateResource test-id: scope: single tested functions of ResourceDB interface:
-	 * 
-	 * decorateResource(int id, String additionalType, String name, boolean makeVolatile)
-	 */
-	// No types but resources can be decorated
-	// @Test
-	// public void test_decorateResource() {
-	//
-	// TreeElement decorating_sub_resource_id = null;
-	// boolean exception_thrown = false;
-	// List<NodeDesc> list = null;
-	//
-	// try {
-	// decorating_sub_resource_id =
-	// db.decorateResource("org.ogema.junit_persistance.TestActor", "actor_0",
-	// false);
-	// } catch (ResourceAlreadyExistsException | TypeNotFoundException e) {
-	// exception_thrown = true;
-	// }
-	// TestCase.assertFalse(exception_thrown);
-	//
-	// try {
-	// list = db.getTypeChildren("org.ogema.core.model.prototypes.PhysicalElement");
-	// } catch (TypeNotFoundException e) {
-	// exception_thrown = true;
-	// }
-	// TestCase.assertFalse(exception_thrown);
-	//
-	// TestCase.assertEquals(list.size(), 4);
-	// TestCase.assertFalse(exception_thrown);
-	// TestCase.assertTrue(list.get(0).getName() == "RoomInformation");
-	// TestCase.assertTrue(list.get(1).getName() == "FirmwareInfo");
-	// TestCase.assertTrue(list.get(2).getName() == "PhysicalDimensions");
-	// TestCase.assertTrue(list.get(3).getName() ==
-	// "org.ogema.junit_persistance.TestActor");
-	// exception_thrown = false;
-	//
-	// // ResourceAlreadyExistsException
-	// try {
-	// decorating_sub_resource_id = db.decorateResource(type_PhysicalElement_id,
-	// "org.ogema.junit_persistance.TestActor", "actor_0", false);
-	// } catch (ResourceAlreadyExistsException | TypeNotFoundException e) {
-	// exception_thrown = true;
-	// TestCase.assertTrue(e.getClass() ==
-	// ResourceAlreadyExistsException.class);
-	//
-	// }
-	// TestCase.assertTrue(exception_thrown);
-	//
-	// // TypeNotFoundException
-	//
-	// }
-	/**
 	 * abstract: test functions for setting and getting values test-id: scope: group tested functions of ResourceDB
 	 * interface: void setFloatValue(int attrId, float value) void setIntValue(int attrId, int value) void
 	 * setLongValue(int attrId, long value) void setStringValue(int attrId, String value) void setBooleanValue(int
@@ -1484,7 +1227,7 @@ public class TreeElementTest extends DBBasicTest {
 	 * getIntValue(int attrId) long getLongValue(int attrId) String getStringValue(int attrId) boolean
 	 * getBooleanValue(int attrId byte[] getOpaqueValue(int attrId)
 	 */
-    @SuppressWarnings("deprecation")
+	@SuppressWarnings("deprecation")
 	public void setGetValue() {
 
 		boolean exception_thrown = false;
@@ -1564,21 +1307,6 @@ public class TreeElementTest extends DBBasicTest {
 		TestCase.assertTrue(sub_resource_time_id == null);
 		TestCase.assertTrue(sub_resource_opaque_id == null);
 
-		// as default all sub resources are optional until they are added via
-		// addChild
-		// sub_resource_float_id = sub_resource_TestActor_id_0.optionals.get("float_res");
-		// sub_resource_int_id = sub_resource_TestActor_id_0.optionals.get("int_res");
-		// sub_resource_string_id = sub_resource_TestActor_id_0.optionals.get("string_res");
-		// sub_resource_bool_id = sub_resource_TestActor_id_0.optionals.get("bool_res");
-		// sub_resource_time_id = sub_resource_TestActor_id_0.optionals.get("time_res");
-		// sub_resource_opaque_id = sub_resource_TestActor_id_0.optionals.get("opaque_res");
-		// TestCase.assertTrue(sub_resource_float_id != null);
-		// TestCase.assertTrue(sub_resource_int_id != null);
-		// TestCase.assertTrue(sub_resource_string_id != null);
-		// TestCase.assertTrue(sub_resource_bool_id != null);
-		// TestCase.assertTrue(sub_resource_time_id != null);
-		// TestCase.assertTrue(sub_resource_opaque_id != null);
-
 		exception_thrown = false;
 		// add sub resources to the TestSensor as childs
 		try {
@@ -1622,26 +1350,6 @@ public class TreeElementTest extends DBBasicTest {
 		TestCase.assertTrue(sub_resource_time_id != null);
 		TestCase.assertTrue(sub_resource_opaque_id != null);
 
-		// as default all sub resources are optional until they are added via
-		// addChild
-		// sub_resource_float_id = sub_resource_TestActor_id_0.optionals.get("float_res");
-		// sub_resource_int_id = sub_resource_TestActor_id_0.optionals.get("int_res");
-		// sub_resource_string_id = sub_resource_TestActor_id_0.optionals.get("string_res");
-		// sub_resource_bool_id = sub_resource_TestActor_id_0.optionals.get("bool_res");
-		// sub_resource_time_id = sub_resource_TestActor_id_0.optionals.get("time_res");
-		// sub_resource_opaque_id = sub_resource_TestActor_id_0.optionals.get("opaque_res");
-		// TestCase.assertTrue(sub_resource_float_id == null);
-		// TestCase.assertTrue(sub_resource_int_id == null);
-		// TestCase.assertTrue(sub_resource_string_id == null);
-		// TestCase.assertTrue(sub_resource_bool_id == null);
-		// TestCase.assertTrue(sub_resource_time_id == null);
-		// TestCase.assertTrue(sub_resource_opaque_id == null);
-
-		// as default all sub resources are optional and not a member of the
-		// resource until they are added via addChild
-		// getter/setter LeafValues
-		// first get the node references to the leaf resources
-		// float
 		sub_resource_float_id = (TreeElementImpl) sub_resource_TestActor_id_0.getChild("float_res");
 		TestCase.assertTrue(sub_resource_float_id != null);
 		setGetFloat(sub_resource_float_id);
@@ -1651,10 +1359,6 @@ public class TreeElementTest extends DBBasicTest {
 		TestCase.assertTrue(sub_resource_bool_id != null);
 		setGetBool(sub_resource_bool_id);
 
-		// int
-		// opaque
-		// string
-		// time
 	}
 
 	/**
@@ -1680,10 +1384,6 @@ public class TreeElementTest extends DBBasicTest {
 		sub_resource_TestSensor_id_0 = resource_TestPhysicalDevice_id_0.requireds.get("sensor");
 		// sensor is yet optional, so its not a member of the requireds
 		TestCase.assertTrue(sub_resource_TestSensor_id_0 == null);
-
-		// sub_resource_TestSensor_id_0 = resource_TestPhysicalDevice_id_0.optionals.get("sensor");
-		// // sensor is yet optional, so its a member of the optionals
-		// TestCase.assertTrue(sub_resource_TestSensor_id_0 != null);
 
 		// change the situation by adding sensor as a required member
 		try {
@@ -1733,21 +1433,6 @@ public class TreeElementTest extends DBBasicTest {
 		TestCase.assertTrue(sub_resource_time_array_id == null);
 		TestCase.assertTrue(sub_resource_complex_array_id == null);
 
-		// as default all sub resources are optional until they are added via
-		// addChild
-		// sub_resource_float_array_id = sub_resource_TestSensor_id_0.optionals.get("float_array_res");
-		// sub_resource_int_array_id = sub_resource_TestSensor_id_0.optionals.get("int_array_res");
-		// sub_resource_string_array_id = sub_resource_TestSensor_id_0.optionals.get("string_array_res");
-		// sub_resource_bool_array_id = sub_resource_TestSensor_id_0.optionals.get("bool_array_res");
-		// sub_resource_time_array_id = sub_resource_TestSensor_id_0.optionals.get("time_array_res");
-		// sub_resource_complex_array_id = sub_resource_TestSensor_id_0.optionals.get("complex_array_res");
-		// TestCase.assertTrue(sub_resource_float_array_id != null);
-		// TestCase.assertTrue(sub_resource_int_array_id != null);
-		// TestCase.assertTrue(sub_resource_string_array_id != null);
-		// TestCase.assertTrue(sub_resource_bool_array_id != null);
-		// TestCase.assertTrue(sub_resource_time_array_id != null);
-		// TestCase.assertTrue(sub_resource_complex_array_id != null);
-
 		exception_thrown = false;
 		// add sub resources to the TestSensor as childs
 		try {
@@ -1790,21 +1475,6 @@ public class TreeElementTest extends DBBasicTest {
 		TestCase.assertTrue(sub_resource_bool_array_id != null);
 		TestCase.assertTrue(sub_resource_time_array_id != null);
 		TestCase.assertTrue(sub_resource_complex_array_id != null);
-
-		// as default all sub resources are optional until they are added via
-		// addChild
-		// sub_resource_float_array_id = sub_resource_TestSensor_id_0.optionals.get("float_array_res");
-		// sub_resource_int_array_id = sub_resource_TestSensor_id_0.optionals.get("int_array_res");
-		// sub_resource_string_array_id = sub_resource_TestSensor_id_0.optionals.get("string_array_res");
-		// sub_resource_bool_array_id = sub_resource_TestSensor_id_0.optionals.get("bool_array_res");
-		// sub_resource_time_array_id = sub_resource_TestSensor_id_0.optionals.get("time_array_res");
-		// sub_resource_complex_array_id = sub_resource_TestSensor_id_0.optionals.get("complex_array_res");
-		// TestCase.assertTrue(sub_resource_float_array_id == null);
-		// TestCase.assertTrue(sub_resource_int_array_id == null);
-		// TestCase.assertTrue(sub_resource_string_array_id == null);
-		// TestCase.assertTrue(sub_resource_bool_array_id == null);
-		// TestCase.assertTrue(sub_resource_time_array_id == null);
-		// TestCase.assertTrue(sub_resource_complex_array_id == null);
 
 		// as default all sub resources are optional and not a member of the
 		// resource until they are added via addChild

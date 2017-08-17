@@ -15,36 +15,33 @@
  */
 package org.ogema.drivers.homematic.xmlrpc.hl.channels;
 
-import java.util.HashMap;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.AbstractDeviceHandler;
 import java.util.List;
 import java.util.Map;
-import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.BooleanResource;
-import org.ogema.core.model.simple.FloatResource;
-import org.ogema.core.model.simple.SingleValueResource;
-import org.ogema.core.model.units.TemperatureResource;
-import org.ogema.drivers.homematic.xmlrpc.hl.HomeMaticDriver;
 import org.ogema.drivers.homematic.xmlrpc.hl.types.HmDevice;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.DeviceDescription;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.HmEvent;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.HmEventListener;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.ParameterDescription;
 import org.ogema.model.actors.RemoteControl;
-import org.ogema.model.devices.sensoractordevices.SensorDevice;
-import org.ogema.model.sensors.HumiditySensor;
-import org.ogema.model.sensors.Sensor;
-import org.ogema.model.sensors.TemperatureSensor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.HomeMaticConnection;
+import org.ogema.tools.resource.util.ResourceUtils;
 
 /**
  *
  * @author jlapp
  */
-public class KeyChannel implements ChannelHandler {
+public class KeyChannel extends AbstractDeviceHandler {
 
     Logger logger = LoggerFactory.getLogger(getClass());
 
+    public KeyChannel(HomeMaticConnection conn) {
+        super(conn);
+    }
+    
     class KeyEventListener implements HmEventListener {
 
         final String address;
@@ -91,22 +88,50 @@ public class KeyChannel implements ChannelHandler {
     }
 
     @Override
-    public void setup(HmDevice parent, HomeMaticDriver hm, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
+    public void setup(HmDevice parent, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
         logger.debug("setup KEY handler for address {}", desc.getAddress());
-        String remoteName = HomeMaticDriver.sanitizeResourcename("KEYS");
+        String remoteName = "KEYS";
         
         RemoteControl rc = parent.addDecorator(remoteName, RemoteControl.class);
-        rc.shortPress().create().activate(false);
-        rc.longPress().create().activate(false);
+        rc.shortPress().create();
+        rc.longPress().create();
+        rc.activate(true);
         
-        //TODO? select eventResourceName based on device type to create a useful ordering of key resources
-        String eventResourceName = HomeMaticDriver.sanitizeResourcename("KEY_"+desc.getAddress());
+        String eventResourceName = getEventResourceName(parent, desc);
+        logger.debug("mapping channel {} of device type {} to {}", desc.getAddress(), parent.type().getValue(), eventResourceName);
         BooleanResource shortPressEventResource = rc.shortPress().addDecorator(eventResourceName, BooleanResource.class).create();
         BooleanResource longPressEventResource = rc.longPress().addDecorator(eventResourceName, BooleanResource.class).create();
         
-        hm.getHomeMaticService().addEventListener(new KeyEventListener(desc.getAddress(), shortPressEventResource, longPressEventResource));
+        conn.addEventListener(new KeyEventListener(desc.getAddress(), shortPressEventResource, longPressEventResource));
     }
     
-    //protected String getEventResourceName(HmDevice device, DeviceDescription keyChannel);
+    protected String getEventResourceName(HmDevice device, DeviceDescription keyChannel) {
+        if ("HM-RC-4-3".equals(device.type().getValue())) {
+            if (keyChannel.getAddress().endsWith(":2")) {
+                return "KEY1";
+            }
+            if (keyChannel.getAddress().endsWith(":1")) {
+                return "KEY2";
+            }
+            if (keyChannel.getAddress().endsWith(":4")) {
+                return "KEY3";
+            }
+            if (keyChannel.getAddress().endsWith(":3")) {
+                return "KEY4";
+            }
+        }
+        String channelAddress = keyChannel.getAddress();
+        int i = channelAddress.lastIndexOf(":");
+        if (i > -1) {
+            try {
+                int channelNum = Integer.parseInt(channelAddress.substring(i+1));
+                //fits HM-RC-8
+                return "KEY" + channelNum;
+            } catch (Exception e) {
+                //nevermind
+            }
+        }
+        return ResourceUtils.getValidResourceName("KEY_"+keyChannel.getAddress());
+    }
 
 }

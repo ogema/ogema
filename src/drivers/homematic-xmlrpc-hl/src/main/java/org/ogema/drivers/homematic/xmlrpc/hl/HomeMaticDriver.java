@@ -17,19 +17,30 @@ package org.ogema.drivers.homematic.xmlrpc.hl;
 
 import java.io.IOException;
 import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.NavigableMap;
+import java.util.Objects;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.apache.xmlrpc.XmlRpcException;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.application.Timer;
 import org.ogema.core.application.TimerListener;
+import org.ogema.core.model.Resource;
+import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
@@ -37,10 +48,10 @@ import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
-import org.ogema.drivers.homematic.xmlrpc.hl.channels.ChannelHandler;
 import org.ogema.drivers.homematic.xmlrpc.hl.channels.KeyChannel;
 import org.ogema.drivers.homematic.xmlrpc.hl.channels.MaintenanceChannel;
 import org.ogema.drivers.homematic.xmlrpc.hl.channels.MotionDetectorChannel;
+import org.ogema.drivers.homematic.xmlrpc.hl.channels.PMSwitchDevice;
 import org.ogema.drivers.homematic.xmlrpc.hl.channels.PowerMeterChannel;
 import org.ogema.drivers.homematic.xmlrpc.hl.channels.ShutterContactChannel;
 import org.ogema.drivers.homematic.xmlrpc.hl.channels.SwitchChannel;
@@ -55,13 +66,21 @@ import org.ogema.drivers.homematic.xmlrpc.ll.api.DeviceDescription;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.HmEvent;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.HomeMatic;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.ParameterDescription;
-import org.ogema.model.actors.OnOffSwitch;
-import org.ogema.model.connections.ElectricityConnection;
-import org.ogema.model.devices.sensoractordevices.SingleSwitchBox;
+import org.ogema.drivers.homematic.xmlrpc.ll.xmlrpc.MapXmlRpcStruct;
+import org.osgi.framework.Constants;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicyOption;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.DeviceHandler;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.DeviceHandlerFactory;
+import org.ogema.drivers.homematic.xmlrpc.ll.api.HmEventListener;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.HomeMaticConnection;
 
 /**
  *
@@ -69,31 +88,262 @@ import org.slf4j.Logger;
  */
 @Component(service = Application.class)
 public class HomeMaticDriver implements Application {
-    
-    // aggregate channels of known homematic device types into higher level ogema devices?
-    // XXX breaks intended usage pattern of used channels, move to separate bundle?
-    private boolean performHighLevelDeviceSetup = true;
-    // create aggregate devices on top level?
-    private boolean highLevelDevicesTopLevel = false;
 
     private ApplicationManager appman;
     private ComponentContext ctx;
+    private Logger logger = LoggerFactory.getLogger(getClass());
+    private final Map<HmLogicInterface, HmConnection> connections = new HashMap<>();
+
+    private final SortedSet<HandlerRegistration> handlerFactories = new TreeSet<>();
     
-    HomeMaticService hm;
-    HomeMatic client;
-    private HmLogicInterface baseResource;
-    private Persistence persistence;
-    private Logger logger;
+    // store accepted devices (by address) so they are not offered again on a different connection
+    private final Map<String, Class<? extends DeviceHandler>> acceptedDevices = new HashMap<>();
+
+    private static class HandlerRegistration implements Comparable<HandlerRegistration> {
+
+        DeviceHandlerFactory fac;
+        int ranking;
+
+        public HandlerRegistration(DeviceHandlerFactory fac, int ranking) {
+            this.fac = fac;
+            this.ranking = ranking;
+        }
+
+        @Override
+        public int compareTo(HandlerRegistration o) {
+            int rankCompare = Integer.compare(ranking, o.ranking);
+            return rankCompare == 0 ? o.fac.getClass().getCanonicalName().compareTo(fac.getClass().getCanonicalName())
+                    : - rankCompare;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj instanceof HandlerRegistration) && fac.getClass() == ((HandlerRegistration) obj).fac.getClass();
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(fac);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%d: %s", ranking, fac.getClass().getCanonicalName());
+        }
+        
+    }
     
-    /* Chain of responsibility for handling HomeMatic devices, the first
-    handler that accepts a DeviceDescription will control that device 
-    (=> register more specific handlers first; not actually useful for standard
-    homematic device types) */
-    private final List<ChannelHandler> handlers = new CopyOnWriteArrayList<>();
+    // this is a static + greedy reference so that external handler factories
+    // can always replace the built-in handlers.
+    @Reference(cardinality = ReferenceCardinality.MULTIPLE, policyOption = ReferencePolicyOption.GREEDY)
+    protected void addHandlerFactory(DeviceHandlerFactory fac, Map<String, Object> serviceProperties) {
+        int ranking = 1;
+        if (serviceProperties.containsKey(Constants.SERVICE_RANKING)) {
+            ranking = (int) serviceProperties.get(Constants.SERVICE_RANKING);
+        }
+        logger.info("adding handler factory {}, rank {}", fac, ranking);
+        synchronized (handlerFactories) {
+            handlerFactories.add(new HandlerRegistration(fac, ranking));
+        }
+    }
+    
+    protected void removeHandlerFactory(DeviceHandlerFactory fac, Map<String, Object> serviceProperties) {
+        // nothing to do for static reference handling
+    }
+
+    public class HmConnection implements HomeMaticConnection {
+
+        HomeMaticService hm;
+        HomeMatic client;
+        HmLogicInterface baseResource;
+        ServiceRegistration<HomeMaticClientCli> commandLine;
+        Timer t;
+        /* Chain of responsibility for handling HomeMatic devices, the first
+         handler that accepts a DeviceDescription will control that device 
+         (=> register more specific handlers first; not actually useful for standard
+         homematic device types) */
+        private final List<DeviceHandler> handlers;
+        
+        HmConnection(List<DeviceHandlerFactory> handlerFactories) {
+            this.handlers = new ArrayList<>();
+            for (DeviceHandlerFactory fac: handlerFactories) {
+                this.handlers.add(fac.createHandler(this));
+            }
+            this.handlers.add(new PMSwitchDevice(this));
+            this.handlers.add(new MaintenanceChannel(this));
+            this.handlers.add(new ThermostatChannel(this));
+            this.handlers.add(new SwitchChannel(this));
+            this.handlers.add(new PowerMeterChannel(this));
+            this.handlers.add(new WeatherChannel(this));
+            this.handlers.add(new ShutterContactChannel(this));
+            this.handlers.add(new MotionDetectorChannel(this));
+            this.handlers.add(new KeyChannel(this));
+        }
+        
+        @Override
+        public void addEventListener(HmEventListener l) {
+            hm.addEventListener(l);
+        }
+        
+        @Override
+        public void removeEventListener(HmEventListener l) {
+            hm.removeEventListener(l);
+        }
+
+        final ResourceValueListener<BooleanResource> installModeListener = new ResourceValueListener<BooleanResource>() {
+
+            @Override
+            public void resourceChanged(BooleanResource t) {
+                if (t.equals(baseResource.installationMode().stateControl())) {
+                    try {
+                        boolean onOff = t.getValue();
+                        client.setInstallMode(onOff, 900, 1);
+                        int secondsRemaining = client.getInstallMode();
+                        baseResource.installationMode().stateFeedback().setValue(secondsRemaining > 0);
+                    } catch (XmlRpcException ex) {
+                        logger.error("could not activate install mode", ex);
+                    }
+                } else if (t.equals(baseResource.installationMode().stateFeedback())) {
+                    boolean installModeOn = baseResource.installationMode().stateFeedback().getValue();
+                    logger.info("installation mode {}", installModeOn ? "on" : "off");
+                }
+            }
+
+        };
+
+        final TimerListener installModePolling = new TimerListener() {
+
+            @Override
+            public void timerElapsed(Timer timer) {
+                try {
+                    int secondsRemaining = client.getInstallMode();
+                    logger.debug("polled installation mode: {}s", secondsRemaining);
+                    baseResource.installationMode().stateFeedback().setValue(secondsRemaining > 0);
+                } catch (XmlRpcException ex) {
+                    logger.error("could not poll HomeMatic client for installation mode state", ex);
+                }
+            }
+
+        };
+
+        @Override
+        public void performSetValue(String address, String valueKey, Object value) {
+            try {
+                client.setValue(address, valueKey, value);
+            } catch (XmlRpcException ex) {
+                logger.error(String.format("setValue failed for %s@%s := %s", valueKey, address, value), ex);
+            }
+        }
+
+        @Override
+        public void performPutParamset(String address, String set, Map<String, Object> values) {
+            try {
+                MapXmlRpcStruct valueStruct = new MapXmlRpcStruct(values);
+                client.putParamset(address, set, valueStruct);
+            } catch (XmlRpcException ex) {
+                logger.error(String.format("putParamset failed for %s@%s := %s", set, address, values), ex);
+            }
+        }
+
+        @Override
+        public void performAddLink(String sender, String receiver, String name, String description) {
+            try {
+                client.addLink(sender, receiver, name, description);
+                logger.debug("added HomeMatic link: {} => {}", sender, receiver);
+            } catch (XmlRpcException ex) {
+                logger.error(String.format("addLink failed for {} => {}", sender, receiver), ex);
+            }
+        }
+
+        @Override
+        public void performRemoveLink(String sender, String receiver) {
+            try {
+                client.removeLink(sender, receiver);
+                logger.debug("removed HomeMatic link: {} => {}", sender, receiver);
+            } catch (XmlRpcException ex) {
+                logger.error(String.format("removeLink failed for {} => {}", sender, receiver), ex);
+            }
+        }
+
+        @Override
+        public List<Map<String, Object>> performGetLinks(String address, int flags) {
+            try {
+                logger.debug("get links for {}", address);
+                return client.getLinks(address, flags);
+            } catch (XmlRpcException ex) {
+                logger.error(String.format("getLinks failed for {}", address), ex);
+                return null;
+            }
+        }
+        
+        /**
+         * Returns the HmDevice element controlling the given OGEMA resource, or
+         * null if the resource is not controlled by the HomeMatic driver.
+         *
+         * @param ogemaDevice
+         * @return HomeMatic device resource controlling the given resource or
+         * null.
+         */
+        @SuppressWarnings("rawtypes")
+        @Override
+        public HmDevice findControllingDevice(Resource ogemaDevice) {
+            //XXX: review this mess
+            for (ResourceList l : ogemaDevice.getReferencingResources(ResourceList.class)) {
+                if (l.getParent() != null && l.getParent() instanceof HmDevice) {
+                    return l.getParent();
+                }
+            }
+            for (Resource ref : ogemaDevice.getLocationResource().getReferencingNodes(true)) {
+                if (ref.getParent() != null && ref.getParent().getParent() instanceof HmDevice) {
+                    return ref.getParent().getParent();
+                }
+                for (ResourceList l : ref.getReferencingResources(ResourceList.class)) {
+                    if (l.getParent() != null && l.getParent() instanceof HmDevice) {
+                        return l.getParent();
+                    }
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public HmDevice getToplevelDevice(HmDevice channel) {
+            if (channel.getParent() != null && channel.getParent().getParent() instanceof HmDevice) {
+                return channel.getParent().getParent();
+            } else {
+                return channel;
+            }
+        }
+
+        @Override
+        public HmDevice getChannel(HmDevice device, String channelAddress) {
+            Objects.requireNonNull(device);
+            Objects.requireNonNull(channelAddress);
+            for (HmDevice channel : device.channels().getAllElements()) {
+                if (channelAddress.equalsIgnoreCase(channel.address().getValue())) {
+                    return channel;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public void registerControlledResource(HmDevice channel, Resource ogemaDevice) {
+            Objects.requireNonNull(channel);
+            Objects.requireNonNull(ogemaDevice);
+            for (Resource entry : channel.controlledResources().getAllElements()) {
+                if (entry.equalsLocation(ogemaDevice)) {
+                    return;
+                }
+            }
+            channel.controlledResources().create().activate(false);
+            channel.controlledResources().add(ogemaDevice);
+        }
+        
+    }
 
     @Activate
     protected void activate(ComponentContext ctx) {
-        System.out.println("activated;");
         this.ctx = ctx;
     }
 
@@ -115,89 +365,95 @@ public class HomeMaticDriver implements Application {
 
         @Override
         public void resourceAvailable(HmLogicInterface t) {
-            init(t);
+            List<DeviceHandlerFactory> l = new ArrayList<>(handlerFactories.size());
+            synchronized (handlerFactories) {
+                for (HandlerRegistration reg: handlerFactories) {
+                    l.add(reg.fac);
+                }
+            }
+            HmConnection conn = new HmConnection(l);
+            conn.baseResource = t;
+            connections.put(t, conn);
+            init(conn);
         }
 
         @Override
         public void resourceUnavailable(HmLogicInterface t) {
-            //TODO
+            close(connections.get(t));
+            connections.remove(t);
         }
 
-    };
-    
-    final ResourceValueListener<BooleanResource> installModeListener = new ResourceValueListener<BooleanResource> () {
-
-        @Override
-        public void resourceChanged(BooleanResource t) {
-            if (t.equals(baseResource.installationMode().stateControl())) {
-                try {
-                    boolean onOff = t.getValue();
-                    client.setInstallMode(onOff, 900, 1);
-                    int secondsRemaining = client.getInstallMode();
-                    baseResource.installationMode().stateFeedback().setValue(secondsRemaining > 0);
-                } catch (XmlRpcException ex) {
-                    logger.error("could not activate install mode", ex);
-                }
-            } else if (t.equals(baseResource.installationMode().stateFeedback())) {
-                boolean installModeOn = baseResource.installationMode().stateFeedback().getValue();
-                logger.info("installation mode {}", installModeOn? "on" : "off");
-            }
-        }
-        
-    };
-    
-    final TimerListener installModePolling = new TimerListener() {
-
-        @Override
-        public void timerElapsed(Timer timer) {
-            try {
-                int secondsRemaining = client.getInstallMode();
-                logger.debug("polled installation mode: {}s", secondsRemaining);
-                baseResource.installationMode().stateFeedback().setValue(secondsRemaining > 0);
-            } catch (XmlRpcException ex) {
-                logger.error("could not poll HomeMatic client for installation mode state", ex);
-            }
-        }
-        
     };
 
     @Override
     public void start(ApplicationManager am) {
         appman = am;
         logger = am.getLogger();
-
-        handlers.add(new MaintenanceChannel());
-        handlers.add(new ThermostatChannel());
-        handlers.add(new SwitchChannel());
-        handlers.add(new PowerMeterChannel());
-        handlers.add(new WeatherChannel());
-        handlers.add(new ShutterContactChannel());
-        handlers.add(new MotionDetectorChannel());
-        handlers.add(new KeyChannel());
-
-        logger.info("HomeMatic driver ready, configuration pending");
-        am.getResourceAccess().addResourceDemand(HmLogicInterface.class, configListener);
+        // delay actual setup so that all external ChannelHandlerFactories
+        // are available (cosmetic change, quick restarts seem to work fine)
+        final Timer t = appman.createTimer(2000);
+        t.addListener(new TimerListener() {
+            @Override
+            public void timerElapsed(Timer timer) {
+                logger.info("HomeMatic driver ready, configuration pending");
+                appman.getResourceAccess().addResourceDemand(HmLogicInterface.class, configListener);
+                t.destroy();
+            }
+        });
     }
 
-    protected void pollParameters() {
-        for (HmDevice dev : baseResource.devices().getAllElements()) {
+    @Override
+    public void stop(AppStopReason asr) {
+        if (appman != null) {
+            appman.getResourceAccess().removeResourceDemand(HmLogicInterface.class, configListener);
+        }
+        for (HmConnection conn: connections.values()) {
+            close(conn);
+        }
+    }
+
+    protected void pollParameters(HmConnection connection) {
+        for (HmDevice dev : connection.baseResource.devices().getAllElements()) {
             for (HmDevice sub : dev.channels().getAllElements()) {
                 setupDevice(sub);
             }
         }
     }
 
-    protected void init(HmLogicInterface config) {
+    protected void init(HmConnection connection) {
         try {
             String serverUrl = null;
+            HmLogicInterface config = connection.baseResource;
             String urlPattern = config.baseUrl().getValue();
+            // FIXME double use of the baseUrl resource is somewhat risky... is it really intended that one can either specify
+            // an URL (if networkInterface is not set) or a pattern for the address (if networkInterface is also set)?
             if (urlPattern == null || urlPattern.isEmpty()) {
                 urlPattern = "http://%s:%d";
             }
             String alias = config.alias().getValue();
             String iface = config.networkInterface().getValue();
-            if (iface != null && !iface.isEmpty()) {
-                Enumeration<InetAddress> addresses = NetworkInterface.getByName(iface).getInetAddresses();
+            final boolean ifSet = config.networkInterface().isActive() || config.baseUrl().isActive();
+            NetworkInterface n = null;
+            if (!ifSet) {
+                n = getBestMatchingInterface(config.clientUrl().getValue());
+                if (n == null) {
+                    throw new IllegalArgumentException(
+                            "Bad configuration: Network interface or base url not set and failed to determine interface automatically");
+                } else {
+                    logger.debug("network interface selected for {}: {}", config.clientUrl().getValue(), n);
+                }
+            }
+            if (!ifSet || (iface != null && !iface.isEmpty())) {
+                Enumeration<InetAddress> addresses;
+                if (n != null) {
+                    addresses = n.getInetAddresses();
+                } else {
+                    NetworkInterface nif = NetworkInterface.getByName(iface);
+                    if (nif == null) {
+                        throw new IllegalStateException("no such network interface: " + iface);
+                    }
+                    addresses = nif.getInetAddresses();
+                }
                 String ipAddrString = null;
                 while (addresses.hasMoreElements()) {
                     InetAddress a = addresses.nextElement();
@@ -213,74 +469,100 @@ public class HomeMaticDriver implements Application {
                 serverUrl = urlPattern + alias;
             }
 
-            client = new HomeMaticClient(config.clientUrl().getValue());
-            new HomeMaticClientCli(client).register(ctx.getBundleContext());
+            connection.client = new HomeMaticClient(config.clientUrl().getValue());
+            connection.commandLine = new HomeMaticClientCli(connection.client).register(ctx.getBundleContext(), config.getName());
 
-            hm = new HomeMaticService(ctx.getBundleContext(), serverUrl, alias);
+            connection.hm = new HomeMaticService(ctx.getBundleContext(), serverUrl, alias);
 
-            baseResource = config;
-            baseResource.installationMode().stateControl().create();
-            baseResource.installationMode().stateFeedback().create();
-            baseResource.installationMode().activate(true);
-            baseResource.installationMode().stateControl().addValueListener(installModeListener, true);
-            baseResource.installationMode().stateFeedback().addValueListener(installModeListener, false);
-            persistence = new Persistence(appman, baseResource);
-            hm.setBackend(persistence);
+            config.installationMode().stateControl().create();
+            config.installationMode().stateFeedback().create();
+            config.installationMode().activate(true);
+            config.installationMode().stateControl().addValueListener(connection.installModeListener, true);
+            config.installationMode().stateFeedback().addValueListener(connection.installModeListener, false);
+            Persistence persistence = new Persistence(appman, config);
+            connection.hm.setBackend(persistence);
 
-            hm.addDeviceListener(persistence);
-            hm.init(client, "ogema");
-            
+            connection.hm.addDeviceListener(persistence);
+            connection.hm.init(connection.client, "ogema-"+connection.baseResource.getName());
+
             appman.getResourceAccess().addResourceDemand(HmDevice.class, devResourceListener);
-            
-            appman.createTimer(30000, installModePolling);
-            
+
+            connection.t = appman.createTimer(30000, connection.installModePolling);
+
             logger.info("HomeMatic driver configured and registered according to config {}", config.getPath());
         } catch (IOException | XmlRpcException ex) {
-            logger.error("could not start HomeMatic driver");
+            logger.error("could not start HomeMatic driver for config {}", connection.baseResource.getPath());
             logger.debug("Exception details:", ex);
             //throw new IllegalStateException(ex);
         }
 
     }
 
-    protected void setupDevice(HmDevice dev) {
+    protected void close(HmConnection connection) {
+        HmLogicInterface config = connection.baseResource;
         try {
-            String address = dev.address().getValue();
-            DeviceDescription channelDesc = client.getDeviceDescription(address);
-            for (ChannelHandler h : handlers) {
+            if (connection.t != null) {
+                connection.t.destroy();
+            }
+            if (appman != null) {
+                appman.getResourceAccess().removeResourceDemand(HmDevice.class, devResourceListener);
+            }
+            config.installationMode().stateControl().removeValueListener(connection.installModeListener);
+            config.installationMode().stateFeedback().removeValueListener(connection.installModeListener);
+            if (connection.client != null) {
+                connection.hm.close();
+                connection.commandLine.unregister();
+            }
+            if (logger  != null)
+            	logger.info("HomeMatic configuration removed: {}", config);
+        } catch (Exception e) {
+        	if (logger != null)
+        		logger.error("HomeMatic XmlRpc driver shutdown failed", e);
+        }
+    }
+
+    protected HmConnection findConnection(HmDevice dev) {
+        Resource p = dev;
+        while (p.getParent() != null) {
+            p = p.getParent();
+        }
+        if (!(p instanceof HmLogicInterface)) {
+            throw new IllegalStateException("HmDevice in wrong place: " + dev.getPath());
+        }
+        return connections.get((HmLogicInterface) p);
+    }
+
+    protected void setupDevice(HmDevice dev) {
+        String address = dev.address().getValue();
+        if (acceptedDevices.containsKey(address)) {
+            logger.debug("device {} already controlled by handler type {}", address, acceptedDevices.get(address));
+            return;
+        }
+        HmConnection conn = findConnection(dev);
+        if (conn == null) {
+            logger.warn("no connection for device {}", dev.getPath());
+            return;
+        }
+        try {
+            DeviceDescription channelDesc = conn.client.getDeviceDescription(address);
+            for (DeviceHandler h : conn.handlers) {
                 if (h.accept(channelDesc)) {
                     logger.debug("handler available for {}: {}", address, h.getClass().getCanonicalName());
                     Map<String, Map<String, ParameterDescription<?>>> paramSets = new HashMap<>();
                     for (String set : dev.paramsets().getValues()) {
                         logger.trace("requesting paramset {} of device {}", set, address);
-                        paramSets.put(set, client.getParamsetDescription(address, set));
+                        paramSets.put(set, conn.client.getParamsetDescription(address, set));
                     }
-
-                    h.setup(dev.getParent().getParent(), this, channelDesc, paramSets);
-                    performHighLevelDeviceSetup(dev.getParent().getParent());
+                    HmDevice masterDevice = channelDesc.isDevice() ?
+                            dev : (HmDevice) dev.getParent().getParent();
+                    h.setup(masterDevice, channelDesc, paramSets);
+                    acceptedDevices.put(address, h.getClass().asSubclass(DeviceHandler.class));
                     break;
                 }
             }
         } catch (XmlRpcException ex) {
             logger.error("failed to configure value resources for device " + dev.getPath(), ex);
         }
-    }
-
-    @Override
-    public void stop(AppStopReason asr) {
-
-    }
-
-    public void performSetValue(String address, String valueKey, Object value) {
-        try {
-            client.setValue(address, valueKey, value);
-        } catch (XmlRpcException ex) {
-            logger.error(String.format("setValue failed for %s@%s := %s", valueKey, address, value), ex);
-        }
-    }
-
-    public static String sanitizeResourcename(String name) {
-        return name.replaceAll("[^\\p{javaJavaIdentifierPart}]", "_");
     }
 
     public void storeEvent(HmEvent e, SingleValueResource res) {
@@ -298,42 +580,72 @@ public class HomeMaticDriver implements Application {
         }
     }
 
-    public HomeMaticService getHomeMaticService() {
-        return hm;
-    }
-    
-    /*
-     * called after each channel setup to perform high-level setup of OGEMA device types,
-     * e.g. by aggregating channels into new sub resources (SwitchChannel+PowerMeterChannel = SingleSwitchBox)
-     */
-    protected void performHighLevelDeviceSetup(HmDevice dev) {
-        if (!performHighLevelDeviceSetup) {
-            return;
+    // TODO: cover case that clientUrl is not an IP address but a domain name; probably not too relevant, though
+    private static NetworkInterface getBestMatchingInterface(final String clientUrl) throws SocketException {
+        if (isOwnLoopbackAddress(clientUrl)) {
+            return NetworkInterface.getByName("lo");
         }
-        //logger.debug("perform high level setup for device {}", dev.address().getValue());
-        List<ElectricityConnection> elConns = dev.getSubResources(ElectricityConnection.class, false);
-        List<OnOffSwitch> switches = dev.getSubResources(OnOffSwitch.class, false);
-        if ("HM-ES-PMSw1-Pl".equals(dev.type().getValue()) && elConns.size() == 1 && switches.size() == 1){
-            String ssbName = sanitizeResourcename("HM-SingleSwitchBox-" + dev.address().getValue());
-            if ((highLevelDevicesTopLevel && appman.getResourceAccess().getResource(ssbName) != null) || dev.getSubResource(ssbName) != null) {
-                return;
+        String targetAddress = clientUrl;
+        try {
+            targetAddress = new URL(clientUrl).getHost();
+        } catch (MalformedURLException ignore) {
+        }
+        final Enumeration<?> e = NetworkInterface.getNetworkInterfaces();
+        // the higher the key, the better the interfaces match the clientUrl
+        final NavigableMap<Integer, List<NetworkInterface>> matches = new TreeMap<>();
+        while (e.hasMoreElements()) {
+            NetworkInterface n = (NetworkInterface) e.nextElement();
+            final Enumeration<?> ee = n.getInetAddresses();
+            int cnt = -1;
+            while (ee.hasMoreElements()) {
+                InetAddress i = (InetAddress) ee.nextElement();
+                if (!(i instanceof Inet4Address) && !(i instanceof Inet6Address)) {
+                    continue;
+                }
+                final int level = getAgreementLevel(i.getHostAddress(), targetAddress);
+                if (level > cnt) {
+                    cnt = level;
+                }
             }
-            logger.debug("set up SingleSwitchBox for HomeMatic device {}", dev.address().getValue());
-            OnOffSwitch sw = switches.get(0);
-            ElectricityConnection elConn = elConns.get(0);
-
-            SingleSwitchBox ssb = highLevelDevicesTopLevel? appman.getResourceManagement().createResource(ssbName, SingleSwitchBox.class) :
-                    dev.getSubResource(ssbName, SingleSwitchBox.class);
-            
-            ssb.onOffSwitch().stateControl().create().activate(false);
-            ssb.onOffSwitch().stateFeedback().create().activate(false);
-            ssb.electricityConnection().create().activate(false);
-            ssb.onOffSwitch().activate(false);
-            elConn.setAsReference(ssb.electricityConnection());
-            sw.setAsReference(ssb.onOffSwitch());
-
-            ssb.activate(false);
+            if (cnt >= 0) {
+                List<NetworkInterface> ifs = matches.get(cnt);
+                if (ifs == null) {
+                    ifs = new ArrayList<>();
+                    matches.put(cnt, ifs);
+                }
+                ifs.add(n);
+            }
         }
+        final Logger logger = LoggerFactory.getLogger(HomeMaticDriver.class);
+        if (matches.isEmpty()) {
+            logger.error("No network interfaces found, cannot start driver");
+            return null;
+        }
+        final Map.Entry<Integer, List<NetworkInterface>> entry = matches.lastEntry();
+        final List<NetworkInterface> ifs = entry.getValue();
+        final NetworkInterface selected = ifs.get(0);
+        if (ifs.size() > 1) {
+            logger.warn("Local matching interface not unique for clientUrl {}, "
+                    + "found {} candidates, at agreement level {}. Selecting the first: {}", clientUrl, ifs.size(), entry.getKey(), selected);
+        } else {
+            logger.info("Local matching interface for clientUrl {} is {}, at agreement level {}", clientUrl, selected, entry.getKey());
+        }
+        return selected;
+    }
+
+    private static int getAgreementLevel(String address, String targetAddress) {
+        final int sz = Math.min(address.length(), targetAddress.length());
+        for (int i = 0; i < sz; i++) {
+            if (address.charAt(i) != targetAddress.charAt(i)) {
+                return i;
+            }
+        }
+        return sz;
+    }
+
+    private static boolean isOwnLoopbackAddress(final String clientUrl) {
+        return clientUrl.contains("localhost") || clientUrl.contains("127.0.0.1") || clientUrl.contains("0:0:0:0:0:0:0:1")
+                || clientUrl.contains("::1");
     }
 
 }

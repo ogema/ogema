@@ -99,19 +99,29 @@ public interface Resource {
 
 	/**
 	 * Register listener receiving callbacks whenever the resource value is changed or written.
+	 * Note that this method only has an effect when called by a {@link ValueResource}. For
+	 * complex resources the method has not effect. The listener does only listen to changes
+	 * in the ValueResource on which it is called, does not work recursively.
 	 * 
 	 * @param listener
 	 *            reference to the listener receiving the callbacks.
 	 * @param callOnEveryUpdate
-	 *            receive a callback every time the resource value is written, even it is the same value.
-	 *            For schedules and array-values resources this must be true.
+	 *            if true receive a callback every time the resource value is written, even it is the same value,
+	 *            otherwise a callback is only initiated when the value actually changed.
+	 *            For schedules and array-values resources the argument is irrelevant as here a callback
+	 *            is initiated on every write operation regardless whether the content changed or not (here
+	 *            behavior is like callOnEveryUpdate was true).
 	 */
 	void addValueListener(ResourceValueListener<?> listener, boolean callOnEveryUpdate);
 
 	/**
 	 * Register listener receiving callback whenever the resource value changes
 	 * to a new value (for simple values containing only a single value) or if
-	 * the values are written to (for array resources and schedules).
+	 * the values are written to (for array resources and schedules). So the methods behaves like
+	 * addValueListener(listener, false).
+	 * Note that this method only has an effect when called by a {@link ValueResource}. For
+	 * complex resources the method has not effect. The listener does only listen to changes
+	 * in the ValueResource on which it is called, does not work recursively.
 	 * 
 	 * @param listener
 	 *            reference to the listener receiving the callbacks.
@@ -258,12 +268,17 @@ public interface Resource {
 	 * 
 	 * @param <T>
 	 * @return parent or null if a top-level resource
+	 * @throws SecurityException 
+	 * 		if security is enabled and the caller does not have permission to access
+	 * 		the parent resource
 	 */
 	<T extends Resource> T getParent();
 
 	/**
 	 * Get reference-parent resources of a given type that have a reference to the resource.
-	 * Pass null-type or Resource.class to get all resources referencing this.
+	 * Pass null-type or Resource.class to get all resources referencing this.<br>
+	 * Note: the returned list does not contain the parent of the location resource 
+	 * (whose path is equal to its location), only those of actual references. 
 	 * 
 	 * @param <T>
 	 * @param parentType
@@ -288,7 +303,10 @@ public interface Resource {
 	 * Get all sub-resources including children connected via references
 	 * 
 	 * @param recursive
-	 *            if true the entire tree below the resource is returned
+	 *            if true the entire tree below the resource is returned. A recursive search includes the entire resource
+	 *            tree below the calling resource, but does not extend the search going over references. To the
+	 *            method includes resources directly referenced from the resource tree, but does not search
+	 *            "behind" such resources.
 	 * 
 	 * @return
 	 */
@@ -296,7 +314,8 @@ public interface Resource {
 
 	/**
 	 * Get all direct sub-resources excluding children connected via references
-	 * @param recursive return all sub-resources below this resources recursively
+	 * @param recursive return all sub-resources below this resources recursively. A recursive search includes the entire resource
+	 *            tree below the calling resource, but does not extend the search going over references
 	 * @return this resource's direct sub-resources
 	 */
 	List<Resource> getDirectSubResources(boolean recursive);
@@ -321,6 +340,8 @@ public interface Resource {
 	 *            name of the sub resource
 	 * @return The requested sub resource (possibly virtual) if available, or null if no such resource exists.
 	 * @throws NoSuchResourceException if the name is not a valid OGEMA resource name.
+	 * @throws SecurityException 
+	 * 		if security is enabled and the caller does not have permission to access the sub resource
 	 * 
 	 * @see #getSubResource(java.lang.String, java.lang.Class) 
 	 */
@@ -348,7 +369,7 @@ public interface Resource {
 	 *            are NOT activated.
 	 * @throws SecurityException
 	 *            if the resource, or one of its visible sub-resources in case of recursive==true, is
-	 *             not writeable because of missing write permissions.
+	 *             not writeable because of missing activation permissions.
 	 * @throws VirtualResourceException
 	 *            if the resource is virtual. Virtual resources cannot be activated.
 	 */
@@ -364,7 +385,7 @@ public interface Resource {
 	 *            are NOT deactivated.
 	 * @throws SecurityException
 	 *            if the resource, or one of its visible sub-resources in case of recursive==true, is
-	 *             not writeable because of missing write permissions.
+	 *             not writeable because of missing activation permissions.
 	 */
 	void deactivate(boolean recursive) throws SecurityException;
 
@@ -419,6 +440,7 @@ public interface Resource {
 	 */
 	Resource addOptionalElement(String name) throws NoSuchResourceException;
 
+	// TODO define behaviour if Resource is virtual (also for ResourceList#add)
 	/**
 	 * Adds an empty decorator. Decorators are sub-resources that are not specified as
 	 * optional elements. For this reason such sub-resources are not directly accessible 
@@ -472,6 +494,9 @@ public interface Resource {
 	 *             if adding the reference would cause an invalid state of the set of all OGEMA resources in the system.
 	 * @throws VirtualResourceException
 	 *             if either this or decoratingResource are virtual.
+	 * @throws SecurityException
+	 *             if the caller does not have write permission on this resource or the decorator exists but the caller
+	 *             does not have read permissions for it.
 	 */
 	<T extends Resource> T addDecorator(String name, T decoratingResource) throws ResourceAlreadyExistsException,
 			NoSuchResourceException, ResourceGraphException, VirtualResourceException;
@@ -481,6 +506,8 @@ public interface Resource {
 	 * 
 	 * @param name
 	 *            name of sub-resource or reference to delete
+	 * @throws SecurityException
+	 *             if the caller does not have delete permission for the element 
 	 * 
 	 * @see #delete() 
 	 */
@@ -540,6 +567,8 @@ public interface Resource {
 	 * @throws NoSuchResourceException The resource could not be created because the specified path is no longer valid. This can occur when the resource already exists but is of a different
 	 * resource type than requested or if the full path to the resource can no longer be parsed.
 	 * The path of the virtual resource can no longer be resolved (e.g. another application created a resource in the path that has an incompatible type). The resource is not created.
+	 * @throws SecurityException
+	 *             if the caller does not have create permission for the resource
 	 */
 	<T extends Resource> T create() throws NoSuchResourceException;
 
@@ -549,6 +578,8 @@ public interface Resource {
 	 * If the resource is virtual, this does nothing.
 	 * 
 	 * @see #deleteElement(java.lang.String) 
+	 * @throws SecurityException
+	 *             if the caller does not have delete permission for the resource
 	 */
 	void delete();
 
@@ -563,6 +594,8 @@ public interface Resource {
 	 * @param reference the resource to refer to.
 	 * @return the new reference.
 	 * @see #setOptionalElement(java.lang.String, org.ogema.core.model.Resource) 
+	 * @throws SecurityException
+	 *             if the caller does not have write permission for the resource 
 	 */
 	<T extends Resource> T setAsReference(T reference) throws NoSuchResourceException, ResourceGraphException,
 			VirtualResourceException;
@@ -577,6 +610,8 @@ public interface Resource {
 	 * @throws NoSuchResourceException if a sub-resource with that name already exists but has an incompatible type, or
 	 *           the requested sub-resource is an optional element with an incompatible type.
 	 * @throws NoSuchResourceException if the name is not a valid OGEMA resource name.
+	 * @throws SecurityException
+	 *             if the caller does not have read permission for the subresource 
 	 */
 	<T extends Resource> T getSubResource(String name, Class<T> type) throws NoSuchResourceException;
 	
@@ -584,6 +619,8 @@ public interface Resource {
 	 * Returns the reference target of this resource, i.e. the resource whose path is equal to the location of this resource. 
 	 * Note that a security exception may be thrown, if the calling application does not have the 
 	 * permission to access the target resource. 
+	 * @throws SecurityException
+	 *             if the caller does not have read permission for the reference target
 	 */
 	<T extends Resource> T getLocationResource();
 	

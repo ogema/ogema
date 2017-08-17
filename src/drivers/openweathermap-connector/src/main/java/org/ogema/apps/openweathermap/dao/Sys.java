@@ -26,99 +26,92 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-    "type",
-    "id",
-    "message",
-    "country",
-    "sunrise",
-    "sunset"
-})
+@JsonPropertyOrder({ "type", "id", "message", "country", "sunrise", "sunset" })
 public class Sys {
 
-    @JsonProperty("type")
-    private Long type;
-    @JsonProperty("id")
-    private Long id;
-    @JsonProperty("message")
-    private Double message;
-    @JsonProperty("country")
-    private String country;
-    @JsonProperty("sunrise")
-    private Long sunrise;
-    @JsonProperty("sunset")
-    private Long sunset;
-    @JsonIgnore
-    private Map<String, Object> additionalProperties = new HashMap<String, Object>();
+	@JsonProperty("type")
+	private Long type;
+	@JsonProperty("id")
+	private Long id;
+	@JsonProperty("message")
+	private Double message;
+	@JsonProperty("country")
+	private String country;
+	@JsonProperty("sunrise")
+	private Long sunrise;
+	@JsonProperty("sunset")
+	private Long sunset;
+	@JsonIgnore
+	private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
-    @JsonProperty("type")
-    public Long getType() {
-        return type;
-    }
+	@JsonProperty("type")
+	public Long getType() {
+		return type;
+	}
 
-    @JsonProperty("type")
-    public void setType(Long type) {
-        this.type = type;
-    }
+	@JsonProperty("type")
+	public void setType(Long type) {
+		this.type = type;
+	}
 
-    @JsonProperty("id")
-    public Long getId() {
-        return id;
-    }
+	@JsonProperty("id")
+	public Long getId() {
+		return id;
+	}
 
-    @JsonProperty("id")
-    public void setId(Long id) {
-        this.id = id;
-    }
+	@JsonProperty("id")
+	public void setId(Long id) {
+		this.id = id;
+	}
 
-    @JsonProperty("message")
-    public Double getMessage() {
-        return message;
-    }
+	@JsonProperty("message")
+	public Double getMessage() {
+		return message;
+	}
 
-    @JsonProperty("message")
-    public void setMessage(Double message) {
-        this.message = message;
-    }
+	@JsonProperty("message")
+	public void setMessage(Double message) {
+		this.message = message;
+	}
 
-    @JsonProperty("country")
-    public String getCountry() {
-        return country;
-    }
+	@JsonProperty("country")
+	public String getCountry() {
+		return country;
+	}
 
-    @JsonProperty("country")
-    public void setCountry(String country) {
-        this.country = country;
-    }
+	@JsonProperty("country")
+	public void setCountry(String country) {
+		this.country = country;
+	}
 
-    @JsonProperty("sunrise")
-    public Long getSunrise() {
-        return sunrise;
-    }
+	@JsonProperty("sunrise")
+	public Long getSunrise() {
+		return sunrise;
+	}
 
-    @JsonProperty("sunrise")
-    public void setSunrise(Long sunrise) {
-        this.sunrise = sunrise;
-    }
+	@JsonProperty("sunrise")
+	public void setSunrise(Long sunrise) {
+		this.sunrise = sunrise;
+	}
 
-    @JsonProperty("sunset")
-    public Long getSunset() {
-        return sunset;
-    }
+	@JsonProperty("sunset")
+	public Long getSunset() {
+		return sunset;
+	}
 
-    @JsonProperty("sunset")
-    public void setSunset(Long sunset) {
-        this.sunset = sunset;
-    }
+	@JsonProperty("sunset")
+	public void setSunset(Long sunset) {
+		this.sunset = sunset;
+	}
 
-    @JsonAnyGetter
-    public Map<String, Object> getAdditionalProperties() {
-        return this.additionalProperties;
-    }
+	@JsonAnyGetter
+	public Map<String, Object> getAdditionalProperties() {
+		return this.additionalProperties;
+	}
 
-    @JsonAnySetter
-    public void setAdditionalProperty(String name, Object value) {
-        this.additionalProperties.put(name, value);
-    }
+	@JsonAnySetter
+	public void setAdditionalProperty(String name, Object value) {
+		this.additionalProperties.put(name, value);
+	}
 
 }

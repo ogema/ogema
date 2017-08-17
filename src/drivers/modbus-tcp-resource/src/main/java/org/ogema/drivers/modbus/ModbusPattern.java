@@ -45,7 +45,7 @@ public class ModbusPattern extends
 	@Existence(required = CreateMode.MUST_EXIST)
 	public StringResource host = address.host();
 	public FloatResource offset = model.offset();
-	@Existence(required = CreateMode.OPTIONAL)  // FIXME is this really meant to be optional?
+	@Existence(required = CreateMode.OPTIONAL) 
 	public FloatResource factor = model.factor();
 	@Existence(required = CreateMode.MUST_EXIST)
 	public IntegerResource port = address.port();

@@ -1,0 +1,57 @@
+<!-- This is the logback configuration for the OGEMA default logger
+ implementation. Message patterns, file names and sizes may be freely customized.
+ 
+ Log levels per output can be set in a separate file (default: config/loglevels.properties).
+ -->
+<configuration debug="false">
+
+   <contextName>CLIENT_ID</contextName> 
+
+  <!-- context listener for better JUL performance -->
+  <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
+  
+    <appender name="SOCKET" class="ch.qos.logback.classic.net.SocketAppender"> 
+    <encoder>
+      <pattern>%logger{36}/%thread %-5level: - !!socket!!: %msg%n</pattern>
+    </encoder> 
+	<remoteHost>127.0.0.1</remoteHost>
+	<port>8083</port>
+	<includeCallerData>false</includeCallerData> <!-- optional, default false; include stack trace? -->
+<!--	<queueSize>1</queueSize>  --><!-- 1 implies synchronous transmission -->
+<!--	<eventDelayLimit>1 second</eventDelayLimit> -->
+  </appender>
+  
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender"> 
+    <encoder>
+      <pattern>%logger{36}/%thread %-5level: - %msg%n</pattern>
+    </encoder>
+  </appender>
+  
+  <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <rollingPolicy
+      class="org.ogema.impl.logging.HousekeepingPolicy">
+      <fileNamePattern>${ogema.logging.dir:-data/logs}/ogema_%d{yyyy-MM-dd-HH}_%03i.log</fileNamePattern>
+      <maxFileSize>1000KB</maxFileSize>
+      <maxTotalSize>20MB</maxTotalSize>
+    </rollingPolicy>
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %logger{36} [%thread] %-5level - %msg%n</pattern>
+    </encoder>
+    <!-- set immediateFlush to false for much higher logging throughput -->
+    <immediateFlush>false</immediateFlush>
+  </appender>
+  
+  <appender name="CACHE" class="org.ogema.impl.logging.CacheAppender">
+    <pattern>%d{HH:mm:ss.SSS} %logger{36} [%thread] %-5level - %msg%n</pattern>
+    <filename>${ogema.logging.dir:-data/logs}/cache_%d{yyyy-MM-dd-HH-mm.ss.SSS}.log</filename>
+    <size>1MB</size>
+  </appender>
+  
+  <root level="ALL">
+    <appender-ref ref="SOCKET" />
+    <appender-ref ref="CONSOLE" />
+    <appender-ref ref="FILE" />
+    <appender-ref ref="CACHE" />
+  </root>
+  
+</configuration>

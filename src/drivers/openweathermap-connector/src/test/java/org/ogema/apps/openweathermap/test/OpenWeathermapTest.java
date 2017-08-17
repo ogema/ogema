@@ -41,17 +41,18 @@ public class OpenWeathermapTest extends OsgiAppTestBase {
 	public OpenWeathermapTest() {
 		super(true);
 	}
-	
+
 	@Inject
 	OpenWeatherMapApplicationI openWeatherMapApp;
 
 	@BeforeClass
 	public static void beforeClass() {
 
-		// To run the test, uncomment this line and enter your key as value; comment out the line after, that throws the exception
-//		System.getProperties().setProperty("org.ogema.drivers.openweathermap.key", "");
+		// To run the test, uncomment this line and enter your key as value; comment out the line after, that throws the
+		// exception
+		// System.getProperties().setProperty("org.ogema.drivers.openweathermap.key", "");
 		throw new IllegalStateException("OpenWeatherMap key not set, cannot run test");
-		
+
 	}
 
 	@AfterClass
@@ -65,8 +66,7 @@ public class OpenWeathermapTest extends OsgiAppTestBase {
 			System.out.println(e.getMessage());
 		}
 	}
-	
-	
+
 	private ResourceManagement resourceManagement;
 	private ResourceAccess resourceAccess;
 
@@ -80,14 +80,12 @@ public class OpenWeathermapTest extends OsgiAppTestBase {
 	@Test(timeout = 60000)
 	public void test() {
 
-		Room room = (Room) openWeatherMapApp.createEnvironment("test","Kassel", "de");
+		Room room = (Room) openWeatherMapApp.createEnvironment("test", "Kassel", "de");
 
 		sleep();
-		assertTrue(room.temperatureSensor().reading().forecast().getValues(0).size()>=1440);
-		assertTrue(
-				room.getSubResource("solarIrradiationSensor",
-						SolarIrradiationSensor.class).reading().forecast()
-						.getValues(0).size()>=1440);
+		assertTrue(room.temperatureSensor().reading().forecast().getValues(0).size() >= 1440);
+		assertTrue(room.getSubResource("solarIrradiationSensor", SolarIrradiationSensor.class).reading().forecast()
+				.getValues(0).size() >= 1440);
 	}
 
 	private void sleep() {

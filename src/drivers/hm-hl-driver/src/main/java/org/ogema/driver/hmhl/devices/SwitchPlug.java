@@ -19,7 +19,6 @@ import static org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType.
 
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelConfiguration;
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.BooleanValue;
 import org.ogema.core.channelmanager.measurements.Value;
@@ -32,7 +31,6 @@ import org.ogema.driver.hmhl.Constants;
 import org.ogema.driver.hmhl.HM_hlConfig;
 import org.ogema.driver.hmhl.HM_hlDevice;
 import org.ogema.driver.hmhl.HM_hlDriver;
-import org.ogema.model.connections.ElectricityConnection;
 import org.ogema.model.devices.sensoractordevices.SingleSwitchBox;
 import org.ogema.tools.resource.util.ResourceUtils;
 
@@ -171,7 +169,7 @@ public class SwitchPlug extends HM_hlDevice implements ResourceValueListener<Boo
 
 		// The connection attribute and its children, current, voltage, power,
 		// frequency
-		ElectricityConnection conn = powerMeter.electricityConnection().create();
+//		ElectricityConnection conn = powerMeter.electricityConnection().create();
 		// conn.activate(true);
 
 		/**ElectricCurrentSensor iSens = conn.currentSensor().create();
@@ -216,6 +214,7 @@ public class SwitchPlug extends HM_hlDevice implements ResourceValueListener<Boo
 		// configureLogging();
 	}
 
+	@SuppressWarnings("unused")
 	private void configureLogging() {
 		// configure temperature for logging once per minute
 		final RecordedDataConfiguration powerConf = new RecordedDataConfiguration();

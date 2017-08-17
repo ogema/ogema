@@ -15,13 +15,15 @@
  */
 package org.ogema.rest.servlet;
 
+import static org.ogema.accesscontrol.Constants.OTPNAME;
+import static org.ogema.accesscontrol.Constants.OTUNAME;
+
 import java.io.IOException;
 import java.security.AccessControlContext;
 import java.security.ProtectionDomain;
 import java.util.Objects;
 
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -33,17 +35,12 @@ import org.ogema.accesscontrol.UserRightsProxy;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.administration.AdministrationManager;
 import org.slf4j.Logger;
-import static org.ogema.accesscontrol.Constants.*;
 
 /**
  * @author Zekeriya Mansuroglu
  *
  */
-// FIXME why extends HttpServlet?
-public class RestAccess extends HttpServlet {
-
-	private static final boolean DEBUG = true;
-	private static final long serialVersionUID = 3258753513240214977L;
+public class RestAccess {
 
 	/*
 	 * Handle Get requests to the rest server. Each request has to contain the parameter otpwd (one time password) and
@@ -61,17 +58,17 @@ public class RestAccess extends HttpServlet {
 	private final AdministrationManager adminMan;
 
 	public RestAccess(PermissionManager permMan, AdministrationManager adminMan) {
-        Objects.requireNonNull(permMan);
-        Objects.requireNonNull(adminMan);
+		Objects.requireNonNull(permMan);
+		Objects.requireNonNull(adminMan);
 		this.permMan = permMan;
 		this.adminMan = adminMan;
 		this.domainCombiner = new AppDomainCombiner();
 		this.accMan = permMan.getAccessManager();
 	}
 
-	boolean checkAccess(HttpServletRequest req) {
-		return checkAccess(req, req.getPathInfo());
-	}
+	// boolean checkAccess(HttpServletRequest req) {
+	// return checkAccess(req, req.getPathInfo());
+	// }
 
 	boolean checkAccess(HttpServletRequest req, String resourcePath) {
 		/*
@@ -101,9 +98,9 @@ public class RestAccess extends HttpServlet {
 				return false;
 			ProtectionDomain pda[] = new ProtectionDomain[1];
 			pda[0] = aaa.getID().getApplication().getClass().getProtectionDomain();
-			if (checkAppAccess(pda, req.getMethod(), resourcePath)) {
-				if (DEBUG) {
-					logger.info("RestAccess permitted for 1Time-PW authenticated app " + usr);
+			if (setProtectionDomain(pda)) {
+				if (logger.isDebugEnabled()) {
+					logger.debug("RestAccess permitted for 1Time-PW authenticated app {}", usr);
 				}
 				return true;
 			}
@@ -112,27 +109,23 @@ public class RestAccess extends HttpServlet {
 		if (checkM2MUserPW(usr, pwd)) {
 			UserRightsProxy urp = accMan.getUrp(usr);
 			if (urp == null) {
-				if (DEBUG)
-					logger.info("RestAccess denied for external authenticated user " + usr);
+				logger.info("RestAccess denied for external authenticated user {}", usr);
 				return false;
 			}
 			ProtectionDomain pda[] = new ProtectionDomain[1];
 			pda[0] = urp.getClass().getProtectionDomain();
-			if (checkAppAccess(pda, req.getMethod(), resourcePath)) {
-				if (DEBUG) {
-					logger.info("RestAccess permitted for external authenticated user " + usr);
+			if (setProtectionDomain(pda)) {
+				if (logger.isDebugEnabled()) {
+					logger.debug("RestAccess permitted for external authenticated user {}", usr);
 				}
 				return true;
 			}
 		}
-
-		if (DEBUG) {
-			logger.info("RestAccess denied.");
-		}
+		logger.info("RestAccess denied.");
 		return false;
 	}
 
-	private boolean checkAppAccess(ProtectionDomain pda[], String method, String path) {
+	private boolean setProtectionDomain(ProtectionDomain pda[]) {
 		final AccessControlContext acc = new AccessControlContext(new AccessControlContext(pda), domainCombiner);
 		permMan.setAccessContext(acc);
 		return true;
@@ -158,17 +151,15 @@ public class RestAccess extends HttpServlet {
 		return permMan.getAccessManager().authenticate(usr, pwd, false);
 
 	}
-	
-    protected boolean setAccessContext(HttpServletRequest req, HttpServletResponse resp, boolean securityEnabled) throws ServletException,
-		    IOException {
-		if (!securityEnabled) {
-		    return true;
+
+	protected boolean setAccessContext(HttpServletRequest req, HttpServletResponse resp, boolean securityEnabled)
+			throws ServletException, IOException {
+		if (!checkAccess(req, req.getPathInfo())) {
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+			return false;
 		}
-		if (!checkAccess(req)) {
-		    resp.sendError(HttpServletResponse.SC_FORBIDDEN);
-		    return false;
-		} else {
-		    return true;
+		else {
+			return true;
 		}
-    }
+	}
 }

@@ -1,7 +1,7 @@
 package org.ogema.wago;
 
 import org.ogema.core.channelmanager.ChannelAccess;
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.model.Resource;
 
 public interface IO {
@@ -9,7 +9,7 @@ public interface IO {
 		IN, OUT, INOUT
 	}
 
-	public void setChannel(ChannelAccess channelAccess, ChannelLocator cl, Resource res);
+	public void setChannel(ChannelAccess channelAccess, ChannelConfiguration cl, Resource res);
 
 	public int getWordOffset();
 	

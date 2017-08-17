@@ -26,6 +26,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,7 @@ public class DefaultLogger implements OgemaLogger {
     protected final DefaultLoggerFactory factory;
 
     protected final Map<LogOutput, OgemaFilter> filters = new EnumMap<>(LogOutput.class);
+    private final List<OgemaFilter> addOnFilters;
 
     /**
      * System property ({@value}) for setting the path to the default log level
@@ -59,14 +61,23 @@ public class DefaultLogger implements OgemaLogger {
     static final Properties loglevels = new Properties();
 
     static {
-        File propFile = new File(System.getProperty(LOGLEVELS_PROPERTIES, LOGLEVELS_PROPERTIES_DEFAULT));
-        if (propFile.exists()) {
-            try (FileInputStream is = new FileInputStream(propFile)) {
-                loglevels.load(is);
-            } catch (IOException ioex) {
-                System.err.println(ioex);
-            }
-        }
+    	AccessController.doPrivileged(new PrivilegedAction<Void>() {
+
+			@Override
+			public Void run() {
+				final String loglevelsFile = System.getProperty(LOGLEVELS_PROPERTIES, LOGLEVELS_PROPERTIES_DEFAULT);
+				final File propFile = new File(loglevelsFile);
+		        if (propFile.exists()) {
+		            try (FileInputStream is = new FileInputStream(propFile)) {
+		                loglevels.load(is);
+		            } catch (IOException ioex) {
+		                System.err.println(ioex);
+		            }
+		        }
+		        return null;
+			}
+		});
+    	
     }
 
     /**
@@ -87,6 +98,7 @@ public class DefaultLogger implements OgemaLogger {
         OgemaFilter cacheFilter = new OgemaFilter();
         OgemaFilter fileFilter = new OgemaFilter();
         OgemaFilter consoleFilter = new OgemaFilter();
+        // TODO add filters for 
 
         cacheFilter.setLevelUser(LogLevel.TRACE);
         fileFilter.setLevelUser(LogLevel.INFO);
@@ -96,6 +108,14 @@ public class DefaultLogger implements OgemaLogger {
         filters.put(LogOutput.FILE, fileFilter);
         filters.put(LogOutput.CONSOLE, consoleFilter);
 
+        if (factory.addOnAppenders != null) {
+        	addOnFilters = new ArrayList<>();
+        	for (int i=0;i<factory.addOnAppenders.size();i++) {
+        		addOnFilters.add(new OgemaFilter());
+        	}
+        } else
+        	addOnFilters = null;
+        
         String loggerName = logger.getName();
         for (String configuredLevel : loglevels.stringPropertyNames()) {
             if (configuredLevel.endsWith("*")) {
@@ -112,6 +132,13 @@ public class DefaultLogger implements OgemaLogger {
         logger.addAppender(createAppenderDecorator(factory.cacheOutput, cacheFilter));
         logger.addAppender(createAppenderDecorator(factory.fileOutput, fileFilter));
         logger.addAppender(createAppenderDecorator(factory.consoleOutput, consoleFilter));
+        if (factory.addOnAppenders != null) {
+        	for (int i=0;i<factory.addOnAppenders.size();i++) {
+        		Appender<ILoggingEvent> appender = factory.addOnAppenders.get(i);
+        		OgemaFilter filter = addOnFilters.get(i);
+        		logger.addAppender(createAppenderDecorator(appender, filter));
+        	}
+        }
         
         setSlf4jLoggerLevel();
     }
@@ -127,6 +154,22 @@ public class DefaultLogger implements OgemaLogger {
         if (a.length > 2) {
             configureLevel(a[2], LogOutput.CACHE);
         }
+        if (factory.addOnAppenders == null)
+        	return;
+        for (int i=3;i<Math.min(a.length,factory.addOnAppenders.size()+3);i++) {
+        	final String level = a[i].trim().toUpperCase();
+        	if (level.isEmpty())
+        		continue;
+        	try {
+        		addOnFilters.get(i-3).setLevelUser(LogLevel.valueOf(level));
+        	} catch (IllegalArgumentException iae) {
+                String error = String.format("illegal log level value for logger %s, output %s: %s%n", 
+                		logger.getName(), factory.addOnAppenders.get(i-3).getName(), level);
+                LoggerFactory.getLogger("ROOT").error(error, iae);
+            }
+        }
+        
+        // TODO add custom appender log levels
     }
 
     private void configureLevel(String level, LogOutput output) {
@@ -153,6 +196,12 @@ public class DefaultLogger implements OgemaLogger {
         }
         if (maxConsole.ordinal() < max.ordinal()){
             max = maxConsole;
+        }
+        if (addOnFilters != null) {
+        	for (OgemaFilter filter : addOnFilters) {
+        		if (filter.effectiveLevel.ordinal() < max.ordinal())
+        			max = filter.effectiveLevel;
+        	}
         }
         return max;
     }

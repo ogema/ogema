@@ -27,6 +27,7 @@ import static org.objectweb.asm.Opcodes.V1_7;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -108,6 +109,11 @@ enum ResourceFactoryASM {
             if (m.getDeclaringClass().equals(Resource.class)) {
 				continue;
 			}
+            
+            if ((m.getModifiers() & Modifier.ABSTRACT) == 0) {
+                //Java 8 default method, skip
+                continue;
+            }
             
 			String signature = null;
 			if (ResourceList.class.isAssignableFrom(m.getReturnType())){

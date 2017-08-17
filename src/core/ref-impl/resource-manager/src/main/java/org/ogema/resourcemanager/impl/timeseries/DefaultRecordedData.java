@@ -18,6 +18,7 @@ package org.ogema.resourcemanager.impl.timeseries;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executor;
@@ -43,6 +44,7 @@ import org.ogema.recordeddata.DataRecorder;
 import org.ogema.recordeddata.DataRecorderException;
 import org.ogema.recordeddata.RecordedDataStorage;
 import org.ogema.resourcemanager.impl.ResourceDBManager;
+import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 import org.ogema.resourcetree.TreeElement;
 import org.ogema.timer.TimerScheduler;
 import org.slf4j.Logger;
@@ -63,7 +65,8 @@ public class DefaultRecordedData implements RecordedData {
 	protected final TreeElement el;
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-	protected RecordedDataStorage data = new EmptyRecordedData();
+	// never null; == EmptyRecordedData if logging is disabled for this element
+	protected volatile RecordedDataStorage data = new EmptyRecordedData();
 	protected RecordedDataConfiguration config = null;
 	protected transient Updater<?> updater;
 	private Timer timer;
@@ -107,12 +110,12 @@ public class DefaultRecordedData implements RecordedData {
 		return sb.toString();
 	}
 
-	public static TreeElement findTreeElement(String id, ResourceDBManager dbman) {
+	public static VirtualTreeElement findTreeElement(String id, ResourceDBManager dbman) {
 		String[] path = id.split("/");
 		if (path.length == 0) {
 			return null;
 		}
-		TreeElement el = dbman.getToplevelResource(path[0]);
+		VirtualTreeElement el = dbman.getToplevelResource(path[0]);
 		for (int i = 1; i < path.length && el != null; i++) {
 			el = el.getChild(path[i]);
 		}
@@ -192,7 +195,6 @@ public class DefaultRecordedData implements RecordedData {
 			setNewConfig(configuration);
 		}
 		else {
-			//TODO: test!
 			disable();
 		}
 	}
@@ -201,7 +203,7 @@ public class DefaultRecordedData implements RecordedData {
 		try {
 			if (config == null) {
 				data = dataAccess.getRecordedDataStorage(id);
-				if (data == null) {
+				if (data == null || data instanceof EmptyRecordedData) {
 					data = dataAccess.createRecordedDataStorage(id, configuration);
 				}
 			}
@@ -224,6 +226,8 @@ public class DefaultRecordedData implements RecordedData {
 		data = dataAccess.getRecordedDataStorage(id);
 		if (data != null) {
 			data.setConfiguration(null);
+		} else {
+			data = new EmptyRecordedData();
 		}
 		updater = null;
 		config = null;
@@ -295,6 +299,11 @@ public class DefaultRecordedData implements RecordedData {
 	@Override
 	public SampledValue getNextValue(long time) {
 		return data.getNextValue(time);
+	}
+	
+	@Override
+	public SampledValue getPreviousValue(long time) {
+		return data.getPreviousValue(time);
 	}
 
 	@Override
@@ -431,4 +440,39 @@ public class DefaultRecordedData implements RecordedData {
 		}
 	}
 
+	@Override
+	public boolean isEmpty() {
+		return data.isEmpty();
+	}
+
+	@Override
+	public boolean isEmpty(long startTime, long endTime) {
+		return data.isEmpty(startTime, endTime);
+	}
+
+	@Override
+	public int size() {
+		return data.size();
+	}
+
+	@Override
+	public int size(long startTime, long endTime) {
+		return data.size(startTime, endTime);
+	}
+
+	@Override
+	public Iterator<SampledValue> iterator() {
+		return data.iterator();
+	}
+
+	@Override
+	public Iterator<SampledValue> iterator(long startTime, long endTime) {
+		return data.iterator(startTime, endTime);
+	}
+
+	@Override
+	public String toString() {
+		return "DefaultRecordedData: "  + id;
+	}
+	
 }

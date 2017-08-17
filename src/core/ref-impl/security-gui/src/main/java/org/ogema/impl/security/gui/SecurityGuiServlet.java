@@ -37,6 +37,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -61,16 +62,14 @@ import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleException;
 import org.osgi.framework.FrameworkEvent;
 import org.osgi.framework.FrameworkListener;
-import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.startlevel.FrameworkStartLevel;
-import org.osgi.framework.wiring.BundleWiring;
 import org.osgi.framework.wiring.FrameworkWiring;
 import org.slf4j.Logger;
 
 public class SecurityGuiServlet extends HttpServlet {
 
 	/**
-	 * 
+	 *
 	 */
 
 	private final BundleIcon defaultIcon = new BundleIcon(getClass().getResource("/admin/images/appdefaultlogo.svg"),
@@ -181,14 +180,14 @@ public class SecurityGuiServlet extends HttpServlet {
 			break;
 		case "/userappstores":
 			resp.setContentType("application/json");
-			String username = req.getParameter("user");
+			String username = StringEscapeUtils.unescapeHtml4(req.getParameter("usr"));
 			acc = user.getAssignedStores(username);
 			printResponse(resp, acc.toString());
 			break;
 		case "/hasappstoreaccess":
 			resp.setContentType("application/json");
 			acc = new JSONArray();
-			username = req.getParameter("user");
+			username = StringEscapeUtils.unescapeHtml4(req.getParameter("usr"));
 			appstore = req.getParameter("store");
 			boolean access = user.hasAccess(appstore, username);
 			acc.put(access);
@@ -396,14 +395,14 @@ public class SecurityGuiServlet extends HttpServlet {
 				b = admin.osgi.getBundle(id);
 				app = admin.instMan.createInstallableApp(b);
 				try {
-					
+
 					// XXX modified
 					Bundle framework = admin.osgi.getBundle(0);
-					
+
 					FrameworkWiring fw = framework.adapt(FrameworkWiring.class);
 					final CountDownLatch latch = new CountDownLatch(1);
 					FrameworkListener listener = new FrameworkListener() {
-						
+
 						@Override
 						public void frameworkEvent(FrameworkEvent event) {
 							if (event.getType() == FrameworkEvent.PACKAGES_REFRESHED) {
@@ -417,7 +416,7 @@ public class SecurityGuiServlet extends HttpServlet {
 					Bundle[] bdls = admin.osgi.getBundles();
 					// the persistence bundle is not refreshed by default, we need to add it explicitly
 					for (Bundle bdl : bdls) {
-						if (bdl.getSymbolicName().equals("org.ogema.ref-impl.persistence")) {  
+						if (bdl.getSymbolicName().equals("org.ogema.ref-impl.persistence")) {
 							forRefresh.add(bdl);
 							break;
 						}
@@ -428,7 +427,7 @@ public class SecurityGuiServlet extends HttpServlet {
 						latch.await(30, TimeUnit.SECONDS);
 					} catch (InterruptedException e) { /* ignore */ }
 					//
-					
+
 //					admin.osgi.getBundle(id).start();
 					b.start();
 					app.setState(InstallState.FINISHED);
@@ -571,7 +570,7 @@ public class SecurityGuiServlet extends HttpServlet {
 		// data is
 		// application/x-www-form-urlencoded,
 		// so they are reached over the parameters list.
-		System.out.println("POST: Pathinfo: " + info);
+		logger.debug("POST: Pathinfo: {}",info);
 
 		String currenturi = req.getRequestURI();
 		StringBuffer url = req.getRequestURL();
@@ -598,7 +597,7 @@ public class SecurityGuiServlet extends HttpServlet {
 			String userName = "";
 			String pwd = "";
 			String store = "";
-			userName = req.getParameter("user");
+			userName = StringEscapeUtils.unescapeHtml4(req.getParameter("usr"));
 			pwd = req.getParameter("pwd");
 			store = req.getParameter("store");
 			status = user.checkLogin(userName, pwd, store);
@@ -610,7 +609,7 @@ public class SecurityGuiServlet extends HttpServlet {
 			userName = "";
 			pwd = "";
 			store = "";
-			userName = req.getParameter("user");
+			userName = StringEscapeUtils.unescapeHtml4(req.getParameter("usr"));
 			pwd = req.getParameter("pwd");
 			store = req.getParameter("store");
 			status = user.addCredentials(pwd, store, userName);

@@ -19,6 +19,9 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.exam.OsgiAppTestBase;
+import org.ops4j.pax.exam.ProbeBuilder;
+import org.ops4j.pax.exam.TestProbeBuilder;
+import org.osgi.framework.Constants;
 
 /**
  *
@@ -34,7 +37,13 @@ public class OsgiTestBase extends OsgiAppTestBase {
 	public OsgiTestBase() {
 		super(false);
 	}
-
+	
+	@ProbeBuilder
+	public TestProbeBuilder buildCustomProbe(TestProbeBuilder builder) {
+		builder.setHeader(Constants.EXPORT_PACKAGE, "org.ogema.resourcemanager.impl.test.types");
+		return builder;
+	}
+	
 	@Override
 	public void doStart(ApplicationManager appMan) {
 		super.doStart(appMan);

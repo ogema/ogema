@@ -15,9 +15,9 @@
  */
 package org.ogema.recordeddata.slotsdb;
 
+import java.io.IOException;
 import java.util.List;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -34,28 +34,21 @@ import org.ogema.recordeddata.RecordedDataStorage;
  * Interval: All data of a interval are aggregated to a new value
  * Tests of this class only perform aggregation on a single interval e.g. from, to matches with the interval size of an interval
  */
-public class SingleIntervalTest extends SlotsDbTest {
+public class SingleIntervalTest extends DbTest {
 
-	private static RecordedDataStorage rds;
+	private static volatile RecordedDataStorage rds;
 
 	@BeforeClass
-	public static void setUp() {
-		deleteTestFiles();
+	public static void setUp() throws IOException {
 		generateTestData();
-	}
-
-	@AfterClass
-	public static void tearDown() {
-		deleteTestFiles();
 	}
 
 	/**
 	 * Generates demo data
+	 * @throws IOException 
 	 */
-	private static void generateTestData() {
+	private static void generateTestData() throws IOException {
 
-		SlotsDb sdb = new SlotsDb();
-		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(1000);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);

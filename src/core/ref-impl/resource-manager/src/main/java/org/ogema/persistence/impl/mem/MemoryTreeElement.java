@@ -40,7 +40,7 @@ public class MemoryTreeElement implements TreeElement {
     
     private final boolean decorating;
     private final boolean array;
-    private final Class<? extends Resource> type;
+    private Class<? extends Resource> type;
     private volatile TreeElement parent;
     private final String name;
     private final int resId;
@@ -305,5 +305,10 @@ public class MemoryTreeElement implements TreeElement {
 		// TODO Auto-generated method stub
 		return null;
 	}
+    
+    //XXX MemoryTreeElement should be a VirtualTreeElement (use constrainType)
+    public void setType(Class<? extends Resource> type) {
+        this.type = type;
+    }
 
 }

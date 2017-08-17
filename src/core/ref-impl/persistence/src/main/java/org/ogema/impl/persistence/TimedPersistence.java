@@ -32,7 +32,8 @@ public class TimedPersistence implements PersistencePolicy {
 
 	private ResourceDBImpl db;
 
-	boolean inTX;
+	volatile boolean inTX;
+	volatile boolean running;
 
 	public TimedPersistence(ResourceDBImpl db) {
 		this.db = db;
@@ -64,7 +65,6 @@ public class TimedPersistence implements PersistencePolicy {
 				for (Map.Entry<Integer, Change> entry : tlrs) {
 
 					ch = entry.getValue();
-					TreeElementImpl e = db.resNodeByID.get(ch.id);
 					if (ch.status == ChangeInfo.DELETED) {
 						db.resourceIO.offsetByID.remove(ch.id);
 						db.resourceIO.changes.remove(ch.id);
@@ -72,11 +72,12 @@ public class TimedPersistence implements PersistencePolicy {
 						continue;
 					}
 					// Update persistent data in the archive file...
-					if (stop) {
-						timer.cancel();
-						fileChanged = false;
-						break;
-					}
+					// if (stop) {
+					// timer.cancel();
+					// fileChanged = false;
+					// break;
+					// }
+					TreeElementImpl e = db.resNodeByID.get(ch.id);
 					db.resourceIO.storeResource(e);
 					// ...and remove the changed info.
 					db.resourceIO.changes.remove(ch.id);
@@ -93,8 +94,6 @@ public class TimedPersistence implements PersistencePolicy {
 			}
 		}
 	};
-	volatile boolean running;
-	private volatile boolean stop;
 
 	public int getStorePeriod() {
 		return storePeriod;
@@ -118,7 +117,9 @@ public class TimedPersistence implements PersistencePolicy {
 
 	@Override
 	public void startTransaction(int toplevel) {
-		this.inTX = true;
+		synchronized (storageTask) {
+			this.inTX = true;
+		}
 	}
 
 	class Change {
@@ -133,13 +134,11 @@ public class TimedPersistence implements PersistencePolicy {
 
 	@Override
 	public void startStorage() {
-		stop = false;
 		timer.schedule(storageTask, storePeriod, storePeriod);
 	}
 
 	@Override
 	public void stopStorage() {
-		stop = true;
 		timer.cancel();
 		timer.purge();
 	}
@@ -147,5 +146,10 @@ public class TimedPersistence implements PersistencePolicy {
 	@Override
 	public Object getStorageLock() {
 		return storageTask;
+	}
+
+	@Override
+	public void triggerStorage() {
+		storageTask.run();
 	}
 }

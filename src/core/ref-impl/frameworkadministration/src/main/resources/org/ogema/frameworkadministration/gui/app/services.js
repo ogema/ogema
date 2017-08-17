@@ -5,20 +5,20 @@
 ngOGFrAdminApp.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', function($http, $q, $rootScope, $filter) {
 
        this.getJSON = function(path, data, config) {
-            path = $rootScope.rootPath+path;
+            path = $rootScope.rootPath+appendOtpToPath(path);
             var deferred = $q.defer();
             $http({
                 method: 'GET',
                 url: path,
                 params: data,
-                //  headers : { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' } 
+                //  headers : { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }
             }).success(function(result, status) {
                 deferred.resolve(result);
-               
+
             }).error(function(status, error, result) {
                // console.log("Error calling LIST", status, error, result);
                 deferred.reject();
-                 
+
                 //deferred.resolve();
             });
             return deferred.promise;
@@ -26,11 +26,11 @@ ngOGFrAdminApp.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', 
 
 
         this.postForm = function(path, data, config) {
-            path = $rootScope.rootPath+path;
+            path = $rootScope.rootPath+appendOtpToPath(path);
           //  console.log("SERVICE postForm: path, data, config: ", path, data, config);
             var deferred = $q.defer();
             var formdata = $.param(data);
-            
+
             $http({
                 method: 'POST',
                 url: path,
@@ -51,7 +51,7 @@ ngOGFrAdminApp.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', 
         };
 
         this.postFormPolicies = function(path, data, config) {
-            path = $rootScope.rootPath+path;
+            path = $rootScope.rootPath+appendOtpToPath(path);
             var deferred = $q.defer();
             $http({
                 method: 'POST',
@@ -76,13 +76,13 @@ ngOGFrAdminApp.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', 
    * The workhorse; converts an object to x-www-form-urlencoded serialization.
    * @param {Object} obj
    * @return {String}
-   */ 
+   */
   var param = function(obj) {
     var query = '', name, value, fullSubName, subName, subValue, innerObj, i;
-      
+
     for(name in obj) {
       value = obj[name];
-        
+
       if(value instanceof Array) {
         for(i=0; i<value.length; ++i) {
           subValue = value[i];
@@ -104,13 +104,13 @@ ngOGFrAdminApp.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', 
       else if(value !== undefined && value !== null)
         query += encodeURIComponent(name) + '=' + encodeURIComponent(value) + '&';
     }
-      
+
     return query.length ? query.substr(0, query.length - 1) : query;
   };
- 
-  
+
+
         this.postData = function(path, data, config) {
-            path = $rootScope.rootPath+path;
+            path = $rootScope.rootPath+appendOtpToPath(path);
            // console.log("SERVICE postData: path, data, config: ", path, data, config);
             var deferred = $q.defer();
             var formdata = $filter('json')(data); // $.param(data);
@@ -145,7 +145,7 @@ ngOGFrAdminApp.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', 
                      //   console.log(result)
                         var resources = result.subresources;
                         /* angular.forEach(resources, function(element, key) {
-                            
+
                             resolveResourcelink(element, path).then(function(result) {
                                 if (result != undefined) {
                                     //console.log("resolved: ",result);
@@ -240,6 +240,13 @@ ngOGFrAdminApp.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', 
         }
         ;
 
+        function appendOtpToPath(path) {
+        	if (path.indexOf("&pw=") > 0)
+        		return path;
+        	var separator = (path.indexOf('/') > 0) ? "&" : "?";
+        	return path + separator + "user=" + otusr +  "&pw=" + otpwd;
+        }
+
         function organizeList(list) {
 
             var result = list
@@ -297,7 +304,7 @@ ngOGFrAdminApp.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', 
                     unifyResult(value);
 
                 } else {
-                    // do something... 
+                    // do something...
 
                 }
 

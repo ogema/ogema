@@ -108,6 +108,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	 * we better remove all existing references, as far as possible
 	 */
 	public void close() {
+		unregisterListeners();
 		// unregister all access demands
 		// must be closed before dbMan is invalidated
 		dbMan.lockRead();
@@ -121,18 +122,65 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		} finally {
 			dbMan.unlockRead();
 		}
-		registeredListeners.clear();
-		registeredValueListeners.clear();
-		synchronized (structureListeners) {
-			structureListeners.clear();
-		}
-		synchronized (resourceDemands) {
-			resourceDemands.clear();
-		}
+//		registeredListeners.clear();
+//		registeredValueListeners.clear();
+//		synchronized (structureListeners) {
+//			structureListeners.clear();
+//		}
+//		synchronized (resourceDemands) {
+//			resourceDemands.clear();
+//		}
 		synchronized (accessRights) {
 			accessRights.invalidateAll();
 		}
 	}
+	
+	@SuppressWarnings({ "unchecked", "deprecation" })
+	private void unregisterListeners() {
+		// this will clear the registeredListeners map as well
+		if (!registeredListeners.isEmpty()) {
+			for (RegisteredResourceListener l : new ArrayList<>(registeredListeners.keySet())) {
+				try {
+					l.getResource().removeResourceListener(l.getListener());
+				} catch (Exception e) {
+					// should not be too relevant
+					logger.info("Listener removal failed: " + e); 
+				}
+			}
+		}
+		if (!registeredValueListeners.isEmpty()) {
+			for (InternalValueChangedListenerRegistration l : new ArrayList<>(registeredValueListeners.keySet())) {
+				try {
+					l.getResource().removeValueListener(l.getValueListener());
+				} catch (Exception e) {
+					logger.info("Listener removal failed: " + e); 
+				}
+			}
+		}
+		synchronized (structureListeners) {
+			if (!structureListeners.isEmpty()) {
+				for (InternalStructureListenerRegistration l : new ArrayList<>(structureListeners)) {
+					try {
+						l.getResource().removeStructureListener(l.getListener());
+					} catch (Exception e) {
+						logger.info("Listener removal failed: " + e); 
+					}
+				}
+			}
+		}
+		synchronized (resourceDemands) {
+			if (!resourceDemands.isEmpty()) {
+				for (ResourceDemandListenerRegistration l : new ArrayList<>(resourceDemands)) {
+					try {
+						removeResourceDemand(l.getTypeDemanded(), l.getListener());
+					} catch (Exception e) {
+						
+					}
+				}
+			}
+		}
+	}
+	
 
 	// @Override
 	// public boolean controlResource(Resource resource, AccessMode accessMode, AccessPriority priority)
@@ -150,37 +198,45 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		if (el == null) {
 			return null;
 		}
-		return createResourceObject(el, path);
+		return createResourceObject(el, path, false);
 	}
     
-    protected <T extends Resource> T findExistingResource(String path) {
+	protected <T extends Resource> T findResourcePrivileged(String path) {
+		VirtualTreeElement el = findTreeElement(path);
+		if (el == null) {
+			return null;
+		}
+		return createResourceObject(el, path, true);
+	}
+	
+    protected <T extends Resource> T findExistingResource(String path, boolean privileged) {
 		VirtualTreeElement el = findExistingTreeElement(path);
 		if (el == null) {
 			return null;
 		}
-		return createResourceObject(el, path);
+		return createResourceObject(el, path, privileged);
 	}
     
     @SuppressWarnings("unchecked")
-	private <T extends Resource> T createResourceObject(VirtualTreeElement el, String path) {
+	private <T extends Resource> T createResourceObject(VirtualTreeElement el, String path, boolean privileged) {
         ResourceBase result;
         /*
 		 * @Security: Create ResourceAccessRights instance which is injected into the proxy object.
 		 */
-		ResourceAccessRights access = getAccessRights(el);
-
-		if (System.getSecurityManager() != null && logger.isDebugEnabled()) {
-			logger.debug("{}@{} (created by {}): read={}, write={}, add={}, create={}, delete={}", app.getClass()
-					.getSimpleName(), path, el.getAppID(), access.isReadPermitted(), access.isWritePermitted(), access
-					.isAddsubPermitted(), access.isCreatePermitted(), access.isDeletePermitted());
-		}
-
-		if (!access.isReadPermitted()) {
-			throw new SecurityException(String.format(
-					"You do not have permission to read the resource at %s, location %s", path, getLocationElement(el)
-							.getPath()));
-		}
-
+		final ResourceAccessRights access = getAccessRights(el);
+		if (!privileged) {
+			if (System.getSecurityManager() != null && logger.isDebugEnabled()) {
+				logger.debug("{}@{} (created by {}): read={}, write={}, add={}, create={}, delete={}", app.getClass()
+						.getSimpleName(), path, el.getAppID(), access.isReadPermitted(), access.isWritePermitted(), access
+						.isAddsubPermitted(), access.isCreatePermitted(), access.isDeletePermitted());
+			}
+	
+			if (!access.isReadPermitted()) {
+				throw new SecurityException(String.format(
+						"You do not have permission to read the resource at %s, location %s", path, getLocationElement(el)
+								.getPath()));
+			}
+		} 
 		Class<? extends Resource> type = el.getType();
         if (type == null) {
             throw new IllegalStateException("TreeElement " + el.getPath() + " has type null");
@@ -289,12 +345,15 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		 * count should be set to the number of resources from this type that already created by this application.
 		 */
 		if (System.getSecurityManager() != null && !permissionManager.checkCreateResource(app, type, name, 0)) {
-			throw raiseException(new SecurityException(String.format(
-					"Permission to create resource '%s' of type '%s'is denied!", name, type)));
+//			throw raiseException(new SecurityException(String.format(
+//					"Permission to create resource '%s' of type '%s'is denied!", name, type)));
+			throw new SecurityException(String.format(
+					"Permission to create resource '%s' of type '%s'is denied!", name, type));
 		}
 
 		if (!dbMan.hasResourceType(type.getCanonicalName()) || !factory.hasResourceType(type)) {
-			throw raiseException(new ResourceException("missing resource type: " + type));
+//			throw raiseException(new ResourceException("missing resource type: " + type));
+			throw new ResourceException("missing resource type: " + type);
 		}
 
 		dbMan.createResource(name, type, getAppId());
@@ -303,19 +362,25 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 
 	protected void requireValidResourceName(String name) {
 		if (name == null) {
-			throw raiseException(new NoSuchResourceException("name must not be null"));
+//			throw raiseException(new NoSuchResourceException("name must not be null"));
+			throw new NoSuchResourceException("name must not be null");
 		}
 		if (name.isEmpty()) {
-			throw raiseException(new NoSuchResourceException("name must not be empty"));
+//			throw raiseException(new NoSuchResourceException("name must not be empty"));
+			throw new NoSuchResourceException("name must not be empty");
 		}
 		if (!Character.isJavaIdentifierStart(name.charAt(0))) {
-			throw raiseException(new NoSuchResourceException(String.format(
-					"name '%s' contains illegal character at position %d: '%c'", name, 0, name.charAt(0))));
+//			throw raiseException(new NoSuchResourceException(String.format(
+//					"name '%s' contains illegal character at position %d: '%c'", name, 0, name.charAt(0))));
+			throw new NoSuchResourceException(String.format(
+					"name '%s' contains illegal character at position %d: '%c'", name, 0, name.charAt(0)));
 		}
 		for (int i = 1; i < name.length(); i++) {
 			if (!Character.isJavaIdentifierPart(name.charAt(i))) {
-				throw raiseException(new NoSuchResourceException(String.format(
-						"name '%s' contains illegal character at position %d: '%c'", name, i, name.charAt(i))));
+//				throw raiseException(new NoSuchResourceException(String.format(
+//						"name '%s' contains illegal character at position %d: '%c'", name, i, name.charAt(i))));
+				throw new NoSuchResourceException(String.format(
+						"name '%s' contains illegal character at position %d: '%c'", name, i, name.charAt(i)));
 			}
 		}
 	}
@@ -324,7 +389,8 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	public void deleteResource(String name) throws NoSuchResourceException {
 		Resource resource = getResource(name);
 		if (resource == null) {
-			throw raiseException(new NoSuchResourceException("resource '" + name + "' not found."));
+//			throw raiseException(new NoSuchResourceException("resource '" + name + "' not found."));
+			throw new NoSuchResourceException("resource '" + name + "' not found.");
 		}
 		resource.delete();
 	}
@@ -392,6 +458,14 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 			path = "/" + path;
 		}
 		return findResource(path);
+	}
+	
+	protected <T extends Resource> T getResourcePrivileged(String path) throws SecurityException {
+		// if user did not bother to add leading slash, add it here.
+		if (path.length() > 0 && path.charAt(0) != '/') {
+			path = "/" + path;
+		}
+		return findResourcePrivileged(path);
 	}
 
 	/*
@@ -539,12 +613,20 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	
 	public void lockRead() {
 		dbMan.lockRead();
-		dbMan.lockStructureRead();
+//		dbMan.lockStructureRead(); // currently does the same as lockRead
 	}
 	
 	public void unlockRead() {
-		dbMan.unlockStructureRead();
+//		dbMan.unlockStructureRead();
 		dbMan.unlockRead();
+	}
+	
+	public void lockWrite() {
+		dbMan.lockWrite();
+	}
+	
+	public void unlockWrite() {
+		dbMan.unlockWrite();
 	}
 	
 }

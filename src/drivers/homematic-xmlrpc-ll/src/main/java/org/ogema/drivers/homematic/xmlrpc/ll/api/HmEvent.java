@@ -19,56 +19,22 @@ package org.ogema.drivers.homematic.xmlrpc.ll.api;
  *
  * @author jlapp
  */
-public class HmEvent {
+public interface HmEvent {
     
-    final String interfaceId;
-    final String address;
-    final String valueKey;
-    final Object value;
+    String getInterfaceId();
 
-    public HmEvent(String interfaceId, String address, String valueKey, Object value) {
-        this.interfaceId = interfaceId;
-        this.address = address;
-        this.valueKey = valueKey;
-        this.value = value;
-    }
+    String getAddress();
 
-    public String getInterfaceId() {
-        return interfaceId;
-    }
+    String getValueKey();
 
-    public String getAddress() {
-        return address;
-    }
-
-    public String getValueKey() {
-        return valueKey;
-    }
-
-    public Object getValue() {
-        return value;
-    }
+    Object getValue();
     
-    public boolean getValueBoolean() {
-        //return ((Number) value).intValue() != 0;
-        return Boolean.valueOf(getValueString());
-    }
+    boolean getValueBoolean();
     
-    public float getValueFloat() {
-        return ((Number) value).floatValue();
-    }
+    float getValueFloat();
     
-    public int getValueInt() {
-        return ((Number) value).intValue();
-    }
+    int getValueInt();
     
-    public String getValueString() {
-        return value.toString();
-    }
+    String getValueString();
 
-    @Override
-    public String toString() {
-        return String.format("Event for %s: %s@%s = %s", interfaceId, valueKey, address, value);
-    }
-    
 }

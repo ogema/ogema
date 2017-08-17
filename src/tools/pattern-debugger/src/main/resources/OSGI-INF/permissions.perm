@@ -5,6 +5,7 @@
 (org.osgi.framework.PackagePermission "javax.servlet" "import")
 (org.osgi.framework.PackagePermission "javax.servlet.*" "import")
 (org.osgi.framework.PackagePermission "org.json" "import")
+(org.osgi.framework.PackagePermission "org.apache.commons.lang3" "import")
 
 (org.osgi.framework.AdminPermission "*" "*" )
 (org.ogema.accesscontrol.AdminPermission "*" "*")

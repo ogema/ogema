@@ -15,13 +15,13 @@
  */
 package org.ogema.resourcemanager.impl.model.schedule;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.measurements.SampledValue;
-import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
@@ -30,9 +30,9 @@ import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.recordeddata.RecordedData;
 import org.ogema.persistence.impl.faketree.ScheduleTreeElement;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
+import org.ogema.resourcemanager.impl.ResourceDBManager;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
-import org.ogema.tools.timeseries.api.MemoryTimeSeries;
-import org.ogema.tools.timeseries.implementations.TreeTimeSeries;
+import org.ogema.tools.resource.util.ValueResourceUtils;
 
 /*
  * A schedule that allows to access both its own schedule values and the log data of its parent resource
@@ -45,97 +45,118 @@ public class HistoricalSchedule extends DefaultSchedule {
 	 */
 	public static final String PATH_IDENTIFIER = "historicalData";
 	private final SingleValueResource parentResource;
-	private final Class<? extends Value> type;
+//	private final Class<? extends Value> type;
 
 	public HistoricalSchedule(VirtualTreeElement el, ScheduleTreeElement scheduleElement, String path,
-			ApplicationResourceManager resMan, ApplicationManager appMan) {
-		super(el, scheduleElement, path, resMan, appMan);
+			ApplicationResourceManager resMan, ApplicationManager appMan, ResourceDBManager dbMan) {
+		super(el, scheduleElement, path, resMan, appMan, dbMan);
 		this.parentResource = resMan.getResource(scheduleElement.getParent().getParent().getPath()); // this is the parent by location, not by path
 		if (parentResource == null)
 			throw new RuntimeException("Internal error: schedule has no parent");
-		this.type = scheduleElement.getValueType();
+//		this.type = scheduleElement.getValueType();
 	}
 
 	@Override
 	public SampledValue getValue(long time) {
-		MemoryTimeSeries mts = new TreeTimeSeries(this, type);
-		return mts.getValue(time);
+		SampledValue prev = getPreviousValue(time);
+		SampledValue next = getNextValue(time);
+		return ValueResourceUtils.interpolate(prev, next, time, getInterpolationMode());
 	}
 
 	@Override
 	public SampledValue getNextValue(long time) {
-		MemoryTimeSeries mts = new TreeTimeSeries(this, type);
-		return mts.getNextValue(time);
+		final SampledValue next = super.getNextValue(time);
+		final RecordedData rd = getHistoricalData();
+		if (rd != null) {
+			final SampledValue rdNext = rd.getNextValue(time);
+			if (rdNext != null && (next == null || next.getTimestamp() > rdNext.getTimestamp()))
+				return rdNext;
+		}
+		return next;
+	}
+	
+	@Override
+	public SampledValue getPreviousValue(long time) {
+		final SampledValue prev = super.getPreviousValue(time);
+		final RecordedData rd = getHistoricalData();
+		if (rd != null) {
+			final SampledValue rdPrev = rd.getPreviousValue(time);
+			if (rdPrev != null && (prev == null || prev.getTimestamp() < rdPrev.getTimestamp()))
+				return rdPrev;
+		}
+		return prev;
 	}
 
 	@Override
 	public List<SampledValue> getValues(long startTime, long endTime) {
-		RecordedData rd = getHistoricalData();
-		List<SampledValue> loggedData = rd.getValues(startTime, endTime); // FIXME this sometimes returns an empty list although log data is available
-		List<SampledValue> otherData = super.getValues(startTime, endTime);
-		return merge(loggedData, otherData);
+		final RecordedData rd = getHistoricalData();
+		if (rd == null)
+			return super.getValues(startTime, endTime);
+		return toList(new HistoricalIterator(super.iterator(startTime, endTime), rd.iterator(startTime, endTime)));
 	}
 
 	@Override
 	public List<SampledValue> getValues(long startTime) {
-		RecordedData rd = getHistoricalData();
-		List<SampledValue> loggedData = rd.getValues(startTime);
-		List<SampledValue> otherData = super.getValues(startTime);
-		List<SampledValue> result = merge(loggedData, otherData);
-		return result;
+		return getValues(startTime, Long.MAX_VALUE); 
+	}
+	
+	@Override
+	public boolean isEmpty() {
+		if (!super.isEmpty())
+			return false;
+		final RecordedData rd = getHistoricalData();
+		return rd == null || rd.isEmpty();
 	}
 
+	@Override
+	public boolean isEmpty(long startTime, long endTime) {
+		if (!super.isEmpty(startTime, endTime))
+			return false;
+		final RecordedData rd = getHistoricalData();
+		return rd == null || rd.isEmpty(startTime, endTime);
+	}
+
+	// note: this is only a guess... we do not know exactly the size
+	// here we assume there are no overlaps
+	@Override
+	public int size(long startTime, long endTime) {
+		int sz = super.size(startTime, endTime);
+		final RecordedData rd = getHistoricalData();
+		if (rd != null)
+			sz += rd.size(startTime, endTime);
+		return sz;
+	}
+	
+	@Override
+	public int size() {
+		return size(Long.MIN_VALUE, Long.MAX_VALUE);
+	}
+	
+	@Override
+	public Iterator<SampledValue> iterator() {
+		final RecordedData rd = getHistoricalData();
+		if (rd == null)
+			return super.iterator();
+		return new HistoricalIterator(super.iterator(), rd.iterator());
+	}
+	
+	@Override
+	public Iterator<SampledValue> iterator(long startTime, long endTime) {
+		final RecordedData rd = getHistoricalData();
+		if (rd == null)
+			return super.iterator(startTime, endTime);
+		return new HistoricalIterator(super.iterator(startTime, endTime), rd.iterator(startTime, endTime));
+	}
+	
 	/*
-	 * Merges two lists of SampledValues. In case of duplicate timestamps elements from list1 are removed.
+	 * Merges two lists of SampledValues. In case of duplicate timestamps log data is skipped.
 	 */
-	private static List<SampledValue> merge(List<SampledValue> list1, List<SampledValue> list2) {
-		if (list1.isEmpty()) {
-			return list2;
-		}
-		else if (list2.isEmpty()) {
-			return list1;
-		}
-		// merge the two time series
-		long l1Start = list1.get(0).getTimestamp();
-		long l1End = list1.get(list1.size() - 1).getTimestamp();
-		long l2Start = list2.get(0).getTimestamp();
-		long l2End = list2.get(list2.size() - 1).getTimestamp();
-		if (l1End < l2Start) {
-			list1.addAll(list2);
-			return list1;
-		}
-		else if (l2End < l1Start) {
-			list2.addAll(list1);
-			return list2;
-		}
-		// remove duplicate timestamps from list1
-		removeDuplicates(list1, list2);
-		list1.addAll(list2);
-		Collections.sort(list1);
-		return list1;
-	}
-
-	private static void removeDuplicates(List<SampledValue> list1, List<SampledValue> list2) {
-		Iterator<SampledValue> it = list1.iterator();
-		long last1 = 0;
-		long last2 = 0;
-		int lastIdx2 = 0;
-		int sz2 = list2.size();
+	private static List<SampledValue> toList(Iterator<SampledValue> it) {
+		final List<SampledValue> list = new ArrayList<>();
 		while (it.hasNext()) {
-			SampledValue sv1 = it.next();
-			last1 = sv1.getTimestamp();
-			for (int i = lastIdx2; i < sz2; i++) {
-				SampledValue sv2 = list2.get(i);
-				last2 = sv2.getTimestamp();
-				lastIdx2 = i;
-				if (last2 > last1)
-					break;
-				if (last2 == last1) {
-					it.remove();
-					break;
-				}
-			}
+			list.add(it.next());
 		}
+		return list;
 	}
 
 	private RecordedData getHistoricalData() {
@@ -153,7 +174,61 @@ public class HistoricalSchedule extends DefaultSchedule {
 		}
 		else
 			return null;
+	}
+	
+	// a joint iterator that skips log data points in case of timestamp collisions
+	private static final class HistoricalIterator implements Iterator<SampledValue> {
+	
+		private final Iterator<SampledValue> scheduleIt;
+		private final Iterator<SampledValue> logIt;
+		// state variables
+		private SampledValue logBuffer;
+		private SampledValue scheduleBuffer;
+		
+		public HistoricalIterator(Iterator<SampledValue> scheduleIt, Iterator<SampledValue> logIt) {
+			this.scheduleIt = scheduleIt;
+			this.logIt = logIt;
+		}
 
+		@Override
+		public boolean hasNext() {
+			return scheduleIt.hasNext() || logIt.hasNext() || scheduleBuffer != null || logBuffer != null;
+		}
+
+		@Override
+		public SampledValue next() {
+			final SampledValue lnext = (logBuffer != null ? logBuffer : logIt.hasNext() ? logIt.next() : null);
+			final SampledValue snext = (scheduleBuffer != null ? scheduleBuffer : scheduleIt.hasNext() ? scheduleIt.next() : null);
+			if (lnext == null && snext == null)
+				throw new NoSuchElementException();
+			if (lnext == null) {
+				scheduleBuffer = null;
+				return snext;
+			} 
+			if (snext == null) {
+				logBuffer = null;
+				return lnext;
+			}
+			final long ts = snext.getTimestamp();
+			final long tl = lnext.getTimestamp();
+			if (ts <= tl) {
+				scheduleBuffer = null;
+				if (ts == tl)
+					logBuffer = null;
+				else
+					logBuffer = lnext;
+				return snext;
+			}
+			logBuffer = null;
+			scheduleBuffer = snext;
+			return lnext;
+		}
+
+		@Override
+		public void remove() throws UnsupportedOperationException {
+			throw new UnsupportedOperationException("Historical schedule iterator does not support removal");
+		}
+		
 	}
 
 }

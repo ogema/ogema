@@ -15,6 +15,7 @@ rundirs/*/felix-cache/
 rundirs/felix-native-conf/bundle/jetty-7.6.13-sources/
 rundirs/OgemaRunnerNetBeans/dist/
 rundirs/*/config/zwave_cache/OZW_Log.txt
+rundirs/*/config/channelmapper.config
 build/
 tmp/
 temp/
@@ -47,7 +48,6 @@ eebus-driver/
 svnrep-eebus/
 java-simple-serial-connector-2.8.0/
 jssc/
-bin/
 power-plug-controller/
 src/core/ref-impl/persistence/src/test/resources/compaction/
 src/core/ref-impl/persistence/src/test/resources/scenario*

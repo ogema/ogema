@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
@@ -39,10 +40,13 @@ import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
 import org.ogema.core.channelmanager.ChannelEventListener;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
+import org.ogema.core.channelmanager.measurements.ObjectValue;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.TimeResource;
+import org.ogema.core.recordeddata.RecordedDataConfiguration;
+import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.model.locations.Room;
@@ -55,8 +59,8 @@ public class DummyHighLevelDriver implements Application {
 	private static final int DEFAULT_SAMPLING_PERIOD = 1000;
 	private OgemaLogger logger;
 	private ChannelAccess channelAccess;
-	HashMap<Integer, WriteTimeListener> listeners;
-
+	HashMap<String, WriteTimeListener> listeners;
+	private ConcurrentHashMap<String, ChannelConfiguration> writeChannels;
 	int chCounter;
 	Random rnd;
 	private ResourceAccess resAcc;
@@ -69,16 +73,19 @@ public class DummyHighLevelDriver implements Application {
 	private boolean running;
 	private int maxChannels;
 	int readSamplingRate;
-	private Integer channelCreationPeriod;
+	private int channelCreationPeriod;
+	private int loggingChannelCount;
 
 	@Activate
 	public void activate(final BundleContext context, Map<String, Object> config) throws Exception {
 		new ShellCommands(context, this);
 		listeners = new HashMap<>();
+		writeChannels = new ConcurrentHashMap<>();
+		// sampling rate configuration for synchronous read channels
 		try {
-			String samplingRate = System.getProperty("org.ogema.perf.measure.readsamplingrate");
-			if (samplingRate != null)
-				this.readSamplingRate = Integer.valueOf(samplingRate);
+			String tmp = context.getProperty("org.ogema.perf.measure.readsamplingrate");
+			if (tmp != null)
+				this.readSamplingRate = Integer.valueOf(tmp);
 			else
 				this.readSamplingRate = DEFAULT_SAMPLING_PERIOD;
 		} catch (NumberFormatException e) {
@@ -87,10 +94,12 @@ public class DummyHighLevelDriver implements Application {
 			e.printStackTrace();
 			this.readSamplingRate = DEFAULT_SAMPLING_PERIOD;
 		}
+
+		// period of new channel creation
 		try {
-			String channelCreationPeriod = System.getProperty("org.ogema.perf.measure.newchannelperiod");
-			if (channelCreationPeriod != null) {
-				this.channelCreationPeriod = Integer.valueOf(channelCreationPeriod);
+			String tmp = context.getProperty("org.ogema.perf.measure.newchannelperiod");
+			if (tmp != null) {
+				this.channelCreationPeriod = Integer.valueOf(tmp);
 			}
 			else {
 				this.channelCreationPeriod = 600000;
@@ -101,12 +110,47 @@ public class DummyHighLevelDriver implements Application {
 			e.printStackTrace();
 			this.channelCreationPeriod = 600000;
 		}
+		// number channel creation cycles where the resources are configured for logging
+		try {
+			String tmp = context.getProperty("org.ogema.perf.measure.loggingchannelscount");
+			if (tmp != null) {
+				this.loggingChannelCount = Integer.valueOf(tmp);
+			}
+			else {
+				this.loggingChannelCount = 1;
+			}
+		} catch (NumberFormatException e) {
+			this.loggingChannelCount = 1;
+		} catch (AccessControlException e) {
+			e.printStackTrace();
+			this.loggingChannelCount = 1;
+		}
+		// number of maximum channel tuples created
+		try {
+			String tmp = context.getProperty("org.ogema.perf.measure.maxchannels");
+			if (tmp != null) {
+				this.maxChannels = Integer.valueOf(tmp);
+			}
+			else {
+				this.maxChannels = Integer.MAX_VALUE;
+			}
+		} catch (NumberFormatException e) {
+			this.maxChannels = Integer.MAX_VALUE;
+		} catch (AccessControlException e) {
+			e.printStackTrace();
+			this.maxChannels = Integer.MAX_VALUE;
+		}
 	}
 
 	@Override
 	public void start(ApplicationManager appManager) {
-		this.maxChannels = 1;
 		this.logger = appManager.getLogger();
+		
+		logger.info(String.format("Read sampling period: %d", this.readSamplingRate));
+		logger.info(String.format("New channel period: %d", this.channelCreationPeriod));
+		logger.info(String.format("Number of logging channels : %d", this.loggingChannelCount));
+		logger.info(String.format("Number of maximum channels : %d", this.maxChannels));
+
 		this.channelAccess = appManager.getChannelAccess();
 
 		this.resAcc = appManager.getResourceAccess();
@@ -127,35 +171,51 @@ public class DummyHighLevelDriver implements Application {
 							Thread.sleep(1000);
 						} catch (InterruptedException e) {
 						}
-						continue;
 					}
-					System.out.println("Create channel number " + chCounter);
+					else {
+						System.out.println("Create channel number " + chCounter);
 
-					Room r = createResource(chCounter);
+						Room r = createResource(chCounter);
 
-					try {
-						createChannel(chCounter++, r);
-					} catch (ChannelAccessException e) {
-						e.printStackTrace();
+						try {
+							createChannel(chCounter++, r);
+						} catch (ChannelAccessException e) {
+							e.printStackTrace();
+						}
+						try {
+							Thread.sleep(channelCreationPeriod);
+						} catch (InterruptedException e) {
+						}
 					}
 				}
 			}
 		}).start();
 
-		new Thread(new Runnable() {
+		Thread t = new Thread(new Runnable() {
 
 			@Override
 			public void run() {
+				running = true;
 				while (running) {
-					try {
-						Thread.sleep(channelCreationPeriod);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
+					Set<Entry<String, ChannelConfiguration>> entries = writeChannels.entrySet();
+					for (Entry<String, ChannelConfiguration> e : entries) {
+						ChannelConfiguration chConf = e.getValue();
+						long TS1 = System.currentTimeMillis();
+						TimeStampContainer tsc = new TimeStampContainer();
+						tsc.TS1 = TS1;
+						try {
+							channelAccess.setChannelValue(chConf, new ObjectValue(tsc));
+						} catch (ChannelAccessException e1) {
+							running = false;
+							break;
+						}
 					}
-					step(1);
+					Thread.yield();
 				}
 			}
-		}).start();
+		});
+		t.setName("Dummy-Driver-Writer-Thread");
+		t.start();
 	}
 
 	private void initResources() {
@@ -195,8 +255,8 @@ public class DummyHighLevelDriver implements Application {
 	@Override
 	public void stop(AppStopReason reason) {
 		running = false;
-		Set<Entry<Integer, WriteTimeListener>> entries = listeners.entrySet();
-		for (Entry<Integer, WriteTimeListener> e : entries) {
+		Set<Entry<String, WriteTimeListener>> entries = listeners.entrySet();
+		for (Entry<String, WriteTimeListener> e : entries) {
 			((ThreadControl) e.getValue()).stop();
 		}
 	}
@@ -241,14 +301,15 @@ public class DummyHighLevelDriver implements Application {
 
 		chConf = channelAccess.addChannel(channelLocator, Direction.DIRECTION_INOUT,
 				ChannelConfiguration.LISTEN_FOR_UPDATE);
+		writeChannels.put(chConf.getChannelLocator().getChannelAddress(), chConf);
 		list.add(chConf);
-		WriteTimeListener wtl = listeners.get(devAddr);
-		if (wtl == null) {
-			wtl = new WriteTimeListener(r, channelAccess, logger, this, deviceAddress);
-			listeners.put(devAddr, wtl);
-			channelAccess.registerUpdateListener(list, wtl);
-		}
-		wtl.addChannel(channelLocator.getChannelAddress(), chConf);
+		WriteTimeListener wtl;// = listeners.get(devAddr);
+		// if (wtl == null) {
+		wtl = new WriteTimeListener(r, channelAccess, logger, this, chConf);
+		listeners.put(channelLocator.getChannelAddress(), wtl);
+		channelAccess.registerUpdateListener(list, wtl);
+		// }
+		// wtl.addChannel(channelLocator.getChannelAddress(), chConf);
 	}
 
 	private Room createResource(int i) {
@@ -256,14 +317,23 @@ public class DummyHighLevelDriver implements Application {
 		res.activate(true);
 		TimeResource write = res.addDecorator("write", TimeResource.class);
 		TimeResource read = res.addDecorator("read", TimeResource.class);
-		write.addDecorator("jitter", IntegerResource.class);
-		read.addDecorator("jitter", IntegerResource.class);
-		write.addDecorator("loopTime", IntegerResource.class);
-		write.addDecorator("lldAck", IntegerResource.class);
+		IntegerResource wJitter = write.addDecorator("jitter", IntegerResource.class);
+		IntegerResource rJitter = read.addDecorator("jitter", IntegerResource.class);
+		IntegerResource loop = write.addDecorator("loopTime", IntegerResource.class);
+		IntegerResource ack = write.addDecorator("lldAck", IntegerResource.class);
 		write.addDecorator("ts", TimeResource.class);
-		read.addDecorator("loopTime", IntegerResource.class);
 		write.activate(true);
 		read.activate(true);
+
+		if (this.loggingChannelCount > 0) {
+			configureLogging(read);
+			configureLogging(rJitter);
+			configureLogging(write);
+			configureLogging(wJitter);
+			configureLogging(loop);
+			configureLogging(ack);
+			this.loggingChannelCount--;
+		}
 		// write.addValueListener(this);
 		chByWrite.put(write.getName(), i);
 		roomsByChInfo.put(i, res);
@@ -314,23 +384,25 @@ public class DummyHighLevelDriver implements Application {
 				 */ };
 	static final int countOfPrimes = primes.length;
 
-	// @Override
-	// public void resourceChanged(TimeResource resource) {
-	// String name = resource.getName();
-	// int ch = chByWrite.get(name);
-	// int ifAddr = ch & 0xFF000000;
-	// int devAddr = ch & 0x00FF0000;
-	// int chCounter = ch & 0x0000FFFF;
-	// ChannelLocator locator = channels.get(ch);
-	// try {
-	// channelAccess.setChannelValue(locator, new LongValue(System.currentTimeMillis()));
-	// } catch (ChannelAccessException e) {
-	// e.printStackTrace();
-	// }
-	// }
-	//
 	public String step(int add) {
 		maxChannels += add;
 		return "New channel number is " + maxChannels;
 	}
+
+	public void configureLogging(TimeResource time) {
+		// configure meter for logging once per minute
+		final RecordedDataConfiguration config = new RecordedDataConfiguration();
+		config.setStorageType(StorageType.ON_VALUE_UPDATE);
+		// meterConfig.setFixedInterval(3 * 1000l);
+		time.getHistoricalData().setConfiguration(config);
+	}
+
+	public void configureLogging(IntegerResource res) {
+		// configure meter for logging once per minute
+		final RecordedDataConfiguration config = new RecordedDataConfiguration();
+		config.setStorageType(StorageType.ON_VALUE_UPDATE);
+		// meterConfig.setFixedInterval(3 * 1000l);
+		res.getHistoricalData().setConfiguration(config);
+	}
+
 }

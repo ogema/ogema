@@ -120,7 +120,9 @@ public class ResourceDemandListenerRegistration implements RegisteredResourceDem
         Callable<Void> listenerCall = new Callable<Void>() {
             @Override
             public Void call() throws Exception {
-                listener.resourceUnavailable(resman.findResource(el));
+            	Resource r = resman.findResource(el);
+            	if (r != null)
+            		listener.resourceUnavailable(r);
                 return null;
             }
         };

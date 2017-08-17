@@ -20,8 +20,12 @@ import org.ogema.core.model.Resource;
 /**
  * Pseudo resource type required to create a sub-tree-element holding the
  * schedule extra information.
- * 
+ *
+ * @deprecated not used anymore, but must not be removed either, since 
+ * existing database files containing this type could not be loaded any more,
+ * otherwise 
  * @author Timo Fischer, Fraunhofer IWES
  */
+@Deprecated
 interface PseudoSchedule extends Resource {
 }

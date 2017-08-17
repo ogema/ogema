@@ -34,46 +34,46 @@ angular.module('switch',[])
     };
   })
     .controller('SwitchCtrl', function($scope,$http, Switches) {
- 
+
  //*********** variables declaration *****************
- 
+
     	$scope.switchesSet = Switches;
-    	var path = "/apps/ogema/BasicSwitchGui".toLowerCase();    	
-   
+    	var path = "/apps/ogema/BasicSwitchGui".toLowerCase();
+
  //*********** definition of functions *****************
- 
+
  		$scope.getName = function(item) {
  			var swtches = $scope.switchesSet.getSwitches();
  			if (!swtches.hasOwnProperty(item)) return '';
  			return swtches[item].name;
  		}
- 
+
 		$scope.getValue = function(item) {
 		   var swtches = $scope.switchesSet.getSwitches();
 		   if (!swtches.hasOwnProperty(item)) return '';
 		   return swtches[item].value;
 		};
-		
+
 		$scope.getLocation = function(item) {
 		   var swtches = $scope.switchesSet.getSwitches();
 		   if (!swtches.hasOwnProperty(item)) return '';
 		   return swtches[item].loc;
 		}
-		
+
 		$scope.getDevice = function(item) {
 		   var swtches = $scope.switchesSet.getSwitches();
 		   if (!swtches.hasOwnProperty(item)) return '';
-		   if (!swtches[item].hasOwnProperty('device')) return swtches[item].name;		   
+		   if (!swtches[item].hasOwnProperty('device')) return swtches[item].name;
 		   return swtches[item].device.name;
 		}
-		
+
 		$scope.getDeviceType = function(item) {
 		   var swtches = $scope.switchesSet.getSwitches();
 		   if (!swtches.hasOwnProperty(item)) return '';
-		   if (!swtches[item].hasOwnProperty('device')) return swtches[item].type;		   
+		   if (!swtches[item].hasOwnProperty('device')) return swtches[item].type;
 		   return swtches[item].device.type;
 		}
-		
+
 		$scope.getSwitchBtnMsg = function(item) {
 			var swtches = $scope.switchesSet.getSwitches();
 			if (!swtches.hasOwnProperty(item)) return '';
@@ -84,84 +84,84 @@ angular.module('switch',[])
 				return "Switch on";
 			}
 		}
-		
-		
-		$scope.toggleSwitch = function(item) {	
+
+
+		$scope.toggleSwitch = function(item) {
 			var msg = {'swtch' : item};
-			$http.post(path, msg).then(function(response) {
+			$http.post(path + "?user=" + otusr + "&pw=" + otpwd, msg).then(function(response) {
 				$scope.getSwitches();
 			});
-		
+
 		}
-		
-		$scope.toggleMSwitch = function(item, value) {	
+
+		$scope.toggleMSwitch = function(item, value) {
 			var msg = {'mswtch' : item, 'value' : value};
-			$http.post(path, msg).then(function(response) {
+			$http.post(path + "?user=" + otusr + "&pw=" + otpwd, msg).then(function(response) {
 				$scope.getSwitches();
 			});
 		}
-		
+
 		$scope.getMName = function(item) {
  			var swtches = $scope.switchesSet.getMSwitches();
  			if (!swtches.hasOwnProperty(item)) return '';
  			return swtches[item].name;
  		}
- 
+
 		$scope.getMValue = function(item) {
 		   var swtches = $scope.switchesSet.getMSwitches();
 		   if (!swtches.hasOwnProperty(item)) return '';
 		   return swtches[item].value*100;
 		};
-		
+
 		$scope.getMLocation = function(item) {
 		   var swtches = $scope.switchesSet.getMSwitches();
 		   if (!swtches.hasOwnProperty(item)) return '';
 		   return swtches[item].loc;
 		};
-		
-		$scope.toggleTSwitch = function(item, value) {	 
+
+		$scope.toggleTSwitch = function(item, value) {
 			var msg = {'thermo' : item, 'value' : value};
-			$http.post(path, msg).then(function(response) {
+			$http.post(path + "?user=" + otusr + "&pw=" + otpwd, msg).then(function(response) {
 				$scope.getSwitches();
 			});
 		};
-		
+
 		$scope.getTName = function(item) {
  			var swtches = $scope.switchesSet.getTSwitches();
  			if (!swtches.hasOwnProperty(item)) return '';
  			return swtches[item].name;
  		}
- 
+
 		$scope.getTValue = function(item) {
 		   var swtches = $scope.switchesSet.getTSwitches();
 		   if (!swtches.hasOwnProperty(item)) return '';
 		   return swtches[item].value;
 		};
-		
+
 		$scope.getTLocation = function(item) {
 		   var swtches = $scope.switchesSet.getTSwitches();
 		   if (!swtches.hasOwnProperty(item)) return '';
 		   return swtches[item].loc;
 		};
-		
+
 		$scope.getTCharge = function(item) {  // state of charge
 		   var swtches = $scope.switchesSet.getTSwitches();
 		   if (!swtches.hasOwnProperty(item)) return '';
 		   return swtches[item].charge;
 		};
-		
+
 		$scope.getTSetpoint = function(item) {  // temperature setpoint / °C
 		   var swtches = $scope.switchesSet.getTSwitches();
 		   if (!swtches.hasOwnProperty(item)) return '';
 		   return swtches[item].crStp;
 		};
-		
+
 		$scope.getTValve = function(item) {  // valve position [0,1]
 		   var swtches = $scope.switchesSet.getTSwitches();
 		   if (!swtches.hasOwnProperty(item)) return '';
 		   return swtches[item].valve*100;
 		};
-		
+
 		$scope.getAllowedTempValue = function(input) {
 			var MIN = 10;  // degrees Celsius
 			var MAX = 40;
@@ -169,20 +169,20 @@ angular.module('switch',[])
 			else if (input > 100) return MAX;
 			return Math.round((MIN + (MAX-MIN)*input/100)*10)/10;
 		};
-		
+
 		function getInverseSetpoint(temp) {
 			var MIN = 10;  // degrees Celsius
-			var MAX = 40; 
+			var MAX = 40;
 			if (temp > MAX) return 100;
 			else if (temp < MIN) return 0;
 			return 100 * (temp-MIN) / (MAX-MIN);
 		}
-  
+
     	// send HTTP GET
     	$scope.getSwitches = function() {
     		//console.log('Sending get request...');
-    		$http.get(path).then(function(response) {
-    			$scope.switchesSet.setSwitches(response.data.switches);  
+    		$http.get(path + "?user=" + otusr + "&pw=" + otpwd).then(function(response) {
+    			$scope.switchesSet.setSwitches(response.data.switches);
     			$scope.switchesSet.setMSwitches(response.data.multiswitches);
     			$scope.switchesSet.setTSwitches(response.data.thermostats);
     			$scope.value = {};
@@ -201,16 +201,16 @@ angular.module('switch',[])
     				    console.log("Exception",e);
     				}
     			});
-    			console.log('Switches:',$scope.switchesSet.getSwitches());	    		
+    			console.log('Switches:',$scope.switchesSet.getSwitches());
     		});
     	};
-    	
-    		
+
+
     	$scope.init = function() {
     		$scope.getSwitches();
     	};
-    	
+
  //*************** init on startup ******************
-  	
+
     	$scope.init();
     });

@@ -82,4 +82,9 @@ public interface PersistencePolicy {
 	 * @return The lock object
 	 */
 	public Object getStorageLock();
+
+	/**
+	 * Initiate an immediate storage loop asynchronously.
+	 */
+	public void triggerStorage();
 }

@@ -17,6 +17,7 @@ package org.ogema.resourcemanager.impl;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
@@ -40,6 +41,9 @@ import org.ogema.core.resourcemanager.InvalidResourceTypeException;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.persistence.ResourceDB;
+import org.ogema.persistence.impl.faketree.ScheduleTreeElement;
+import org.ogema.persistence.impl.faketree.ScheduleTreeElementFactory;
+import org.ogema.persistence.impl.mem.MemoryTreeElement;
 import org.ogema.recordeddata.DataRecorder;
 import org.ogema.resourcemanager.impl.timeseries.DefaultRecordedData;
 import org.ogema.resourcemanager.virtual.DefaultVirtualResourceDB;
@@ -77,10 +81,11 @@ public class ResourceDBManager {
 	/** global lock guarding structural changes */
 	//private final ReentrantReadWriteLock structureLock = new ReentrantReadWriteLock();
 	protected RecordedDataManager recordedDataManager;
+    protected ScheduleTreeElementFactory scheduleFactory = new ScheduleTreeElementFactory();
     
     //private final Collection<StructureListenerRegistration> structureListeners = new ConcurrentLinkedQueue<>();
     private final NavigableMap<String, List<InternalStructureListenerRegistration>> structureListeners = new TreeMap<>();
-
+    
 	public ResourceDBManager(ResourceDB resdb, DataRecorder recordedDataAccess, TimerScheduler scheduler,
 			AccessManager access) {
 		Objects.requireNonNull(resdb);
@@ -126,8 +131,8 @@ public class ResourceDBManager {
 
 	private void initTimeseries() {
 		for (String id : recordedDataAccess.getAllRecordedDataStorageIDs()) {
-			TreeElement el = DefaultRecordedData.findTreeElement(id, this);
-			if (el == null) {
+			VirtualTreeElement el = DefaultRecordedData.findTreeElement(id, this);
+			if (el == null || el.isVirtual()) {
 				logger.warn("found recorded data for unknown resource: {}, deleting...", id);
 				recordedDataAccess.deleteRecordedDataStorage(id);
 			}
@@ -584,6 +589,34 @@ public class ResourceDBManager {
     
     public int incrementRevision(){
         return revisionCounter.incrementAndGet();
+    }
+    
+    public ScheduleTreeElement getScheduleElement(VirtualTreeElement base) {
+        lockStructureRead();
+        try {
+            //XXX find location on every access???
+            return scheduleFactory.get(findLocationElement(base));
+        } finally {
+            unlockStructureRead();
+        }
+    }
+    
+    private VirtualTreeElement findLocationElement(VirtualTreeElement pathElement) {
+        //XXX path string mangling
+        String[] a = pathElement.getPath().split("/");
+        TreeElement el = getToplevelResource(a[0]);
+        while (el.isReference()) {
+            el = el.getReference();
+        }
+
+        for (int i = 1; i < a.length; i++) {
+            el = el.getChild(a[i]);
+            while (el.isReference()) {
+                el = el.getReference();
+            }
+
+        }
+        return (VirtualTreeElement) el;
     }
 
 }

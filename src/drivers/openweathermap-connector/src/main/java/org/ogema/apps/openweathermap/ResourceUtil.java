@@ -28,10 +28,12 @@ import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.timeseries.InterpolationMode;
+
 /**
  * 
- *Access to the OGEMA resources (forecasts).
- *@author brequardt
+ * Access to the OGEMA resources (forecasts).
+ * 
+ * @author brequardt
  */
 public class ResourceUtil {
 
@@ -39,8 +41,7 @@ public class ResourceUtil {
 	private final Schedule temperatureForecast;
 	private final ApplicationManager appMan;
 
-	public ResourceUtil(ApplicationManager appMan,
-			TemperatureResource tempResouce, FloatResource irrad) {
+	public ResourceUtil(ApplicationManager appMan, TemperatureResource tempResouce, FloatResource irrad) {
 
 		temperatureForecast = tempResouce.forecast().create();
 
@@ -52,42 +53,45 @@ public class ResourceUtil {
 		irrad.activate(true);
 		this.appMan = appMan;
 	}
+
 	/**
 	 * calculate/interpolate weather information (temperature,solarirradiation)
-	 * @param city name of the city
-	 * @param county shortcut of the country
+	 * 
+	 * @param city
+	 *            name of the city
+	 * @param county
+	 *            shortcut of the country
 	 */
 	public void update(String city, String county) {
-		ForecastData data = OpenWeatherMapREST.getInstance().getWeatherForcast(
-				city, county);
+
+		ForecastData data = OpenWeatherMapREST.getInstance().getWeatherForcast(city, county);
 		int intervallInMinutes = 1;
-		data = WeatherUtil.getInstance().interpolateForecast(data,
-				intervallInMinutes);
+		data = WeatherUtil.getInstance().interpolateForecast(data, intervallInMinutes);
 
 		List<SampledValue> irradiationList = new ArrayList<>();
 		List<SampledValue> tempList = new ArrayList<>();
+		appMan.getLogger().debug("got {} values for {}/{}", data.getList().size(), county, city);
 
 		for (org.ogema.apps.openweathermap.dao.List entry : data.getList()) {
 
-			//DateTime c = new DateTime(entry.getDt());
-			
-			SampledValue irrad = toValue(entry.getIrradiation(), entry.getDt());
-			SampledValue temp = toValue(entry.getMain().getTemp(),
-					entry.getDt());
+			// DateTime c = new DateTime(entry.getDt());
+			SampledValue irrad = newSampledDouble(entry.getIrradiation(), entry.getDt());
+			SampledValue temp = newSampledDouble(entry.getMain().getTemp(), entry.getDt());
 			irradiationList.add(irrad);
 			tempList.add(temp);
-			//appMan.getLogger().info(c + " " + temp);
-			//appMan.getLogger().info(c + " " + irrad);
+			// appMan.getLogger().info(c + " " + temp);
+			// appMan.getLogger().info(c + " " + irrad);
 		}
 
 		irradiationForecast.addValues(irradiationList);
 		temperatureForecast.addValues(tempList);
-
+		appMan.getLogger().debug("wrote {} values to {}", irradiationList.size(), irradiationForecast.getPath());
+		appMan.getLogger().debug("wrote {} values to {}", tempList.size(), temperatureForecast.getPath());
 	}
 
-	private SampledValue toValue(Double a, long b) {
-		DoubleValue c = new DoubleValue(a);
-		SampledValue e = new SampledValue(c, b, Quality.GOOD);
+	private SampledValue newSampledDouble(Double value, long timestamp) {
+		DoubleValue c = new DoubleValue(value);
+		SampledValue e = new SampledValue(c, timestamp, Quality.GOOD);
 		return e;
 	}
 }

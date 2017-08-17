@@ -33,6 +33,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.ogema.core.channelmanager.measurements.FloatValue;
+import org.ogema.core.channelmanager.measurements.Quality;
+import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.array.IntegerArrayResource;
@@ -321,6 +324,68 @@ public class ResourceManagerConcurrencyTest extends OsgiTestBase {
 		}
 		room.delete();
 		tempSens.delete();
+		shutdownApps();
+	}
+	
+	/**
+	 * The schedule iterator is supposed to be fail-safe w.r.t. concurrent modification. The test verifies that this
+	 * is indeed the case.
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 * @throws TimeoutException
+	 */
+	@Test
+	public void scheduleIterationInParallelWorks() throws InterruptedException, ExecutionException, TimeoutException {
+		int nrApps = 50;
+		final FloatResource res = resMan.createResource(newResourceName(), FloatResource.class);
+		res.program().create().activate(false);
+		final int nrDataPoints = 10000;
+		final long delta = 10;
+		List<SampledValue> values = new ArrayList<>();
+		for (int i=0;i<nrDataPoints;i++) {
+			values.add(new SampledValue(new FloatValue((float) Math.random()), delta*i, Quality.GOOD));
+		}
+		res.program().addValues(values);
+		AppCallable<Integer> task = new AppCallable<Integer>() {
+			
+			@Override
+			public Integer call(TestApp app) {
+				if (Math.random() > 0.5) {
+					Iterator<SampledValue> it = res.program().iterator();
+					int cnt = 0;
+					while (it.hasNext()) {
+						it.next();
+						cnt++;
+					}
+					return cnt;
+				}
+				else {
+					double rand = Math.random();
+					if (rand > 0.5) {
+						res.program().addValue((long) (rand*delta*nrDataPoints), new FloatValue(23.5F));
+					} else {
+						try {
+							SampledValue sv = res.program().getValues(Long.MIN_VALUE).get((int) (rand * nrDataPoints));
+							res.program().deleteValues(sv.getTimestamp(), sv.getTimestamp()+1);
+						}catch (Exception ignore) {}
+					}
+					// these will trivially satisfy the test
+					return nrDataPoints;
+				}
+			}
+			
+		};
+
+		List<Future<Integer>> results = executeTasks(nrApps, task);
+		for (Future<Integer> future: results) {
+			Integer result = future.get(5, TimeUnit.SECONDS);
+			Assert.assertTrue("Unexpected number of data points from schedule iteration: got " + result + ", expected approx. " + nrDataPoints,
+					result < nrDataPoints + nrApps);
+			Assert.assertTrue("Unexpected number of data points from schedule iteration: got " + result + ", expected approx. " + nrDataPoints,
+					result > nrDataPoints - nrApps);
+		}
+		res.delete();
+		shutdownApps();
 	}
 	
 }

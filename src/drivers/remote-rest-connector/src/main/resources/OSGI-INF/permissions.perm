@@ -16,3 +16,6 @@
 # TODO less generous resource permissions?
 (org.ogema.accesscontrol.ResourcePermission "type=*" "read,write,addsub,create,activity,delete")
 
+# needed to shut down the executor
+("java.lang.RuntimePermission" "modifyThread")
+

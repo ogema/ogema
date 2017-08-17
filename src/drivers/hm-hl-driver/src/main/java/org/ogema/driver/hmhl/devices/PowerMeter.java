@@ -19,7 +19,6 @@ import static org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType.
 
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelConfiguration;
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.BooleanValue;
 import org.ogema.core.channelmanager.measurements.Value;
@@ -226,6 +225,7 @@ public class PowerMeter extends HM_hlDevice implements ResourceValueListener<Boo
 		// configureLogging();
 	}
 
+	@SuppressWarnings("unused")
 	private void configureLogging() {
 		// configure temperature for logging once per minute
 		final RecordedDataConfiguration powerConf = new RecordedDataConfiguration();

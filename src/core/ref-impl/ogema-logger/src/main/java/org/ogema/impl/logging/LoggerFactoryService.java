@@ -16,7 +16,10 @@
 package org.ogema.impl.logging;
 
 import java.util.List;
+
+import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.administration.AdminLogger;
 import org.ogema.core.logging.LoggerFactory;
@@ -44,5 +47,19 @@ public class LoggerFactoryService implements LoggerFactory {
 	public List<AdminLogger> getAllLoggers() {
 		return DefaultLoggerFactory.INSTANCE.getAdminLoggers();
 	}
+	
+	// https://logback.qos.ch/manual/appenders.html
+	// Even if a SocketAppender is no longer attached to any logger, it will not be garbage collected 
+	// in the presence of a connector thread. A connector thread exists only if the connection to the server is down. 
+	// To avoid this garbage collection problem, you should close the SocketAppender explicitly. Long lived applications 
+	// which create/destroy many SocketAppender instances should be aware of this garbage collection problem. 
+	// Most other applications can safely ignore it. 
+	// TODO 
+//	@Deactivate
+//	protected void deactivate() {
+//	}
+//	@Activate
+//	protected void activate() {
+//	}
 
 }

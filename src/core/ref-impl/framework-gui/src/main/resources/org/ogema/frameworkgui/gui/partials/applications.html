@@ -31,22 +31,23 @@
                     <h2>Applications</h2>
                     <div class="appContainer" ng-repeat="app in applications| filter:q" ng-click="openApp(app)">
                         <div class="applogoarea">
-                                <img class="applogo" ng-src="/apps/ogema/framework/gui/installedapps?action=getIcon&id={{app.id}}"/> 
+                                <!-- <img class="applogo" ng-src="/apps/ogema/framework/gui/installedapps?action=getIcon&id={{app.id}}"/> -->
+                                <img class="applogo" ng-src="{{retrieveIcon(app.id)}}"/>
                         </div>
                         <div class="bundleShortInfos">
                             <b>  {{app.metainfo.Bundle_Name}} </b><br/>
                             <span class="appversion">
-                                {{app.metainfo.Bundle_Version}} 
-                            </span> 
+                                {{app.metainfo.Bundle_Version}}
+                            </span>
                             <div class="appdescription">
                                 {{app.metainfo.Bundle_Description}}
                             </div>
                         </div>
-                    </div>                  
+                    </div>
                 </div>
             </div>
         </div>
-    </div>    
+    </div>
 
     {{selected}}
 </div>

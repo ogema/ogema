@@ -46,6 +46,7 @@ import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.exam.ResourceAssertions;
 
 import static org.ogema.exam.ResourceAssertions.assertActive;
+import static org.ogema.exam.ResourceAssertions.assertDeleted;
 import static org.ogema.exam.ResourceAssertions.assertExists;
 import org.ogema.exam.StructureTestListener;
 
@@ -631,15 +632,19 @@ public class ReferenceTest extends OsgiTestBase {
 		SingleSwitchBox switchBox = resMan.createResource(newResourceName(), SingleSwitchBox.class);
 		CoolingDevice fridge = resMan.createResource(newResourceName(), CoolingDevice.class);
 		PhysicalElement el = switchBox.device();
+        assert (el.getResourceType().equals(PhysicalElement.class));
 		el.setAsReference(fridge);
+        assert (el.getResourceType().equals(CoolingDevice.class));
 		//el.delete();
-		switchBox.device().delete();
-		el.create(); // fails -> ResourceNotFoundException
-		assert (el.getResourceType().equals(PhysicalElement.class));
+		//switchBox.device().delete();
+        fridge.delete();
+        assertDeleted(el);
+		el.create();
+		assertEquals(PhysicalElement.class, el.getResourceType());
 		switchBox.delete();
 		fridge.delete();
 	}
-
+    
 	@Test
 	public void resetOptionalElementReferenceToNewSubtypeWorks() {
 		SingleSwitchBox switchBox = resMan.createResource(newResourceName(), SingleSwitchBox.class);
@@ -1205,11 +1210,10 @@ public class ReferenceTest extends OsgiTestBase {
 		switchBox.setAsReference(light); // -> exception expected
 	}
 	
-	@Ignore("ClassCastException on TreeElements instead of expected exception type")
 	@Test(expected=VirtualResourceException.class)
 	public void settingReferenceOnVirtualResourceThrowsException() {
 		final TemperatureSensor tempSens = resMan.createResource(newResourceName(), TemperatureSensor.class);
-		tempSens.location().room().addDecorator("a", tempSens);
+		Resource dec = tempSens.location().room().addDecorator("a", tempSens);
 	}
 	
 	@Test(timeout=5000)

@@ -34,13 +34,13 @@ function createActionsdialog() {
 
 /**
  * (Un)check all child boxes. Executed when a checkbox is changed.
- * 
+ *
  * @param {number}
  *            num Identify checkbox.
  */
 function boxCheck(num) {
 	var identifyCheck = "input#c" + num;
-	var show; 
+	var show;
 	var container = $(identifyCheck).parent().parent();
 	var locationSearch = window.location.search.substring(1);
 	// if current box is checked
@@ -51,13 +51,13 @@ function boxCheck(num) {
 	}else{
 		show = false;
 	}
-		
-	
+
+
 	if ($(identifyCheck).prop("checked")) {
 
 		// check sub boxes
 		checkSubBoxes(container);
-		// show the resources	
+		// show the resources
 		if(!show){
 			showRessources(num, true);
 		}
@@ -105,7 +105,7 @@ function customizePermission(num, permContainer) {
 
 /**
  * Check child-checkboxes. Style Highlight.
- * 
+ *
  * @param {String}
  *            obj String-ID of checkbox.
  */
@@ -114,7 +114,7 @@ function checkSubBoxes(parent) {
 	parent.find("div>input[type='text']").addClass("highlight");
 	parent.find("div:last-child").find("label.lb").addClass("highlight");
 }
-function displayRessources(num){	
+function displayRessources(num){
 	var locationSearch = window.location.search.substring(1);
 	if (locationSearch.indexOf("newperms")!=-1 && !document.getElementById("c"+num).checked){
 		return;
@@ -123,14 +123,14 @@ function displayRessources(num){
 			num = num+1+"-1";
 		}
 	}
-		
+
 	var checked = !document.getElementById("resCheck"+num).checked
-	showRessources(num, checked);	
+	showRessources(num, checked);
 }
 
 /**
  * Uncheck child-checkboxes. Remove Highlight.
- * 
+ *
  * @param {String}
  *            obj String-ID of checkbox.
  */
@@ -142,7 +142,7 @@ function uncheckSubBoxes(parent) {
 
 /**
  * Highlight a single checkbox. Executed when a childbox gets changed.
- * 
+ *
  * @param {number}
  *            num For identifying single box.
  */
@@ -158,7 +158,7 @@ function singleHighlight(num) {
 /**
  * Executed when paragraph in accessPerm is clicked. So it shows the div
  * (resources affected).
- * 
+ *
  * @param {number}
  *            num Identify the paragraph and toggle next element (=div)
  */
@@ -209,7 +209,7 @@ function writeResourceInDia(num, newFilter) {
 	var arr1 = new Array();
 	arr1 = filter.split(",");
 	var length = arr1.length;
-	var url = "/service/filteredresources?";
+	var url = "/service/filteredresources?user=" + otusr + "&pw=" + otpwd +"&";
 
 	for (var i = 0; i < length; i++) {
 		if (i > 0)
@@ -335,7 +335,7 @@ function writeResourceInDia(num, newFilter) {
 /**
  * Show resource/methods in div or hide, case AllPermission there are no
  * editing-options.
- * 
+ *
  * @param {number}
  *            textNumber Identify the AllPermission-text.
  */
@@ -411,7 +411,7 @@ function additionalPrepareBoxCheck() {
 	removeAdditionalMask();
 	writeInDia(permName, filter, actions, numberOfPermEntry + "" + curAppId, formOfDialog, modename);
 	var checkID = "c" + numberOfPermEntry++ + "" + curAppId;
-	var cb = document.getElementById(checkID); 
+	var cb = document.getElementById(checkID);
 	cb.checked=true;
 	cb.onchange();
 	$(formOfDialog).append(additionalPermButton);

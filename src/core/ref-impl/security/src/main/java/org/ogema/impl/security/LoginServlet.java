@@ -40,7 +40,7 @@ public class LoginServlet extends HttpServlet {
 	protected static final String LOGIN_SERVLET_PATH = "/ogema/login";
 	protected static final String OLDREQ_ATTR_NAME = "requestBeforeLogin";
 
-	private static final String LOGIN_FAILED_MSG = "Login failed: Username and/or Password wrong";
+	private static final String LOGIN_FAILED_MSG = "Login failed: Wrong Username/Password";
 	private static final String MAX_LOGIN_TRIES_EXCEEDED_MSG = "Max number of tries for login exceeded."
 			+ " Login is blocked for %s.";
 

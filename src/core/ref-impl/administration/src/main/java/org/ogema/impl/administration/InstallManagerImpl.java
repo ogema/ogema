@@ -38,7 +38,6 @@ import org.slf4j.Logger;
 @Service(InstallationManagement.class)
 public class InstallManagerImpl implements InstallationManagement {
 
-
 	private static final Logger logger = org.slf4j.LoggerFactory.getLogger("ogema.administration");
 
 	@Reference
@@ -47,7 +46,7 @@ public class InstallManagerImpl implements InstallationManagement {
 	// TODO synchronization... volatile fields?
 	private ApplicationRegistry appReg;
 
-//	private ServiceTracker<ApplicationSource, ApplicationSource> tracker;
+	// private ServiceTracker<ApplicationSource, ApplicationSource> tracker;
 
 	private BundleContext osgi;
 
@@ -55,32 +54,6 @@ public class InstallManagerImpl implements InstallationManagement {
 	protected void activate(final BundleContext ctx, Map<String, Object> config) {
 		this.osgi = ctx;
 		this.appReg = pMan.getApplicationRegistry();
-
-//		ServiceTrackerCustomizer<ApplicationSource, ApplicationSource> trackerCustomizer = new ServiceTrackerCustomizer<ApplicationSource, ApplicationSource>() {
-//
-//			@Override
-//			public ApplicationSource addingService(ServiceReference<ApplicationSource> sr) {
-//				ApplicationSource app = osgi.getService(sr);
-//				if (app == null) {
-//					logger.warn("got a null service object from service reference {}, bundle {}", sr, sr.getBundle());
-//					return null;
-//				}
-//				appStores.put(app.getName(), app);
-//				return app;
-//			}
-//
-//			@Override
-//			public void modifiedService(ServiceReference<ApplicationSource> sr, ApplicationSource t) {
-//			}
-//
-//			@Override
-//			public void removedService(ServiceReference<ApplicationSource> sr, ApplicationSource t) {
-//				appStores.remove(t.getName());
-//			}
-//		};
-
-//		tracker = new ServiceTracker<>(osgi, ApplicationSource.class, trackerCustomizer);
-//		tracker.open();
 	}
 
 	@Override
@@ -172,7 +145,6 @@ public class InstallManagerImpl implements InstallationManagement {
 		return true;
 	}
 
-
 	@Override
 	public InstallableApplication createInstallableApp(String address, String name) {
 		InstallableApplication app = new InstallableApp(address, name);
@@ -184,12 +156,5 @@ public class InstallManagerImpl implements InstallationManagement {
 		InstallableApplication app = new InstallableApp(b);
 		app.setAppid(appReg.getAppByBundle(b));
 		return app;
-	}
-
-
-	@Override
-	public String getCurrentInstallStoragePath() {
-		InstallableApp insApp = InstallableApp.currentInstallThreadLocale.get();
-		return insApp.bundle.getDataFile("").getPath();
 	}
 }

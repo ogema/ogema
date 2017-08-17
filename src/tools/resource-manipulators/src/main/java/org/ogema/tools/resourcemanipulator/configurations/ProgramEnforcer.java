@@ -49,7 +49,7 @@ public interface ProgramEnforcer extends ManipulatorConfiguration {
 
 	/**
 	 * Enforces the program for the target resource, but does not request an exclusive write access.
-	 * This is the same as calling {@link #enforceProgram(org.ogema.core.model.simple.FloatResource, long, org.ogema.core.resourcemanager.AccessPriority) }
+	 * This is the same as calling {@link #enforceProgram(ValueResource, long, AccessPriority)}
 	 * with an access priority of null.
 	 * @param resource Float resource for which the program shall be enforced.
 	 * @param updateInterval time interval in which the value shall be updated in case the interpolation mode is linear.

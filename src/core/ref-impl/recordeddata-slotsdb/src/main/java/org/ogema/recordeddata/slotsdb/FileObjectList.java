@@ -42,7 +42,7 @@ public final class FileObjectList {
 	private String foldername;
 	private long firstTS;
 	private int size;
-
+	
 	/**
 	 * Creates a FileObjectList<br>
 	 * and creates a FileObject for every File
@@ -50,22 +50,14 @@ public final class FileObjectList {
 	 * @param foldername
 	 * @throws IOException
 	 */
-	public FileObjectList(String foldername) throws IOException {
+	public FileObjectList(String foldername, SlotsDbCache cache, String encodedId) throws IOException {
 		// File folder = new File(foldername);
 		this.foldername = foldername;
-		reLoadFolder(foldername);
+		reLoadFolder(cache, encodedId);
 	}
-
-	/**
-	 * Reloads the List
-	 * 
-	 * @param foldername
-	 *            containing Files
-	 * @throws IOException
-	 */
-	public void reLoadFolder(String foldername) throws IOException {
-		this.foldername = foldername;
-		reLoadFolder();
+	
+	public String getFolderName() {
+		return foldername;
 	}
 
 	/**
@@ -73,7 +65,7 @@ public final class FileObjectList {
 	 * 
 	 * @throws IOException
 	 */
-	public void reLoadFolder() throws IOException {
+	public void reLoadFolder(SlotsDbCache cache, String encodedId) throws IOException {
 
 		File folder = new File(foldername);
 
@@ -82,9 +74,10 @@ public final class FileObjectList {
 			for (File file : folder.listFiles()) {
 				if (file.length() >= 16) { // otherwise is corrupted or empty
 					// file.
-					String[] split = file.getName().split("\\.");
+					final String filename = file.getName();
+					String[] split = filename.split("\\.");
 					if (("." + split[split.length - 1]).equals(SlotsDb.FILE_EXTENSION)) {
-						files.add(FileObject.getFileObject(file));
+						files.add(FileObject.getFileObject(file, cache.getCache(encodedId, filename)));
 					}
 				}
 				else {

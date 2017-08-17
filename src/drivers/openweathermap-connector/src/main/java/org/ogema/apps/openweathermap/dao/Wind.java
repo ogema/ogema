@@ -27,47 +27,44 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-    "speed",
-    "deg"
-})
+@JsonPropertyOrder({ "speed", "deg" })
 public class Wind {
 
-    @JsonProperty("speed")
-    private float speed;
-    @JsonProperty("deg")
-    private float deg;
-    @JsonIgnore
-    private Map<String, Object> additionalProperties = new HashMap<String, Object>();
+	@JsonProperty("speed")
+	private float speed;
+	@JsonProperty("deg")
+	private float deg;
+	@JsonIgnore
+	private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
-    @JsonProperty("speed")
-    public float getSpeed() {
-        return speed;
-    }
+	@JsonProperty("speed")
+	public float getSpeed() {
+		return speed;
+	}
 
-    @JsonProperty("speed")
-    public void setSpeed(float speed) {
-        this.speed = speed;
-    }
+	@JsonProperty("speed")
+	public void setSpeed(float speed) {
+		this.speed = speed;
+	}
 
-    @JsonProperty("deg")
-    public float getDeg() {
-        return deg;
-    }
+	@JsonProperty("deg")
+	public float getDeg() {
+		return deg;
+	}
 
-    @JsonProperty("deg")
-    public void setDeg(float deg) {
-        this.deg = deg;
-    }
+	@JsonProperty("deg")
+	public void setDeg(float deg) {
+		this.deg = deg;
+	}
 
-    @JsonAnyGetter
-    public Map<String, Object> getAdditionalProperties() {
-        return this.additionalProperties;
-    }
+	@JsonAnyGetter
+	public Map<String, Object> getAdditionalProperties() {
+		return this.additionalProperties;
+	}
 
-    @JsonAnySetter
-    public void setAdditionalProperty(String name, Object value) {
-        this.additionalProperties.put(name, value);
-    }
+	@JsonAnySetter
+	public void setAdditionalProperty(String name, Object value) {
+		this.additionalProperties.put(name, value);
+	}
 
 }

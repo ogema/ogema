@@ -48,4 +48,14 @@ public interface SumModel extends ResourceManipulatorModel {
 	 * Flag defining how to handle empty sums.
 	 */
 	BooleanResource deactivateEmptySum();
+    
+    /**
+     * Defines how to handle input resource updates. If false, the result will only
+     * be rewritten when an input value changes. Otherwise (default) write
+     * the result whenever an input value is updated, even if the update does not
+     * change the value
+     * 
+     * @return update the the result whenever an input value is updated (default), or only on changed values?
+     */
+    BooleanResource callOnEveryUpdate();
 }

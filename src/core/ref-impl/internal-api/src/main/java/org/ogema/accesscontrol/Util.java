@@ -23,11 +23,15 @@ import java.util.Set;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.ogema.core.application.AppID;
+
 /**
  * @author mns
  * 
  */
 public class Util {
+
+	public static final ThreadLocal<AppID> currentAppThreadLocale = new ThreadLocal<>();
 
 	/*
 	 * Checks if outer contains all the elements of inner.
@@ -156,5 +160,12 @@ public class Util {
 			}
 		}
 		return false;
+	}
+
+	public static String getCurrentAppStoragePath() {
+		String result;
+		AppID app = currentAppThreadLocale.get();
+		result = app.getBundle().getDataFile("").getAbsolutePath();
+		return result;
 	}
 }

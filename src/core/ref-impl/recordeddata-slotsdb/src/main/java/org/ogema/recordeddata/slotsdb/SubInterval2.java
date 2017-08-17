@@ -15,21 +15,26 @@
  */
 package org.ogema.recordeddata.slotsdb;
 
-import java.util.ArrayList;
-import java.util.List;
+//import java.util.ArrayList;
+//import java.util.List;
+//
+//import org.ogema.core.channelmanager.measurements.SampledValue;
 
-import org.ogema.core.channelmanager.measurements.SampledValue;
-
+/**
+ * @deprecated this class does not seem to be used any more 
+ */
+// TODO remove
+@Deprecated
 public class SubInterval2 {
 
-	List<SampledValue> values = new ArrayList<SampledValue>();
-
-	public void add(SampledValue value) {
-		values.add(value);
-	}
-
-	public List<SampledValue> getValues() {
-		return values;
-	}
+//	List<SampledValue> values = new ArrayList<SampledValue>();
+//
+//	public void add(SampledValue value) {
+//		values.add(value);
+//	}
+//
+//	public List<SampledValue> getValues() {
+//		return values;
+//	}
 
 }

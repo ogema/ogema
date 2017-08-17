@@ -1,8 +1,13 @@
 ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope', '$filter', '$modal', '$window', '$upload', function ($scope, ogemaGateway, $rootScope, $filter, $modal, $window, $upload) {
-        var path = "/install/installedapps"+"?user="+otusr+"&pw="+otpwd;
+        var args;
+        if (typeof otusr !== "undefined" && typeof otpwd !== "undefined")
+        	args = "user="+otusr+"&pw="+otpwd;
+        else
+        	args = "user=guest&pw=guest";
+		var path = "/install/installedapps?"+args;
 
         $rootScope.initApplications = function () {
-            var path = "/install/installedapps"+"?user="+otusr+"&pw="+otpwd;
+            var path = "/install/installedapps?"+args;
 
             ogemaGateway.getJSON(path, {"action": "listAll"}).then(function (result) {
                 $rootScope.applications = result;
@@ -28,6 +33,10 @@ ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope'
               //  console.log('SHOW INFO Modal dismissed at: ' + new Date());
             });
         };
+
+		$scope.retrieveIcon = function(bundleId) {
+			return '/install/installedapps?action=getIcon&app=' + bundleId + '&user=' + otusr +'&pw=' + otpwd;
+		}
 
         var showBundleInfoCtrl = function ($scope, $modalInstance) {
 
@@ -55,7 +64,7 @@ ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope'
             });
 
             modalInstance.result.then(function (policies) {
-                var path = "/install/installedapps?action=setPermission&app=" + $rootScope.editBundle.id+"&user="+otusr+"&pw="+otpwd;
+                var path = "/install/installedapps?action=setPermission&app=" + $rootScope.editBundle.id+"&" + args;
                 var sendPolicies = angular.toJson({policies: policies.policies})
 
                 ogemaGateway.postFormPolicies(path, sendPolicies).then(function (result) {
@@ -80,7 +89,7 @@ ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope'
                     policy.mode = "allow";
                 }
             }
-            
+
             /*
             $scope.toggleDeletePolicy = function (policy) {
                 console.log("toggleDeletePolicy", policy)
@@ -90,8 +99,8 @@ ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope'
                     policy.delete = true;
                 }
             }
-            
-          
+
+
             $scope.toggleDeletePermission = function (pernmission) {
                 console.log("deletePermission", permission)
                 if(permission.delete == true){
@@ -101,7 +110,7 @@ ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope'
                 }
             }
             */
-           
+
             $scope.ok = function () {
                 $modalInstance.close($scope.status);
             };
@@ -206,9 +215,9 @@ ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope'
             $scope.uploadActionMsg = "Select File."
             $scope.uploadValue = 0;
             $scope.showProgressbar = false;
-            
+
             $scope.initFileList = function () {
-              
+
             ogemaGateway.getJSON(path, {"name": "localAppDirectory"}).then(function (result) {
                 var apps = []
                 $.each(result.apps, function (index, value) {
@@ -216,14 +225,14 @@ ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope'
                 })
                 $scope.apps = apps;
             });
-                
+
             }
 
             $scope.onFileSelect = function ($files) {
                 //$files: an array of files selected, each file has name, size, and type.
                 $scope.uploadActionMsg = "Uploading File..."
                 $scope.showProgressbar = true;
-                
+
                 for (var i = 0; i < $files.length; i++) {
                     var file = $files[i];
                     $scope.upload = $upload.upload({
@@ -234,8 +243,8 @@ ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope'
                         //data: {myObj: $scope.myModelObj},
                         file: file, // or list of files ($files) for html5 only
                         //fileName: 'doc.jpg' or ['1.jpg', '2.jpg', ...] // to modify the name of the file(s)
-                        // customize file formData name ('Content-Disposition'), server side file variable name. 
-                        //fileFormDataName: myFile, //or a list of names for multiple files (html5). Default is 'file' 
+                        // customize file formData name ('Content-Disposition'), server side file variable name.
+                        //fileFormDataName: myFile, //or a list of names for multiple files (html5). Default is 'file'
                         // customize how data is added to formData. See #40#issuecomment-28612000 for sample code
                         //formDataAppender: function(formData, key, val){}
                     }).progress(function (evt) {
@@ -248,12 +257,12 @@ ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope'
                         $scope.initFileList();
                     });
                     //.error(...)
-                    //.then(success, error, progress); 
+                    //.then(success, error, progress);
                     // access or attach event listeners to the underlying XMLHttpRequest.
                     //.xhr(function(xhr){xhr.upload.addEventListener(...)})
                 }
                 /* alternative way of uploading, send the file binary with the file's content-type.
-                 Could be used to upload files to CouchDB, imgur, etc... html5 FileReader is needed. 
+                 Could be used to upload files to CouchDB, imgur, etc... html5 FileReader is needed.
                  It could also be used to monitor the progress of a normal http post/put request with large data*/
                 // $scope.upload = $upload.http({...})  see 88#issuecomment-31366487 for sample code.
             };
@@ -265,9 +274,9 @@ ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope'
             $scope.cancel = function () {
                 $modalInstance.dismiss('cancel');
             };
-            
+
             $scope.initFileList();
-           
+
             $scope.setPermissions = function (appstore, filename) {
                 $rootScope.permissionsForApp = filename;
                 var modalInstance = $modal.open({
@@ -322,7 +331,7 @@ ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope'
                              $.each(actionsArray, function (ind, val) {
                              permissions.localePerms.push({mode: "ALLOW", name: perm.name, filter: perm.filter, action: val, condition: "", conditionArgs: [], checked: false});
                              })
-                             
+
                              } else {
                              permissions.localePerms.push({mode: "ALLOW", name: perm.name, filter: perm.filter, action: perm.action, condition: "", conditionArgs: [], checked: false});
                              }
@@ -342,7 +351,7 @@ ngOGFrAdminApp.controller('BundlesCtrl', ['$scope', 'ogemaGateway', '$rootScope'
                 }
 
                 $scope.togglePermissionMode = function (permission) {
-                  
+
                     if (permission.mode == "ALLOW") {
                         permission.mode = "DENY";
                     } else if (permission.mode == "DENY") {

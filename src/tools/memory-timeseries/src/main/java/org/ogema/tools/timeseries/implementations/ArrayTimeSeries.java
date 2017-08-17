@@ -17,6 +17,7 @@ package org.ogema.tools.timeseries.implementations;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 
@@ -332,5 +333,42 @@ public class ArrayTimeSeries implements MemoryTimeSeries {
 		final SampledValue result = getValue(t);
 		return (result != null) ? result : new SampledValue(new FloatValue(0.f), t, Quality.BAD);
 	}
+	
+	@Override
+	public SampledValue getPreviousValue(long time) {
+		return m_values.getPreviousValue(time);
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return m_values.isEmpty();
+	}
+
+	@Override
+	public boolean isEmpty(long startTime, long endTime) {
+		return m_values.isEmpty(startTime, endTime);
+	}
+
+	@Override
+	public int size() {
+		return m_values.size();
+	}
+
+	@Override
+	public int size(long startTime, long endTime) {
+		return m_values.size(startTime, endTime);
+	}
+
+	@Override
+	public Iterator<SampledValue> iterator() {
+		return m_values.iterator();
+	}
+
+	@Override
+	public Iterator<SampledValue> iterator(long startTime, long endTime) {
+		return m_values.iterator(startTime, endTime);
+	}
+	
+	
 
 }

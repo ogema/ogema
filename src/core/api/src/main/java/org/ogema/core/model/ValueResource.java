@@ -33,7 +33,10 @@ public interface ValueResource extends Resource {
 	 * Gets the time of the most recent write access to the resource. Write
 	 * accesses are counted as an update even when the new value equals the
 	 * old one.
-	 * @return timestamp of the last write access to the resource in ms since 1970.  If the resource has never been written to so far, this returns -1.
+	 * @return timestamp of the last write access to the resource in ms since 1970.
+	 * If the resource has never been written to so far, this returns -1. For resources that are
+	 * not stored persistently, also the last update time is not stored persistently, otherwise
+	 * the last update time is stored persistently.
 	 */
 	long getLastUpdateTime();
 }

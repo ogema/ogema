@@ -49,8 +49,6 @@ public class InstallableApp implements InstallableApplication {
 	private AppPermission appPerms;
 	private boolean isLocale;
 
-	public static final ThreadLocal<InstallableApp> currentInstallThreadLocale = new ThreadLocal<>();
-
 	InstallableApp(String path, String name) {
 		this.path = path;
 		this.name = name;
@@ -129,7 +127,6 @@ public class InstallableApp implements InstallableApplication {
 
 	@Override
 	public List<String> getPermissionDemand() {
-		currentInstallThreadLocale.set(this);
 		List<String> permsArray = new ArrayList<>();
 		BufferedReader br = null;
 		URL url = bundle.getEntry(PERMS_ENTRY_NAME);

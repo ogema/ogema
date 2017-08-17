@@ -15,6 +15,7 @@
  */
 package org.ogema.drivers.homematic.xmlrpc.hl.channels;
 
+import org.ogema.drivers.homematic.xmlrpc.hl.api.AbstractDeviceHandler;
 import java.util.List;
 import java.util.Map;
 import org.ogema.core.model.units.ElectricCurrentResource;
@@ -22,7 +23,6 @@ import org.ogema.core.model.units.EnergyResource;
 import org.ogema.core.model.units.FrequencyResource;
 import org.ogema.core.model.units.PowerResource;
 import org.ogema.core.model.units.VoltageResource;
-import org.ogema.drivers.homematic.xmlrpc.hl.HomeMaticDriver;
 import org.ogema.drivers.homematic.xmlrpc.hl.types.HmDevice;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.DeviceDescription;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.HmEvent;
@@ -31,15 +31,21 @@ import org.ogema.drivers.homematic.xmlrpc.ll.api.ParameterDescription;
 import org.ogema.model.connections.ElectricityConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.HomeMaticConnection;
+import org.ogema.tools.resource.util.ResourceUtils;
 
 /**
  *
  * @author jlapp
  */
-public class PowerMeterChannel implements ChannelHandler {
+public class PowerMeterChannel extends AbstractDeviceHandler {
 
     Logger logger = LoggerFactory.getLogger(getClass());
 
+    public PowerMeterChannel(HomeMaticConnection conn) {
+        super(conn);
+    }
+    
     class PowerMeterEventListener implements HmEventListener {
 
         final ElectricityConnection elconn;
@@ -119,11 +125,11 @@ public class PowerMeterChannel implements ChannelHandler {
     }
 
     @Override
-    public void setup(HmDevice parent, HomeMaticDriver hm, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
+    public void setup(HmDevice parent, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
         LoggerFactory.getLogger(getClass()).debug("setup POWERMETER handler for address {}", desc.getAddress());
-        String swName = HomeMaticDriver.sanitizeResourcename("POWERMETER_" + desc.getAddress());
+        String swName = ResourceUtils.getValidResourceName("POWERMETER_" + desc.getAddress());
         ElectricityConnection elconn = parent.addDecorator(swName, ElectricityConnection.class);
-        hm.getHomeMaticService().addEventListener(new PowerMeterEventListener(elconn, desc.getAddress()));
+        conn.addEventListener(new PowerMeterEventListener(elconn, desc.getAddress()));
         elconn.activate(true);
     }
 

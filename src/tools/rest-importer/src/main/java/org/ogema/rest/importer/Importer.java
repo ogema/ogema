@@ -55,16 +55,25 @@ public class Importer implements Application {
 		//		String appId = appManager.getAppID().getIDString();
 		//		AdminApplication app = adminMan.getAppById(appId);
 		//		app.remove();  // TODO doesn't do anything at the moment
-		try {
-			FrameworkUtil.getBundle(getClass()).uninstall(); // app uninstalls itself after initial import
-		} catch (BundleException e) {
-			e.printStackTrace();
-		}
+		new Thread(new Runnable() {
+			
+			@Override
+			public void run() {
+				try {
+					FrameworkUtil.getBundle(Importer.class).uninstall(); // app uninstalls itself after initial import
+				} catch (BundleException e) {
+					e.printStackTrace();
+				}
+			}
+		}).start();
 	}
 
 	@Override
 	public void stop(AppStopReason reason) {
-		logger.info("Uninstalling Importer application");
+		if (logger != null)
+			logger.info("Uninstalling Importer application");
+		appman = null;
+		logger =  null;
 	}
 
 }

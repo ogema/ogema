@@ -1,16 +1,17 @@
 /**
  * This file is part of OGEMA.
  *
- * OGEMA is free software: you can redistribute it and/or modify it under the
- * terms of the GNU General Public License version 3 as published by the Free
- * Software Foundation.
+ * OGEMA is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
  *
- * OGEMA is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
- * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ * OGEMA is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
 package org.ogema.resourcemanager.impl.transaction;
 
@@ -633,6 +634,7 @@ public class TransactionImpl implements org.ogema.core.resourcemanager.Transacti
         final ResourceAccess resAcc = m_appMan.getResourceAccess();
         // start transaction: lock resource graph.
         m_dbMan.lockWrite();
+        m_dbMan.startTransaction();
         try {
             // check that all resources exist, throw an exception if not.
             for (Resource resource : getResources()) {
@@ -804,6 +806,7 @@ public class TransactionImpl implements org.ogema.core.resourcemanager.Transacti
             }
             writeSchedules(resAcc);
         } finally {
+        	m_dbMan.finishTransaction();
             // transaction finished: unlock resource graph
             m_dbMan.unlockWrite();
         }
@@ -813,11 +816,13 @@ public class TransactionImpl implements org.ogema.core.resourcemanager.Transacti
     public void activate() {
         final Collection<Resource> resources = getResources();
         m_dbMan.lockStructureWrite();
+        m_dbMan.startTransaction();
         try {
             for (Resource resource : resources) {
                 resource.activate(false);
             }
         } finally {
+        	m_dbMan.finishTransaction();
             m_dbMan.unlockStructureWrite();
         }
     }
@@ -826,11 +831,13 @@ public class TransactionImpl implements org.ogema.core.resourcemanager.Transacti
     public void deactivate() {
         final Collection<Resource> resources = getResources();
         m_dbMan.lockStructureWrite();
+        m_dbMan.startTransaction();
         try {
             for (Resource resource : resources) {
                 resource.deactivate(false);
             }
         } finally {
+        	m_dbMan.finishTransaction();
             m_dbMan.unlockStructureWrite();
         }
     }

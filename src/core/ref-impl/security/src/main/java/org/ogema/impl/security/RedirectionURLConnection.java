@@ -27,16 +27,18 @@ public class RedirectionURLConnection extends URLConnection {
 
 	enum Snippet {
 
-		SNIPPET0, USERNAME, SNIPPET2, PASSWORD, SNIPPET4, NATIVERESOURCE, SNIPPET6, EOF
+		SNIPPET_UP_TO_HEAD, SNIPPET0, USERNAME, SNIPPET2, PASSWORD, SNIPPET4, NATIVERESOURCE, EOF
 	};
 
-	static final byte[] snippet0 = "<HTML><HEAD><meta charset=\"utf-8\"></HEAD>\n\n<BODY>\n<SCRIPT type=\"application/javascript\">\nvar otusr=\""
-			.getBytes();
+	enum BeforeBodyStatus {
+		WAIT4BRACKET_OPEN, WAIT4MINUS3, BRACKET_OPEN, BRACKET_CLOSE, EXCLAM, MINUS1, MINUS2, MINUS3, MINUS4, H, E, A, D, WAIT4BRACKET_CLOSE, WAIT4HEADBRACKET_CLOSE
+	};
+
+	static final byte[] snippet0 = "\n<script type=\"application/javascript\">var otusr=\"".getBytes();
 	byte[] username;
-	static final byte[] snippet2 = "\";\nvar otpwd=\"".getBytes();
+	static final byte[] snippet2 = "\";var otpwd=\"".getBytes();
 	byte[] otp;
-	static final byte[] snippet4 = "\";\n</SCRIPT>\n</BODY>\n".getBytes();
-	static final byte[] snippet6 = "\n</HTML>".getBytes();
+	static final byte[] snippet4 = "\";</script>\n".getBytes();
 
 	static final int len0 = snippet0.length;
 	int len1; // username
@@ -44,12 +46,12 @@ public class RedirectionURLConnection extends URLConnection {
 	int len3; // otp
 	static final int len4 = snippet4.length;
 	int len5; // native resource
-	static final int len6 = snippet6.length;
 
 	Snippet currentPart;
+	private BeforeBodyStatus beforeHeadState;
 	int readPtr;
 
-	RedirectStream is;
+	InsertionStream is;
 
 	protected String name;
 	private InputStream nativeStream;
@@ -77,10 +79,11 @@ public class RedirectionURLConnection extends URLConnection {
 		}
 		this.nativeStream = url.openConnection().getInputStream();
 		len5 = nativeStream.available();
-		this.is = new RedirectStream();
-		currentPart = Snippet.SNIPPET0;
+		this.is = new InsertionStream();
+		currentPart = Snippet.SNIPPET_UP_TO_HEAD;
+		beforeHeadState = BeforeBodyStatus.WAIT4BRACKET_OPEN;
 		readPtr = 0;
-		available = len0 + len1 + len2 + len3 + len4 + len5 + len6;
+		available = len0 + len1 + len2 + len3 + len4 + len5;// + len6;
 	}
 
 	@Override
@@ -102,7 +105,9 @@ public class RedirectionURLConnection extends URLConnection {
 	}
 
 	@SuppressWarnings("fallthrough")
-	class RedirectStream extends InputStream {
+	class InsertionStream extends InputStream {
+
+		private boolean head;
 
 		@Override
 		public int available() {
@@ -114,6 +119,35 @@ public class RedirectionURLConnection extends URLConnection {
 			int read = doff;
 			byte[] currentArr;
 			switch (currentPart) {
+			case SNIPPET_UP_TO_HEAD: // read byte wise until the head tag
+				int nativeRead = 0;
+				int index = 0;
+				try {
+					while (toRead > 0) {
+
+						int c = nativeStream.read();
+						if (c != -1) {
+							nativeRead = 1;
+							read += nativeRead;
+							toRead -= nativeRead;
+							available -= nativeRead;
+							ba[index++] = (byte) c;
+						}
+						else {
+							currentPart = Snippet.NATIVERESOURCE;
+							break;
+						}
+						if (checkBeginOfHead(c)) { // Check if the begin head is reached
+							currentPart = Snippet.NATIVERESOURCE;
+							break;
+						}
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				if ((toRead <= 0)) {
+					return read - doff;
+				}
 			case SNIPPET0:
 				currentArr = snippet0;
 				// How many bytes could be read in the current array yet?
@@ -220,7 +254,7 @@ public class RedirectionURLConnection extends URLConnection {
 					}
 				}
 			case NATIVERESOURCE:
-				int nativeRead = 0;
+				nativeRead = 0;
 				try {
 					while (toRead > 0) {
 						nativeRead = nativeStream.read(ba, read, toRead);
@@ -230,42 +264,184 @@ public class RedirectionURLConnection extends URLConnection {
 							available -= nativeRead;
 						}
 						else {
-							currentPart = Snippet.SNIPPET6;
+							currentPart = Snippet.EOF;
 							break;
 						}
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				if ((toRead <= 0)) {
-					return read - doff;
-				}
-			case SNIPPET6:
-				currentArr = snippet6;
-				currentBytes = currentArr.length - readPtr;
-				if (toRead <= currentBytes) {
-					System.arraycopy(currentArr, readPtr, ba, read, toRead);
-					readPtr += toRead;
-					read += toRead;
-					if (readPtr == len6) {
-						readPtr = 0;
-					}
-					available -= toRead;
-					return read - doff;
-				}
-				else {
-					System.arraycopy(currentArr, readPtr, ba, read, currentBytes);
-					readPtr = 0;
-					toRead -= currentBytes;
-					read += currentBytes;
-					currentPart = Snippet.EOF;
-					available -= currentBytes;
-					return read - doff;
-				}
+				return read - doff;
 			case EOF:
 			default:
 				return -1;
 			}
+		}
+
+		private boolean checkBeginOfHead(int c) {
+			switch (beforeHeadState) {
+			case WAIT4BRACKET_OPEN:
+				// skip whitespaces
+				if (c == '<')
+					beforeHeadState = BeforeBodyStatus.BRACKET_OPEN;//
+				break;
+			case BRACKET_OPEN:
+				switch (c) {
+				case '!':
+					beforeHeadState = BeforeBodyStatus.EXCLAM;//
+					break;
+				case 'h':
+				case 'H':
+					beforeHeadState = BeforeBodyStatus.H;//
+					break;
+				default:
+					beforeHeadState = BeforeBodyStatus.WAIT4BRACKET_CLOSE;//
+					break;
+				}
+				break;
+			case EXCLAM:
+				switch (c) {
+				case '-':
+					beforeHeadState = BeforeBodyStatus.MINUS1;//
+					break;
+				default:
+					beforeHeadState = BeforeBodyStatus.WAIT4BRACKET_CLOSE;
+					break;
+				}
+				break;
+			case MINUS1:
+				switch (c) {
+				case '-':
+					beforeHeadState = BeforeBodyStatus.MINUS2;
+					break;
+				default:
+					beforeHeadState = BeforeBodyStatus.WAIT4BRACKET_CLOSE;
+					break;
+				}
+				break;
+			case MINUS2:
+				switch (c) {
+				case '-':
+					beforeHeadState = BeforeBodyStatus.MINUS3;
+					break;
+				default:
+					beforeHeadState = BeforeBodyStatus.WAIT4MINUS3;
+					break;
+				}
+				break;
+			case WAIT4MINUS3:
+				switch (c) {
+				case '-':
+					beforeHeadState = BeforeBodyStatus.MINUS3;
+					break;
+				default:
+					break;
+				}
+				break;
+			case MINUS3:
+				switch (c) {
+				case '-':
+					beforeHeadState = BeforeBodyStatus.MINUS4;
+					break;
+				default:
+					beforeHeadState = BeforeBodyStatus.WAIT4MINUS3;
+					break;
+				}
+				break;
+			case MINUS4:
+				switch (c) {
+				case '>':
+					head = false;
+					beforeHeadState = BeforeBodyStatus.WAIT4BRACKET_OPEN;
+					break;
+				default:
+					beforeHeadState = BeforeBodyStatus.WAIT4MINUS3;
+					break;
+				}
+				break;
+			case H:
+				switch (c) {
+				case 'e':
+				case 'E':
+					beforeHeadState = BeforeBodyStatus.E;//
+					break;
+				case '>':
+					head = false;
+					beforeHeadState = BeforeBodyStatus.WAIT4BRACKET_OPEN;
+					break;
+				default:
+					beforeHeadState = BeforeBodyStatus.WAIT4BRACKET_CLOSE;
+					break;
+				}
+				break;
+			case E:
+				switch (c) {
+				case 'a':
+				case 'A':
+					beforeHeadState = BeforeBodyStatus.A;//
+					break;
+				case '>':
+					head = false;
+					beforeHeadState = BeforeBodyStatus.WAIT4BRACKET_OPEN;
+					break;
+				default:
+					beforeHeadState = BeforeBodyStatus.WAIT4BRACKET_CLOSE;
+					break;
+				}
+				break;
+			case A:
+				switch (c) {
+				case 'd':
+				case 'D':
+					beforeHeadState = BeforeBodyStatus.D;//
+					break;
+				case '>':
+					head = false;
+					beforeHeadState = BeforeBodyStatus.WAIT4BRACKET_OPEN;
+					break;
+				default:
+					beforeHeadState = BeforeBodyStatus.WAIT4BRACKET_CLOSE;
+					break;
+				}
+				break;
+			case D:
+				switch (c) {
+				case ' ':
+				case '\t':
+				case '\n':
+				case '\r':
+					head = true;
+					break;
+				case '>':
+					return true;
+				default:
+					if (head)
+						beforeHeadState = BeforeBodyStatus.WAIT4HEADBRACKET_CLOSE;
+					break;
+				}
+				break;
+			case WAIT4BRACKET_CLOSE:
+				switch (c) {
+				case '>':
+					beforeHeadState = BeforeBodyStatus.WAIT4BRACKET_OPEN;
+					break;
+				default:
+					break;
+				}
+				break;
+			case WAIT4HEADBRACKET_CLOSE:
+				switch (c) {
+				case '>':
+					return true;
+				default:
+					break;
+				}
+				break;
+			default:
+				break;
+
+			}
+			return false;
 		}
 
 		int read1() {
@@ -319,26 +495,16 @@ public class RedirectionURLConnection extends URLConnection {
 					}
 					else {
 						readPtr = 0;
-						currentPart = Snippet.SNIPPET6;
+						currentPart = Snippet.EOF;
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 				return result;
-			case SNIPPET6:
-				result = snippet6[readPtr++];
-				if (readPtr == len6) {
-					readPtr = 0;
-					currentPart = Snippet.NATIVERESOURCE;
-				}
-				available--;
-				return result;
 			case EOF:
 			default:
-				// break;
 				return -1;
 			}
-			// return result;
 		}
 
 		@Override

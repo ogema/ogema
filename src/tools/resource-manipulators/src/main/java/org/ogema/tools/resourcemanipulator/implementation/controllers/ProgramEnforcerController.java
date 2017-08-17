@@ -100,7 +100,13 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 		}
 		this.updateInterval = configuration.updateInterval().getValue();
 		this.exclusiveAccess = configuration.exclusiveAccessRequired().getValue();
-		this.priority = AccessPriority.valueOf(configuration.priority().getValue());
+		AccessPriority prio = null;
+		try {
+			prio = AccessPriority.valueOf(configuration.priority().getValue().trim().toUpperCase());
+		} catch (NullPointerException | IllegalArgumentException e) {
+			logger.warn("Invalid access priority {} in {}",configuration.priority().getValue(), configuration.priority());
+		}
+		this.priority = prio != null ? prio : AccessPriority.PRIO_LOWEST;
 		this.rangeFilter = configuration.range(); // may be virtual or inactive
 		this.deactivateIfValueMissing = configuration.deactivateIfValueMissing();
 	}
@@ -226,6 +232,7 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 			logger.warn("Resource at " + resLocation
 					+ " has been configured for automatic program enforcement, but interpolation mode "
 					+ interpolation.toString() + " is not suitable. Will ignore this.");
+			break;
 		}
 		default:
 			throw new UnsupportedOperationException("Encountered unknown/unexpected interpolation mode "

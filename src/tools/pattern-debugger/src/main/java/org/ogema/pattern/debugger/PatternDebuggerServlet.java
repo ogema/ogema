@@ -36,6 +36,7 @@ import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.json.*;
 
 public class PatternDebuggerServlet extends HttpServlet {
@@ -174,7 +175,7 @@ public class PatternDebuggerServlet extends HttpServlet {
 					am = res.getAccessMode().name();
 					if (SingleValueResource.class.isAssignableFrom(res.getResourceType())) 
 //						value = (ValueResourceUtils.getValue((SingleValueResource) res)).replace("°", "&#176;");
-						value = res.getValue().toString();
+						value = StringEscapeUtils.escapeHtml4(res.getValue().toString());
 					if (res.isReference())	
 						reference = res.getLocation();
 					else 

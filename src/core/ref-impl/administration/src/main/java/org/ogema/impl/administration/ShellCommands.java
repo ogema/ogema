@@ -24,9 +24,12 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Properties;
@@ -51,14 +54,20 @@ import org.ogema.core.application.TimerListener;
 import org.ogema.core.logging.LogLevel;
 import org.ogema.core.logging.LogOutput;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleException;
+import org.osgi.framework.FrameworkEvent;
+import org.osgi.framework.FrameworkListener;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.wiring.FrameworkWiring;
 
 /**
  * 
  * @author jlapp
  */
 @Component(specVersion = "1.2", immediate = true)
-@Properties( { @Property(name = "osgi.command.scope", value = "ogm"),
-		@Property(name = "osgi.command.function", value = { "apps", "clock", "loggers", "log", "dump_cache" }) })
+@Properties({ @Property(name = "osgi.command.scope", value = "ogm"), @Property(name = "osgi.command.function", value = {
+		"apps", "clock", "loggers", "log", "dump_cache", "update" }) })
 @Service(ShellCommands.class)
 @Descriptor("OGEMA administration commands")
 public class ShellCommands {
@@ -67,8 +76,8 @@ public class ShellCommands {
 	protected AdministrationManager admin;
 
 	@Descriptor("list running OGEMA apps")
-	public void apps(
-			@Descriptor("show listeners registered by app") @Parameter(names = { "-l", "--listeners" }, presentValue = "true", absentValue = "false") boolean listeners) {
+	public void apps(@Descriptor("show listeners registered by app") @Parameter(names = { "-l",
+			"--listeners" }, presentValue = "true", absentValue = "false") boolean listeners) {
 		apps(listeners, null);
 	}
 
@@ -87,16 +96,18 @@ public class ShellCommands {
 		return name;
 	}
 
+	// TODO select individual listener types: timers, pattern listeners, etc.
 	@Descriptor("list running OGEMA apps")
 	public void apps(
-			@Descriptor("show listeners registered by app") @Parameter(names = { "-l", "--listeners" }, presentValue = "true", absentValue = "false") boolean listeners,
+			@Descriptor("show listeners registered by app") @Parameter(names = { "-l",
+					"--listeners" }, presentValue = "true", absentValue = "false") boolean listeners,
 			@Descriptor("substring matched against application or bundle name") String pattern) {
 		for (AdminApplication app : admin.getAllApps()) {
 			String appName = app.getID().getApplication().getClass().getCanonicalName();
 			String bundleName = app.getBundleRef().getSymbolicName();
 			if (pattern != null) {
-				if (!(appName.toUpperCase().contains(pattern.toUpperCase()) || (bundleName.toUpperCase()
-						.contains(pattern.toUpperCase())))) {
+				if (!(appName.toUpperCase().contains(pattern.toUpperCase())
+						|| (bundleName.toUpperCase().contains(pattern.toUpperCase())))) {
 					continue;
 				}
 			}
@@ -120,69 +131,72 @@ public class ShellCommands {
 				if (!app.getAccessModeRequests().isEmpty()) {
 					System.out.printf("  access mode requests:%n");
 					for (RegisteredAccessModeRequest ramr : app.getAccessModeRequests()) {
-						System.out.printf("    %s: %s (%s): %b%n", ramr.getResource().getPath(), ramr
-								.getRequiredAccessMode(), ramr.getPriority(), ramr.isFulfilled());
+						System.out.printf("    %s: %s (%s): %b%n", ramr.getResource().getPath(),
+								ramr.getRequiredAccessMode(), ramr.getPriority(), ramr.isFulfilled());
 					}
 				}
 				if (!app.getResourceListeners().isEmpty() || !app.getValueListeners().isEmpty()) {
 					System.out.printf("  change listeners:%n", app.getResourceListeners());
 					for (RegisteredResourceListener rrl : app.getResourceListeners()) {
-						System.out.printf("    %s: %s%n", rrl.getResource().getPath(), getListenerName(rrl
-								.getListener()));
+						System.out.printf("    %s: %s%n", rrl.getResource().getPath(),
+								getListenerName(rrl.getListener()));
 					}
 					for (RegisteredValueListener rvl : app.getValueListeners()) {
-						System.out.printf("    %s: %s (%s)%n", rvl.getResource().getPath(), getListenerName(rvl
-								.getValueListener()), rvl.isCallOnEveryUpdate() ? "on update" : "on change");
+						System.out.printf("    %s: %s (%s)%n", rvl.getResource().getPath(),
+								getListenerName(rvl.getValueListener()),
+								rvl.isCallOnEveryUpdate() ? "on update" : "on change");
 					}
 				}
 				if (!app.getStructureListeners().isEmpty()) {
 					System.out.printf("  structure listeners:%n");
 					for (RegisteredStructureListener rsl : app.getStructureListeners()) {
-						System.out.printf("    %s: %s%n", rsl.getResource().getPath(), getListenerName(rsl
-								.getListener()));
+						System.out.printf("    %s: %s%n", rsl.getResource().getPath(),
+								getListenerName(rsl.getListener()));
 					}
 				}
-                if (!app.getPatternListeners().isEmpty()) {
-                    System.out.printf("  pattern listeners:%n");
-                    for (RegisteredPatternListener rpl: app.getPatternListeners()) {
-                        System.out.printf("    %s: %s%n", rpl.getPatternDemandedModelType(), getListenerName(rpl.getListener()));
-                        if (!rpl.getCompletedPatterns().isEmpty()) {
-                            System.out.printf("    complete:%n");
-                            for (ResourcePattern<?> completedPattern: rpl.getCompletedPatterns()) {
-                                System.out.printf("      %s%n", completedPattern.model.getPath());
-                            }
-                        }
-                        if (!rpl.getIncompletePatterns().isEmpty()) {
-                            System.out.printf("    incomplete:%n");
-                            for (ResourcePattern<?> incompletePattern: rpl.getIncompletePatterns()) {
-                                System.out.printf("      %s%n", incompletePattern.model.getPath());
-                                for (PatternCondition cond: rpl.getConditions(incompletePattern)) {
-                                    if (!cond.isSatisfied()) {
-                                        StringBuilder state = new StringBuilder(cond.getPath()).append(" ");
-                                        if (cond.exists()) {
-                                            state.append("(exists) ");
-                                        } else {
-                                            if (!cond.isOptional()) {
-                                                state.append("(missing) ");
-                                            }
-                                        }
-                                        if (!cond.isActive()) {
-                                            state.append("(inactive) ");
-                                        }
-                                        System.out.printf("        %s: %s%n", cond.getFieldName(), state);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+				if (!app.getPatternListeners().isEmpty()) {
+					System.out.printf("  pattern listeners:%n");
+					for (RegisteredPatternListener rpl : app.getPatternListeners()) {
+						System.out.printf("    %s: %s%n", rpl.getPatternDemandedModelType(),
+								getListenerName(rpl.getListener()));
+						if (!rpl.getCompletedPatterns().isEmpty()) {
+							System.out.printf("    complete:%n");
+							for (ResourcePattern<?> completedPattern : rpl.getCompletedPatterns()) {
+								System.out.printf("      %s%n", completedPattern.model.getPath());
+							}
+						}
+						if (!rpl.getIncompletePatterns().isEmpty()) {
+							System.out.printf("    incomplete:%n");
+							for (ResourcePattern<?> incompletePattern : rpl.getIncompletePatterns()) {
+								System.out.printf("      %s%n", incompletePattern.model.getPath());
+								for (PatternCondition cond : rpl.getConditions(incompletePattern)) {
+									if (!cond.isSatisfied()) {
+										StringBuilder state = new StringBuilder(cond.getPath()).append(" ");
+										if (cond.exists()) {
+											state.append("(exists) ");
+										}
+										else {
+											if (!cond.isOptional()) {
+												state.append("(missing) ");
+											}
+										}
+										if (!cond.isActive()) {
+											state.append("(inactive) ");
+										}
+										System.out.printf("        %s: %s%n", cond.getFieldName(), state);
+									}
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	}
 
 	@Descriptor("Display framework clock settings")
-	public void clock(
-			@Descriptor("set the simulation factor (value>=0)") @Parameter(names = { "-f", "--factor" }, absentValue = "-1.0") float factor) {
+	public void clock(@Descriptor("set the simulation factor (value>=0)") @Parameter(names = { "-f",
+			"--factor" }, absentValue = "-1.0") float factor) {
 		FrameworkClock cl = admin.getFrameworkClock();
 		if (factor >= 0) {
 			cl.setSimulationFactor(factor);
@@ -197,7 +211,8 @@ public class ShellCommands {
 
 	@Descriptor("List/configure loggers")
 	public void loggers(
-			@Descriptor("set log level for selected loggers") @Parameter(names = { "-l", "--level" }, absentValue = "") String level,
+			@Descriptor("set log level for selected loggers") @Parameter(names = { "-l",
+					"--level" }, absentValue = "") String level,
 			@Descriptor("comma separated list of outputs (file, console or cache) for which to set the log level (default: all outputs)") @Parameter(names = {
 					"-o", "--output" }, absentValue = "") String output,
 			@Descriptor("select loggers by regex (case-insensitive subsequence match)") String match) {
@@ -239,21 +254,23 @@ public class ShellCommands {
 	}
 
 	@Descriptor("Print recent log entries")
-	public void log (
+	public void log(
 			@Descriptor("set log message limit (use negative value to start from end of cache (most recent message))") @Parameter(names = {
 					"-l", "--limit" }, absentValue = "0") int limit,
-            @Descriptor("print log messages to file instead of console, does not work with -l")
-            @Parameter(names = {"-f", "--file" }, absentValue = "") String filename,
-			@Descriptor("regex for filtering log messages (case insensitive substring match)") String pattern)  throws IOException {
+			@Descriptor("print log messages to file instead of console, does not work with -l") @Parameter(names = {
+					"-f", "--file" }, absentValue = "") String filename,
+			@Descriptor("regex for filtering log messages (case insensitive substring match)") String pattern)
+			throws IOException {
 		Pattern p = pattern == null || pattern.isEmpty() ? null : Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
-        if (!filename.isEmpty()){
-            try (PrintStream out = new PrintStream(filename, "UTF-8")){
-                printCache(out, p, limit);
-                System.out.printf("log written to %s%n", filename);
-            }
-        } else {
-            printCache(System.out, p, limit);
-        }
+		if (!filename.isEmpty()) {
+			try (PrintStream out = new PrintStream(filename, "UTF-8")) {
+				printCache(out, p, limit);
+				System.out.printf("log written to %s%n", filename);
+			}
+		}
+		else {
+			printCache(System.out, p, limit);
+		}
 	}
 
 	@Descriptor("Print recent log entries")
@@ -261,7 +278,8 @@ public class ShellCommands {
 			@Descriptor("set log message limit (use negative value to start from end of cache (most recent message))") @Parameter(names = {
 					"-l", "--limit" }, absentValue = "0") int limit,
 			@Descriptor("print log messages to file instead of console, does not work with -l") @Parameter(names = {
-					"-f", "--file" }, absentValue = "") String filename) throws IOException {
+					"-f", "--file" }, absentValue = "") String filename)
+			throws IOException {
 		log(0, "", "");
 	}
 
@@ -292,4 +310,65 @@ public class ShellCommands {
 		System.out.println(success ? "ok" : "failed");
 	}
 
+	@Descriptor("Updates an ogema app and enforces package refresh before it is started again.")
+	public void update(@Descriptor("The bundle id of the app to be updated.") long id) throws BundleException, InterruptedException {
+		final Bundle tobeupdated = FrameworkUtil.getBundle(getClass()).getBundleContext().getBundle(id);
+		if (tobeupdated == null) {
+			System.out.println("Bundle with id " + id + " not found.");
+			return;
+		}
+		final Bundle sysbundle = FrameworkUtil.getBundle(getClass()).getBundleContext().getBundle(0);
+		final int state = tobeupdated.getState();
+		
+		tobeupdated.stop();
+		tobeupdated.update();
+
+		FrameworkWiring fw = sysbundle.adapt(FrameworkWiring.class);
+//		fw.refreshBundles(Arrays.asList(tobeupdated));
+		final CountDownLatch latch = new CountDownLatch(1);
+		// restart must wait until refresh is done, otherwise a bundle lock error may occur
+		final Runnable startTask = new Runnable() {
+			
+			@Override
+			public void run() {
+				synchronized (this) {
+					if (latch.getCount() == 0) // already executed
+						return;
+					latch.countDown();
+				}
+				try {
+					tobeupdated.start();
+					System.out.println("Bundle restarted.");
+				} catch (BundleException e) {
+					System.err.print("Bundle restart failed.");
+					e.printStackTrace();
+				}
+			}
+		};
+		final Collection<Bundle> bundlesToBeRefreshed = fw.getDependencyClosure(fw.getRemovalPendingBundles());
+		if (bundlesToBeRefreshed.isEmpty()) {
+			System.out.println("No package refresh required");
+			if (state == Bundle.ACTIVE)
+				startTask.run();
+			return;
+		}
+		System.out.println("Refreshing " + bundlesToBeRefreshed.size() + " bundles.");
+		if (state != Bundle.ACTIVE) {
+			fw.resolveBundles(bundlesToBeRefreshed);
+			return;
+		}
+		fw.refreshBundles(bundlesToBeRefreshed, new FrameworkListener() {
+			
+			@Override
+			public void frameworkEvent(FrameworkEvent event) {
+				if (event.getType() == FrameworkEvent.PACKAGES_REFRESHED) {
+					startTask.run();
+				}
+			}
+		});
+		// wait at most 30s for packages refresh, then try to restart
+		if (!latch.await(30, TimeUnit.SECONDS)) {
+			startTask.run();
+		}
+	}
 }

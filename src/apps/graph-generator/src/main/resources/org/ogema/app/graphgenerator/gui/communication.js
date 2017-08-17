@@ -1,9 +1,9 @@
-var servletPath = "/apps/ogema/graphgenerator";
+var servletPath = "/apps/ogema/graphgenerator?user=" + otusr + "&pw=" + otpwd;
 var visJsNetwork = undefined;
 
 // callback should have two arguments, data and status
 function sendGET(callback) {
-    $.get(servletPath, callback); 
+    $.get(servletPath, callback);
 }
 
 function processGET(data, status) {
@@ -16,7 +16,7 @@ function writeAll() {
 	if (typeof selectedType==='undefined' || selectedType.length === 0) {
 		console.warn("Could not determine ResourceType");
 		selectedType = "org.ogema.core.model.Resource";
-	} 
+	}
 	// FIXME
 	console.log("Sending a request for type " + selectedType);
 	var successFunction = getSuccessFunctionForGenerator(selectedGenerator);
@@ -68,7 +68,7 @@ function sendPOST(path, params, successFunction, dataType) {
 	var tmp = path;
 	if (typeof params !== 'undefined' && params.length > 0) {
 	    // the array is defined and has at least one element
-		tmp += "?";
+		tmp += "&";
 		for	(index = 0; index < params.length; index++) {
 		    tmp += params[index];
 		    if(index+1 < params.length) {
@@ -76,7 +76,7 @@ function sendPOST(path, params, successFunction, dataType) {
 		    }
 		}
 	}
-	
+
     $.post(tmp, null, successFunction, dataType);
 }
 

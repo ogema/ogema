@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -753,7 +754,7 @@ public class JSONCreator {
 				result = isReadOnly(node, sb);
 				break;
 			case SimpleResourceData.TYPE_KEY_STRING:
-				sb.append(node.getData().getString());
+				sb.append(StringEscapeUtils.escapeHtml4(node.getData().getString()));
 				result = isReadOnly(node, sb);
 				break;
 			case SimpleResourceData.TYPE_KEY_LONG:
@@ -781,8 +782,12 @@ public class JSONCreator {
 				sb.append(node.getData().getBooleanArr());
 				break;
 			case SimpleResourceData.TYPE_KEY_STRING_ARR:
-				sb.append(node.getData().getStringArr());
-				break;
+				final String[] arr = node.getData().getStringArr();
+				final String[] arrCopy = new String[arr.length];
+				int cnt = 0;
+				for (String str : arr)
+					arrCopy[cnt++]=StringEscapeUtils.escapeHtml4(str);
+				sb.append(arrCopy);
 			case SimpleResourceData.TYPE_KEY_COMPLEX:
 				sb.append("Instance of ");
 				sb.append(node.getType());
@@ -804,7 +809,7 @@ public class JSONCreator {
 			String key = keys.nextElement();
 			JSONObject manifestEntry = new JSONObject();
 			try {
-				manifestEntry.put(key, metaInf.get(key));
+				manifestEntry.put(key, StringEscapeUtils.escapeHtml4(metaInf.get(key)));
 				manifest.put(manifestEntry);
 			} catch (JSONException e) {
 				e.printStackTrace();
@@ -914,7 +919,7 @@ public class JSONCreator {
 		JSONArray users = new JSONArray();
 
 		for (String thisUser : userList) {
-			users.put(thisUser);
+			users.put(StringEscapeUtils.escapeHtml4(thisUser));
 		}
 
 		return users.toString();

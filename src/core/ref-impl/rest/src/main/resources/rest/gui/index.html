@@ -147,11 +147,11 @@
 //	        	console.log("depth is",depth,"options is",options,"bool is",bool,"depthStr is",depthStr);
 	        	var qmSet = false;
 	        	if (user) {
-	        		strIn += "?user=" + user;
+	        		strIn += "?user=" + encodeURIComponent(user);
 	        		qmSet = true;
 	        	}
 	        	if (pw) {
-		        	strIn = appendSeparator(strIn,qmSet) + "pw=" + pw;
+		        	strIn = appendSeparator(strIn,qmSet) + "pw=" + encodeURIComponent(pw);
 	        		qmSet = true;
 	        	}
 	        	if (options === 0) return strIn; 

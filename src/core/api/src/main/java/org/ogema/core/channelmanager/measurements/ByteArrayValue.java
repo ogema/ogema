@@ -24,10 +24,10 @@ import org.ogema.core.timeseries.ReadOnlyTimeSeries;
  */
 public class ByteArrayValue implements Value {
 
-	private byte[] value;
+	private final byte[] value;
 
 	/**
-	 * Contructor
+	 * Constructor
 	 * 
 	 * @param value
 	 */

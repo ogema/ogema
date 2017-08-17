@@ -18,6 +18,8 @@ package org.ogema.core.model.simple;
 import org.ogema.core.model.ValueResource;
 import org.ogema.core.model.array.ArrayResource;
 import org.ogema.core.model.array.ByteArrayResource;
+import org.ogema.core.resourcemanager.ResourceAccessException;
+import org.ogema.core.resourcemanager.VirtualResourceException;
 
 /**
  * Simple resource holding a byte array that can represent any type of data (e.g. files).
@@ -36,4 +38,20 @@ public interface OpaqueResource extends org.ogema.core.model.SimpleResource, Val
 	 * @return returns true if the value could be written, false if not (e.g. if access mode is read-only).
 	 */
 	boolean setValue(byte[] value);
+	
+	/**
+	 * Atomically sets to the given value and returns the previous value.
+	 * 
+	 * @param value
+	 * 		the new value to be set
+	 * @return
+	 * 		the previous value
+	 * @throws VirtualResourceException
+	 * 		if the resource is virtual
+	 * @throws SecurityException
+	 * 		if the caller does not have the read and write permission for this resource
+	 * @throws ResourceAccessException
+	 * 		if access mode is read-only
+	 */
+	byte[] getAndSet(byte[] value) throws VirtualResourceException, SecurityException, ResourceAccessException;
 }

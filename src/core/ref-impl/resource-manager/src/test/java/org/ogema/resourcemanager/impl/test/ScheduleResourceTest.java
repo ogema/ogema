@@ -16,10 +16,14 @@
 package org.ogema.resourcemanager.impl.test;
 
 import org.ogema.exam.DemandTestListener;
+import org.ogema.exam.ResourceAssertions;
+import org.ogema.exam.TestApplication;
+import org.ogema.recordeddata.DataRecorderException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Ignore;
 
 import static org.junit.Assert.*;
 
@@ -41,6 +46,7 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.core.model.simple.BooleanResource;
@@ -53,6 +59,7 @@ import org.ogema.core.recordeddata.RecordedDataConfiguration;
 import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
 import org.ogema.core.resourcemanager.ResourceException;
 import org.ogema.core.resourcemanager.ResourceValueListener;
+import org.ogema.model.actors.OnOffSwitch;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 
@@ -66,6 +73,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 
 	public static final String RESNAME = ScheduleResourceTest.class.getSimpleName();
 	private final Map<Class<? extends Resource>, Schedule> m_schedules = new HashMap<>();
+	public static final long ONE_DAY = 24 * 3600 * 1000;
 
 	/**
 	 * Creates a simple resource of the given class with an auto-generated name and returns a handle to the resource.
@@ -122,7 +130,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 	 * Creates a list of sampled values at t = t0, t0+delta, t0+2delta, ... for all t < t1. The values are calcualted
 	 * according to f=mt+b. All qualities are good.
 	 */
-	List<SampledValue> getFloatInterval(long t0, long t1, long delta, float m, float b) {
+	static List<SampledValue> getFloatInterval(long t0, long t1, long delta, float m, float b) {
 		List<SampledValue> result = new LinkedList<>();
 		for (long t = t0; t < t1; t += delta) {
 			Value value = new FloatValue(m * t + b);
@@ -536,7 +544,7 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		}
 	}
 	
-	private void fillHistoricalScheduleWithLogData(FloatResource fr) throws InterruptedException {  // adds maximum 100 log data points, but typically much less (1-10)
+	private static void fillHistoricalScheduleWithLogData(FloatResource fr) throws InterruptedException {  // adds maximum 100 log data points, but typically much less (1-10)
 		RecordedData rd = fr.getHistoricalData();
 		RecordedDataConfiguration rdc = new RecordedDataConfiguration();
 		rdc.setFixedInterval(20);  // log every ms
@@ -562,12 +570,16 @@ public class ScheduleResourceTest extends OsgiTestBase {
 	
 	@Test 
 	public void testHistoricalSchedule() throws InterruptedException {
-		FloatResource fr = resMan.createResource("testFloat", FloatResource.class);
+		String path = newResourceName() + ((int) (Math.random() * 100000)); 
+		FloatResource fr = resMan.createResource(path, FloatResource.class);
 		fr.historicalData().create();
+		// XXX implementation specific test
 		assert(fr.historicalData().getClass().getSimpleName().equals("HistoricalSchedule")) : "historical data is not a HistoricalSchedule";
 		fr.setValue(17);
 		fillHistoricalScheduleWithLogData(fr);
 		List<SampledValue> historicalValues = fr.historicalData().getValues(0);
+		Assert.assertFalse(historicalValues.isEmpty());
+		Assert.assertFalse(historicalValues.isEmpty());
 		System.out.println("  There are " + historicalValues.size() + " log data values out of expected 100. Time difference: "
 				+ (historicalValues.get(historicalValues.size()-1).getTimestamp() -historicalValues.get(0).getTimestamp()) );
 		fillHistoricalScheduleWithExplicitData(fr);
@@ -582,8 +594,10 @@ public class ScheduleResourceTest extends OsgiTestBase {
 
 	@Test
 	public void historicalScheduleWorksWithReferences() {
-		FloatResource fr1 = resMan.createResource("testFloat1", FloatResource.class);
-		FloatResource fr2 = resMan.createResource("testFloat2", FloatResource.class);
+		String path = newResourceName() + ((int) (Math.random() * 100000)); 
+		final FloatResource fr1 = resMan.createResource(path, FloatResource.class);
+		path = newResourceName() + ((int) (Math.random() * 100000)); 
+		final FloatResource fr2 = resMan.createResource(path, FloatResource.class);
 		fr1.historicalData().create();
 		fr1.program().create();
 		fr2.program().setAsReference(fr1.historicalData());
@@ -600,7 +614,8 @@ public class ScheduleResourceTest extends OsgiTestBase {
 //	@Ignore  // FIXME logging problem? Sometimes fr.historicalData().getValue() does not get access to logged data
 	@Test
 	public void historicalScheduleInterpolationModeWorks() throws InterruptedException {
-		FloatResource fr = resMan.createResource("testFloat1", FloatResource.class);
+		String path = newResourceName() + ((int) (Math.random() * 100000)); 
+		FloatResource fr = resMan.createResource(path, FloatResource.class);
 		fr.historicalData().create();
 		fr.historicalData().setInterpolationMode(InterpolationMode.LINEAR);
 		fillHistoricalScheduleWithLogData(fr);
@@ -626,7 +641,8 @@ public class ScheduleResourceTest extends OsgiTestBase {
 	
 	@Test
 	public void explicitDataTakesPrecedenceOverLogData() throws InterruptedException {
-		FloatResource fr = resMan.createResource("testFloat1", FloatResource.class);
+		String path = newResourceName() + ((int) (Math.random() * 100000)); 
+		FloatResource fr = resMan.createResource(path, FloatResource.class);
 		fr.historicalData().create();
 		fr.setValue(17);
 		fr.activate(true);
@@ -687,4 +703,312 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		fr.delete();
 	}
 
+	@Test
+	public void historicalScheduleReplaceWorks() {
+		FloatResource fr = resMan.createResource(newResourceName() + ((int) (Math.random() * 100000)), FloatResource.class);
+		fr.historicalData().create();
+		List<SampledValue> values = new ArrayList<>();
+		values.add(new SampledValue(new FloatValue(23F), 1, Quality.GOOD));
+		values.add(new SampledValue(new FloatValue(3), 4, Quality.GOOD));
+		fr.historicalData().replaceValues(0, Long.MAX_VALUE, values);
+		Assert.assertEquals("Historical data schedule contains unexpected number of points", values.size(), fr.historicalData().size(0, Long.MAX_VALUE));
+		fr.delete();
+	}
+	
+	@Test 
+	public void getPreviousValueWorks() {
+		FloatResource fr = resMan.createResource(newResourceName(), FloatResource.class);
+		Schedule timeSeries = fr.getSubResource("schedule", Schedule.class).create();
+		SampledValue sv = timeSeries.getPreviousValue(Long.MAX_VALUE);
+		Assert.assertNull(sv);
+		SampledValue sv1 = new SampledValue(new FloatValue(34), 10, Quality.GOOD);
+		SampledValue sv2 = new SampledValue(new FloatValue(52), 20, Quality.GOOD);
+		SampledValue sv3 = new SampledValue(new FloatValue(100), 30, Quality.BAD);
+		List<SampledValue> values = Arrays.asList(new SampledValue[]{sv1,sv2,sv3});
+		timeSeries.addValues(values);
+		sv = timeSeries.getPreviousValue(25);
+		Assert.assertEquals(sv2, sv);
+		sv = timeSeries.getPreviousValue(Long.MAX_VALUE);
+		Assert.assertEquals(sv3, sv);
+		sv = timeSeries.getPreviousValue(0);
+		Assert.assertNull(sv);
+		fr.delete();
+	}
+
+	// requires timestamps to be ordered chronologically
+	private static void assertIteratorWorks(Schedule schedule, long[] timestamps, Value[] values) throws DataRecorderException {
+		if (timestamps.length != values.length)
+			throw new IllegalArgumentException("Number of timestamps must match number of values, got " + timestamps.length + " and " + values.length);
+		List<SampledValue> svs = new ArrayList<>();
+		long lastT = Long.MIN_VALUE;
+		long t;
+		for (int i=0;i<timestamps.length;i++) {
+			t = timestamps[i];
+			if (i > 0 && t <= lastT)
+				throw new IllegalArgumentException("Timestamps not ordered chronologically");
+			lastT = t;
+			svs.add(new SampledValue(values[i],t, Quality.GOOD));
+		}
+		schedule.addValues(svs);
+		Iterator<SampledValue> it = schedule.iterator();
+		int cnt = 0;
+		SampledValue sv;
+		try {
+		while (it.hasNext()) {
+			sv = it.next();
+			Assert.assertEquals("Log data iterator returned sampled values in wrong order",timestamps[cnt++], sv.getTimestamp());
+		}
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw e;
+		}
+		Assert.assertEquals("Iterator returns unexpected number of log data points",values.length, cnt);
+	}
+	
+	private static Value[] createValues(float[] values) {
+		Value[] v = new Value[values.length];
+		for (int i=0;i<values.length;i++) {
+			v[i] = new FloatValue(values[i]);
+		}
+		return v;
+	}
+	
+	// 30 days in a row with a lot of data, then a gap, then some more points
+	@Test 
+	public void largeDataSetIterationWorks() throws DataRecorderException {
+		Schedule schedule = getEmptySchedule(FloatResource.class);
+		List<Long> t = new ArrayList<>();
+		List<Float> f = new ArrayList<>();
+		for (int d=0;d<30;d++) {
+			generateDummyData(d* ONE_DAY, t, f);
+		}
+		for (int d=300;d<305;d++) {
+			generateDummyData(d*ONE_DAY, t, f);
+		}
+		long[] t1 = new long[t.size()];
+		float[] f1 = new float[t.size()];
+		for (int i=0;i<t.size();i++) {
+			t1[i] = t.get(i);
+			f1[i] = f.get(i);
+		}
+		assertIteratorWorks(schedule, t1, createValues(f1));
+	}
+	
+	private static void generateDummyData(long offset, List<Long> t , List<Float> f) {
+		long t0 = offset;
+		float f0;
+		for (int i=0;i<1000;i++) {
+			f0 = (float) Math.random();
+			t0 +=(long) (f0 * 60000) + 1;
+			t.add(t0);
+			f.add(f0);
+		}
+	}
+	
+	@Test
+	public void isEmptyWorks() {
+		Schedule schedule = getEmptySchedule(FloatResource.class);
+		Assert.assertTrue(schedule.isEmpty());
+		Assert.assertTrue(schedule.isEmpty(0, System.currentTimeMillis()));
+		Assert.assertEquals(0, schedule.size());
+		Assert.assertEquals(0, schedule.size(Long.MIN_VALUE, Long.MAX_VALUE));
+	}
+
+	@Test
+	public void sizeWorks() {
+		Schedule schedule = getEmptySchedule(FloatResource.class);
+		List<Long> t = new ArrayList<>();
+		List<Float> f = new ArrayList<>();
+		for (int d=0;d<30;d++) {
+			generateDummyData(d* ONE_DAY, t, f);
+		}
+		for (int d=300;d<305;d++) {
+			generateDummyData(d*ONE_DAY, t, f);
+		}
+		final int size = t.size();
+		List<SampledValue> svs = new ArrayList<>();
+		for (int i=0;i<size;i++) {
+			svs.add(new SampledValue(new FloatValue(f.get(i)), t.get(i), Quality.GOOD));
+		}
+		schedule.addValues(svs);
+		Assert.assertEquals(size, schedule.size());
+		Assert.assertEquals(size, schedule.size(Long.MIN_VALUE, Long.MAX_VALUE));
+		Assert.assertFalse(schedule.isEmpty());
+		Assert.assertFalse(schedule.isEmpty(Long.MIN_VALUE, Long.MAX_VALUE));
+	}
+	
+	@Test
+	public void restrictedSizeWorks() {
+		Schedule schedule = getEmptySchedule(FloatResource.class);
+		schedule.addValue(0, new FloatValue(23));
+		schedule.addValue(5, new FloatValue(2332.3F));
+		schedule.addValue(12, new FloatValue(42.1F));
+		schedule.addValue(21, new FloatValue(92.1F));
+		Assert.assertEquals(4, schedule.size(0, 21));
+		Assert.assertEquals(2, schedule.size(8, 22));
+		Assert.assertEquals(1, schedule.size(12, 12));
+		Assert.assertFalse(schedule.isEmpty());
+		Assert.assertFalse(schedule.isEmpty(0, 20));
+		Assert.assertTrue(schedule.isEmpty(Long.MIN_VALUE, -1));
+		Assert.assertTrue(schedule.isEmpty(22, Long.MAX_VALUE));
+	}
+	
+    //FIXME: internal schedule resources still virtual while primary resource exists
+    @Test
+	public void virtualScheduleCreationWorks() throws InterruptedException {
+		FloatResource f = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		//f.getSubResource("forecast");
+        f.forecast();
+		Schedule schedule = (Schedule) f.addOptionalElement("forecast");
+        //Schedule schedule = f.forecast();
+        //schedule.create();
+        
+        ResourceAssertions.assertExists(schedule);
+		schedule.addValue(0L, new FloatValue(21)); 
+		Assert.assertEquals(1, schedule.size());
+		schedule.delete();
+	}
+	
+	@Test
+	public void scheduleReferenceDeletionWorks() {
+		final FloatResource f1 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final FloatResource f2 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		f1.program().create();
+		f1.program().addValue(0, new FloatValue(34));
+		f1.program().addValue(10, new FloatValue(123));
+		f2.program().setAsReference(f1.program());
+		f2.delete();
+		ResourceAssertions.assertExists(f1.program());
+		Assert.assertEquals("Schedule lacks points", 2, f1.program().size());
+		Assert.assertEquals("Schedule lacks points", 2, f1.program().getValues(Long.MIN_VALUE).size());
+		f1.delete();
+		f2.delete();
+	}
+	
+	@Test
+	public void scheduleReferenceDeletionWorks2() {
+		final FloatResource f1 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final FloatResource f2 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		f1.program().create();
+		f1.program().addValue(0, new FloatValue(34));
+		f1.program().addValue(10, new FloatValue(123));
+		f2.program().setAsReference(f1.program());
+		f2.program().delete();
+		ResourceAssertions.assertExists(f1.program());
+		ResourceAssertions.assertIsVirtual(f2.program());
+		Assert.assertEquals("Schedule lacks points", 2, f1.program().size());
+		Assert.assertEquals("Schedule lacks points", 2, f1.program().getValues(Long.MIN_VALUE).size());
+		Assert.assertEquals("Deleted schedule has nonzero size", 0, f2.program().size());
+		Assert.assertEquals("Deleted schedule still contains points", 0, f2.program().getValues(Long.MIN_VALUE).size());
+		f1.delete();
+		f2.delete();
+	}
+	
+	@Test
+	public void scheduleReferenceDeletionWorks3() {
+		final FloatResource f1 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final FloatResource f2 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		f1.program().create();
+		f1.program().addValue(0, new FloatValue(34));
+		f1.program().addValue(10, new FloatValue(123));
+		final ResourceList<Schedule> schedules = f2.getSubResource("list", ResourceList.class).create();
+		schedules.setElementType(Schedule.class);
+		schedules.add(f1.program());
+		f2.delete();
+		ResourceAssertions.assertExists(f1.program());
+		Assert.assertEquals("Schedule lacks points", 2, f1.program().size());
+		Assert.assertEquals("Schedule lacks points", 2, f1.program().getValues(Long.MIN_VALUE).size());
+		f1.delete();
+		f2.delete();
+	}
+	
+	@Test
+	public void scheduleReferenceSwitchingWorks1() {
+		final FloatResource f1 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final FloatResource f2 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final FloatResource f3 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		// f1 has two points, f2 has one point
+		f1.program().create();
+		f1.program().addValue(0, new FloatValue(34));
+		f1.program().addValue(10, new FloatValue(123));
+		f2.program().create();
+		f2.program().addValue(5, new FloatValue(10));
+		f3.program().setAsReference(f2.program());
+		ResourceAssertions.assertExists(f3.program());
+		Assert.assertEquals("Unexpected schedule size", f2.program().size(), f3.program().size());
+		Assert.assertEquals("Unexpected schedule size", f2.program().size(), f3.program().getValues(Long.MIN_VALUE).size());
+		f3.program().setAsReference(f1.program());
+		Assert.assertEquals("Unexpected schedule size", f1.program().size(), f3.program().size());
+		Assert.assertEquals("Unexpected schedule size", f1.program().size(), f3.program().getValues(Long.MIN_VALUE).size());
+		f1.delete();
+		f2.delete();
+		f3.delete();
+	}
+	
+	@Test
+	public void transitiveScheduleReferencesWork1() {
+		final FloatResource f1 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final FloatResource f2 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final FloatResource f3 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		f1.program().create();
+		f1.program().addValue(0, new FloatValue(34));
+		f1.program().addValue(10, new FloatValue(123));
+		f2.program().setAsReference(f1.program());
+		f3.program().setAsReference(f2.program());
+		ResourceAssertions.assertExists(f1.program());
+		ResourceAssertions.assertExists(f2.program());
+		ResourceAssertions.assertExists(f3.program());
+		Assert.assertEquals("Schedule lacks points", 2, f1.program().size());
+		Assert.assertEquals("Deleted schedule has nonzero size", f1.program().size(), f3.program().size());
+		Assert.assertEquals("Schedule lacks points", f1.program().size(), f3.program().getValues(Long.MIN_VALUE).size());
+		f1.delete();
+		f3.program().create();
+		Assert.assertEquals("Deleted schedule still contains points", 0, f3.program().size());
+		Assert.assertEquals("Deleted schedule still contains points", 0, f3.program().getValues(Long.MIN_VALUE).size());
+		f2.delete();
+		f3.delete();
+	}
+    
+	@Test
+	public void transitiveScheduleReferencesWork2() {
+		final FloatResource f1 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final FloatResource f2 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final FloatResource f3 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final FloatResource f4 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		// f1 has two points, f2 has one point
+		f1.program().create();
+		f1.program().addValue(0, new FloatValue(34));
+		f1.program().addValue(10, new FloatValue(123));
+		f2.program().create();
+		f2.program().addValue(5, new FloatValue(12));
+		f3.program().setAsReference(f2.program());
+		f4.program().setAsReference(f3.program());
+		ResourceAssertions.assertExists(f1.program());
+		ResourceAssertions.assertExists(f2.program());
+		ResourceAssertions.assertExists(f3.program());
+		ResourceAssertions.assertExists(f4.program());
+        
+        assertFalse(f4.program().isDecorator());
+		// now we change the reference target from f2 to f1
+		f3.program().setAsReference(f1.program());
+		Assert.assertEquals("Schedule lacks points", f1.program().size(), f3.program().size());
+		Assert.assertEquals("Schedule lacks points", f1.program().size(), f4.program().size());
+        assertFalse(f2.program().isDecorator());
+        assertFalse(f3.program().isDecorator());
+        //assertFalse(f4.program().isDecorator());
+		f1.delete();
+        //assertFalse(f4.program().isDecorator());
+		f3.program().create();
+		f4.program().create();
+		Assert.assertEquals("Deleted schedule has nonzero size", 0, f3.program().size());
+		Assert.assertEquals("Deleted schedule has nonzero size", 0, f4.program().size());
+		Assert.assertEquals("Deleted schedule has nonzero size", 0, f3.program().getValues(Long.MIN_VALUE).size());
+		Assert.assertEquals("Deleted schedule has nonzero size", 0, f4.program().getValues(Long.MIN_VALUE).size());
+		f1.delete();
+		f2.delete();
+		f3.delete();
+		f4.delete();
+	}
+	
+	
 }

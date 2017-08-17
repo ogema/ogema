@@ -28,6 +28,7 @@ import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.administration.FrameworkClock;
 import org.ogema.core.application.Timer;
+import org.ogema.timer.TimerRemovedListener;
 import org.ogema.timer.TimerScheduler;
 import org.slf4j.Logger;
 
@@ -158,8 +159,13 @@ public class DefaultTimerScheduler implements TimerScheduler, PropertyChangeList
     }
 
     @Override
-    public Timer createTimer(Executor excutor, Logger logger) {
-        return new ApplicationTimer(excutor, Long.MAX_VALUE, this, logger);
+    public Timer createTimer(Executor executor, Logger logger) {
+        return new ApplicationTimer(executor, Long.MAX_VALUE, this, logger);
+    }
+    
+    @Override
+    public Timer createTimer(Executor executor, Logger logger, TimerRemovedListener listener) {
+    	return new ApplicationTimer(executor, Long.MAX_VALUE, this, logger, listener);
     }
 
     @Override

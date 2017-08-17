@@ -2,7 +2,7 @@
 // config.js is where you will find the core Grafana configuration. This file contains parameter that
 // must be set before Grafana is run for the first time.
 define(['settings'], function(Settings) {
-  var SERVLET_ADDRESS="/apps/ogema/grafanalogging/fake_influxdb";
+    var SERVLET_ADDRESS="/apps/ogema/grafanalogging/fake_influxdb";
   return new Settings({
 
       /* Data sources
@@ -15,7 +15,7 @@ define(['settings'], function(Settings) {
       */
 
       // InfluxDB example setup (the InfluxDB databases specified need to exist)
-      
+
       datasources: {
         influxdb: {
           type: 'influxdb',
@@ -64,8 +64,8 @@ define(['settings'], function(Settings) {
         // for example custom datasources
         dependencies: [],
       }
-      
-      
+
+
     });
   console.log("Instantiated settings: ",this);
 });

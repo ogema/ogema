@@ -19,15 +19,17 @@ import java.util.Map;
 
 import org.ogema.core.application.Application;
 import org.ogema.core.model.Resource;
+
 /**
- *  
- *class for OSGI services.
- *@author brequardt
+ * 
+ * class for OSGI services.
+ * 
+ * @author brequardt
  */
 public interface OpenWeatherMapApplicationI extends Application {
 
 	public Resource createEnvironment(String name, String city, String country);
-	
-	public Map<String,Object> getEnviromentParameter(String name);
-	
+
+	public Map<String, Object> getEnviromentParameter(String name);
+
 }

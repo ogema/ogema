@@ -16,7 +16,6 @@
 package org.ogema.recordeddata.slotsdb;
 
 import java.io.File;
-
 import org.junit.Rule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
@@ -30,7 +29,9 @@ public class SlotsDbTest {
 
 	private static Logger logger = LoggerFactory.getLogger(SlotsDbTest.class.getName());
 
-	private static final String testDirectory = System.getProperty("user.dir") + "/data";
+	private static final String testDirectory = SlotsDb.DB_TEST_ROOT_FOLDER;
+	// the basic unit according to which SlotsDb organises its file storage
+	public static final long ONE_DAY = 24 * 3600 * 1000;
 
 	/**
 	 * Prints the test method name when entering a test.

@@ -20,9 +20,10 @@ import java.util.List;
 import org.ogema.core.model.schedule.Schedule;
 
 /**
- * Automatically-evaluated sum mapping {inputs} -> sum({inputs}) = result.
- * Version for schedules, where summation is point-wise and range of the
- * result is the intersection of the input ranges. Inactive addends are
+ * Automatically-evaluated sum mapping {inputs} -&gt; sum({inputs}) = result.
+ * Version for schedules, where summation is point-wise and domain of the
+ * result is the intersection of the input domains (unless {@link #setIgnoreGaps(boolean)}),
+ * is set to true, in which case it is the union of the input domains). Inactive addends are
  * ignored in the sum.
  * 
  * Note: Currently, only float-valued schedules are supported.
@@ -90,7 +91,62 @@ public interface ScheduleSum extends ManipulatorConfiguration {
 	 * @return Setting that is currently active.
 	 */
 	boolean getActivationControl();
-
+	
+	/**
+	 * 
+	 * If this set to true, then the domain of the target schedule will be the union of the domains 
+	 * of the addends, i.e. the target schedule will contain a valid value whereever at least one of
+	 * the constituents is defined. 
+	 * If false, the target domain is the intersection of the domains of the addends,
+	 * i.e. the target schedule will only contain a value where all constituents are defined. <br>
+	 * Default value: false.
+	 * 
+	 * @param ignoreGaps
+	 */
+	void setIgnoreGaps(boolean ignoreGaps);
+	
+	/**
+	 * @see #setIgnoreGaps(boolean)
+	 * @return
+	 */
+	boolean isIgnoreGaps();
+	
+	/**
+	 * If true, a new value is only written once all non-empty input schedules have
+	 * a data point newer than the timestamp evaluated. If set to false, new values
+	 * in a single schedule will lead to a new value in the sum schedule immediately (resp. after the specified delay), 
+	 * which implies that the calculated value can change later on, when another input schedule value becomes available 
+	 * (even if {@link #setIncrementalUpdate(boolean)} is true). 
+	 * Default: true.
+	 * 
+	 * @param waitForSchedules
+	 */
+	void setWaitForSchedules(boolean waitForSchedules);
+	
+	/**
+	 * @see #setWaitForSchedules(boolean)
+	 * @return
+	 */
+	boolean isWaitForSchedules();
+	
+	/**
+	 * If set to true, incremental updates will be performed, starting at the latest data point
+	 * in the output schedule. Otherwise, all values will be recalculated whenever one of the input schedules changes, 
+	 * which is potentially expensive. <br>
+	 * If schedule values can still change after their creation, this should typically not be set to true, since
+	 * once the sum has been calculated it will not be corrected later on.<br> 
+	 * Default value: false.
+	 * 
+	 * @param incremental
+	 */
+	void setIncrementalUpdate(boolean incremental);
+	
+	/**
+	 * @see #setIncrementalUpdate(boolean)
+	 * @return
+	 */
+	boolean isIncrementalUpdateEnabled();
+	
 	/**
 	 * Gets the target resource in which the result is being written.
 	 */

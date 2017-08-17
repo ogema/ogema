@@ -16,14 +16,21 @@
 package org.ogema.impl.apploader;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Dictionary;
+import java.util.Objects;
+
+import javax.net.ssl.SSLContext;
 
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.administration.CredentialStore;
+import org.ogema.core.security.AppPermission;
+import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.useradmin.Group;
 import org.osgi.service.useradmin.Role;
 import org.osgi.service.useradmin.User;
@@ -76,19 +83,21 @@ public class CredentialStoreImpl implements CredentialStore {
 	@Override
 	public boolean createUser(String accountGW, String passwordGW, String accountStore, String passwordStore)
 			throws IOException, IllegalArgumentException, RuntimeException {
+		Objects.requireNonNull(accountGW);
+		Objects.requireNonNull(passwordGW);
 		// Check validity of the parameter
 		boolean check = true;
 		if (accountGW == null || accountGW.equals(""))
 			check = false;
-		else if (accountGW != null && !accountGW.equals("") && passwordGW == null)
-			check = false;
+		// else if (accountGW != null && !accountGW.equals("") && passwordGW == null)
+		// check = false;
 		else if (accountStore != null && accountStore.equals("")) // accountstore may be null, that results in creation
 																	// of a local user only
 			check = false;
 		else if (accountStore != null && passwordStore == null)
 			check = false;
 		if (!check)
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException(); // TODO explain why (move to separate cases above?)
 		// create/update gateway user
 		setCredential(accountGW, Constants.PASSWORD_NAME, passwordGW);
 		if (accountStore != null)
@@ -168,5 +177,29 @@ public class CredentialStoreImpl implements CredentialStore {
 			setCredential(gwUser, APPSTORE_PWD_NAME, storePwd);
 			return "The password has successfully been changed";
 		}
+	}
+
+	@Override
+	public String getGWId() {
+		String clientID = AccessController.doPrivileged(new PrivilegedAction<String>() {
+			public String run() {
+				String id = FrameworkUtil.getBundle(getClass()).getBundleContext()
+						.getProperty("org.ogema.secloader.gatewayidentifier");
+				return id;
+			}
+		});
+		if (clientID == null) {
+			try {
+				clientID = "OGEMA-" + InetAddress.getLocalHost().toString();
+			} catch (UnknownHostException e) {
+				clientID = "OGEMA-" + System.currentTimeMillis();
+			}
+		}
+		return clientID;
+	}
+
+	@Override
+	public SSLContext getDISSLContext() {
+		return null;
 	}
 }

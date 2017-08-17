@@ -17,7 +17,6 @@ package org.ogema.driver.hmhl.devices;
 
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.channelmanager.ChannelConfiguration;
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.Value;

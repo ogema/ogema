@@ -28,53 +28,40 @@ import org.ogema.core.application.ApplicationManager;
  */
 public class RoomController {
 
-	private ApplicationManager appMan;
-	private RoomRad device;
-	private long SCHEDULE_UPDATE_TIME = 10 * 60 * 1000;
+	private final ApplicationManager appMan;
+	private final RoomRad device;
+	private final long scheduleUpdateTime;
 	private TimerTask task;
 
 	public RoomController(ApplicationManager appMan, RoomRad rad) {
-
+		scheduleUpdateTime = Long.getLong(OpenWeatherMapApplication.UPDATE_INTERVAL,
+				OpenWeatherMapApplication.UPDATE_INTERVAL_DEFAULT);
 		this.appMan = appMan;
 		this.device = rad;
 	}
 
 	public void start() {
 
-		
-
-		if (device.irradSensor.reading() != null
-				|| device.tempSens.reading() != null || device.country != null
+		if (device.irradSensor.reading() != null || device.tempSens.reading() != null || device.country != null
 				|| device.city != null) {
 
-			final ResourceUtil util = new ResourceUtil(appMan,
-					device.tempSens.reading(), device.irradSensor.reading());
+			final ResourceUtil util = new ResourceUtil(appMan, device.tempSens.reading(), device.irradSensor.reading());
 
-			TimerTask task = new TimerTask() {
+			task = new TimerTask() {
 
 				@Override
 				public void run() {
-					
+
 					appMan.getLogger().info(
-							"update weather info for location " + device.model.getName()
-									+ " next update in " + SCHEDULE_UPDATE_TIME + "ms");
-					
-					util.update(device.city.getValue(),
-							device.country.getValue());
+							"update weather info for location " + device.model.getName() + " next update in "
+									+ scheduleUpdateTime + "ms");
+
+					util.update(device.city.getValue(), device.country.getValue());
 				}
 			};
 
-			try {
-				SCHEDULE_UPDATE_TIME = Long
-						.parseLong(System
-								.getProperty("org.ogema.drivers.openweathermap.getWeatherInfoRepeatTime"));
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				appMan.getLogger().error(e.getMessage());
-			}
-
 			Timer t = new Timer();
-			t.schedule(task, 0, SCHEDULE_UPDATE_TIME);
+			t.schedule(task, 0, scheduleUpdateTime);
 
 		}
 	}

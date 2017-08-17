@@ -23,17 +23,18 @@ import org.ogema.model.locations.Room;
 import org.ogema.model.sensors.HumiditySensor;
 import org.ogema.model.sensors.SolarIrradiationSensor;
 import org.ogema.model.sensors.TemperatureSensor;
+
 /**
  * OGEMA rad for outside room.
+ * 
  * @author brequardt
- *
+ * 
  */
 // TODO add identifier for OpenWeatherMap connector - do not use every room in the system with matching subresources
 public class RoomRad extends ResourcePattern<Room> {
 
 	@Existence(required = CreateMode.MUST_EXIST)
-	public final GeographicLocation location = model.location()
-			.geographicLocation();
+	public final GeographicLocation location = model.location().geographicLocation();
 
 	@Existence(required = CreateMode.MUST_EXIST)
 	public final TemperatureSensor tempSens = model.temperatureSensor();
@@ -42,17 +43,15 @@ public class RoomRad extends ResourcePattern<Room> {
 	public final HumiditySensor humiditySens = model.humiditySensor();
 
 	@Existence(required = CreateMode.OPTIONAL)
-	public final StringResource city = model.location().geographicLocation()
-			.getSubResource("city");
+	public final StringResource city = model.location().geographicLocation().getSubResource("city");
 
 	@Existence(required = CreateMode.OPTIONAL)
-	public final StringResource country = model.location().geographicLocation()
-			.getSubResource("country");
-	
+	public final StringResource country = model.location().geographicLocation().getSubResource("country");
+
 	@Existence(required = CreateMode.OPTIONAL)
-	public final SolarIrradiationSensor irradSensor = model.getSubResource(
-			"solarIrradiationSensor", SolarIrradiationSensor.class);
-	
+	public final SolarIrradiationSensor irradSensor = model.getSubResource("solarIrradiationSensor",
+			SolarIrradiationSensor.class);
+
 	public RoomRad(Resource match) {
 		super(match);
 	}

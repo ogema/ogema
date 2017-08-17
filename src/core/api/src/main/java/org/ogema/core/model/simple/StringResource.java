@@ -16,6 +16,8 @@
 package org.ogema.core.model.simple;
 
 import org.ogema.core.model.schedule.AbsoluteSchedule;
+import org.ogema.core.resourcemanager.ResourceAccessException;
+import org.ogema.core.resourcemanager.VirtualResourceException;
 
 /**
  * Resource containing a single string entry.
@@ -33,6 +35,22 @@ public interface StringResource extends SingleValueResource {
 	 * @return returns true if the value could be written, false if not (e.g. if access mode is read-only).* 
 	 */
 	boolean setValue(String value);
+	
+	/**
+	 * Atomically sets to the given value and returns the previous value.
+	 * 
+	 * @param value
+	 * 		the new value to be set
+	 * @return
+	 * 		the previous value
+	 * @throws VirtualResourceException
+	 * 		if the resource is virtual
+	 * @throws SecurityException
+	 * 		if the caller does not have the read and write permission for this resource
+	 * @throws ResourceAccessException
+	 * 		if access mode is read-only
+	 */
+	String getAndSet(String value) throws VirtualResourceException, SecurityException, ResourceAccessException;
 
 	/**
 	 * Future prognosis for this value. The data type, unit and interpretation of

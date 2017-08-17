@@ -15,11 +15,11 @@
  */
 package org.ogema.resourcemanager.impl;
 
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
@@ -35,9 +35,7 @@ import static org.ogema.core.resourcemanager.AccessMode.READ_ONLY;
 import static org.ogema.core.resourcemanager.AccessMode.SHARED;
 import org.ogema.core.resourcemanager.AccessModeListener;
 import org.ogema.core.resourcemanager.AccessPriority;
-import org.ogema.persistence.impl.faketree.ScheduleTreeElement;
 import org.ogema.resourcemanager.impl.timeseries.DefaultRecordedData;
-import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 import org.ogema.resourcetree.TreeElement;
 import org.ogema.resourcetree.listeners.InternalValueChangedListenerRegistration;
 import org.slf4j.LoggerFactory;
@@ -68,12 +66,6 @@ public class ElementInfo {
 	private final Object accessLock = new Object();
 	PriorityQueue<AccessModeRequest> accessRequests;
 
-	/**
-	 * Schedule tree element wrapping the tree element, in case the element
-	 * represents a schedule.
-	 */
-	WeakReference<ScheduleTreeElement> scheduleTreeElement = new WeakReference<>(null);
-
 	public ElementInfo(ResourceDBManager man, TreeElement el) {
         //System.out.printf("NEW ELEMENTINFO %s: %s (%s)%n", this, el.getPath(), el.getLocation());
 		Objects.requireNonNull(man);
@@ -99,7 +91,7 @@ public class ElementInfo {
 	private void addListener(Object listener) {
 		synchronized (listenersLock) {
 	        if (listeners == null) {
-	            listeners = new ArrayList<>();
+	            listeners = new ArrayList<>(3);
 	        }
 	        for (Object l : listeners) {
 	            if (listener.equals(l)) {
@@ -157,7 +149,6 @@ public class ElementInfo {
 				removeListener(reg);
 			}
 			else {
-                //FIXME
 				reg.queueResourceChangedEvent(r, valueChanged);
 			}
 		}
@@ -210,16 +201,6 @@ public class ElementInfo {
         return invalidRegs;
     }
 
-	public ScheduleTreeElement getSchedule() {
-		return scheduleTreeElement.get();
-	}
-
-	public void setSchedule(VirtualTreeElement element) {
-		if (scheduleTreeElement.get() == null) {
-			scheduleTreeElement = new WeakReference<>(new ScheduleTreeElement(element));
-		}
-	}
-    
     /** 
      * adds a reference poining to this ElementInfo's tree element. the reference
      * is the actual link element, not the 'reference parent' of this element.

@@ -46,7 +46,7 @@ public class BootupTest {
 
 	@Parameterized.Parameters
 	public static Collection<Object[]> params() {
-		return Arrays.asList(new Object[][] { { 6, "scenario21" }, { 5, "compaction" }, { 4, "scenario2" },
+		return Arrays.asList(new Object[][] {{ 4, "scenario2" }, { 6, "scenario21" }, { 5, "compaction" }, 
 				{ 1, "scenario11" }, { 2, "scenario12" }, { 3, "scenario13" } });
 	}
 
@@ -86,7 +86,7 @@ public class BootupTest {
 		copyFiles(executionOrder, path);
 		db = new ResourceDBImpl();
 		db.setName("BootupTest");
-		db.init();
+		db.restart();
 
 	}
 
@@ -146,7 +146,8 @@ public class BootupTest {
 		case 4:
 			TestCase.assertNull(db.resourceIO.dirFiles.fileNew);
 			TestCase.assertNull(db.resourceIO.dirFiles.fileOld);
-			TestCase.assertEquals("resData2", db.resourceIO.dataFile.fileName);
+			TestCase.assertEquals("resData2", db.resourceIO.dataFile.fileName);// Both map files are empty (invalid), so the biggest data file is parsed as valid one
+			// Due to double initialization resData is shifted to resData2
 			break;
 		case 5:
 			try {
@@ -168,6 +169,7 @@ public class BootupTest {
 						e.printStackTrace();
 					}
 				}
+				db.stopStorage();
 				db.restart();
 				TreeElementImpl stringArrRes2 = (TreeElementImpl) db.getToplevelResource("TestStringArray1");
 				TestCase.assertNotNull(stringArrRes2);
@@ -192,12 +194,14 @@ public class BootupTest {
 
 	@SuppressWarnings("unused")
 	private void restartAndCompareDynamicData() {
-		try {
-			Thread.sleep(2 * TimedPersistence.DEFAULT_STOREPERIOD);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
+		db.doStorage();
+//		try {
+//			Thread.sleep(5000);
+//		} catch (InterruptedException e) {
+//			e.printStackTrace();
+//		}
 		// get current maps of the resources
+		db.stopStorage();
 		ConcurrentHashMap<String, TreeElementImpl> root = db.root;
 		ConcurrentHashMap<String, Class<?>> typeClassByName = db.typeClassByName;
 		ConcurrentHashMap<String, Integer> resIDByName = db.resIDByName;

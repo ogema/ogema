@@ -47,19 +47,32 @@ public class SerializationUtils {
     	removeSubresources(obj, typeToBeRemoved, recursive);
     	return obj.toString(4);
     }
+    
+    public static String removeSubresources(String resourceJson, Class<? extends Resource>[] typesToBeRemoved, String[] relativePaths, boolean recursive) throws JSONException {
+    	JSONObject obj = new JSONObject(resourceJson);
+    	removeSubresources(obj, typesToBeRemoved, relativePaths, recursive);
+    	return obj.toString(4);
+    }
 	
+    @SuppressWarnings("unchecked")
+	public static void removeSubresources(JSONObject resourceJson, Class<? extends Resource> typeToBeRemoved, boolean recursive) {
+    	removeSubresources(resourceJson, new Class[]{typeToBeRemoved}, null, recursive);
+    }
+    
     /**
      * Remove subresources of a specific type from a json representation of a resource.
      * 
      * @param resourceJson
      * 		a serialized resource in json format
-     * @param typeToBeRemoved
-     * 		resources of this type will be removed from json
+     * @param typesToBeRemoved
+     * 		resources of these types will be removed from json
      * 		Note: this probably does not work for schedules and array resources yet.
+     * @param subresourceNames
+     * 		subresources of these names will be removed from json
      * @param recursive
      * 		parse the resource tree recursively, to look for elements of type <code>typeToBeRemoved</code>
      */
-    public static void removeSubresources(JSONObject resourceJson, Class<? extends Resource> typeToBeRemoved, boolean recursive) {
+    public static void removeSubresources(JSONObject resourceJson, Class<? extends Resource>[] typesToBeRemoved, String[] subresourceNames, boolean recursive) {
     	if (!resourceJson.has("subresources"))
     		return;
     	JSONArray array = resourceJson.getJSONArray("subresources");
@@ -75,11 +88,33 @@ public class SerializationUtils {
         	
         	JSONObject subsub = sub.getJSONObject(keyIt.next()); // should have exactly one element
         	String type = subsub.getString("type");
-        	if (type.equals(typeToBeRemoved.getName())) {
-        		it.remove();
+        	boolean done = false;
+        	if (typesToBeRemoved != null) {
+        		for (Class<? extends Resource> t: typesToBeRemoved) {
+        			if (type.equals(t.getName())) {
+        				it.remove();
+        				done = true;
+        				break;
+        			}
+        		}
         	}
-        	else if (recursive) {
-        		removeSubresources(subsub, typeToBeRemoved, recursive);
+        	if (done)
+        		continue;
+        	final String name = subsub.getString("name");
+        	if (subresourceNames != null) {
+        		for (String subresource : subresourceNames) {
+        			if (name.equals(subresource)) {
+        				it.remove();
+        				done = true;
+        				break;
+        			}
+        		}
+        		 
+        	}
+        	if (done)
+        		continue;
+        	if (recursive) {
+        		removeSubresources(subsub, typesToBeRemoved, subresourceNames, recursive);
         	}
         }
     }

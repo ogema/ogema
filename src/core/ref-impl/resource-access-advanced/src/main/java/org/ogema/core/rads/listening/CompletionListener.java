@@ -78,8 +78,8 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 		m_logger = appMan.getLogger();
 		m_rad = rad;
 		m_container = container;
-		m_required = new ArrayList<>();
-		m_optional = new ArrayList<>();
+		m_required = new ArrayList<>(5);
+		m_optional = new ArrayList<>(5);
 		for (ResourceFieldInfo info : fields) {
 			final Resource resource = RadFactory.getResource(info.getField(), rad);
 			final CreateMode mode = info.getCreateMode();

@@ -1,7 +1,7 @@
 package org.ogema.impl.wago;
 
 import org.ogema.core.channelmanager.ChannelAccess;
-import org.ogema.core.channelmanager.driverspi.ChannelLocator;
+import org.ogema.core.channelmanager.ChannelConfiguration;
 import org.ogema.core.model.Resource;
 import org.ogema.wago.AnalogIn;
 
@@ -20,7 +20,7 @@ public class AnalogInImpl implements AnalogIn {
 	}
 
 	@Override
-	public void setChannel(ChannelAccess ca, ChannelLocator cl, Resource res) {
+	public void setChannel(ChannelAccess ca, ChannelConfiguration cl, Resource res) {
 	}
 
 	@Override

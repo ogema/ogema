@@ -54,9 +54,8 @@ public class HoldingChannel extends Channel {
 			count = Integer.decode(splitAddress[3]).intValue();
 
 		} catch (NullPointerException | IllegalArgumentException e) {
-			throw new IllegalArgumentException(
-					"could not create Channel with Address "
-							+ locator.getChannelAddress(), e);
+			throw new IllegalArgumentException("could not create Channel with Address " + locator.getChannelAddress(),
+					e);
 		}
 
 		readRequest = new ReadMultipleRegistersRequest();
@@ -86,13 +85,13 @@ public class HoldingChannel extends Channel {
 		int[] array;
 
 		try {
-			response = (ReadMultipleRegistersResponse) connection
-					.executeTransaction(readRequest);
+			response = (ReadMultipleRegistersResponse) connection.executeTransaction(readRequest);
 
 			array = new int[response.getWordCount()];
 
 			for (int i = 0; i < array.length; i++) {
 				array[i] = response.getRegisterValue(i);
+				ModbusDriver.logger.trace("Register_Value: " + array[i]);
 			}
 
 			value = new ObjectValue(array);
@@ -108,10 +107,9 @@ public class HoldingChannel extends Channel {
 	}
 
 	@Override
-	public void writeValue(Connection connection, Value value)
-			throws IOException {
+	public void writeValue(Connection connection, Value value) throws IOException {
 
-		//WriteMultipleRegistersResponse response;
+		// WriteMultipleRegistersResponse response;
 		int[] array;
 		Register[] registers;
 
@@ -122,15 +120,14 @@ public class HoldingChannel extends Channel {
 				registers[i].setValue(array[i]);
 			}
 
-			/*response = (WriteMultipleRegistersResponse)*/ connection
-					.executeTransaction(writeRequest);
+			/* response = (WriteMultipleRegistersResponse) */ connection.executeTransaction(writeRequest);
 
 		} catch (ModbusSlaveException mse) {
-			//System.out.println("Slave Exception: " + mse.getType());
-			//mse.printStackTrace();
+			// System.out.println("Slave Exception: " + mse.getType());
+			// mse.printStackTrace();
 			throw new IOException("Slave Exception: " + mse.getType(), mse);
 		} catch (Exception e) {
-			//e.printStackTrace();
+			// e.printStackTrace();
 			throw new IOException(e);
 		}
 	}

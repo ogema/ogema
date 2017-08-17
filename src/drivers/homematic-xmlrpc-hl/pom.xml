@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.ogema.drivers</groupId>
 		<artifactId>ogema-drivers</artifactId>
-		<version>2.1.0</version>
+		<version>2.1.1</version>
 	</parent>
 	
     <artifactId>homematic-xmlrpc-hl</artifactId>
@@ -15,8 +15,8 @@
     <description>Homematic XML-RPC high-level driver for OGEMA</description>
 
     <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
     </properties>
 
     <dependencies>
@@ -32,6 +32,10 @@
         <dependency>
             <groupId>org.ogema.core</groupId>
             <artifactId>models</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.tools</groupId>
+            <artifactId>resource-utils</artifactId>
         </dependency>
         <dependency>
             <groupId>org.ogema.drivers</groupId>
@@ -52,6 +56,10 @@
                 <extensions>true</extensions>
                 <configuration>
                     <instructions>
+                        <Export-Package>
+                            org.ogema.drivers.homematic.xmlrpc.hl.api,
+                            org.ogema.drivers.homematic.xmlrpc.hl.types
+                        </Export-Package>
                     </instructions>
                     <unpackBundle>true</unpackBundle>
                 </configuration>

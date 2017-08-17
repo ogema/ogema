@@ -22,14 +22,14 @@ import org.ogema.resourcetree.TreeElement;
 public class ResourceAccessRights {
 
 	public static final ResourceAccessRights ALL_RIGHTS;
+
 	static {
 		ALL_RIGHTS = new ResourceAccessRights(null, null, null);
-		boolean[] tmp = { true, true, true, true, true, true };
-		ALL_RIGHTS.checked = tmp;
+		ALL_RIGHTS.checked = 0;
 		ALL_RIGHTS.mask = -1;
 	}
 
-	boolean checked[];
+	int checked;
 	/*
 	 * accessMask is a bit mask consisting of the action bits defined in {@link
 	 * org.ogema.accesscontrol.ResourcePermission}. These actions are _READ, _WRITE, _DELETE, _CREATE, _ADDSUB and
@@ -47,7 +47,8 @@ public class ResourceAccessRights {
 	 * 
 	 */
 	public ResourceAccessRights(AccessControlContext context, TreeElement te, PermissionManager permman) {
-		this.checked = new boolean[6];
+		this.checked = 0;
+		this.mask = 0;
 		resetAccessRights();
 		this.acc = context;
 		this.resource = te;
@@ -60,12 +61,14 @@ public class ResourceAccessRights {
 	 * @return true if read is permitted false otherwise.
 	 */
 	public boolean isReadPermitted() {
-		if (!checked[0]) {
+		if (!permMan.isSecure())
+			return true;
+		if ((checked & ResourcePermission._READ) == 0) {
 			ResourcePermission perm = new ResourcePermission(ResourcePermission.READ, resource, 0);
 			// Check read permission
 			if (permMan.handleSecurity(perm, acc))
 				mask |= ResourcePermission._READ;
-			checked[0] = true;
+			checked |= ResourcePermission._READ;
 		}
 		return ((mask & ResourcePermission._READ) != 0);
 	}
@@ -76,12 +79,14 @@ public class ResourceAccessRights {
 	 * @return true if write is permitted false otherwise.
 	 */
 	public boolean isWritePermitted() {
-		if (!checked[1]) {
+		if (!permMan.isSecure())
+			return true;
+		if ((checked & ResourcePermission._WRITE) == 0) {
 			ResourcePermission perm = new ResourcePermission(ResourcePermission.WRITE, resource, 0);
 			// Check read permission
 			if (permMan.handleSecurity(perm, acc))
 				mask |= ResourcePermission._WRITE;
-			checked[1] = true;
+			checked |= ResourcePermission._WRITE;
 		}
 		return ((mask & ResourcePermission._WRITE) != 0);
 	}
@@ -92,12 +97,14 @@ public class ResourceAccessRights {
 	 * @return true if delete is permitted false otherwise.
 	 */
 	public boolean isDeletePermitted() {
-		if (!checked[2]) {
+		if (!permMan.isSecure())
+			return true;
+		if ((checked & ResourcePermission._DELETE) == 0) {
 			ResourcePermission perm = new ResourcePermission(ResourcePermission.DELETE, resource, 0);
 			// Check read permission
 			if (permMan.handleSecurity(perm, acc))
 				mask |= ResourcePermission._DELETE;
-			checked[2] = true;
+			checked |= ResourcePermission._DELETE;
 		}
 		return ((mask & ResourcePermission._DELETE) != 0);
 	}
@@ -108,12 +115,14 @@ public class ResourceAccessRights {
 	 * @return true if add sub resource is permitted false otherwise.
 	 */
 	public boolean isAddsubPermitted() {
-		if (!checked[3]) {
+		if (!permMan.isSecure())
+			return true;
+		if ((checked & ResourcePermission._ADDSUB) == 0) {
 			ResourcePermission perm = new ResourcePermission(ResourcePermission.ADDSUB, resource, 0);
 			// Check read permission
 			if (permMan.handleSecurity(perm, acc))
 				mask |= ResourcePermission._ADDSUB;
-			checked[3] = true;
+			checked |= ResourcePermission._ADDSUB;
 		}
 		return ((mask & ResourcePermission._ADDSUB) != 0);
 	}
@@ -124,12 +133,14 @@ public class ResourceAccessRights {
 	 * @return true if change activity is permitted false otherwise.
 	 */
 	public boolean isActivityPermitted() {
-		if (!checked[4]) {
+		if (!permMan.isSecure())
+			return true;
+		if ((checked & ResourcePermission._ACTIVITY) == 0) {
 			ResourcePermission perm = new ResourcePermission(ResourcePermission.ACTIVITY, resource, 0);
 			// Check read permission
 			if (permMan.handleSecurity(perm, acc))
 				mask |= ResourcePermission._ACTIVITY;
-			checked[4] = true;
+			checked |= ResourcePermission._ACTIVITY;
 		}
 		return ((mask & ResourcePermission._ACTIVITY) != 0);
 	}
@@ -140,22 +151,19 @@ public class ResourceAccessRights {
 	 * @return true if create is permitted false otherwise.
 	 */
 	public boolean isCreatePermitted() {
-		if (!checked[5]) {
+		if (!permMan.isSecure())
+			return true;
+		if ((checked & ResourcePermission._CREATE) == 0) {
 			ResourcePermission perm = new ResourcePermission(ResourcePermission.CREATE, resource, 0);
 			// Check read permission
 			if (permMan.handleSecurity(perm, acc))
 				mask |= ResourcePermission._CREATE;
-			checked[5] = true;
+			checked |= ResourcePermission._CREATE;
 		}
 		return ((mask & ResourcePermission._CREATE) != 0);
 	}
 
 	public void resetAccessRights() {
-		this.checked[0] = false;
-		this.checked[1] = false;
-		this.checked[2] = false;
-		this.checked[3] = false;
-		this.checked[4] = false;
-		this.checked[5] = false;
+		this.checked = 0;
 	}
 }

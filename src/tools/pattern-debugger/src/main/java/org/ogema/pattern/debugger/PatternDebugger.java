@@ -20,8 +20,6 @@ import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
-import org.ogema.core.resourcemanager.ResourceAccess;
-import org.ogema.core.resourcemanager.ResourceManagement;
 
 @Component(specVersion = "1.2", immediate = true)
 @Service(Application.class)
@@ -29,15 +27,11 @@ public class PatternDebugger implements Application {
 
 	private OgemaLogger logger;
 	private ApplicationManager am;
-	private ResourceManagement rm;
-	private ResourceAccess ra;
 
 	@Override
 	public void start(ApplicationManager appManager) {
 		this.am = appManager;
 		this.logger = appManager.getLogger();
-		this.rm = appManager.getResourceManagement();
-		this.ra = appManager.getResourceAccess();
 
 		logger.debug("{} started", getClass().getName());
 		String webResourcePackage = "org.ogema.pattern.debugger";
@@ -50,8 +44,12 @@ public class PatternDebugger implements Application {
 
 	@Override
 	public void stop(AppStopReason reason) {
-		am.getWebAccessManager().unregisterWebResourcePath("index.html");
-		am.getWebAccessManager().unregisterWebResourcePath("servlet");
+		if (am != null) {
+			am.getWebAccessManager().unregisterWebResourcePath("index.html");
+			am.getWebAccessManager().unregisterWebResourcePath("servlet");
+		}
+		am = null;
+		logger = null;
 	}
 
 }

@@ -82,13 +82,19 @@ public interface Timer {
 	List<TimerListener> getListeners();
 
 	/**
-	 * Returns the current execution time of the framework, not necessarliy the
-	 * time for which this timer has been scheduled.
+	 * Returns the current framework time, 
+	 * not the time for which this timer has been scheduled.
 	 * 
-	 * @return current framework execution time.
+	 * @return current framework time.
 	 * 
 	 * @see FrameworkClock
 	 */
 	long getExecutionTime();
+
+	/**
+	 * Returns the next execution time of the timer.
+	 * @return
+	 */
+	long getNextRunTime();
 
 }

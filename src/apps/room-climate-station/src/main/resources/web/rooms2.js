@@ -25,7 +25,13 @@ function room2() {
 		document.getElementById('fullView').href = 'room.html' + window.location.search;
 
 		setInterval(function() {
-			$.getJSON("/rcsservice/getData" + window.location.search, function(data) {
+			var url = '/rcsservice/getData' + window.location.search;
+			if (url.indexOf('?') > 0)
+				url += '&';
+			else 
+				url += '?'
+			url += "user=" + otusr + "&pw=" + otpwd;
+			$.getJSON(url, function(data) {
 
 				if (data.messageID != null) {
 					zustand = data.messageID;

@@ -183,31 +183,20 @@ public class ResourceIOTest {
 				CoreOptions.systemProperty(DBConstants.PROP_NAME_PERSISTENCE_COMPACTION_START_SIZE_GARBAGE).value("64"),
 				CoreOptions.systemProperty(DBConstants.PROP_NAME_PERSISTENCE_COMPACTION_START_SIZE).value("512"),
 				CoreOptions.systemProperty(DBConstants.PROP_NAME_PERSISTENCE_DEBUG).value("true"), junitBundles(),
-				CoreOptions.bundle("reference:file:target/classes/"), // load
-				// this
-				// bundle
-				// directly
-				// from
-				// maven
-				// build
-				// dir
+				CoreOptions.bundle("reference:file:target/classes/"), // (this bundle)
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.scr", "1.6.2").start(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.framework.security", "2.2.0").start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "permission-admin", ogemaVersion).start(),
 				CoreOptions.mavenBundle("javax.servlet", "javax.servlet-api", "3.0.1"),
-				CoreOptions.mavenBundle("org.slf4j", "slf4j-api", "1.7.2"),
+				CoreOptions.mavenBundle("org.slf4j", "slf4j-api", "1.7.21"),
 				CoreOptions.mavenBundle("joda-time", "joda-time", "2.2"),
-				CoreOptions.mavenBundle("org.json", "json", "20160212"),
+				CoreOptions.mavenBundle("org.json", "json", "20170516"),
                 CoreOptions.mavenBundle("com.google.guava", "guava", "19.0"),
 				CoreOptions.mavenBundle("org.ogema.core", "models", ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.core", "api", ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "internal-api", ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "ogema-logger", ogemaVersion).start(),
-				// CoreOptions.mavenBundle("org.ogema.ref-impl", "app-manager",
-				// ogemaVersion).start(),
-				// CoreOptions.mavenBundle("org.ogema.ref-impl",
-				// "resource-manager", ogemaVersion).start(), // = this bundle
-				CoreOptions.mavenBundle("org.ogema.ref-impl", "security", ogemaVersion).start(),
+                CoreOptions.mavenBundle("org.ogema.ref-impl", "security", ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "resource-manager", ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "util", ogemaVersion),
 				CoreOptions.mavenBundle("org.ogema.tools", "resource-utils", ogemaVersion),
@@ -215,20 +204,13 @@ public class ResourceIOTest {
 				CoreOptions.mavenBundle("com.fasterxml.jackson.core", "jackson-annotations", "2.7.4"),
 				CoreOptions.mavenBundle("com.fasterxml.jackson.core", "jackson-databind", "2.7.4"),
 				CoreOptions.mavenBundle("com.fasterxml.jackson.module", "jackson-module-jaxb-annotations", "2.7.4"),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin.filestore", "1.0.2").start(),
+				CoreOptions.mavenBundle("org.ogema.external", "org.apache.felix.useradmin.filestore", "1.0.2").start(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.api", "2.3.0").start(),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin", "1.0.3").start(),
+				CoreOptions.mavenBundle("org.ogema.external", "org.apache.felix.useradmin", "1.0.3").start(),
 				CoreOptions.mavenBundle("org.ogema.tools", "memory-timeseries").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.jetty", "3.0.2").start(),
 				CoreOptions.mavenBundle("javax.servlet", "javax.servlet-api", "3.1.0"),
 				CoreOptions.mavenBundle("org.eclipse.jetty", "jetty-servlets", "9.2.11.v20150529")
-		// this
-		// bundle
-		// directly
-		// from
-		// maven
-		// build
-		// dir
 		);
 
 	}

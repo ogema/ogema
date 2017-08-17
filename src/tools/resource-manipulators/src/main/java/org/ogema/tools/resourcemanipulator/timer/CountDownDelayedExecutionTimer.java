@@ -22,8 +22,6 @@ import org.ogema.core.application.TimerListener;
 /**
  * Implementation of a Count-Down timer: An OGEMA timer that after creation calls delayedExecution and
  * afterwards is destroyed. In contrast to {@link CountDownTimer} it does not require an TimerListener.
- * 
- * @author Timo Fischer, Fraunhofer IWES
  */
 public abstract class CountDownDelayedExecutionTimer implements TimerListener {
 
@@ -31,7 +29,10 @@ public abstract class CountDownDelayedExecutionTimer implements TimerListener {
 	
 	public abstract void delayedExecution();
 
-	/** Note: The timer is not started automatically after construction, only after call of start*/
+	/** Note: The timer is not started automatically after construction, only after call of start
+	 * @param appMan
+	 * @param countDownTime time in milliseconds until the method delayedExecution is called
+	 * */
 	public CountDownDelayedExecutionTimer(ApplicationManager appMan, long countDownTime) {
 		this.timer = appMan.createTimer(countDownTime, this);
 	}

@@ -42,7 +42,9 @@ public class GrafanaBaseApp implements Application {
 
 	@Override
 	public void stop(AppStopReason asr) {
-		am.getWebAccessManager().unregisterWebResourcePath("");
+		if (am != null)
+			am.getWebAccessManager().unregisterWebResourcePath("");
+		am = null;
 	}
 
 }

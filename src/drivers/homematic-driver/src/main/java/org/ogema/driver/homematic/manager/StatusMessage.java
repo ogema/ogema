@@ -22,7 +22,7 @@ import org.ogema.driver.homematic.tools.Converter;
 public class StatusMessage {
 
 	public byte type = 0;
-	public long rtoken;
+	Integer rtoken;
 	public String source;
 	public String destination;
 	public byte status = 0;
@@ -59,9 +59,9 @@ public class StatusMessage {
 		type = data[0];
 		int i_type = (type == 'E') ? 0 : 1;
 
-		rtoken = Converter.toLong(data, 1, 3 + i_type);
-		source = new String(Converter.toHexString(data, 17 + i_type, 3));
-		destination = new String(Converter.toHexString(data, 20 + i_type, 3));
+		rtoken = (int) Converter.toLong(data, 1, 3 + i_type);
+		source = Converter.toHexString(data, 17 + i_type, 3);
+		destination = Converter.toHexString(data, 20 + i_type, 3);
 
 		cond = data[4 + i_type];
 		status = data[5 + i_type];
@@ -73,7 +73,7 @@ public class StatusMessage {
 
 		// Here comes the AES-Key magic !!
 		if (cond == 0x01)
-			aeskey = new String("AESKey-" + Converter.toHexString(data, 10 + i_type, 1));
+			aeskey = "AESKey-" + Converter.toHexString(data, 10 + i_type, 1);
 
 		rssi = Converter.toLong(data, 11 + i_type, 2) - 65536;
 
@@ -89,17 +89,17 @@ public class StatusMessage {
 			partyMode = true;
 	}
 
-	public boolean almostEquals(StatusMessage emsg) {
-		if (isEmpty)
-			return false;
-		else if (rtoken == emsg.rtoken && Arrays.equals(msg_all, emsg.msg_all))
-			return true;
-		else
-			return false;
-	}
+	// public boolean almostEquals(StatusMessage emsg) {
+	// if (isEmpty)
+	// return false;
+	// else if (rtoken == emsg.rtoken && Arrays.equals(msg_all, emsg.msg_all))
+	// return true;
+	// else
+	// return false;
+	// }
 
 	public String parseType() {
-		return new String(Converter.toHexString(msg_data, 1, 2));
+		return Converter.toHexString(msg_data, 1, 2);
 	}
 
 	public String parseSerial() {

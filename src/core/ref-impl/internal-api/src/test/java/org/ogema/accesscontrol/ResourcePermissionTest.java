@@ -15,25 +15,35 @@
  */
 package org.ogema.accesscontrol;
 
-import junit.framework.TestCase;
+import static org.junit.Assert.*;
+
+import javax.inject.Inject;
 
 import org.junit.Test;
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.FloatResource;
+import org.ogema.core.model.simple.StringResource;
+import org.ogema.exam.OsgiAppTestBase;
+import org.ogema.persistence.ResourceDB;
+import org.ogema.resourcetree.TreeElement;
 
-public class ResourcePermissionTest {
+public class ResourcePermissionTest extends OsgiAppTestBase {
+
+	@Inject
+	ResourceDB db;
 
 	@Test
 	public void testCreatePermConstructor1() {
 		ResourcePermission rp = new ResourcePermission("*", "*");
 		// TestCase.assertEquals("*", rp.typeName);
 		// TestCase.assertEquals(true, rp.recursive);
-		TestCase.assertEquals(Integer.MAX_VALUE, rp.count);
-		TestCase.assertEquals("*", rp.path);
-		TestCase.assertEquals(true, rp.wced);
-		TestCase.assertEquals(null, rp.type);
-		TestCase.assertEquals(ResourcePermission.ALLACTIONS, rp.actions);
-		TestCase.assertEquals(ResourcePermission._ALLACTIONS, rp.actionsAsMask);
+		assertEquals(Integer.MAX_VALUE, rp.getCount());
+		assertEquals("*", rp.getPath());
+		assertEquals(true, rp.isWced());
+		assertEquals(null, rp.getType());
+		assertEquals(ResourcePermission.ALLACTIONS, rp.getActions());
+		assertEquals(ResourcePermission._ALLACTIONS, rp.getActionsAsMask());
 	}
 
 	@Test
@@ -41,12 +51,12 @@ public class ResourcePermissionTest {
 		ResourcePermission rp = new ResourcePermission(
 				"type=org.ogema.core.model.simple.FloatResource\n,\fpath=myPath/myTopLevelResource/itsColor, count=1000		",
 				ResourcePermission.CREATE);
-		TestCase.assertEquals(1000, rp.count);
-		TestCase.assertEquals("myPath/myTopLevelResource/itsColor", rp.path);
-		TestCase.assertEquals(false, rp.wced);
-		TestCase.assertEquals(FloatResource.class.getName(), rp.type);
-		TestCase.assertEquals(ResourcePermission.CREATE, rp.actions);
-		TestCase.assertEquals(ResourcePermission._CREATE, rp.actionsAsMask);
+		assertEquals(1000, rp.getCount());
+		assertEquals("myPath/myTopLevelResource/itsColor", rp.getPath());
+		assertEquals(false, rp.isWced());
+		assertEquals(FloatResource.class.getName(), rp.getType());
+		assertEquals(ResourcePermission.CREATE, rp.getActions());
+		assertEquals(ResourcePermission._CREATE, rp.getActionsAsMask());
 	}
 
 	@Test
@@ -54,11 +64,33 @@ public class ResourcePermissionTest {
 		ResourcePermission rp = new ResourcePermission("myPath/myTopLevelResource/itsColor/*", Resource.class, 222);
 		// TestCase.assertEquals("org.ogema.core.model.Resource", rp.typeName);
 		// TestCase.assertEquals(true, rp.recursive);
-		TestCase.assertEquals(222, rp.count);
-		TestCase.assertEquals("myPath/myTopLevelResource/itsColor/", rp.path);
-		TestCase.assertEquals(true, rp.wced);
-		TestCase.assertEquals(Resource.class.getName(), rp.type);
-		TestCase.assertEquals(ResourcePermission.CREATE, rp.actions);
-		TestCase.assertEquals(ResourcePermission._CREATE, rp.actionsAsMask);
+		assertEquals(222, rp.getCount());
+		assertEquals("myPath/myTopLevelResource/itsColor/", rp.getPath());
+		assertEquals(true, rp.isWced());
+		assertEquals(Resource.class.getName(), rp.getType());
+		assertEquals(ResourcePermission.CREATE, rp.getActions());
+		assertEquals(ResourcePermission._CREATE, rp.getActionsAsMask());
+	}
+
+	@Test
+	public void resourceListTypeImply() {
+		TreeElement te = db.addResource("TestResourceList", ResourceList.class, null);
+		ResourcePermission rpTE = new ResourcePermission("*", te, Integer.MAX_VALUE);
+		ResourcePermission rp = new ResourcePermission("type=org.ogema.core.model.simple.StringResource", "*");
+
+		boolean implies = rp.implies(rpTE);
+		assertTrue(implies); // An empty unspecified ResourceList can be implied by any other ResourcePermission,
+								// whereas ResourceList permission implies ResourceList ResourcePermission only.
+		
+		te.setResourceListType(FloatResource.class);
+		rpTE = new ResourcePermission("*", te, Integer.MAX_VALUE);
+		implies = rp.implies(rpTE);
+		assertFalse(implies);
+
+		te = db.addResource("TestResourceList2", ResourceList.class, null);		
+		te.setResourceListType(StringResource.class);
+		rpTE = new ResourcePermission("*", te, Integer.MAX_VALUE);
+		implies = rp.implies(rpTE);
+		assertTrue(implies);
 	}
 }

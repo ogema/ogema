@@ -59,21 +59,6 @@ public class ApplicationTracker {
     public static final String WORKQUEUE_DRAIN_INTERVAL = "ogema.apps.workqueuedrain";
     final long drain_interval = Long.getLong(WORKQUEUE_DRAIN_INTERVAL, 2000);
 
-    static class ApplicationData {
-
-        final ApplicationManagerImpl appMan;
-
-        /*
-         * TODO depending on how security will be realized in practice, this may be redundant. mns: It is redundant,
-         * security relevant info is hooked up on AppID
-         */
-        // final ClassLoader classLoader;
-        public ApplicationData(ApplicationManagerImpl appMan/* , ClassLoader classLoader */) {
-            this.appMan = appMan;
-            // this.classLoader = classLoader;
-        }
-    }
-
     @Reference
     protected TimerScheduler timerScheduler;
     // for calling ApplicationManagerImpl.drainWorkQueue periodically.

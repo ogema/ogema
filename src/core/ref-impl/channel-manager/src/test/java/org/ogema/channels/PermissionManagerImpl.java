@@ -34,6 +34,7 @@ import org.ogema.core.security.WebAccessManager;
 import org.ogema.resourcetree.TreeElement;
 import org.osgi.framework.Bundle;
 import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
+import org.osgi.service.condpermadmin.ConditionalPermissionUpdate;
 
 public class PermissionManagerImpl implements PermissionManager {
 
@@ -183,6 +184,19 @@ public class PermissionManagerImpl implements PermissionManager {
 
 	@Override
 	public boolean isSecure() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean handleSecurity(String user, Permission perm) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean removePermissionManual(ConditionalPermissionUpdate cpu, Bundle bundle, String permissionClassName,
+			String filterString, String actions) {
 		// TODO Auto-generated method stub
 		return false;
 	}

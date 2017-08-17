@@ -15,6 +15,7 @@
  */
 package org.ogema.drivers.homematic.xmlrpc.hl.channels;
 
+import org.ogema.drivers.homematic.xmlrpc.hl.api.AbstractDeviceHandler;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,6 @@ import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.model.units.TemperatureResource;
-import org.ogema.drivers.homematic.xmlrpc.hl.HomeMaticDriver;
 import org.ogema.drivers.homematic.xmlrpc.hl.types.HmDevice;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.DeviceDescription;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.HmEvent;
@@ -34,14 +34,20 @@ import org.ogema.model.sensors.Sensor;
 import org.ogema.model.sensors.TemperatureSensor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.HomeMaticConnection;
+import org.ogema.tools.resource.util.ResourceUtils;
 
 /**
  *
  * @author jlapp
  */
-public class WeatherChannel implements ChannelHandler {
+public class WeatherChannel extends AbstractDeviceHandler {
 
     Logger logger = LoggerFactory.getLogger(getClass());
+
+    public WeatherChannel(HomeMaticConnection conn) {
+        super(conn);
+    }
 
     enum PARAMS {
 
@@ -90,7 +96,7 @@ public class WeatherChannel implements ChannelHandler {
                 }
                 try {
                     PARAMS p = PARAMS.valueOf(e.getValueKey());
-                    ((FloatResource)res).setValue(p.convertInput(e.getValueFloat()));
+                    ((FloatResource) res).setValue(p.convertInput(e.getValueFloat()));
                 } catch (IllegalArgumentException ex) {
                     //this block intentionally left blank
                 }
@@ -101,18 +107,20 @@ public class WeatherChannel implements ChannelHandler {
 
     @Override
     public boolean accept(DeviceDescription desc) {
-        return "WEATHER".equalsIgnoreCase(desc.getType());
+        return "WEATHER".equalsIgnoreCase(desc.getType()) // WDS40
+                || "WEATHER_TRANSMIT".equalsIgnoreCase(desc.getType()); // TC-IT-WM-W
     }
 
     @Override
-    public void setup(HmDevice parent, HomeMaticDriver hm, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
+    public void setup(HmDevice parent, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
         logger.debug("setup WEATHER handler for address {}", desc.getAddress());
-        String swName = HomeMaticDriver.sanitizeResourcename("WEATHER" + desc.getAddress());
+        String swName = ResourceUtils.getValidResourceName("WEATHER" + desc.getAddress());
         Map<String, ParameterDescription<?>> values = paramSets.get(ParameterDescription.SET_TYPES.VALUES.name());
         if (values == null) {
             logger.warn("received no VALUES parameters for device {}", desc.getAddress());
             return;
         }
+        HmDevice weatherChannel = conn.getChannel(parent, desc.getAddress());
         Map<String, SingleValueResource> resources = new HashMap<>();
         for (Map.Entry<String, ParameterDescription<?>> e : values.entrySet()) {
             switch (e.getKey()) {
@@ -120,6 +128,7 @@ public class WeatherChannel implements ChannelHandler {
                     ResourceList<Sensor> sensors = parent.addDecorator(swName, SensorDevice.class).sensors();
                     sensors.create();
                     TemperatureResource reading = sensors.addDecorator(e.getKey(), TemperatureSensor.class).reading();
+                    conn.registerControlledResource(weatherChannel, reading.getParent());
 
                     if (!reading.exists()) {
                         reading.create();
@@ -133,6 +142,7 @@ public class WeatherChannel implements ChannelHandler {
                     ResourceList<Sensor> sensors = parent.addDecorator(swName, SensorDevice.class).sensors();
                     sensors.create();
                     FloatResource reading = sensors.addDecorator(e.getKey(), HumiditySensor.class).reading();
+                    conn.registerControlledResource(weatherChannel, reading.getParent());
 
                     if (!reading.exists()) {
                         reading.create();
@@ -144,7 +154,7 @@ public class WeatherChannel implements ChannelHandler {
                 }
             }
         }
-        hm.getHomeMaticService().addEventListener(new WeatherEventListener(resources, desc.getAddress()));
+        conn.addEventListener(new WeatherEventListener(resources, desc.getAddress()));
     }
 
 }

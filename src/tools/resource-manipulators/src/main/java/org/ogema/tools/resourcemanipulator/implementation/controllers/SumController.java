@@ -52,9 +52,13 @@ public class SumController implements Controller, ResourceStructureListener,
 
 	@Override
 	public void start() {
+        boolean callOnEveryUpdate = true;
+        if (m_config.callOnEveryUpdate().isActive()) {
+            callOnEveryUpdate = m_config.callOnEveryUpdate().getValue();
+        }
 		for (SingleValueResource input : m_config.inputs().getAllElements()) {
 			input.addStructureListener(this);
-			input.addValueListener(this);
+			input.addValueListener(this, callOnEveryUpdate);
 		}
 		active = true;
 		evaluate();
@@ -184,7 +188,7 @@ public class SumController implements Controller, ResourceStructureListener,
 		case RESOURCE_DEACTIVATED:
 		case RESOURCE_CREATED:
 		case RESOURCE_DELETED:
-			m_timer.start();
+			m_timer.start(); //?
 		case REFERENCE_ADDED:
 		case REFERENCE_REMOVED:
 		case SUBRESOURCE_ADDED:

@@ -15,10 +15,10 @@
  */
 package org.ogema.drivers.homematic.xmlrpc.hl.channels;
 
+import org.ogema.drivers.homematic.xmlrpc.hl.api.AbstractDeviceHandler;
 import java.util.List;
 import java.util.Map;
 
-import org.ogema.drivers.homematic.xmlrpc.hl.HomeMaticDriver;
 import org.ogema.drivers.homematic.xmlrpc.hl.types.HmDevice;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.DeviceDescription;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.HmEvent;
@@ -27,16 +27,22 @@ import org.ogema.drivers.homematic.xmlrpc.ll.api.ParameterDescription;
 import org.ogema.model.sensors.DoorWindowSensor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.HomeMaticConnection;
+import org.ogema.tools.resource.util.ResourceUtils;
 
 /**
  *
  * @author jlapp
  */
-public class ShutterContactChannel implements ChannelHandler {
+public class ShutterContactChannel extends AbstractDeviceHandler {
 
     Logger logger = LoggerFactory.getLogger(getClass());
     private static final float LOWBATVALUE = 0.1f;
 
+    public ShutterContactChannel(HomeMaticConnection conn) {
+        super(conn);
+    }
+    
     enum PARAMS {
 
         STATE,
@@ -62,6 +68,7 @@ public class ShutterContactChannel implements ChannelHandler {
                 }
                 if (PARAMS.STATE.name().equals(e.getValueKey())) {
                     sens.reading().setValue(e.getValueBoolean());
+                    logger.debug("SHUTTER_CONTACT {} = {}", address, e.getValueBoolean());
                 } else if (PARAMS.LOWBAT.name().equals(e.getValueKey())) {
                     sens.battery().chargeSensor().reading().setValue(e.getValueBoolean() ? LOWBATVALUE : 1.0f);
                 }
@@ -76,9 +83,9 @@ public class ShutterContactChannel implements ChannelHandler {
     }
 
     @Override
-    public void setup(HmDevice parent, HomeMaticDriver hm, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
+    public void setup(HmDevice parent, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
         logger.debug("setup SHUTTER_CONTACT handler for address {}", desc.getAddress());
-        String swName = HomeMaticDriver.sanitizeResourcename("SHUTTER_CONTACT" + desc.getAddress());
+        String swName = ResourceUtils.getValidResourceName("SHUTTER_CONTACT" + desc.getAddress());
         Map<String, ParameterDescription<?>> values = paramSets.get(ParameterDescription.SET_TYPES.VALUES.name());
         if (values == null) {
             logger.warn("received no VALUES parameters for device {}", desc.getAddress());
@@ -89,7 +96,7 @@ public class ShutterContactChannel implements ChannelHandler {
         sens.activate(true);
         sens.battery().chargeSensor().reading().create();
         sens.activate(true);
-        hm.getHomeMaticService().addEventListener(new ShutterContactListener(sens, desc.getAddress()));
+        conn.addEventListener(new ShutterContactListener(sens, desc.getAddress()));
     }
 
 }

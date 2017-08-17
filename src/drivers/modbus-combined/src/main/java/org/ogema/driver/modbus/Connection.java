@@ -17,6 +17,8 @@ package org.ogema.driver.modbus;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,8 +41,7 @@ import org.ogema.core.hardwaremanager.UsbHardwareDescriptor;
 import org.ogema.core.hardwaremanager.HardwareDescriptor.HardwareType;
 
 /**
- * This class manages the driver data for an open interface. The interface can
- * either be a serial port or a socket.
+ * This class manages the driver data for an open interface. The interface can either be a serial port or a socket.
  * 
  * @author pau
  * 
@@ -55,16 +56,14 @@ public class Connection {
 
 	private ModbusTransaction transaction;
 
-	Connection(ModbusDriver driver, DeviceLocator locator)
-			throws IOException {
+	Connection(ModbusDriver driver, DeviceLocator locator) throws IOException {
 		this.driver = driver;
 		this.locator = locator;
 
 		createTransaction(locator);
 	}
 
-	private void createTransaction(DeviceLocator locator)
-			throws IOException {
+	private void createTransaction(DeviceLocator locator) throws IOException {
 		// find out what kind of connection it should be. RTU or TCP?
 
 		// has interface name, is RTU
@@ -74,7 +73,7 @@ public class Connection {
 
 			if (locator.getParameters() == null)
 				throw new IOException("malformed DeviceLocator. getParameters() == 0 for RTU connection");
-	
+
 			params = parseParameterString(locator.getParameters());
 			params.setPortName(locator.getInterfaceName());
 			params.setEncoding(Modbus.SERIAL_ENCODING_RTU);
@@ -84,7 +83,7 @@ public class Connection {
 			try {
 				con.open();
 			} catch (Exception e) {
-				throw new IOException("could not open serial connection. Original Message: " + e.getMessage(), e) ;
+				throw new IOException("could not open serial connection. Original Message: " + e.getMessage(), e);
 			}
 			connection = con;
 
@@ -94,42 +93,52 @@ public class Connection {
 		}
 		// does not have an interface, must be TCP
 		else if (locator.getDeviceAddress() != null) {
-			TCPMasterConnection con;
-			InetAddress ipAddr;
 
 			String addr = locator.getDeviceAddress();
-			String[] parts = addr.split(":");
+			final String[] parts = addr.split(":");
 
 			// throws UnknownHostException which is a kind of IOException
-			ipAddr = InetAddress.getByName(parts[0]);
+			Object o = AccessController.doPrivileged(new PrivilegedAction<Object>() {
+				public Object run() {
+					TCPMasterConnection con;
 
-			con = new TCPMasterConnection(ipAddr);
+					try {
+						InetAddress ipAddr;
+						ipAddr = InetAddress.getByName(parts[0]);
 
-			if (parts.length > 1) {
-				int port;
-				try {
-					port = Integer.parseInt(parts[1]);
-					con.setPort(port);
-				} catch (NumberFormatException e) {
-					throw new IOException("malformed DeviceLocator. getDeviceAdress() returned contained illegal port number", e);
+						con = new TCPMasterConnection(ipAddr);
+
+						if (parts.length > 1) {
+							int port;
+							try {
+								port = Integer.parseInt(parts[1]);
+								con.setPort(port);
+							} catch (NumberFormatException e) {
+								throw new IOException(
+										"malformed DeviceLocator. getDeviceAdress() returned contained illegal port number",
+										e);
+							}
+						}
+
+						con.connect();
+					} catch (IOException e) {
+						// forward IOException, no need to wrap it again
+						return e;
+					} catch (Exception e) {
+						return new IOException("could not open tcp connection", e);
+					}
+					return con;
 				}
-			}
+			});
+			if (o instanceof IOException)
+				throw (IOException) o;
+			connection = o;
 
-			try {
-				con.connect();
-			} catch (IOException e) {
-				// forward IOException, no need to wrap it again
-				throw e;
-			} catch (Exception e) {
-				throw new IOException("could not open tcp connection", e);
-			}
-			connection = con;
+			transaction = new ModbusTCPTransaction((TCPMasterConnection) o);
 
-			transaction = new ModbusTCPTransaction(con);
-
-		} else {
-			throw new IOException(
-					"malformed DeviceLocator. It has neither device address nor interface");
+		}
+		else {
+			throw new IOException("malformed DeviceLocator. It has neither device address nor interface");
 		}
 	}
 
@@ -140,7 +149,8 @@ public class Connection {
 
 		if (desc.getHardwareType() == HardwareType.USB) {
 			portName = ((UsbHardwareDescriptor) desc).getPortName();
-		} else if (desc.getHardwareType() == HardwareType.SERIAL) {
+		}
+		else if (desc.getHardwareType() == HardwareType.SERIAL) {
 			portName = ((SerialHardwareDescriptor) desc).getPortName();
 		}
 		return portName;
@@ -155,7 +165,7 @@ public class Connection {
 	 * 
 	 * @param parameter
 	 * @return
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	private SerialParameters parseParameterString(String parameter) throws IOException {
 
@@ -167,8 +177,9 @@ public class Connection {
 			String[] splitted = parameter.split(":");
 
 			if (splitted.length < 6)
-				throw new IOException("malformed DeviceLocator. getParameters() has only " + splitted.length + " elements (expected 6)");
-			
+				throw new IOException("malformed DeviceLocator. getParameters() has only " + splitted.length
+						+ " elements (expected 6)");
+
 			// NumberFormatException is a kind of IllegalArgumentException
 			newParams.setBaudRate(Integer.parseInt(splitted[0], 10));
 			newParams.setDatabits(Integer.parseInt(splitted[1], 10));
@@ -229,9 +240,9 @@ public class Connection {
 	}
 
 	synchronized void removeChannel(ChannelLocator locator) {
-		
+
 		Channel channel = findChannel(locator);
-		
+
 		if (channel != null)
 			channels.remove(channel);
 	}
@@ -240,8 +251,7 @@ public class Connection {
 		return !channels.isEmpty();
 	}
 
-	synchronized ModbusResponse executeTransaction(ModbusRequest request)
-			throws Exception {
+	synchronized ModbusResponse executeTransaction(ModbusRequest request) throws Exception {
 
 		// if each device should have its own parameter settings,
 		// these are modified here before each transaction
@@ -259,21 +269,22 @@ public class Connection {
 
 		if (connection instanceof SerialConnection) {
 			((SerialConnection) connection).close();
-		} else if (connection instanceof TCPMasterConnection) {
+		}
+		else if (connection instanceof TCPMasterConnection) {
 			((TCPMasterConnection) connection).close();
 		}
 
 		connection = null;
 		transaction = null;
 	}
-	
+
 	synchronized Channel getChannel(ChannelLocator channelLocator) throws IOException {
 
 		Channel channel = findChannel(channelLocator);
 
 		if (channel == null) {
-				channel = Channel.createChannel(channelLocator);
-				addChannel(channel);
+			channel = Channel.createChannel(channelLocator);
+			addChannel(channel);
 		}
 
 		return channel;

@@ -27,6 +27,7 @@
 package org.ogema.app.securityconsumer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.ogema.core.application.ApplicationManager;
@@ -41,6 +42,7 @@ import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.measurements.IntegerValue;
+import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
 import org.ogema.core.model.Resource;
@@ -64,7 +66,7 @@ public class TEADevice implements ResourceListener {
 	private final static Logger logger = LoggerFactory.getLogger(TEADevice.class);
 
 	// use the modbus-tcp driver
-	private static final String DRIVER_ID = "modbus-tcp";
+	private static final String DRIVER_ID = "modbus-combined";
 
 	// TODO: Winfried, 14.09.2015: the described registers are for TEA controller.
 	// must be adapted for other kind of meters!
@@ -73,8 +75,40 @@ public class TEADevice implements ResourceListener {
 	// the TEA registers start at 40001 (40001 - 40001 = 0) hence modbus register 0
 	// there are 4 registers (2 x 16bit Sollwert, 2 x 16bit Istwert)
 	// private static final String CHANNEL_ADDRESS_IV = "multi:4:0";
-	private static final String CHANNEL_ADDRESS_IV = "0:HOLDING_REGISTERS:0:int";
-	private static final String CHANNEL_ADDRESS_SV = "0:HOLDING_REGISTERS:2:int";
+	private static final String CHANNEL_ADDRESS_IV = "1:HOLDING_REGISTERS:1:1";
+	private static final String CHANNEL_ADDRESS_SV = "1:HOLDING_REGISTERS:2:1";
+	private static final String CHANNEL_ADDRESS_1D = "0:HOLDING_REGISTERS:100:87";
+	private static final String CHANNEL_ADDRESS_2D = "0:HOLDING_REGISTERS:200:87";
+	private static final String CHANNEL_ADDRESS_3D = "0:HOLDING_REGISTERS:300:87";
+	private static final String CHANNEL_ADDRESS_4D = "0:HOLDING_REGISTERS:400:87";
+	private static final String CHANNEL_ADDRESS_5D = "0:HOLDING_REGISTERS:500:87";
+	private static final String CHANNEL_ADDRESS_6D = "0:HOLDING_REGISTERS:600:87";
+	private static final String CHANNEL_ADDRESS_7D = "0:HOLDING_REGISTERS:700:87";
+	private static final String CHANNEL_ADDRESS_8D = "0:HOLDING_REGISTERS:800:87";
+	private static final String CHANNEL_ADDRESS_9D = "0:HOLDING_REGISTERS:900:87";
+	private static final String CHANNEL_ADDRESS_10D = "0:HOLDING_REGISTERS:1000:87";
+	private static final String CHANNEL_ADDRESS_11D = "0:HOLDING_REGISTERS:1100:87";
+	private static final String CHANNEL_ADDRESS_12D = "0:HOLDING_REGISTERS:1200:87";
+	private static final String CHANNEL_ADDRESS_13D = "0:HOLDING_REGISTERS:1300:87";
+	private static final String CHANNEL_ADDRESS_14D = "0:HOLDING_REGISTERS:1400:87";
+	private static final String CHANNEL_ADDRESS_15D = "0:HOLDING_REGISTERS:1500:87";
+	private static final String CHANNEL_ADDRESS_16D = "0:HOLDING_REGISTERS:1600:87";
+	private static final String CHANNEL_ADDRESS_17D = "0:HOLDING_REGISTERS:1700:87";
+	private static final String CHANNEL_ADDRESS_18D = "0:HOLDING_REGISTERS:1800:87";
+	private static final String CHANNEL_ADDRESS_19D = "0:HOLDING_REGISTERS:1900:87";
+	private static final String CHANNEL_ADDRESS_20D = "0:HOLDING_REGISTERS:2000:87";
+	private static final String CHANNEL_ADDRESS_21D = "0:HOLDING_REGISTERS:2100:87";
+	private static final String CHANNEL_ADDRESS_22D = "0:HOLDING_REGISTERS:2200:87";
+	private static final String CHANNEL_ADDRESS_23D = "0:HOLDING_REGISTERS:2300:87";
+	private static final String CHANNEL_ADDRESS_24D = "0:HOLDING_REGISTERS:2400:87";
+	private static final String CHANNEL_ADDRESS_25D = "0:HOLDING_REGISTERS:2500:87";
+	private static final String CHANNEL_ADDRESS_26D = "0:HOLDING_REGISTERS:2600:87";
+	private static final String CHANNEL_ADDRESS_27D = "0:HOLDING_REGISTERS:2700:87";
+
+	private static final String TEST_HOLDING = "15:HOLDING_REGISTERS:0:1";
+	private static final String TEST_INPUT = "15:INPUT_REGISTERS:0:1";
+	private static final String TEST_COILS = "15:COILS:0:2";
+	private static final String TEST_DISCRETE = "15:DISCRETE_INPUTS:0:8";
 
 	private final ApplicationManager appManager;
 	private final ChannelAccess channelAccess;
@@ -87,7 +121,7 @@ public class TEADevice implements ResourceListener {
 	ChannelEventListener channelEventListener;
 
 	public TEADevice(ApplicationManager appManager, TEAConfigurationModel configurationResource) {
-
+		channelConfigurations = new ArrayList<>();
 		String dataResourceName;
 
 		this.appManager = appManager;
@@ -161,11 +195,16 @@ public class TEADevice implements ResourceListener {
 			value = c.getSampledValue();
 			// value = getSimulationValue(channelLocator);
 
-			// write received value to model
-			// TODO: DataResource noch festlegen
-			setModel(dataResource, value);
-
-			logger.info("TEADevice.update: value=" + value.getValue().getIntegerValue());
+			Value v = value.getValue();
+			if (v == null) {
+				logger.info("TEADevice.update: quality=" + value.getQuality());
+			}
+			else {
+				int[] values = (int[]) v.getObjectValue();
+				for (int i : values) {
+					logger.info("TEADevice.update: value=" + i);
+				}
+			}
 		}
 
 	}
@@ -182,6 +221,42 @@ public class TEADevice implements ResourceListener {
 
 		channels.add(new ChannelLocator(CHANNEL_ADDRESS_IV, deviceLocator));
 		channels.add(new ChannelLocator(CHANNEL_ADDRESS_SV, deviceLocator));
+		// deviceLocator = channelAccess.getDeviceLocator(DRIVER_ID, interfaceId, deviceAddress, deviceParameters);
+		//
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_1D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_2D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_3D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_4D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_5D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_6D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_7D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_8D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_9D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_10D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_11D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_12D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_13D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_14D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_15D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_16D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_17D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_18D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_19D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_20D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_21D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_22D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_23D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_24D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_25D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_26D, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_27D, deviceLocator));
+
+		deviceLocator = new DeviceLocator(DRIVER_ID, "", "127.0.0.1", "");
+
+		// channels.add(channelAccess.getChannelLocator(TEST_INPUT, deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(TEST_HOLDING, deviceLocator));
+		// channels.add(new ChannelLocator("15:COILS:0:8", deviceLocator));
+		// channels.add(channelAccess.getChannelLocator(TEST_DISCRETE, deviceLocator));
 
 		return channels;
 	}
@@ -194,36 +269,6 @@ public class TEADevice implements ResourceListener {
 
 	private int getUint32(int[] array, int offset) {
 		return array[offset + 1] * 65536 + array[offset];
-	}
-
-	/** Parse TEA answer and put the values into the OGEMA resource. */
-	private void setModel(TEAResource model, SampledValue value) {
-
-		// the response has one integer value per 16bit modbus register
-		// int[] values = (int[]) value.getValue().getObjectValue();
-
-		// 32bit values are distributed little endian across the 16bit register
-		// the lower 16 bit reside at the lower address
-
-		// appManager.getResourceAccessManager().startTransaction();
-
-		// by calling setValue() the Resource Manager is notified that the value has changed
-
-		// TODO: Winfried, 14.09.2015: the registers here are specific for ION7550 meter.
-		// must be adapted for general TEA meters (configurable)
-		// int istlow = values[0] & 0x0000ffff;
-		// int isthigh = values[1] & 0x0000ffff;
-		// int solllow = values[2] & 0x0000ffff;
-		// int sollhigh = values[3] & 0x0000ffff;
-		// int istwert = (int) ((isthigh << 16) | istlow);
-		// int sollwert = (int) ((sollhigh << 16) | solllow);
-
-		// model.sollwert.setValue(istwert);
-		// model.istwert.setValue(sollwert);
-
-		logger.info("TEADevice.setModel: value=" + value.getValue().getIntegerValue());
-
-		// appManager.getResourceAccessManager().commitTransaction();
 	}
 
 	/** Configuration has been deleted, close the channel to the device. */
@@ -253,13 +298,13 @@ public class TEADevice implements ResourceListener {
 		logger.info("TEADevice.resourceChanged:" + resource.getName() + "/" + resource.getClass().getName());
 		// did the channel layout change?
 		List<ChannelLocator> newChan = createChannelLocators(configurationResource);
-		
+
 		List<ChannelLocator> tmpList = new ArrayList<ChannelLocator>();
-		
+
 		for (ChannelConfiguration configuration : channelConfigurations) {
 			tmpList.add(configuration.getChannelLocator());
 		}
-		
+
 		if (!tmpList.equals(newChan)) {
 
 			for (ChannelConfiguration channel : channelConfigurations) {
@@ -311,7 +356,7 @@ public class TEADevice implements ResourceListener {
 					int intValue = (int) ((IntegerResource) resource).getValue();
 					Value value = new IntegerValue(intValue);
 
-					//ChannelLocator channel = newChan.get(1); // writable SV is index "1"
+					// ChannelLocator channel = newChan.get(1); // writable SV is index "1"
 					channelAccess.setChannelValue(channelConfigurations.get(1), value);
 				} catch (ChannelAccessException e) {
 					e.printStackTrace();

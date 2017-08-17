@@ -22,38 +22,38 @@ return function(callback) {
 
 	// Setup some variables
 	var SERVLET_ADDRESS = "/apps/ogema/grafanascheduleviewer/fake_influxdb";
-	
+
 	var dashboard;
 
         var dropdown = document.getElementById("grafanaDropdown");
-        var csvButton = document.getElementById("grafanaButton");          
-            
+        var csvButton = document.getElementById("grafanaButton");
+
         csvButton.onclick = function() {
-            
+
             var resource = dropdown.options[dropdown.selectedIndex].value;
-            
+
             var p = "p=admin"
             var q = "q=select undefined(value) from \"" + resource + "\" where time > now() and time < 365d group by time(1m) order asc";
             var u = "u=admin";
-            var query = p + "&" + q + "&" + u;
-    
+            var query = p + "&" + q + "&" + u + '&user=' + otusr + '&pw=' + otpwd;
+
             $.ajax({
                 method:         'GET',
-                url:            SERVLET_ADDRESS + '/series?' + query,  
+                url:            SERVLET_ADDRESS + '/series?' + query,
                 contentType:    'application/json'
             }).done(function(result) {
-                
-                            
+
+
                 var resultJSON = JSON.parse(result);
                 var data = resultJSON[0].points;
-                
+
                 var dataString;
                 var csvContent = "data:text/csv;charset=utf-8,";
                 data.forEach(function(infoArray, index){
 
                     dataString = infoArray.join(";");
                     csvContent += index < data.length ? dataString+ "\n" : dataString;
-                    
+
                 });
                 //download(csvContent, 'download.csv', 'text/csv');
                 var encodedUri = encodeURI(csvContent);
@@ -65,9 +65,9 @@ return function(callback) {
                 link.click();
                 document.body.removeChild(link);
             });
-        
+
         };
-           
+
 
 
 	//define pulldowns
@@ -99,21 +99,21 @@ return function(callback) {
 	  to: "now+1d"
 	};
 	var refreshBak;
-	
+
 	$.ajax({
 		method: 'GET',
-	    url: SERVLET_ADDRESS + '/series?parameters=',  
+		url: SERVLET_ADDRESS + '/series?user=' + otusr + '&pw=' + otpwd + '&parameters=',
 	    contentType: 'application/json'
 	})
 	.done(function(paramsResult) {
 	   console.log("Parameter callback received ", paramsResult);
 	   var params = JSON.parse(paramsResult)[0].parameters;
 	   var refr = params.updateInterval;
-	   dashboard.refresh = "1s";	   
+	   dashboard.refresh = "1s";
 	   if (refr > 0) {
 		  // dashboard.refresh = String(refr/1000) + "s";
 		  refreshBak = String(refr/1000) + "s";
-	   } 
+	   }
 	   var rows = params.panels;
 	   var panels = {};
 	   var isReady = {};
@@ -134,7 +134,7 @@ return function(callback) {
          if (divisor > 4) {
         	 divisor = 4;
          }
-         span[rowName] = span[rowName]/divisor;    
+         span[rowName] = span[rowName]/divisor;
          var rowRestr = {};
          if (restrictions.hasOwnProperty(rowName)) {
          	rowRestr = restrictions[rowName];
@@ -144,19 +144,19 @@ return function(callback) {
         // for (var ct=0;ct<resourceTypes.length;ct++) {
         	 var resType  = resourceTypes[pnl];
         	 var isarray = Array.isArray(resType);
-        	 var queryParam;
+        	 var queryParam = '?user=' + otusr + '&pw=' + otpwd;
         	 if (isarray) {
-        		 queryParam = 'row=' + rowName + '&panel=' + pnl;
+        		 queryParam += '&row=' + rowName + '&panel=' + pnl;
         	 } else {
-        		 queryParam  = 'resourceType=' + resType;
+        		 queryParam  += '&resourceType=' + resType;
         	 }
         	 if (rowRestr.hasOwnProperty(pnl)) {
-        	 	queryParam = queryParam + '&restrictions=' + rowRestr[pnl]; 
+        	 	queryParam = queryParam + '&restrictions=' + rowRestr[pnl];
         	 }
         	console.log("   queryParam",queryParam);
 	       	 $.ajax({
 				    method: 'GET',
-				    url:  SERVLET_ADDRESS + '/series?' + queryParam, 
+				    url:  SERVLET_ADDRESS + '/series' + queryParam,
 				    contentType: 'application/json'
 			  })
 			  .done(function(result) {
@@ -184,8 +184,8 @@ return function(callback) {
         		 	if (mode === "STEPS") steps = true;
         		 	else if (mode === "NONE") lines = false; // TODO NEAREST; default: linear
         		 }
-				 
-				 var panel =    
+
+				 var panel =
 				      {
 					        id: panelId,
 						 	title: pnl,
@@ -210,7 +210,7 @@ return function(callback) {
 					        }
 				      };
 				 panelId++;
-				 panels[rowName].push(panel);					    
+				 panels[rowName].push(panel);
 			//	 console.log("targets",targets);
 				 counter[rowName] = counter[rowName] + 1;
 			//	 console.log("counter(" + rowName + ") = " + String(counter[rowName]) + ". Target " + String(Object.keys(resourceTypes).length));
@@ -227,7 +227,7 @@ return function(callback) {
 	  var waitCounter = 0;
 	  var tick = function() {
   		waitCounter++;
-  		setTimeout(function() { 
+  		setTimeout(function() {
   			if (counter[rowName] == Object.keys(resourceTypes).length) {
   	//		  console.log("panels[" + rowName + "]",panels[rowName]);
   			  if (newRow.panels.length == 0) {
@@ -235,25 +235,25 @@ return function(callback) {
   			  }
   		//		console.log("new row added to dashboard",newRow);
   				dashboard.rows.push(newRow);
-                                
+
                                 for(var i = 0; i < newRow.panels[0].targets.length; i++) {
-                                    
+
                                     var target = newRow.panels[0].targets[i];
-                                    
+
                                     var opt = document.createElement("option");
                                     opt.text = target.series;
                                     opt.value = target.series;
                                     dropdown.options.add(opt);
-                                    
+
                                 }
   			}
   			else if (waitCounter < 100) {
   		//		console.log("row not yet finished... waiting another 100ms");
   				tick();
   			}
-  	    }, 100);	
-  	  }; 
-	  tick(); 
+  	    }, 100);
+  	  };
+	  tick();
     });  // end rows loop
 
     // when dashboard is composed call the callback function and pass the dashboard
@@ -263,9 +263,9 @@ return function(callback) {
     	}
     	else {
     		helper.set_interval(refreshBak);
-  	 	}  
+  	 	}
     }   ,2000);
-    
+
     callback(dashboard);
   });
 }

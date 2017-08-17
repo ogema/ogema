@@ -63,7 +63,7 @@ public class InputHandler implements Runnable {
 					try {
 						inputEventLock.wait();
 					} catch (InterruptedException e1) {
-//						e1.printStackTrace();
+						// e1.printStackTrace();
 						if (!Activator.bundleIsRunning)
 							return;
 					}
@@ -82,6 +82,7 @@ public class InputHandler implements Runnable {
 	}
 
 	private void handleMessage(byte[] tempArray) {
+		logger.debug("message tpye: " + (char) tempArray[0]);
 		switch (tempArray[0]) {
 		case 'H':
 			if (!localDeviceInited)
@@ -90,8 +91,9 @@ public class InputHandler implements Runnable {
 		case 'R':
 		case 'E':
 			StatusMessage emsg = new StatusMessage(tempArray);
-			if (!emsg.almostEquals(lastMsg)) {
+//			if (!emsg.almostEquals(lastMsg)) {
 				if (emsg.msg_type == 0x00 & localDevice.getPairing() != null) { // if pairing
+					logger.debug("Pairing response received");
 					RemoteDevice temp_device = new RemoteDevice(localDevice, emsg);
 					if (localDevice.getPairing().equals("0000000000")
 							| localDevice.getPairing().equals(temp_device.getSerial())) {
@@ -119,7 +121,9 @@ public class InputHandler implements Runnable {
 							logger.debug("Unpaired Homematic device detected: " + emsg.source);
 					}
 				}
-			}
+//			}
+//			else
+//				logger.debug("Message is equal to the last message!");
 			lastMsg = emsg;
 			break;
 		case 'I':
@@ -135,9 +139,9 @@ public class InputHandler implements Runnable {
 		long raw_version = Converter.toLong(data, 11, 2);
 		localDevice.setFirmware(String.format("%d.%d", (raw_version >> 12) & 0xf, raw_version & 0xffff));
 		localDevice.setSerial(new String(Arrays.copyOfRange(data, 14, 24)));
-		String ownerid = new String(Converter.toHexString(data, 27, 3));
+		String ownerid = Converter.toHexString(data, 27, 3);
 		if (ownerid.equals("000000"))
-			ownerid = new String(Converter.toHexString(data, 24, 3));
+			ownerid = Converter.toHexString(data, 24, 3);
 		localDevice.setOwnerid(ownerid);
 		localDevice.setUptime((int) Converter.toLong(data, 30, 4));
 		localDeviceInited = true;

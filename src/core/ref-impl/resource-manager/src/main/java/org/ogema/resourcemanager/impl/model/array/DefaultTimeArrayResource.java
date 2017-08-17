@@ -16,6 +16,9 @@
 package org.ogema.resourcemanager.impl.model.array;
 
 import org.ogema.core.model.array.TimeArrayResource;
+import org.ogema.core.resourcemanager.AccessMode;
+import org.ogema.core.resourcemanager.ResourceAccessException;
+import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.resourcemanager.impl.ResourceBase;
 
@@ -39,15 +42,20 @@ public class DefaultTimeArrayResource extends ResourceBase implements TimeArrayR
 	}
 
 	@Override
-	public boolean setValues(long[] value) {
-		if (!exists() || !hasWriteAccess()) {
-			return false;
+	public boolean setValues(long[] values) {
+		resMan.lockRead();
+		try {
+			final VirtualTreeElement el = getEl();
+			if (el.isVirtual() || getAccessModeInternal() == AccessMode.READ_ONLY) {
+				return false;
+			}
+			checkWritePermission();
+			el.getData().setLongArr(values);
+			//FIXME no change check!
+			handleResourceUpdateInternal(true);
+		} finally {
+			resMan.unlockRead();
 		}
-		checkWritePermission();
-		getTreeElement().getData().setLongArr(value);
-		getTreeElement().fireChangeEvent();
-		//FIXME no change check
-		handleResourceUpdate(true);
 		return true;
 	}
 
@@ -77,6 +85,21 @@ public class DefaultTimeArrayResource extends ResourceBase implements TimeArrayR
 	@Override
 	public long getLastUpdateTime() {
 		return super.getLastUpdateTime();
+	}
+	
+	@Override
+	public long[] getAndSet(final long[] value) throws VirtualResourceException, SecurityException, ResourceAccessException {
+		if (!exists())
+			throw new VirtualResourceException("Resource " + path + " is virtual, cannot set value");
+		checkWriteAccess();
+		resMan.lockWrite(); 
+		try {
+			final long[] val = getValues();
+			setValues(value);
+			return val;
+		} finally {
+			resMan.unlockWrite();
+		}
 	}
 
 }

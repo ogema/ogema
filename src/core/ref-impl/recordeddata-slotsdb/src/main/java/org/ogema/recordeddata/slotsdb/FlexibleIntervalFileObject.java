@@ -19,32 +19,34 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Vector;
 
 import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.recordeddata.slotsdb.SlotsDbCache.RecordedDataCache;
 
 public class FlexibleIntervalFileObject extends FileObject {
 
-	private long lastTimestamp = startTimeStamp;
+	private long lastTimestamp;
 	private static final long headerend = 16;
 
-	public FlexibleIntervalFileObject(File file) throws IOException {
-		super(file);
-
+	protected FlexibleIntervalFileObject(File file, RecordedDataCache cache) throws IOException {
+		super(file, cache);
+		lastTimestamp = startTimeStamp;
 	}
 
-	public FlexibleIntervalFileObject(String fileName) throws IOException {
-		super(fileName);
+	protected FlexibleIntervalFileObject(String fileName, RecordedDataCache cache) throws IOException {
+		super(fileName, cache);
+		lastTimestamp = startTimeStamp;
 	}
 
 	@Override
 	void readHeader(DataInputStream dis) throws IOException {
 		startTimeStamp = dis.readLong();
 		storagePeriod = dis.readLong(); /* is -1 for disabled storagePeriod */
-
+		lastTimestamp = startTimeStamp;
 		// line below should be obsolete, since flexible interval needs no rounded timestamp
 		//startTimeStamp = FileObjectProxy.getRoundedTimestamp(startTimeStamp, storagePeriod);
 	}
@@ -52,23 +54,22 @@ public class FlexibleIntervalFileObject extends FileObject {
 	@Override
 	public void append(double value, long timestamp, byte flag) throws IOException {
 		// long writePosition = dataFile.length();
-
 		if (!canWrite) {
 			enableOutput();
 		}
 
-		// FIXME really? only write to time series if new values timestamp is greater than last one?
+		// FIXME really? only write to time series if new values timestamp is greater than last one? -> this is for log data, so it makes sense
 		if (timestamp > lastTimestamp) {
 			dos.writeLong(timestamp);
 			dos.writeDouble(value);
 			dos.writeByte(flag);
 			lastTimestamp = timestamp;
 		}
-
+		
 	}
 
 	@Override
-	public long getTimestampForLatestValue() {
+	protected long getTimestampForLatestValueInternal() {
 		// FIXME: this won't work ... if read(String, long, long) is invoked a new
 		// FileObject is created and lastTimestamp is set to startTimeStamp ...
 		// return lastTimestamp;
@@ -76,7 +77,7 @@ public class FlexibleIntervalFileObject extends FileObject {
 		// this is only a quickfix so that it works... @author of this class: if there
 		// is a better solution pls fix this... otherwise delete all comments in here
 		// and lets stick to this solution for now:
-		int dataSetCount = getDataSetCount();
+		int dataSetCount = getDataSetCountInternal();
 		if (dataSetCount > 1) {
 			try {
 				if (!canRead) {
@@ -101,9 +102,10 @@ public class FlexibleIntervalFileObject extends FileObject {
 	}
 
 	@Override
-	public List<SampledValue> read(long start, long end) throws IOException {
+	protected List<SampledValue> readInternal(long start, long end) throws IOException {
 
-		List<SampledValue> toReturn = new Vector<SampledValue>();
+//		List<SampledValue> toReturn = new Vector<SampledValue>();
+		final List<SampledValue> toReturn = new ArrayList<>(getDataSetCount());
 		if (!canRead) {
 			enableInput();
 		}
@@ -116,7 +118,7 @@ public class FlexibleIntervalFileObject extends FileObject {
 		ByteBuffer bb = ByteBuffer.wrap(b);
 		bb.rewind();
 
-		for (int i = 0; i < getDataSetCount(); i++) {
+		for (int i = 0; i < getDataSetCountInternal(); i++) {
 			long timestamp = bb.getLong();
 			double d = bb.getDouble();
 			Quality s = Quality.getQuality(bb.get());
@@ -133,8 +135,9 @@ public class FlexibleIntervalFileObject extends FileObject {
 	}
 
 	@Override
-	public List<SampledValue> readFully() throws IOException {
-		List<SampledValue> toReturn = new Vector<SampledValue>();
+	protected List<SampledValue> readFullyInternal() throws IOException {
+//		List<SampledValue> toReturn = new Vector<SampledValue>();
+		final List<SampledValue> toReturn = new ArrayList<>(getDataSetCountInternal());
 
 		if (!canRead) {
 			enableInput();
@@ -197,7 +200,6 @@ public class FlexibleIntervalFileObject extends FileObject {
 
 	@Override
 	public SampledValue readNextValue(long timestamp) throws IOException {
-		// TODO Auto-generated method stub
 		if (!canRead) {
 			enableInput();
 		}
@@ -220,12 +222,78 @@ public class FlexibleIntervalFileObject extends FileObject {
 		}
 		return null;
 	}
+	
+	@Override
+	public SampledValue readPreviousValue(long timestamp) throws IOException {
+		if (!canRead) {
+			enableInput();
+		}
+		long startpos = headerend;
 
-	private int getDataSetCount() {
-		return (int) ((dataFile.length() - headerend) / getDataSetSize());
+		fis.getChannel().position(startpos);
+		byte[] b = new byte[(int) (dataFile.length() - headerend)];
+		dis.read(b, 0, b.length);
+		ByteBuffer bb = ByteBuffer.wrap(b);
+		bb.rewind();
+		int countOfDataSets = (int) ((dataFile.length() - headerend) / getDataSetSize());
+		long tcand = Long.MIN_VALUE;
+		double dcand = Double.NaN;
+		Quality qcand = null;
+		for (int i = 0; i < countOfDataSets; i++) {
+			long timestamp2 = bb.getLong();
+			double d = bb.getDouble();
+			Quality s = Quality.getQuality(bb.get());
+			if (!Double.isNaN(d) && timestamp >= timestamp2) {
+				tcand = timestamp2;
+				dcand = d;
+				qcand = s;
+//				candidate = new SampledValue(new DoubleValue(d), timestamp2, s);
+			}
+			else if (timestamp < timestamp2) 
+				break;
+		}
+		if (!Double.isNaN(dcand))
+			return new SampledValue(new DoubleValue(dcand), tcand, qcand);
+		return null;
 	}
 
-	private int getDataSetSize() {
+	@Override
+	protected int getDataSetCountInternal() {
+		return (int) ((dataFile.length() - headerend) / getDataSetSize());
+	}
+	
+	@Override
+	protected int getDataSetCountInternal(long start, long end) throws IOException {
+		long fileEnd = getTimestampForLatestValueInternal();
+		if (start <= startTimeStamp && end >= fileEnd)
+			return getDataSetCountInternal();
+		else if (start > fileEnd || end < startTimeStamp)
+			return 0;
+		if (!canRead) {
+			enableInput();
+		}
+		long startpos = headerend;
+		fis.getChannel().position(startpos);
+		byte[] b = new byte[(int) (dataFile.length() - headerend)];
+		dis.read(b, 0, b.length);
+		ByteBuffer bb = ByteBuffer.wrap(b);
+		bb.rewind();
+		int cnt = 0;
+		int countOfDataSets = getDataSetCountInternal();
+		for (int i = 0; i < countOfDataSets; i++) {
+			long timestamp2 = bb.getLong();
+			double d = bb.getDouble();
+			if (timestamp2 > end)
+				return cnt;
+			if (!Double.isNaN(d) && timestamp2 >= start) {
+				cnt++;
+			}
+			bb.get();
+		}
+		return cnt;
+	}
+	
+	private final static int getDataSetSize() {
 		return (Long.SIZE + Double.SIZE + Byte.SIZE) / Byte.SIZE;
 	}
 

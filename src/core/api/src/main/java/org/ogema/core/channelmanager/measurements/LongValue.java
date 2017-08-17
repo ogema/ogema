@@ -24,7 +24,7 @@ import org.ogema.core.timeseries.ReadOnlyTimeSeries;
  */
 public class LongValue implements Value {
 
-	private long value;
+	private final long value;
 
 	public LongValue(long value) {
 		this.value = value;

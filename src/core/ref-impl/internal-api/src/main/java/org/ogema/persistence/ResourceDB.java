@@ -216,4 +216,8 @@ public interface ResourceDB {
 	 */
 	public List<Class<? extends Resource>> getResourceTypesInstalled(Class<? extends Resource> cls);
 
+	/**
+	 * Initiate an immediate storage loop asynchronously.
+	 */
+	void doStorage();
 }

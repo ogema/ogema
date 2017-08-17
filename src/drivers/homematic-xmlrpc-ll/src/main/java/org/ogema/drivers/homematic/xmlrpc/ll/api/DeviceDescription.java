@@ -16,11 +16,15 @@
 package org.ogema.drivers.homematic.xmlrpc.ll.api;
 
 /**
- *
+ * Represents a {@code DeviceDescription} as defined in the HomeMatic
+ * XML-RPC specification.
  * @author jlapp
  */
 public interface DeviceDescription extends XmlRpcStruct {
 
+    /**
+     * Keys used by the DeviceDescription XML-RPC struct.
+     */
     public static enum KEYS {
 
         TYPE(String.class),
@@ -148,6 +152,9 @@ public interface DeviceDescription extends XmlRpcStruct {
 
     }
 
+    /**
+     * Bit flags used in the {@link KEYS#RX_MODE } member.
+     */
     public static enum RX_FLAGS {
 
         RX_ALWAYS(0x01),
@@ -171,33 +178,48 @@ public interface DeviceDescription extends XmlRpcStruct {
         }
     }
 
+    /**
+     * @return logical device address.
+     */
     String getAddress();
 
+    /**
+     * List of available {@code Paramsets}. Usually {@code 'MASTER', 'VALUES'}
+     * plus the names of LINK sets, which are logical device address strings.
+     * Use {@link HomeMatic#getParamsetDescription } and {@link HomeMatic#getParamset }
+     * to retrieve description and actual values.
+     * 
+     * @return available {@code Paramsets}
+     */
     String[] getParamsets();
 
-    default String getParent() {
-        return getString(KEYS.PARENT.name());
-    }
+    /**
+     * Address of the parent logical device.
+     * @return parent address, or null if this describes a top level device.
+     */
+    String getParent();
     
-    default String getParentType() {
-        return getString(KEYS.PARENT_TYPE.name());
-    }
+    /**
+     * Parent type, if parent is available.
+     * @return parent type, or null if this describes a top level device.
+     */
+    String getParentType();
 
-    default String getType() {
-        return getString(KEYS.TYPE.name());
-    }
+    /**
+     * @return device type
+     */
+    String getType();
     
-    default boolean isDevice() {
-        String parent = getParent();
-        return parent == null || parent.isEmpty();
-    }
+    /**
+     * @return true iff this is not a channel.
+     */
+    boolean isDevice();
     
-    default int getVersion() {
-        return getInt(KEYS.VERSION.name());
-    }
+    int getVersion();
     
-    default String[] getChildren() {
-        return getStringArray(KEYS.CHILDREN.name());
-    }
+    /**
+     * @return addresses of sub devices.
+     */
+    String[] getChildren();
 
 }

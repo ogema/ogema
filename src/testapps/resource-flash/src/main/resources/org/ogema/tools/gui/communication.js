@@ -1,4 +1,4 @@
-angular.module('ResourceFlashModule',[])   
+angular.module('ResourceFlashModule',[])
 .factory('ResourceTypes', function() {
 	var types = {};
 	var classes = {};
@@ -36,12 +36,12 @@ angular.module('ResourceFlashModule',[])
 		  setTreeNumber: function(nr) {
 			  treeNumber = nr;
 		  }
-	};	
+	};
 })
 .controller('ResourceFlashCtrl', function($scope,$http, ResourceTypes) {
 //*********** variables declaration *****************
 	var path = "/org/ogema/tests/servlets/resourceflash";
-	path = path.toLowerCase();
+	path = path.toLowerCase() + "?user=" + otusr + "&pw=" + otpwd;
 	var factory = ResourceTypes;
 	$scope.numbers = [1,10,100,1000,10000,100000];
 	$scope.selectedNr = 100;
@@ -60,11 +60,11 @@ angular.module('ResourceFlashModule',[])
 	$scope.create = function(type,nr) {
 		var msg = {};
 		msg.nr = nr;
-		msg.type = type;	
+		msg.type = type;
 		msg.action = "create";
 		$http.post(path,msg).then(function(response) {
 			var result;
-			if (isString(response.data)) 
+			if (isString(response.data))
 				result = JSON.parse(response.data);
 			else
 				result = response.data;
@@ -80,25 +80,25 @@ angular.module('ResourceFlashModule',[])
 			}
 		});
 	};
-	
+
 	$scope.createTree = function(nr, withListeners) {
 		var type = "complextree";
-		if (withListeners) 
+		if (withListeners)
 			type = "complextreewithlisteners";
 		$scope.create(type,nr);
 	};
-	
+
 	$scope.deleteTree = function() {
 		$scope.delete("complextree");
 	};
-	
+
 	$scope.delete = function(type) {
 		var msg = {};
-		msg.type = type;	
+		msg.type = type;
 		msg.action = "delete";
 		$http.post(path,msg).then(function(response) {
 			var result;
-			if (isString(response.data)) 
+			if (isString(response.data))
 				result = JSON.parse(response.data);
 			else
 				result = response.data;
@@ -109,7 +109,7 @@ angular.module('ResourceFlashModule',[])
 			$scope.update();
 		});
 	};
-	
+
 	// Resources
 	$scope.getResourceTypes = function() {
 		return Object.keys(factory.getTypes());
@@ -124,7 +124,7 @@ angular.module('ResourceFlashModule',[])
 	$scope.getTreeNumber = function() {
 		return factory.getTreeNumber();
 	};
-	
+
 	$scope.getShortTypeName = function(type) {
 		var tps = factory.getTypes();
 		if (!tps.hasOwnProperty(type) || !tps[type].hasOwnProperty("short")) {
@@ -135,7 +135,7 @@ angular.module('ResourceFlashModule',[])
 	$scope.getLastDuration = function() {
 		return factory.getLastDuration();
 	};
-	
+
 	// Objects
 	$scope.getClasses = function() {
 		return Object.keys(factory.getClasses());
@@ -154,7 +154,7 @@ angular.module('ResourceFlashModule',[])
 		}
 		return tps[clazz].short;
 	};
-	
+
    // Schedules
 	$scope.getScheduleTypes = function() {
 		return Object.keys(factory.getSchedules());
@@ -173,9 +173,9 @@ angular.module('ResourceFlashModule',[])
 		}
 		return tps[type].short;
 	};
-	
+
 	$scope.update();  // init on startup
-}); 
+});
 
 function isString(o) {
     return typeof o === "string" || (typeof o === "object" && o.constructor === String);

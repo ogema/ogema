@@ -22,16 +22,19 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.recordeddata.slotsdb.SlotsDbCache.RecordedDataCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class FileObject {
 
 	protected Logger logger = LoggerFactory.getLogger(getClass());
-	protected long startTimeStamp; // byte 0-7 in file (cached)
+	protected long startTimeStamp = Long.MIN_VALUE; // byte 0-7 in file (cached)
 	protected long storagePeriod; // byte 8-15 in file (cached)
 	protected final File dataFile;
 	protected DataOutputStream dos;
@@ -41,13 +44,16 @@ public abstract class FileObject {
 	protected FileInputStream fis;
 	protected boolean canWrite;
 	protected boolean canRead;
+	
+	private final RecordedDataCache cache;
 
 	/*
-	 * File length will be cached to avoid system calls an improve I/O Performance
+	 * File length will be cached to avoid system calls and improve I/O Performance
 	 */
 	protected long length = 0;
 
-	public FileObject(String filename) throws IOException {
+	public FileObject(String filename, RecordedDataCache cache) throws IOException {
+		this.cache = cache;
 		canWrite = false;
 		canRead = false;
 		dataFile = new File(filename);
@@ -91,7 +97,8 @@ public abstract class FileObject {
 	 */
 	abstract void readHeader(DataInputStream dis) throws IOException;
 
-	public FileObject(File file) throws IOException {
+	public FileObject(File file, RecordedDataCache cache) throws IOException {
+		this.cache = cache;
 		canWrite = false;
 		canRead = false;
 		dataFile = file;
@@ -151,6 +158,8 @@ public abstract class FileObject {
 		 * Close Output Streams for enabling input.
 		 */
 		if (dos != null) {
+			cache.invalidate();
+			assert cache.getCache() == null : "Invalidated cache is still alive";
 			dos.flush();
 			dos.close();
 			dos = null;
@@ -211,27 +220,95 @@ public abstract class FileObject {
 			canRead = false;
 		}
 	}
+	
+	public List<SampledValue> readFully() throws IOException {
+		List<SampledValue> values = cache.getCache();
+		if (values != null)
+			return values;
+		values = readFullyInternal();
+		// store until next write access
+		cache.cache(Collections.unmodifiableList(values));
+		return values;
+	}
+	
+	public List<SampledValue> read(long start, long end) throws IOException {
+		if (start <= startTimeStamp && end >= getTimestampForLatestValue()) {
+			return readFully(); // caches values
+		}
+		final List<SampledValue> values = cache.getCache();
+		if (values != null) {
+			final List<SampledValue> copy = new ArrayList<>(values.size());
+			for (final SampledValue sv : values) {
+				final long t = sv.getTimestamp();
+				if (t < start)
+					continue;
+				if (t > end)
+					break;
+				copy.add(sv);
+			}
+			return copy;
+		}
+		return readInternal(start, end);
+	};
+
+
+	public int getDataSetCount() {
+		final List<SampledValue> values = cache.getCache();
+		if (values != null) {	
+			return values.size();
+		}
+		return getDataSetCountInternal();
+	};
+	
+	public int getDataSetCount(long start, long end) throws IOException {
+		final List<SampledValue> values = cache.getCache();
+		if (values != null) {
+			if (start <= startTimeStamp && !values.isEmpty()) {
+				long endTimeStamp = values.get(values.size()-1).getTimestamp();
+				if (end >= endTimeStamp) {
+					return values.size();
+				}
+			}
+			int cnt = 0;
+			for (final SampledValue sv : values) {
+				final long t = sv.getTimestamp();
+				if (t < start)
+					continue;
+				if (t > end)
+					break;
+				cnt++;
+			}
+			return cnt;
+		}
+		return getDataSetCountInternal(start, end);
+	};
+
+
+	public long getTimestampForLatestValue() {
+		final List<SampledValue> values = cache.getCache();
+		if (values != null && !values.isEmpty()) {
+			return values.get(values.size()-1).getTimestamp();
+		}
+		return getTimestampForLatestValueInternal();
+	};
 
 	public abstract void append(double value, long timestamp, byte flag) throws IOException;
 
-	public abstract long getTimestampForLatestValue();
+	protected abstract List<SampledValue> readInternal(long start, long end) throws IOException;
 
-	/**
-	 * Returns a List of Value Objects containing the measured Values between provided start and end timestamp
-	 * 
-	 * @param start
-	 * @param end
-	 * @throws IOException
-	 */
-
-	public abstract List<SampledValue> read(long start, long end) throws IOException;
-
-	public abstract List<SampledValue> readFully() throws IOException;
-
+	protected abstract List<SampledValue> readFullyInternal() throws IOException;
+	
 	public abstract SampledValue read(long timestamp) throws IOException;
 
 	public abstract SampledValue readNextValue(long timestamp) throws IOException;
-
+	
+	public abstract SampledValue readPreviousValue(long timestamp) throws IOException;
+	
+	protected abstract long getTimestampForLatestValueInternal();
+	
+	protected abstract int getDataSetCountInternal();
+	protected abstract int getDataSetCountInternal(long start, long end) throws IOException;
+	
 	public abstract long getStoringPeriod();
 
 	/**
@@ -243,6 +320,8 @@ public abstract class FileObject {
 		canRead = false;
 		canWrite = false;
 		if (dos != null) {
+			cache.invalidate();
+			assert cache.getCache() == null : "Invalidated cache is still alive";
 			dos.flush();
 			dos.close();
 			dos = null;
@@ -268,6 +347,8 @@ public abstract class FileObject {
 	 */
 	public void flush() throws IOException {
 		if (dos != null) {
+			cache.invalidate();
+			assert cache.getCache() == null : "Invalidated cache is still alive";
 			dos.flush();
 		}
 	}
@@ -279,24 +360,24 @@ public abstract class FileObject {
 		return startTimeStamp;
 	}
 
-	public static FileObject getFileObject(String fileName) throws IOException {
+	public static FileObject getFileObject(String fileName, RecordedDataCache cache) throws IOException {
 		if (fileName.startsWith("c")) {
-			return new ConstantIntervalFileObject(fileName);
+			return new ConstantIntervalFileObject(fileName, cache);
 		}
 		else if (fileName.startsWith("f")) {
-			return new FlexibleIntervalFileObject(fileName);
+			return new FlexibleIntervalFileObject(fileName, cache);
 		}
 		else {
 			throw new IOException("Invalid filename for SlotsDB-File");
 		}
 	}
 
-	public static FileObject getFileObject(File file) throws IOException {
+	public static FileObject getFileObject(File file, RecordedDataCache cache) throws IOException {
 		if (file.getName().startsWith("c")) {
-			return new ConstantIntervalFileObject(file);
+			return new ConstantIntervalFileObject(file, cache);
 		}
 		else if (file.getName().startsWith("f")) {
-			return new FlexibleIntervalFileObject(file);
+			return new FlexibleIntervalFileObject(file, cache);
 		}
 		else {
 			throw new IOException("Invalid file for SlotsDB-File. Invalid filename.");

@@ -52,12 +52,28 @@ public class CountDownTimer implements TimerListener {
 			timer.resume();
 	}
 	
+	/**If the timer is not running, starts the timer. Otherwise restarts the timer to generate the callback only
+	 * after the full interval specified for the timer
+	 */
+	public void restart() {
+		restart(timer.getTimingInterval());
+	}
 	public void restart(long countDownTime) {
 		if (!timer.isRunning()) {
 			timer.setTimingInterval(countDownTime);
 			timer.resume();
+		} else {
+			timer.stop();
+			timer.setTimingInterval(countDownTime);
+			timer.resume();
 		}
 	}
+	/*public void restart(long countDownTime) {
+		if (!timer.isRunning()) {
+			timer.setTimingInterval(countDownTime);
+			timer.resume();
+		}
+	}*/
 
 	/**
 	 * Stops the count-down.

@@ -59,23 +59,20 @@ public class EnvironmentCreater {
 		return instance;
 	}
 
-	public Resource createResource(String name, final String city,
-			final String country) {
+	public Resource createResource(String name, final String city, final String country) {
 
 		logger.info("create new resource with name: " + name);
 
 		RecordedDataConfiguration cfg = new RecordedDataConfiguration();
 		cfg.setStorageType(StorageType.ON_VALUE_CHANGED);
 
-		Room environment = appMan.getResourceManagement().createResource(name,
-				Room.class);
+		Room environment = appMan.getResourceManagement().createResource(name, Room.class);
 
 		environment.type().setValue(0);
 
 		environment.location().geographicLocation().create();
 
-		StringResource cityRes = environment.location().geographicLocation()
-				.addDecorator("city", StringResource.class);
+		StringResource cityRes = environment.location().geographicLocation().addDecorator("city", StringResource.class);
 
 		cityRes.setValue(city);
 
@@ -84,20 +81,18 @@ public class EnvironmentCreater {
 
 		countryRes.setValue(country);
 
-		TemperatureResource tempSens = environment.temperatureSensor()
-				.reading();
+		TemperatureResource tempSens = environment.temperatureSensor().reading();
 		tempSens.forecast().create();
 		tempSens.getHistoricalData().setConfiguration(cfg);
 
-		SolarIrradiationSensor irradSensorX = environment.addDecorator(
-				"solarIrradiationSensor", SolarIrradiationSensor.class);
+		SolarIrradiationSensor irradSensorX = environment.addDecorator("solarIrradiationSensor",
+				SolarIrradiationSensor.class);
 
 		irradSensorX.ratedValues().upperLimit().setValue(solarUpperLimit);
 
 		irradSensorX.ratedValues().lowerLimit().setValue(solarLowerLimit);
 
-		FloatResource humidity = environment.humiditySensor().reading()
-				.create();
+		FloatResource humidity = environment.humiditySensor().reading().create();
 
 		humidity.getHistoricalData().setConfiguration(cfg);
 
@@ -114,11 +109,11 @@ public class EnvironmentCreater {
 
 		Room environment = appMan.getResourceAccess().getResource(name);
 
-		map.put("country", environment.location().geographicLocation()
-				.getSubResource("country", StringResource.class).getValue());
+		map.put("country", environment.location().geographicLocation().getSubResource("country", StringResource.class)
+				.getValue());
 
-		map.put("city", environment.location().geographicLocation()
-				.getSubResource("city", StringResource.class).getValue());
+		map.put("city", environment.location().geographicLocation().getSubResource("city", StringResource.class)
+				.getValue());
 
 		return map;
 

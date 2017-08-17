@@ -10,7 +10,7 @@
   <parent>
   	<groupId>org.ogema.ref-impl</groupId>
   	<artifactId>ref-impl</artifactId>
-  	<version>2.1.0</version>
+  	<version>2.1.1</version>
   </parent>
   
   <properties>
@@ -21,7 +21,7 @@
   	<dependency>
   		<groupId>org.ogema.ref-impl</groupId>
   		<artifactId>hardware-manager</artifactId>
-  		<version>2.1.0</version>
+  		<version>2.1.1</version>
   		<type>bundle</type>
   	</dependency>
   </dependencies>
@@ -34,7 +34,11 @@
 	    <extensions>true</extensions>
 	    <configuration>
 	      <instructions>
-	        <Bundle-NativeCode>lib/linux-arm/libogemahwmanager.so; osname=linux; processor=arm,*</Bundle-NativeCode>
+	        <Bundle-NativeCode>
+	        	lib/linux-arm/libogemahwmanager.so; osname=linux; processor=arm,
+	        	lib/linux-x64/libogemahwmanager.so; osname=linux; processor=x86-64,
+	        	*
+	        </Bundle-NativeCode>
 	        <Bundle-Activator>org.ogema.hardwaremanager.rpi.Activator</Bundle-Activator>
 	      </instructions>
 	    </configuration>

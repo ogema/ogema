@@ -62,7 +62,7 @@ public class Activator implements Application {
 			modbusCoupler.prepareChannel(douts[i], 10000, sw);
 		}
 
-		Thread t = new Thread(new Runnable() {
+		new Thread(new Runnable() {
 
 			@Override
 			public void run() {
@@ -79,12 +79,10 @@ public class Activator implements Application {
 						index = 0;
 				}
 			}
-		});
-
-//		t.start();
-
+		})/* .start() */;
 	}
 
+	@SuppressWarnings("unchecked")
 	private void init750504Resources(ResourceAccess resAcc, ResourceManagement resMan) {
 		List<BooleanResource> douts;
 		digitalOuts = resAcc.getResource("DigitalOutputs_750504_I");
@@ -122,7 +120,7 @@ public class Activator implements Application {
 		}
 		douts = digitalOuts.getAllElements();
 		for (BooleanResource dout : douts) {
-			String name = dout.getName();
+			// String name = dout.getName();
 			outsMap.add(dout);
 		}
 	}

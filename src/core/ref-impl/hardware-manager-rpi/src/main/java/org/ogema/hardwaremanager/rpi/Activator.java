@@ -27,12 +27,13 @@ import org.osgi.framework.ServiceRegistration;
  * 
  */
 public class Activator implements BundleActivator {
+
 	private ServiceRegistration<NativeAccess> nativeAccessRegistration;
 	private NativeAccess nativeAccess;
 
 	@Override
 	public void start(BundleContext bcontext) throws Exception {
-		String osName = System.getProperty("os.name");
+		final String osName = System.getProperty("os.name");
 		if (osName.startsWith("Windows"))
 			return;
 		nativeAccess = new NativeAccessImpl();
@@ -43,5 +44,7 @@ public class Activator implements BundleActivator {
 	public void stop(BundleContext bcontext) throws Exception {
 		if (nativeAccessRegistration != null)
 			nativeAccessRegistration.unregister();
+		nativeAccessRegistration = null;
+		nativeAccess = null;
 	}
 }

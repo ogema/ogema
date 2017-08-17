@@ -17,27 +17,31 @@ package org.ogema.core.administration;
 
 import java.io.IOException;
 
+import javax.net.ssl.SSLContext;
+
 /**
  * Interface to the management of the credentials of users.
  */
 public interface CredentialStore {
 
 	/**
-	 * Create a user on a gateway
+	 * Create a user on a gateway. If only a gateway user name and password are provided, a local gateway user is
+	 * created, only. If the store user and password are provided as well (i.e. are not null), a connection to the
+	 * governing application store is opened, and a request for the registration of a new user is sent, which will be
+	 * connected to the local gateway user. <br>
+	 * If the user exists, the password is updated.
 	 * 
 	 * @param accountGW
 	 *            account name on gateway
 	 * @param passwordGW
 	 *            password on gateway
 	 * @param accountStore
-	 *            account name on appstore
+	 *            account name on appstore; may be null, in which case only a local gateway user is created/updated.
 	 * @param passwordStore
-	 *            password on appstore
+	 *            password on appstore; may be null, in which case only a local gateway user is created/updated.
 	 * @return true if a user was created
 	 * @throws IOException
 	 *             sign server not reachable
-	 * @throws IllegalArgumentException
-	 *             any of the parameters uri3 or email3 does not conform to the specified format
 	 * @throws RuntimeException
 	 *             Marketplace rejected the user
 	 */
@@ -85,4 +89,13 @@ public interface CredentialStore {
 	 *            the user name.
 	 */
 	public void logout(String usrName);
+
+	/**
+	 * Get the ID string of the gateway.
+	 * 
+	 * @return ID string
+	 */
+	public String getGWId();
+	
+	public SSLContext getDISSLContext();
 }

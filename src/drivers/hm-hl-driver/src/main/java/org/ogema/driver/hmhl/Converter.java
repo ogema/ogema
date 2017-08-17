@@ -159,26 +159,6 @@ public class Converter {
 		return x & 0x00000000ffffffffL;
 	}
 
-	public static String toDateFormat(long mseconds) {
-		long secondsInMilli = 1000;
-		long minutesInMilli = secondsInMilli * 60;
-		long hoursInMilli = minutesInMilli * 60;
-		long daysInMilli = hoursInMilli * 24;
-
-		long elapsedDays = mseconds / daysInMilli;
-		mseconds = mseconds % daysInMilli;
-
-		long elapsedHours = mseconds / hoursInMilli;
-		mseconds = mseconds % hoursInMilli;
-
-		long elapsedMinutes = mseconds / minutesInMilli;
-		mseconds = mseconds % minutesInMilli;
-
-		long elapsedSeconds = mseconds / secondsInMilli;
-
-		return new String(elapsedDays + " d " + elapsedHours + " h " + elapsedMinutes + " m " + elapsedSeconds + " s");
-	}
-
 	public static int toInt(long value) {
 		return ((int) (value & 0xffffffffL));
 	}

@@ -16,6 +16,7 @@
 package org.ogema.resourcemanager.impl.timeseries;
 
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
@@ -75,6 +76,11 @@ public class EmptyRecordedData implements RecordedDataStorage {
 	public SampledValue getNextValue(long time) {
 		return null;
 	}
+	
+	@Override
+	public SampledValue getPreviousValue(long time) {
+		return null;
+	}
 
 	@Override
 	public InterpolationMode getInterpolationMode() {
@@ -95,6 +101,35 @@ public class EmptyRecordedData implements RecordedDataStorage {
 	public String getPath() {
 		return null;
 	}
-	
-	
+
+	@Override
+	public boolean isEmpty() {
+		return true;
+	}
+
+	@Override
+	public boolean isEmpty(long startTime, long endTime) {
+		return true;
+	}
+
+	@Override
+	public int size() {
+		return 0;
+	}
+
+	@Override
+	public int size(long startTime, long endTime) {
+		return 0;
+	}
+
+	@Override
+	public Iterator<SampledValue> iterator() {
+		return Collections.emptyIterator();
+	}
+
+	@Override
+	public Iterator<SampledValue> iterator(long startTime, long endTime) {
+		return Collections.emptyIterator();
+	}
+
 }

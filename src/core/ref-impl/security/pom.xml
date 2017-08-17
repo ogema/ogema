@@ -11,7 +11,7 @@
 	<parent>
 		<groupId>org.ogema.ref-impl</groupId>
 		<artifactId>ref-impl</artifactId>
-		<version>2.1.0</version>
+		<version>2.1.1</version>
 	</parent>
 
 	<properties>
@@ -42,12 +42,14 @@
 				<extensions>true</extensions>
 				<configuration>
 					<instructions>
-<!-- 						<Export-Package>org.ogema.impl.security</Export-Package> -->
+						<!-- <Export-Package>org.ogema.impl.security</Export-Package> -->
 						<Import-Package>
-                            org.apache.felix.service.command;resolution:=optional,
-                            org.eclipse.jetty.servlets;resolution:=optional,
-                            *
-                        </Import-Package>
+							org.apache.felix.service.command;resolution:=optional;version="[${felix.service.command.version.min},${felix.service.command.version.max})",
+							org.eclipse.jetty.servlets;resolution:=optional,
+							org.ogema.base.security;resolution:=optional,
+							org.json;version="[${org.json.version.min},${org.json.version.max})",
+							*
+						</Import-Package>
 						<Embed-StripVersion>true</Embed-StripVersion>
 						<Embed-Dependency>user-rights-proxy</Embed-Dependency>
 					</instructions>
@@ -120,6 +122,11 @@
 			<artifactId>util</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.ogema.ref-impl</groupId>
+			<artifactId>ogema-security-manager</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
 			<groupId>org.apache.felix</groupId>
 			<artifactId>org.apache.felix.scr.annotations</artifactId>
 		</dependency>
@@ -130,7 +137,6 @@
 		<dependency>
 			<groupId>org.apache.felix</groupId>
 			<artifactId>org.apache.felix.gogo.runtime</artifactId>
-			<version>0.10.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.ogema.ref-impl</groupId>
@@ -142,10 +148,11 @@
 			<artifactId>org.apache.felix.http.api</artifactId>
 			<version>2.3.2</version>
 		</dependency>
-		<dependency>
-			<groupId>org.apache.felix</groupId>
+<!-- 	<dependency>
+			<groupId>org.ogema.external</groupId>
 			<artifactId>org.apache.felix.useradmin.filestore</artifactId>
 			<version>1.0.2</version>
 		</dependency>
+-->
 	</dependencies>
 </project>

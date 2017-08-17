@@ -23,6 +23,7 @@ import java.util.List;
 import org.ogema.tools.resourcemanipulator.ResourceManipulatorImpl;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.schedule.Schedule;
+import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.tools.resourcemanipulator.configurations.ScheduleSum;
 import org.ogema.tools.resourcemanipulator.model.ScheduleSumModel;
@@ -41,6 +42,9 @@ public class ScheduleSumImpl implements ScheduleSum {
 	private long m_delay;
 	private boolean m_deactivateEmtpySum;
 	private boolean m_activationControl;
+	private boolean m_incrementalUpdate;
+	private boolean m_ignoreGaps;
+	private boolean m_writeImmediately;
 
 	// Configuration this is connected to (null if not connected)
 	private ScheduleSumModel m_config;
@@ -55,6 +59,9 @@ public class ScheduleSumImpl implements ScheduleSum {
         m_delay = configResource.delay().getValue();
         m_deactivateEmtpySum = configResource.deactivateEmptySum().getValue();
         m_activationControl = configResource.activationControl().getValue();
+        m_incrementalUpdate = configResource.incrementalUpdate().getValue();
+        m_ignoreGaps = configResource.ignoreGaps().getValue();
+        m_writeImmediately = configResource.writeImmediately().getValue();
 		m_config = configResource;
 	}
 
@@ -66,6 +73,9 @@ public class ScheduleSumImpl implements ScheduleSum {
 		m_deactivateEmtpySum = false;
 		m_activationControl = false;
 		m_config = null;
+		m_incrementalUpdate = false;
+		m_ignoreGaps = false;
+		m_writeImmediately = false;
 	}
 
 	@Override
@@ -101,6 +111,10 @@ public class ScheduleSumImpl implements ScheduleSum {
 
 		m_config.inputs().create();
 		for (Schedule schedule : m_inputs) {
+			if (!schedule.exists()) {
+				schedule.create();
+				LoggerFactory.getLogger(ResourceManipulatorImpl.class).warn("Virtual resource passed to ScheduleSum configuration; creating it. {}",schedule);
+			}
 			m_config.inputs().add(schedule);
 		}
 		FloatResource resultBase = m_config.resultBase().create();
@@ -111,6 +125,9 @@ public class ScheduleSumImpl implements ScheduleSum {
 		m_config.deactivateEmptySum().setValue(m_deactivateEmtpySum);
 		m_config.activationControl().create();
 		m_config.activationControl().setValue(m_activationControl);
+		m_config.incrementalUpdate().<BooleanResource> create().setValue(m_incrementalUpdate);
+		m_config.ignoreGaps().<BooleanResource> create().setValue(m_ignoreGaps);
+		m_config.writeImmediately().<BooleanResource> create().setValue(m_writeImmediately);
 		m_config.activate(true);
 		return true;
 	}
@@ -181,6 +198,36 @@ public class ScheduleSumImpl implements ScheduleSum {
 	public void activate() {
 		if (m_config != null)
 			m_config.activate(true);
+	}
+
+	@Override
+	public void setIgnoreGaps(boolean ignoreGaps) {
+		m_ignoreGaps = ignoreGaps;
+	}
+
+	@Override
+	public boolean isIgnoreGaps() {
+		return m_ignoreGaps;
+	}
+	
+	@Override
+	public void setWaitForSchedules(boolean waitForSchedules) {
+		m_writeImmediately = !waitForSchedules;
+	}
+	
+	@Override
+	public boolean isWaitForSchedules() {
+		return !m_writeImmediately;
+	}
+
+	@Override
+	public void setIncrementalUpdate(boolean incremental) {
+		m_incrementalUpdate = incremental;
+	}
+
+	@Override
+	public boolean isIncrementalUpdateEnabled() {
+		return m_incrementalUpdate;
 	}
 
 }

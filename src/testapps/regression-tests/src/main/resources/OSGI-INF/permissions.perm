@@ -1,0 +1,25 @@
+# OGEMA standard permissions
+(org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.osgi.framework.ServicePermission "de.iwes.widgets.api.OgemaGuiService" "get")
+(org.osgi.framework.PackagePermission "org.ogema.tools.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.util.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.pattern.*" "import")
+(org.osgi.framework.PackagePermission "de.iwes.widgets.*" "import")
+(org.osgi.framework.PackagePermission "de.iwes.tools.*" "import")
+(org.osgi.framework.PackagePermission "de.iwes.util.*" "import")
+(org.osgi.framework.PackagePermission "org.slf4j" "import")
+(org.osgi.framework.PackagePermission "org.osgi.framework" "import")
+(org.osgi.framework.PackagePermission "org.ogema.tests.custommodel" "export")
+
+# resource permissions
+(org.ogema.accesscontrol.ResourcePermission "type=*" "read,write,addsub,create,activity,delete")
+#(org.ogema.accesscontrol.ResourcePermission "type=com.example.app.windowheatcontrol.config.WindowHeatControlConfig" "read,write,addsub,create,activity,delete")
+#(org.ogema.accesscontrol.ResourcePermission "type=org.ogema.model.devices.storage.ElectricityStorage" "read")
+#(org.ogema.accesscontrol.ResourcePermission "type=org.ogema.model.devices.buildingtechnology.Thermostat" "read")
+#(org.ogema.accesscontrol.ResourcePermission "type=org.ogema.model.sensors.DoorWindowSensor" "read")
+#(org.ogema.accesscontrol.ResourcePermission "type=org.ogema.model.locations.Room" "read")
+
+# custom types
+(org.osgi.framework.PackagePermission "com.example.app.windowheatcontrol.config" "exportonly")

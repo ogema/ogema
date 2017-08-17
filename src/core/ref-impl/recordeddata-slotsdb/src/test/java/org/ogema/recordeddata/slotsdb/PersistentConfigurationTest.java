@@ -15,9 +15,9 @@
  */
 package org.ogema.recordeddata.slotsdb;
 
+import java.io.IOException;
 import java.util.List;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -26,7 +26,7 @@ import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
 import org.ogema.recordeddata.DataRecorderException;
 import org.ogema.recordeddata.RecordedDataStorage;
 
-public class PersistentConfigurationTest extends SlotsDbTest {
+public class PersistentConfigurationTest extends DbTest {
 
 	private static final String TEST_ID_1 = "test_id_1";
 	private static final String TEST_ID_2 = "test_id_2";
@@ -36,18 +36,9 @@ public class PersistentConfigurationTest extends SlotsDbTest {
 	private static final long INTERVAL_2 = 2000;
 	private static final long INTERVAL_2_UPDATED = 5000;
 
-	@AfterClass
-	public static void tearDown() {
-		deleteTestFiles();
-	}
-
 	@BeforeClass
-	public static void setup() throws DataRecorderException {
+	public static void setup() throws DataRecorderException, IOException {
 
-		deleteTestFiles();
-
-		SlotsDb sdb = new SlotsDb();
-		sdb.activate(null, null);
 		RecordedDataConfiguration conf = new RecordedDataConfiguration();
 		conf.setFixedInterval(INTERVAL_1);
 		conf.setStorageType(StorageType.FIXED_INTERVAL);
@@ -61,12 +52,11 @@ public class PersistentConfigurationTest extends SlotsDbTest {
 
 	/**
 	 * Test behaviour with wrong arguments
+	 * @throws IOException 
 	 */
 	@Test
-	public void testGetAllRecordedDataStorageIDs() throws DataRecorderException {
+	public void testGetAllRecordedDataStorageIDs() throws DataRecorderException, IOException {
 
-		SlotsDb sdb = new SlotsDb();
-		sdb.activate(null, null);
 		List<String> ids = sdb.getAllRecordedDataStorageIDs();
 
 		if (ids.size() != 2) {
@@ -78,30 +68,24 @@ public class PersistentConfigurationTest extends SlotsDbTest {
 	}
 
 	@Test
-	public void testGetRecordedDataStorage() {
-		SlotsDb sdb = new SlotsDb();
-		sdb.activate(null, null);
+	public void testGetRecordedDataStorage() throws IOException {
 		RecordedDataStorage rds = sdb.getRecordedDataStorage(TEST_ID_1);
 		RecordedDataConfiguration rdc = rds.getConfiguration();
 		Assert.assertEquals(rdc.getFixedInterval(), INTERVAL_1);
 	}
 
 	@Test
-	public void testUpdateConfiguration() throws DataRecorderException {
+	public void testUpdateConfiguration() throws DataRecorderException, IOException, InterruptedException {
 		// update config
-		SlotsDb sdb = new SlotsDb();
-		sdb.activate(null, null);
 		RecordedDataStorage rds = sdb.getRecordedDataStorage(TEST_ID_2);
 		RecordedDataConfiguration rdc = rds.getConfiguration();
 		rdc.setFixedInterval(INTERVAL_2_UPDATED);
 		rds.update(rdc);
-		sdb = null;
 
 		//read back config
-		SlotsDb sdb2 = new SlotsDb();
-		sdb2.activate(null, null);
+		SlotsDb sdb2 = new SlotsDb(SlotsDb.DB_TEST_ROOT_FOLDER);
 		RecordedDataStorage rds2 = sdb2.getRecordedDataStorage(TEST_ID_2);
-		RecordedDataConfiguration rdc2 = rds2.getConfiguration();
+		RecordedDataConfiguration rdc2 = rds2.getConfiguration(); // NullPointer; maybe not flushed yet?
 		Assert.assertEquals(rdc2.getFixedInterval(), INTERVAL_2_UPDATED);
 	}
 

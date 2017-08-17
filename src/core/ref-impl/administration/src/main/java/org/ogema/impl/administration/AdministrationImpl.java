@@ -149,6 +149,7 @@ public class AdministrationImpl implements AdministrationManager {
 		List<String> users = accessMngr.getAllUsers();
 		for (String user : users) {
 			UserAccount acc = UserAccountImpl.createinstance(user, accessMngr.isNatural(user), pMan);
+			assert acc.getName() != null && acc.getName().equals(user) : "Invalid user account created for user " + user;
 			res.add(acc);
 		}
 		return res;

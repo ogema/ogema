@@ -4,7 +4,7 @@
     <parent>
         <artifactId>ref-impl</artifactId>
         <groupId>org.ogema.ref-impl</groupId>
-        <version>2.1.0</version>
+        <version>2.1.1</version>
     </parent>
     
     <artifactId>resource-manager</artifactId>
@@ -28,13 +28,14 @@
                 <configuration>
                     <instructions>
                         <Bundle-Activator>org.ogema.persistence.impl.mem.Activator</Bundle-Activator>
-                        <!-- FIXME -->
                         <Export-Package>
                             org.ogema.resourcemanager.impl,
-			    			org.ogema.persistence.impl.faketree
+                            org.ogema.persistence.impl.faketree
                         </Export-Package>
                         <Import-Package>org.objectweb.*;resolution:=optional,
                             com.fasterxml.jackson.annotation;resolution:=optional,
+                            com.google.common.cache;version="[${guava.version.min},${guava.version.max})",
+                            com.google.common.collect;version="[${guava.version.min},${guava.version.max})",
                             *</Import-Package>
                         <DynamicImport-Package>*</DynamicImport-Package>
                     </instructions>
@@ -131,7 +132,6 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>19.0</version>
         </dependency>
     </dependencies>
 </project>

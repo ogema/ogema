@@ -243,7 +243,7 @@ public class RemoteDevice {
 							peerReq = true;
 					}
 					else {
-						String test = new String(lstPart[1]);
+						String test = lstPart[1];
 						String[] chnLst = test.split("\\.");
 						for (String lchn : chnLst) {
 							if (lchn.contains(channel[2]))

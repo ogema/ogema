@@ -17,8 +17,12 @@ package org.ogema.resourcemanager.impl.model.simple;
 
 import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.simple.StringResource;
+import org.ogema.core.resourcemanager.AccessMode;
+import org.ogema.core.resourcemanager.ResourceAccessException;
+import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
+import org.ogema.resourcetree.SimpleResourceData;
 
 /**
  * 
@@ -40,14 +44,20 @@ public class DefaultStringResource extends SingleValueResourceBase implements St
 
 	@Override
 	public boolean setValue(String value) {
-		if (!exists() || !hasWriteAccess()) {
-			return false;
+		resMan.lockRead();
+		try {
+			final VirtualTreeElement el = getEl();
+			if (el.isVirtual() || getAccessModeInternal() == AccessMode.READ_ONLY) {
+				return false;
+			}
+			checkWritePermission();
+			final SimpleResourceData data = el.getData();
+			boolean changed = !value.equals(data.getString());
+			data.setString(value);
+			handleResourceUpdateInternal(changed);
+		} finally {
+			resMan.unlockRead();
 		}
-		checkWritePermission();
-		//FIXME null values?
-		boolean changed = !value.equals(getTreeElement().getData().getString());
-		getTreeElement().getData().setString(value);
-		handleResourceUpdate(changed);
 		return true;
 	}
 
@@ -59,6 +69,21 @@ public class DefaultStringResource extends SingleValueResourceBase implements St
 	@Override
 	public AbsoluteSchedule program() {
 		return getSubResource("program", AbsoluteSchedule.class);
+	}
+	
+	@Override
+	public String getAndSet(final String value) throws VirtualResourceException, SecurityException, ResourceAccessException {
+		if (!exists())
+			throw new VirtualResourceException("Resource " + path + " is virtual, cannot set value");
+		checkWriteAccess();
+		resMan.lockWrite(); 
+		try {
+			final String val = getValue();
+			setValue(value);
+			return val;
+		} finally {
+			resMan.unlockWrite();
+		}
 	}
 
 }

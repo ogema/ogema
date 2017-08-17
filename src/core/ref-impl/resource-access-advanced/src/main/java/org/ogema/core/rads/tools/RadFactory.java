@@ -84,7 +84,7 @@ public class RadFactory<T extends Resource, P extends ResourcePattern<T>> {
 		return result;
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static <M extends Resource> Class<M> getDemandedModel(Class<? extends ResourcePattern<M>> radClass) {
 		Type genericSupertype = radClass.getGenericSuperclass();
 		while (!(genericSupertype instanceof ParameterizedType)) {

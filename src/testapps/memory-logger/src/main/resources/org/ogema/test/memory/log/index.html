@@ -26,7 +26,7 @@
 
     <title>Memory check</title>
 	<script src="/ogema/jslib/jquery/jquery-1.11.1.min.js"></script>  <!-- requires ogema-js-bundle -->
-	<link href="/ogema/jslib/bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css"/> 
+	<link href="/ogema/jslib/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
   </head>
 
   <body>
@@ -35,7 +35,7 @@
 		<table class = "table table.striped">
 			<tr>
 				<td>
-					<p>Memory used:</p>	
+					<p>Memory used:</p>
 				</td>
 				<td>
 					<input type="text" id="memUsed" readonly/>MB
@@ -43,7 +43,7 @@
 			</tr>
 			<tr>
 				<td>
-					<p>Free memory:</p>	
+					<p>Free memory:</p>
 				</td>
 				<td>
 					<input type="text" id="memFree" readonly/>MB
@@ -51,7 +51,7 @@
 			</tr>
 			<tr>
 				<td>
-					<p>Total memory:</p>	
+					<p>Total memory:</p>
 				</td>
 				<td>
 					<input type="text" id="memTotal" readonly/>MB
@@ -59,7 +59,7 @@
 			</tr>
 			<tr>
 				<td>
-					<p>Maximum memory:</p>	
+					<p>Maximum memory:</p>
 				</td>
 				<td>
 					<input type="text" id="memMax" readonly/>MB
@@ -81,19 +81,18 @@
 				<td><input type="text" id="updateInterval" value="10" />s</td>
 			</tr>
 		</table>
-		
-	
+
+
 	</div>
 
 	<script>
-		console.log("Starting update script");
 		var debug;
-		var interval = 200; 
+		var interval = 200;
 		var tic = function() {
 			setTimeout(function() {
 				 $.ajax({
 			        type: "GET",
-			        url: "/ogema/servlet/memorycheckapp",
+			        url: "/ogema/servlet/memorycheckapp?user=" + otusr + "&pw=" + otpwd,
 			        contentType: "application/json"
 			    }).done(function (response) {
 			    	var result = JSON.parse(response);
@@ -104,7 +103,6 @@
 			    	var resNum = result.resNum;
 			    	var appRunTime = result.appRunTime;
 			    	var kBytesPerResource = result.kBytesPerResource;
-			    	console.log("Memory GET response received",response,interval);
 			    	debug = response;
 					$("#memUsed").val(memUsed);
 					$("#memFree").val(memFree);
@@ -122,11 +120,11 @@
 			    	}
 			    	tic();
 			    });
-					
+
 				}, interval);
 		}
 		tic();
-	
+
 	</script>
   </body>
 </html>

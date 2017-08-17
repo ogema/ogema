@@ -24,7 +24,10 @@ import org.ogema.core.timeseries.ReadOnlyTimeSeries;
  */
 public class BooleanValue implements Value {
 
-	private boolean value;
+	public final static BooleanValue TRUE = new BooleanValue(true);
+	public final static BooleanValue FALSE = new BooleanValue(false);
+	
+	private final boolean value;
 
 	public BooleanValue(boolean value) {
 		this.value = value;

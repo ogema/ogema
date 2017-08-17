@@ -59,8 +59,8 @@ public interface ResourceManipulator {
 
 	/**
 	 * Gets a list of all currently active rules that fit a certain configuration class.
-	 * Application of the rules can be stopped by calling the {@link ManipulatorConfiguration#stop()}
-	 * method. Rules that are not applied are removed from the system and will 
+	 * Application of the rules can be stopped by calling the {@link ManipulatorConfiguration#deactivate()}
+	 * or {@link ManipulatorConfiguration#remove()} method. Rules that are not applied are removed from the system and will 
 	 * not show up in subsequent calls of this methods. Note that applications are
 	 * only given access to rules that they created themselves.
 	 * @param <T> type of the rule to look for.

@@ -18,7 +18,7 @@ package org.ogema.core.timeseries;
 /**
  * Possible settings for the interpretation of a schedule, i.e. how a set of pairs of time and value {(t,x)} is
  * interpreted. Defines if and how values for times are calculated, for which no timestamp explicitly exists (i.e. how
- * the values are interpolated).
+ * the values are interpolated). The default interpolation mode is NONE.
  */
 public enum InterpolationMode {
 	/**

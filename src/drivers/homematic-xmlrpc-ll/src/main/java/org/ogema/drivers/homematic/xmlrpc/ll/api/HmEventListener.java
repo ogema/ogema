@@ -16,9 +16,13 @@
 package org.ogema.drivers.homematic.xmlrpc.ll.api;
 
 import java.util.List;
+import org.ogema.drivers.homematic.xmlrpc.ll.HomeMaticService;
 
 /**
- *
+ * Receives all {@link HmEvent}s delivered to a {@link HomeMaticService}.
+ * 
+ * @see HomeMaticService#addEventListener
+ * 
  * @author jlapp
  */
 public interface HmEventListener {

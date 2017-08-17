@@ -42,7 +42,7 @@ public class UsbConnection implements IUsbConnection {
 	private KeepAlive keepAlive;
 	private Thread keepAliveThread;
 	private Context context; // The LibUSB Driver Context
-	private EventHandlingThread usbThread = new EventHandlingThread();
+	private EventHandlingThread usbThread;
 	private final TransferCallback messageReceived;
 	private DeviceHandle handle;
 
@@ -64,7 +64,7 @@ public class UsbConnection implements IUsbConnection {
 					inputEventLock.notify();
 				}
 				logger.debug("Answer from USB:");
-				logger.debug(Converter.dumpHexString(puffer));
+				logger.trace(Converter.dumpHexString(puffer));
 				LibUsb.freeTransfer(transfer);
 				receive();
 			}
@@ -92,10 +92,13 @@ public class UsbConnection implements IUsbConnection {
 			for (Device device : list) {
 				DeviceDescriptor descriptor = new DeviceDescriptor();
 				result = LibUsb.getDeviceDescriptor(device, descriptor);
+				logger.debug(String.format("Product: %h, Vendor: %h", descriptor.idProduct(), descriptor.idVendor()));
 				if (result != LibUsb.SUCCESS)
 					throw new LibUsbException("Unable to read device descriptor", result);
-				if (descriptor.idVendor() == vendorId && descriptor.idProduct() == productId)
+				if (descriptor.idVendor() == vendorId && descriptor.idProduct() == productId) {
+					logger.debug("Homematic coordinator device found.");
 					return device;
+				}
 			}
 		} finally {
 			// Ensure the allocated device list is freed
@@ -103,6 +106,7 @@ public class UsbConnection implements IUsbConnection {
 		}
 
 		// Device not found
+		logger.debug("Homematic coordinator device not found.");
 		return null;
 	}
 
@@ -127,11 +131,7 @@ public class UsbConnection implements IUsbConnection {
 			throw new LibUsbException("Unable to send data", result);
 		}
 		logger.debug("Sending to USB: ");
-		logger.debug(Converter.dumpHexString(data));
-
-		// long timeStamp = System.currentTimeMillis();
-		// System.out.print("send: ");
-		// System.out.println(timeStamp);
+		logger.trace(Converter.dumpHexString(data));
 	}
 
 	private void initiate() {
@@ -153,9 +153,15 @@ public class UsbConnection implements IUsbConnection {
 	}
 
 	public boolean connect() {
-		// Open test device
-		// This is very straight through, maybe TODO: more dynamic
-		handle = LibUsb.openDeviceWithVidPid(context, Constants.VENDOR_ID, Constants.PRODUCT_ID);
+		// This is very straight through, maybe TODO: more dynamic by using of configurable properties for product and
+		// vendor id's
+		Device dev = findDevice(Constants.VENDOR_ID, Constants.PRODUCT_ID);
+		if (dev != null) {
+			handle = new DeviceHandle();
+			int result = LibUsb.open(dev, handle);
+			if (result != LibUsb.SUCCESS)
+				throw new LibUsbException("Unable to open USB device", result);
+		}
 		if (handle == null) {
 			logger.debug("The coordinator hardware seems not to be connected. Please plug your hardware in.");
 			return false;
@@ -164,6 +170,7 @@ public class UsbConnection implements IUsbConnection {
 			int r = LibUsb.detachKernelDriver(handle, Constants.INTERFACE);
 			if (r != LibUsb.SUCCESS && r != LibUsb.ERROR_NOT_SUPPORTED && r != LibUsb.ERROR_NOT_FOUND)
 				throw new LibUsbException("Unable to detach kernel driver", r);
+			usbThread = new EventHandlingThread();
 			usbThread.setName("homematic-lld-usbThread");
 			usbThread.start();
 			// Claim the interface

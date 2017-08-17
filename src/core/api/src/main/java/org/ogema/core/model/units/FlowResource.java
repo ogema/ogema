@@ -45,4 +45,18 @@ public interface FlowResource extends PhysicalUnitResource {
 	 */
 	@Override
 	PhysicalUnit getUnit();
+
+	/**
+	 * Sets the value in m³/h. The value stored in the resource is converted to m³/s.
+	 * 
+	 * @see FlowResource#getCubicMeterPerHour()
+	 */
+	boolean setCubicMeterPerHour(float value);
+
+	/**
+	 * Get the current flux value in m³/h.
+	 * 
+	 * @see FlowResource#setCubicMeterPerHour(float)
+	 */
+	float getCubicMeterPerHour();
 }

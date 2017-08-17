@@ -15,6 +15,7 @@
  */
 package org.ogema.core.timeseries;
 
+import java.util.Iterator;
 import java.util.List;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
@@ -46,12 +47,26 @@ public interface ReadOnlyTimeSeries {
 	/**
 	 * Gets the first entry in the schedule for which {@code timestamp >= time}. Since this method only works against the
 	 * defined entries its result does not depend on the interpolation mode.
+	 * <br>
+	 * In order to retrieve the first value in the schedule, pass {@value Long#MIN_VALUE} as argument.
 	 * 
 	 * @param time
 	 *            Minimum time for the schedule entry.
 	 * @return Gets a copy of the schedule entry. Returns null if no schedule entry satisfies the time constraint.
 	 */
 	SampledValue getNextValue(long time);
+	
+	/**
+	 * Gets the first entry in the schedule for which {@code timestamp <= time}. Since this method only works against the
+	 * defined entries its result does not depend on the interpolation mode.
+	 * <br>
+	 * In order to retrieve the last value in the schedule, pass {@value Long#MAX_VALUE} as argument.
+	 * 
+	 * @param time
+	 *            Maximum time for the schedule entry.
+	 * @return Gets a copy of the schedule entry. Returns null if no schedule entry satisfies the time constraint.
+	 */
+	SampledValue getPreviousValue(long time);
 
 	/**
 	 * Gets all values (time series) from startTime. 
@@ -69,7 +84,7 @@ public interface ReadOnlyTimeSeries {
 	 *            Time of the first value in the time series in ms since epoche. inclusive
 	 * @param endTime
 	 *            Time of the last value in the time series in ms since epoche. exclusive
-	 * @return A List of value objects or an empty list if now matching object have been found.
+	 * @return A List of value objects or an empty list if no matching objects have been found.
 	 */
 	List<SampledValue> getValues(long startTime, long endTime);
 
@@ -79,6 +94,51 @@ public interface ReadOnlyTimeSeries {
 	 * @return returns the current interpolation mode set for the time series.
 	 */
 	InterpolationMode getInterpolationMode();
+	
+	/**
+	 * Returns true if and only if this time series contains no points.
+	 * @return
+	 */
+	boolean isEmpty();
+	
+	/**
+	 * Return true if and only if this time series contains no points in the specified 
+	 * interval (both time stamps included)
+	 * @param startTime	
+	 * @param endTime
+	 * @return
+	 */
+	boolean isEmpty(long startTime, long endTime);
+	
+	/**
+	 * Returns the number of data points in the time series.
+	 */
+	int size();
+	
+	/**
+	 * Returns the number of data points within the specified interval (both time stamps
+	 * included)
+	 * @param startTime
+	 * @param endTime
+	 * @return
+	 */
+	int size(long startTime, long endTime);
+	
+	/**
+	 * Get an iterator over all points in the time series
+	 * @return
+	 */
+	Iterator<SampledValue> iterator();
+	
+	/**
+	 * Get an iterator over all points in the requested interval
+	 * @param startTime 
+	 * 			Start time of the interval. Inclusive. 
+	 * @param endTime 
+	 * 			End time of the interval. Inclusive.
+	 * @return
+	 */
+	Iterator<SampledValue> iterator(long startTime, long endTime);
 
 	/**
 	 * Get time of last write operation into time series.
@@ -89,8 +149,9 @@ public interface ReadOnlyTimeSeries {
 	 * schedules), return null.
 	 * @deprecated Only schedules can sensibly support this. For getting the time
 	 * of the last write entry into a schedule, use {@link ValueResource#getLastUpdateTime() }, instead.
+	 * If you want to access the entry of the schedule with the latest time stamp, use
+	 * getPreviousValue(Long.MAX_VALUE).
 	 */
 	@Deprecated
 	Long getTimeOfLatestEntry();
-
 }

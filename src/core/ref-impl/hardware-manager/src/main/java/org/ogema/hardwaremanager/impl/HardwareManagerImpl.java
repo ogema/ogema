@@ -15,23 +15,45 @@
  */
 package org.ogema.hardwaremanager.impl;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import org.apache.felix.scr.annotations.Activate;
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.ReferenceCardinality;
+import org.apache.felix.scr.annotations.ReferencePolicy;
+import org.apache.felix.scr.annotations.ReferencePolicyOption;
+import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.hardwaremanager.HardwareDescriptor;
 import org.ogema.core.hardwaremanager.HardwareListener;
 import org.ogema.core.hardwaremanager.HardwareManager;
+import org.ogema.core.hardwaremanager.UsbHardwareDescriptor;
 import org.ogema.hardwaremanager.api.Container;
 import org.ogema.hardwaremanager.api.NativeAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Component(immediate=true)
+@Service(HardwareManager.class)
+// TODO issue listener callbacks in separate threads -> avoid blocking the main thread
 public class HardwareManagerImpl implements HardwareManager, Runnable {
+	
+	/**
+	 * Do not access this directly, use {@link #getNativeAccess()} instead, which
+	 * never returns null.
+	 */
+	@Reference(cardinality=ReferenceCardinality.OPTIONAL_UNARY, policy=ReferencePolicy.STATIC, policyOption=ReferencePolicyOption.GREEDY)
+	private volatile NativeAccess nativeAccess;
 
 	/**
 	 * Logger instance
@@ -41,57 +63,68 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 	/**
 	 * Event thread
 	 */
-	private final Thread thread;
+	private volatile Thread thread;
 
 	/**
 	 * Map unique id strings to the HardwareDescriptors
 	 */
-	private final Map<String, HardwareDescriptorImpl> devices;
+	private final Map<String, HardwareDescriptorImpl> devices = new HashMap<>();
 
-	private final Collection<HardwareListener> listeners;
-
-	private final NativeAccess nativeAccess;
-
-	/**
-	 * if set, the event thread exits
-	 */
-	private volatile boolean exit;
-
-	public HardwareManagerImpl(NativeAccess nativeAccess) {
-		devices = new HashMap<String, HardwareDescriptorImpl>();
-		listeners = Collections.synchronizedSet(new HashSet<HardwareListener>());
-
+	private final Collection<HardwareListener> listeners= Collections.synchronizedSet(new HashSet<HardwareListener>());
+	
+	public HardwareManagerImpl() {
+	}
+	
+	// just for the tests
+	HardwareManagerImpl(NativeAccess nativeAccess) {
 		this.nativeAccess = nativeAccess;
+		activate();
+	}
 
+	@Activate
+	public void activate() {
+
+		final NativeAccess nativeAccess = getNativeAccess();
 		// get initial connected hardware
-		Container[] containers = nativeAccess.getHandles();
+		final Container[] containers = nativeAccess.getHandles();
 
 		if (null == containers) {
 			logger.warn("nativeAccess.getHandles() == null. No initial devices detected.");
 		}
-		else
-			for (Container container : containers) {
-				HardwareDescriptorImpl descriptor;
-
-				descriptor = HardwareDescriptorImpl.newInstance(nativeAccess, container.handle, container.getType());
-				devices.put(descriptor.getIdentifier(), descriptor);
+		else {
+			synchronized (devices) {
+				for (Container container : containers) {
+					HardwareDescriptorImpl descriptor;
+					descriptor = HardwareDescriptorImpl.newInstance(nativeAccess, container.handle, container.getType());
+					devices.put(descriptor.getIdentifier(), descriptor);
+				}
 			}
-
+		}
 		logger.debug("Starting event thread.");
 		thread = new Thread(this, "OGEMA HardwareManager event thread");
 		thread.start();
 	}
 
+	@Deactivate
 	public void exit() {
-		exit = true;
+		if (thread.isAlive()) {
+			thread.interrupt();
+		}
+		NativeAccess nativeAccess = getNativeAccess();
 		nativeAccess.unblock();
 		try {
 			thread.join(2000);
 		} catch (InterruptedException e) {
-			logger.error("thread.join() was interrupted.", e);
+			logger.warn("thread.join() was interrupted.", e);
+			Thread.currentThread().interrupt();
 		}
 		if (thread.isAlive())
 			logger.error("event thread is still alive after timeout.");
+		synchronized (devices) {
+			devices.clear();
+		}
+		listeners.clear();
+		thread = null;
 	}
 
 	@Override
@@ -140,19 +173,26 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 	@Override
 	public void run() {
 		Container container = new Container();
-
-		while (!exit) {
+		NativeAccess nativeAccess;
+		while (!Thread.interrupted()) {
+			nativeAccess = getNativeAccess();
 			container = nativeAccess.getEvent(container);
-
+			if (container == null) {
+				logger.warn("Got a null container from native access {}",nativeAccess);
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
+				continue;
+			}
 			switch (container.event) {
 			case Container.EVENT_NONE:
 				break;
-			case Container.EVENT_ADD: {
+			case Container.EVENT_ADD:
 				HardwareDescriptorImpl descriptor;
 				HardwareDescriptorImpl old;
-
 				descriptor = HardwareDescriptorImpl.newInstance(nativeAccess, container.handle, container.getType());
-
 				synchronized (devices) {
 					old = devices.put(descriptor.getIdentifier(), descriptor);
 				}
@@ -163,7 +203,6 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 				}
 
 				callListenersAdded(descriptor);
-			}
 				break;
 			case Container.EVENT_REMOVE:
 				// the native method returns the native handle.
@@ -175,15 +214,17 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 				// No need to synchronize here, because devices is only
 				// modified by the event thread itself, and searching does not
 				// modify devices.
-				for (HardwareDescriptorImpl descriptor : devices.values()) {
-					// we found our handle
-					if (descriptor.getHandle().equals(container.handle)) {
-						synchronized (devices) {
-							devices.remove(descriptor.getIdentifier());
+				synchronized (devices) {
+					Iterator<HardwareDescriptorImpl> it = devices.values().iterator();
+					while (it.hasNext()) {
+						descriptor = it.next();
+						// we found our handle
+						if (descriptor.getHandle().equals(container.handle)) {
+							it.remove();
+							descriptor.disconnected();
+							callListenersRemoved(descriptor);
+							break;
 						}
-						descriptor.disconnected();
-						callListenersRemoved(descriptor);
-						break;
 					}
 				}
 				break;
@@ -231,5 +272,50 @@ public class HardwareManagerImpl implements HardwareManager, Runnable {
 				logger.warn("A HardwareListener threw an Exception.", t);
 			}
 		}
+	}
+	
+	@Override
+	public String getPortName(final String portNameProp, String descriptorRegEx, HardwareListener hwListener) {
+		String portName = AccessController.doPrivileged(new PrivilegedAction<String>() {
+
+			@Override
+			public String run() {
+				return System.getProperty(portNameProp);
+			}
+		});
+		if (portName == null) {
+			// String hardwareDesriptors = System.getProperty("org.ogema.apps.xyplotter.hardware-descriptor",
+			// ".+:1a86:7523:");
+			logger.info(String.format(
+					"No device file specified on the command line. The Hardware descriptor %s is used instead.",
+					descriptorRegEx));
+			Collection<HardwareDescriptor> descriptors = getHardwareDescriptors(descriptorRegEx);
+			// logger.info(
+			// String.format("Portname via hardware descriptor: %s.%s", hardwareDesriptors, descriptors.size()));
+			for (HardwareDescriptor descr : descriptors) {
+				portName = ((UsbHardwareDescriptor) descr).getPortName();
+				if (portName != null) {
+					break;
+				}
+			}
+		}
+		logger.info(String.format("Port name detected %s", portName));
+		if (portName == null && hwListener != null)
+			addListener(hwListener);
+		return portName;
+	}
+
+	
+	private final static DummyNativeAccess dummy = new DummyNativeAccess();
+	
+	/**
+	 * Never returns null
+	 * @return
+	 */
+	NativeAccess getNativeAccess() {
+		NativeAccess na = nativeAccess;
+		if (na == null)
+			na = dummy;
+		return na;
 	}
 }

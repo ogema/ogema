@@ -4,7 +4,7 @@
     <parent>
         <artifactId>ogema-drivers</artifactId>
         <groupId>org.ogema.drivers</groupId>
-        <version>2.1.0</version>
+        <version>2.1.1</version>
     </parent>
 
     <artifactId>xbee</artifactId>
@@ -35,6 +35,11 @@
                             org.ogema.driver.xbee.manager,
                             org.ogema.driver.xbee.manager.zcl
                         </Export-Package>
+                        <Import-Package>
+                            org.apache.felix.service.command;resolution:=optional;version="[${felix.service.command.version.min},${felix.service.command.version.max})",
+                            org.json;version="[${org.json.version.min},${org.json.version.max})",
+                            *
+                        </Import-Package>
                     </instructions>
                 </configuration>
             </plugin>
@@ -66,7 +71,7 @@
         <dependency>
             <groupId>org.ogema.apps</groupId>
             <artifactId>device-configurator</artifactId>
-            <version>2.1.0</version>
+            <version>2.1.1</version>
         </dependency>
         <dependency>
             <groupId>org.ogema.core</groupId>
@@ -75,7 +80,6 @@
         <dependency>
             <groupId>org.apache.felix</groupId>
             <artifactId>org.apache.felix.gogo.runtime</artifactId>
-            <version>0.10.0</version>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>

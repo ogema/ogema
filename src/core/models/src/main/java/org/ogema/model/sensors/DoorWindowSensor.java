@@ -15,10 +15,21 @@
  */
 package org.ogema.model.sensors;
 
+import org.ogema.core.model.ModelModifiers.NonPersistent;
+import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.model.sensors.GenericBinarySensor;
 
 public interface DoorWindowSensor extends GenericBinarySensor {
 
 	GenericBinarySensor alarm();
+	
+	/**
+	 * Values:<br>
+	 *      true: open<br>
+	 *      false: closed
+	 */
+	@NonPersistent
+	@Override
+	BooleanResource reading();
 	
 }

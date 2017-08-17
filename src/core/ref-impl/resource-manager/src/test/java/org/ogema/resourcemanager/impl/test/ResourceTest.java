@@ -22,7 +22,9 @@ import java.util.Set;
 
 import static org.junit.Assert.*;
 
+import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ValueResource;
@@ -30,6 +32,8 @@ import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.StringResource;
+import org.ogema.core.model.units.PowerResource;
+import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceException;
@@ -47,8 +51,7 @@ import org.ogema.model.metering.ElectricityMeter;
 import org.ogema.model.prototypes.PhysicalElement;
 import org.ogema.model.ranges.BinaryRange;
 import org.ogema.model.sensors.StateOfChargeSensor;
-import org.ops4j.pax.exam.ProbeBuilder;
-import org.ops4j.pax.exam.TestProbeBuilder;
+import org.ogema.resourcemanager.impl.test.types.TypeTestResource;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 
@@ -64,11 +67,6 @@ public class ResourceTest extends OsgiTestBase {
 	@Before
 	@Override
 	public void doBefore() {
-	}
-
-	@ProbeBuilder
-	public TestProbeBuilder customize(TestProbeBuilder builder) {
-		return builder;
 	}
 
 	@Test
@@ -405,7 +403,7 @@ public class ResourceTest extends OsgiTestBase {
         elSwitch.ratedValues().lowerLimit().setAsReference(elSwitch2.ratedValues().lowerLimit().create());
         assertEquals(expectedResources, new HashSet<>(elSwitch.getDirectSubResources(true)));
         
-        elSwitch.ratedValues().addDecorator("bar", elSwitch2.heatCapacity().create());        
+        elSwitch.ratedValues().addDecorator("bar", (Resource) elSwitch2.heatCapacity().create());        
         assertEquals(expectedResources, new HashSet<>(elSwitch.getDirectSubResources(true)));
     }
 
@@ -516,5 +514,101 @@ public class ResourceTest extends OsgiTestBase {
         ElectricityStorage battery = resMan.createResource(newResourceName(), ElectricityStorage.class);
         battery.addDecorator("4711", battery);
     }
+    
+    @Test
+    public void virtualOptionalElementTypeCanBeFurtherRestricted() {
+    	final TypeTestResource test = resMan.createResource(newResourceName(), TypeTestResource.class);
+    	final ValueResource val = test.value();
+    	FloatResource valueAsFloat = test.getSubResource(val.getName(), FloatResource.class);
+    	PowerResource valueAsPower = test.getSubResource(val.getName(), PowerResource.class);
+    	ResourceAssertions.assertLocationsEqual(valueAsFloat, val);
+    	ResourceAssertions.assertLocationsEqual(valueAsFloat, valueAsPower);
+    	Assert.assertEquals(PowerResource.class, valueAsPower.getResourceType());
+    	test.delete();
+    }
+    
+    @Test
+    public void virtualOptionalElementTypeCanBeFurtherRestricted2() {
+    	final TypeTestResource test = resMan.createResource(newResourceName(), TypeTestResource.class);
+    	final ValueResource val = test.value();
+    	FloatResource valueAsFloat = test.addDecorator(val.getName(), FloatResource.class);
+    	valueAsFloat.delete(); // if we did not delete the resource, the next line should throw an exception
+    	PowerResource valueAsPower = test.addDecorator(val.getName(), PowerResource.class);
+    	ResourceAssertions.assertLocationsEqual(valueAsFloat, val);
+    	ResourceAssertions.assertLocationsEqual(valueAsFloat, valueAsPower);
+    	Assert.assertEquals(PowerResource.class, valueAsPower.getResourceType());
+    	test.delete();
+    }
+    
+    @Test
+    public void virtualOptionalElementTypeCanBeFurtherRestricted3() {
+    	final TypeTestResource test = resMan.createResource(newResourceName(), TypeTestResource.class);
+    	final ValueResource val = test.value();
+    	FloatResource valueAsFloat = test.getSubResource(val.getName(), FloatResource.class).create();
+    	Assert.assertEquals(FloatResource.class, valueAsFloat.getResourceType());
+    	ResourceAssertions.assertLocationsEqual(val, valueAsFloat);
+    	valueAsFloat.delete();
+    	PowerResource valueAsPower = test.addDecorator(val.getName(), PowerResource.class);
+    	ResourceAssertions.assertLocationsEqual(valueAsFloat, valueAsPower);
+    	Assert.assertEquals(PowerResource.class, valueAsPower.getResourceType());
+    	test.delete();
+    }
+       
+    @Test
+    public void virtualDecoratorTypeCanBeFurtherRestricted() {
+    	final TypeTestResource test = resMan.createResource(newResourceName(), TypeTestResource.class);
+    	FloatResource valueAsFloat = test.getSubResource("value2", FloatResource.class);
+    	PowerResource valueAsPower = test.getSubResource("value2", PowerResource.class);
+    	ResourceAssertions.assertLocationsEqual(valueAsFloat, valueAsPower);
+    	Assert.assertEquals(PowerResource.class, valueAsPower.getResourceType());
+    	test.delete();
+    }
+    
+    @Test
+    public void virtualDecoratorTypeCanBeFurtherRestricted2() {
+    	final TypeTestResource test = resMan.createResource(newResourceName(), TypeTestResource.class);
+    	FloatResource valueAsFloat = test.addDecorator("value2", FloatResource.class);
+    	valueAsFloat.delete();
+    	PowerResource valueAsPower = test.addDecorator("value2", PowerResource.class);
+    	ResourceAssertions.assertLocationsEqual(valueAsFloat, valueAsPower);
+    	Assert.assertEquals(PowerResource.class, valueAsPower.getResourceType());
+    	test.delete();
+    }
+    
+    // to be discussed... maybe this should be possible?
+    @Test(expected=NoSuchResourceException.class) 
+    public void virtualResourceCannotBeRestrictedToIncompatibleType() {
+    	final TypeTestResource test = resMan.createResource(newResourceName(), TypeTestResource.class);
+    	final ValueResource val = test.value();
+    	PowerResource valueAsPower = test.getSubResource(val.getName(), PowerResource.class);
+    	TemperatureResource valueAsTemp = test.getSubResource(val.getName(), TemperatureResource.class);
+    	ResourceAssertions.assertLocationsEqual(valueAsTemp, valueAsPower);
+    	test.delete();
+    }
+    
+    // to be discussed... maybe this should be possible?
+    @Test(expected=ResourceAlreadyExistsException.class) 
+    public void typeOfExistingResourceCannotBeFurtherRestricted() {
+    	final TypeTestResource test = resMan.createResource(newResourceName(), TypeTestResource.class);
+    	final ValueResource val = test.value();
+    	FloatResource valueAsPower = test.addDecorator(val.getName(), FloatResource.class);
+    	TemperatureResource valueAsTemp = test.addDecorator(val.getName(), TemperatureResource.class);
+    	ResourceAssertions.assertLocationsEqual(valueAsTemp, valueAsPower);
+    	test.delete();
+    }
+
+    // tbd: this is a nice-to-have feature - if the virtual resource is no longer referenced,
+    // it would be ok to change its type to an incompatible one... 
+    @Ignore
+    @Test
+    public void unreachableVirtualResourceOfIncompatibleTypeCanBeOverwritten() {
+    	final TypeTestResource test = resMan.createResource(newResourceName(), TypeTestResource.class);
+    	test.getSubResource("value", PowerResource.class);
+    	// now the PowerResource is no longer referenced, and can be overwritten
+    	TemperatureResource valueAsTemp = test.getSubResource("value", TemperatureResource.class); 
+    	ResourceAssertions.assertLocationsEqual(valueAsTemp, test.value());
+    	test.delete();
+    }
+    
     
 }

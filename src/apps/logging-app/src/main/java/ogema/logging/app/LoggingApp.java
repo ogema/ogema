@@ -27,10 +27,7 @@ import org.ogema.core.resourcemanager.ResourceManagement;
 @Service(Application.class)
 public class LoggingApp implements Application {
 
-	protected OgemaLogger logger;
 	protected ApplicationManager am;
-	protected ResourceManagement rm;
-	protected ResourceAccess ra;
 
 	private String webResourceBrowserPath;
 	private String servletPath;
@@ -38,11 +35,8 @@ public class LoggingApp implements Application {
 	@Override
 	public void start(ApplicationManager appManager) {
 		this.am = appManager;
-		this.logger = appManager.getLogger();
-		this.rm = appManager.getResourceManagement();
-		this.ra = appManager.getResourceAccess();
 
-		logger.debug("{} started", getClass().getName());
+		am.getLogger().debug("{} started", getClass().getName());
 		String webResourcePackage = "ogema.logging.app";
 		webResourcePackage = webResourcePackage.replace(".", "/");
 
@@ -63,8 +57,11 @@ public class LoggingApp implements Application {
 
 	@Override
 	public void stop(AppStopReason reason) {
-		am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
-		am.getWebAccessManager().unregisterWebResource(servletPath);
+		if (am != null) {
+			am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
+			am.getWebAccessManager().unregisterWebResource(servletPath);
+		}
+		am = null;
 	}
 
 }

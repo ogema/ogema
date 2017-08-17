@@ -61,7 +61,7 @@ public class DynamicProxyResource extends ResourceBase implements InvocationHand
 			throw new UnsupportedOperationException("cannot handle method on dynamic proxy: "
 					+ method.getDeclaringClass().getCanonicalName() + "." + method.getName() + "(...)");
 		} catch (InvocationTargetException ex) {
-			resMan.getApplicationManager().reportException(ex.getCause());
+//			resMan.getApplicationManager().reportException(ex.getCause());
 			throw ex.getCause();
 		}
 	}

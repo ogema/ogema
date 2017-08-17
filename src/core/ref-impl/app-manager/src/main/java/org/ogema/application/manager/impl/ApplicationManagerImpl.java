@@ -34,6 +34,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.ogema.accesscontrol.Util;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.administration.FrameworkClock;
 import org.ogema.core.administration.RegisteredTimer;
@@ -55,13 +56,14 @@ import org.ogema.core.security.WebAccessManager;
 import org.ogema.core.tools.SerializationManager;
 import org.ogema.patternaccess.AdministrationPatternAccess;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
+import org.ogema.timer.TimerRemovedListener;
 import org.ogema.timer.TimerScheduler;
 import org.ogema.tools.impl.SerializationManagerImpl;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ApplicationManagerImpl implements ApplicationManager {
+public class ApplicationManagerImpl implements ApplicationManager, TimerRemovedListener {
 
 	private static final long serialVersionUID = 11534545646813546L;
 	final TimerScheduler scheduler;
@@ -82,7 +84,7 @@ public class ApplicationManagerImpl implements ApplicationManager {
 	private final AppID appID;
 	private final List<ExceptionListener> exceptionListeners = new ArrayList<>();
 
-	BundleContext bContext;
+	final BundleContext bContext;
 
 	public ApplicationManagerImpl(Application app, ApplicationTracker tracker, AppID id) {
 		this.drainWorkQueueTask = new Callable<Void>() {
@@ -121,6 +123,7 @@ public class ApplicationManagerImpl implements ApplicationManager {
 		this.application = app;
 		this.scheduler = sched;
 		this.clock = clock;
+		this.bContext = null;
 		workQueue = new ConcurrentLinkedQueue<>();
 		this.executor = Executors.newSingleThreadExecutor(tfac = new ApplicationThreadFactory(application));
 		logger = LoggerFactory.getLogger("AppMan." + app.getClass().getName());
@@ -139,6 +142,7 @@ public class ApplicationManagerImpl implements ApplicationManager {
 
 			@Override
 			public Boolean call() throws Exception {
+				Util.currentAppThreadLocale.set(appID);
 				try {
 					application.start(ApplicationManagerImpl.this);
 				} catch (Throwable t) {
@@ -181,7 +185,13 @@ public class ApplicationManagerImpl implements ApplicationManager {
 				// FIXME the timeout does not seem to work...
 				final Future<Boolean> stopEvent = submitEvent(callStop);
 				if (stopEvent != null) {
-					stopped = stopEvent.get(30, TimeUnit.SECONDS);
+					try {
+						stopped = stopEvent.get(5, TimeUnit.SECONDS);
+					} catch (TimeoutException ee) {
+						// the app-specific logger output typically has a high log level configured
+						LoggerFactory.getLogger(ApplicationTracker.class).warn("Application takes longer to shutdown than requested: {}",application.getClass().getName());
+						stopped = stopEvent.get(25, TimeUnit.SECONDS);
+					}
 				}
 				else {
 					stopped = executor.isShutdown(); // if event was rejected, assume stopped from executor status.
@@ -220,7 +230,7 @@ public class ApplicationManagerImpl implements ApplicationManager {
 
 	@Override
 	public Timer createTimer(long period) {
-		Timer t = scheduler.createTimer(executor, getLogger());
+		Timer t = scheduler.createTimer(executor, getLogger(),this);
 		t.setTimingInterval(period);
 		synchronized (timers) {
 			timers.add(t);
@@ -237,6 +247,7 @@ public class ApplicationManagerImpl implements ApplicationManager {
 
 	@Override
 	public void destroyTimer(Timer t) {
+		// will trigger a timerRemoved callback to this object
 		t.destroy();
 	}
 
@@ -304,11 +315,12 @@ public class ApplicationManagerImpl implements ApplicationManager {
 	 * shutdown timers and executor, calling stop() on the application is done by {@link ApplicationTracker}
 	 */
 	protected void close() {
+		List<Timer> timersCopy;
 		synchronized (timers) {
-			for (Iterator<Timer> it = timers.iterator(); it.hasNext();) {
-				it.next().destroy();
-				it.remove();
-			}
+			timersCopy = new LinkedList<>(timers); // copy list to avoid ConcurrentModification 
+		}
+		for (Iterator<Timer> it = timersCopy.iterator(); it.hasNext();) {
+			it.next().destroy(); // will remove timer from timers list
 		}
 		workQueue.clear();
 		executor.shutdown();
@@ -428,6 +440,13 @@ public class ApplicationManagerImpl implements ApplicationManager {
 	protected List<RegisteredTimer> getTimers() {
 		synchronized (timers) {
 			return DefaultRegisteredTimer.asRegisteredTimers(this, timers);
+		}
+	}
+
+	@Override
+	public void timerRemoved(Timer timer) {
+		synchronized (timers) {
+			timers.remove(timer);
 		}
 	}
 

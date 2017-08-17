@@ -15,25 +15,31 @@
  */
 package org.ogema.driver.homematic.manager.messages;
 
+import java.util.Random;
+
 import org.ogema.driver.homematic.manager.RemoteDevice;
 
 public abstract class Message {
 
 	protected int num = 1;
 	protected String dest;
-	protected long token;
+	protected int token;
 	protected long timestampInSeconds;
 	protected byte[] frame;
 	protected RemoteDevice rdevice;
+	Random random;
 
 	protected Message(RemoteDevice rd) {
+		this.random=new Random();
 		this.rdevice = rd;
-		this.setToken(calcToken());
+		// this.setToken(calcToken());
+		this.token = calcToken();
 		timestampInSeconds = System.currentTimeMillis() / 1000;
 	}
 
-	public long calcToken() {
-		return ((System.nanoTime() / 1000) % 0xffffffffL);
+	public int calcToken() {
+		return random.nextInt();
+//		return System.nanoTime();
 	}
 
 	/**
@@ -51,13 +57,13 @@ public abstract class Message {
 		return (System.currentTimeMillis() / 1000) - timestampInSeconds;
 	}
 
-	public long getToken() {
+	public int getToken() {
 		return token;
 	}
 
-	private void setToken(long token) {
-		this.token = token;
-	}
+	// private void setToken(long token) {
+	// this.token = token;
+	// }
 
 	public String getDest() {
 		return dest;

@@ -37,4 +37,14 @@ public class DefaultFlowResource extends UnitFloatResource implements FlowResour
 	public final PhysicalUnit getUnit() {
 		return PhysicalUnit.CUBIC_METERS_PER_SECOND;
 	}
+
+	@Override
+	public boolean setCubicMeterPerHour(float value) {
+		return setValue(value * 3600);
+	}
+
+	@Override
+	public float getCubicMeterPerHour() {
+		return getValue() / 3600;
+	}
 }

@@ -33,7 +33,6 @@ import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.AccessPriority;
-import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.resourcemanager.pattern.PatternListener;
@@ -49,7 +48,6 @@ public class BasicSwitchGui implements Application, ResourceValueListener<Single
 	protected OgemaLogger logger;
 	protected ApplicationManager am;
 	protected ResourceManagement rm;
-	protected ResourceAccess ra;
 	protected ResourcePatternAccess rpa;
 
 	private String webResourceBrowserPath;
@@ -64,7 +62,6 @@ public class BasicSwitchGui implements Application, ResourceValueListener<Single
 		this.am = am;
 		this.logger = am.getLogger();
 		this.rm = am.getResourceManagement();
-		this.ra = am.getResourceAccess();
 		this.rpa = am.getResourcePatternAccess();
 		this.listeners = new ArrayList<>();
 
@@ -101,12 +98,25 @@ public class BasicSwitchGui implements Application, ResourceValueListener<Single
 
 	@Override
 	public void stop(AppStopReason reason) {
-		am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
-		am.getWebAccessManager().unregisterWebResource(servletPath);
-		rpa.removePatternDemand(ControllableOnOffPattern.class, deviceListener);
-		rpa.removePatternDemand(ControllableMultiPattern.class, multiListener);
+		if (am != null) {
+			am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
+			am.getWebAccessManager().unregisterWebResource(servletPath);
+		}
+		if (rpa != null) {
+			rpa.removePatternDemand(ControllableOnOffPattern.class, deviceListener);
+			rpa.removePatternDemand(ControllableMultiPattern.class, multiListener);
+		}
 		if (ctrl != null)
 			ctrl.removeValueListener(this);
+		am = null;
+		rm = null;
+		rpa = null;
+		ctrl = null;
+		logger = null;
+		deviceListener = null;
+		multiListener = null;
+		thermoListener = null;
+		listeners = null;
 	}
 
 	/**** generate test resources ********/

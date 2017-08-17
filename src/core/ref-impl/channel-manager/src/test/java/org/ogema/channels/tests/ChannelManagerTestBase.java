@@ -122,9 +122,9 @@ public class ChannelManagerTestBase implements Application {
 				CoreOptions.frameworkProperty("org.osgi.framework.bsnversion").value("multiple"),junitBundles(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.framework.security", "2.2.0").start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "permission-admin", ogemaVersion).start(),
-				CoreOptions.mavenBundle("org.slf4j", "slf4j-api", "1.7.2"),
+				CoreOptions.mavenBundle("org.slf4j", "slf4j-api", "1.7.21"),
 				CoreOptions.mavenBundle("joda-time", "joda-time", "2.2"),
-				CoreOptions.mavenBundle("org.json", "json", "20160212"),
+				CoreOptions.mavenBundle("org.json", "json", "20170516"),
 				
 				CoreOptions.mavenBundle("org.ops4j.pax.exam", "pax-exam-junit4", "4.6.0").start(),
 				CoreOptions.mavenBundle("org.ow2.asm", "asm-all", "5.1").start(),
@@ -134,8 +134,8 @@ public class ChannelManagerTestBase implements Application {
 
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.scr", "1.8.2").start(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.eventadmin", "1.4.6").start(),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin.filestore", "1.0.2").start(),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.useradmin", "1.0.3").start(),
+				CoreOptions.mavenBundle("org.ogema.external", "org.apache.felix.useradmin.filestore", "1.0.2").start(),
+				CoreOptions.mavenBundle("org.ogema.external", "org.apache.felix.useradmin", "1.0.3").start(),
 				// not using latest version 1.8.8, since it causes problems with security
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.configadmin", "1.6.0").start(), 
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.api", "2.3.2").start(),
@@ -165,6 +165,7 @@ public class ChannelManagerTestBase implements Application {
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "resource-manager").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "resource-access-advanced").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "security").version(ogemaVersion).startLevel(4).start(),
+				CoreOptions.mavenBundle("org.ogema.ref-impl", "ogema-security-manager").version(ogemaVersion).startLevel(4).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "persistence").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "channel-manager").version(ogemaVersion).start(),
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "hardware-manager").version(ogemaVersion).start(),

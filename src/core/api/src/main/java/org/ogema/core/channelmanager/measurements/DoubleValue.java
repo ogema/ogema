@@ -24,7 +24,7 @@ import org.ogema.core.timeseries.ReadOnlyTimeSeries;
  */
 public class DoubleValue implements Value {
 
-	private double value;
+	private final double value;
 
 	public DoubleValue(double value) {
 		this.value = value;

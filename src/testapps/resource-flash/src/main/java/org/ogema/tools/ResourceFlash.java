@@ -27,21 +27,14 @@ import org.ogema.core.resourcemanager.ResourceManagement;
 @Service(Application.class)
 public class ResourceFlash implements Application {
 
-	protected OgemaLogger logger;
 	protected ApplicationManager am;
-	protected ResourceManagement rm;
-	protected ResourceAccess ra;
     private String webResourceBrowserPath;
     private String servletPath;
 
 	@Override
 	public void start(ApplicationManager am) {
 		this.am = am;
-		this.logger = am.getLogger();
-		this.rm = am.getResourceManagement();
-		this.ra = am.getResourceAccess();	
-		
-		logger.debug("ResourceFlashApp started");
+		 am.getLogger().debug("ResourceFlashApp started");
         String webResourcePackage = "org.ogema.tools";
         webResourcePackage = webResourcePackage.replace(".", "/");
         String appNameLowerCase = "ResourceFlash";
@@ -55,10 +48,13 @@ public class ResourceFlash implements Application {
 		am.getWebAccessManager().registerWebResource(servletPath,new ResourceFlashServlet(am));
 	}
 
-        @Override
+    @Override
 	public void stop(AppStopReason reason) {
-		am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
-		am.getWebAccessManager().unregisterWebResource(servletPath);
+        if (am != null) {
+        	am.getWebAccessManager().unregisterWebResource(webResourceBrowserPath);
+        	am.getWebAccessManager().unregisterWebResource(servletPath);
+        }
+        am = null;
 	}
 
 }

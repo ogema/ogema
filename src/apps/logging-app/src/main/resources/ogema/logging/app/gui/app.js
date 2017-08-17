@@ -20,59 +20,59 @@ angular.module('resources',[])
     };
   })
     .controller('ResourcesCtrl', function($scope,$http, Resources) {
- 
+
  //*********** variables declaration *****************
- 
+
     	$scope.resourcesSet = Resources;
-    	$scope.path = "/apps/ogema/LoggingApp".toLowerCase();
+    	$scope.path = "/apps/ogema/LoggingApp".toLowerCase() + "?user=" + otusr + "&pw=" + otpwd;
     	$scope.logging = {};
     	$scope.message= '';
     	$scope.loggingInterval=30;
     	$scope.loggingTypes = ['ON_VALUE_CHANGED','FIXED_INTERVAL','ON_VALUE_UPDATE'];
     	$scope.selectedType = 'ON_VALUE_CHANGED';
-    	
-   
+
+
  //*********** definition of functions *****************
-    	
+
     	function columnSort(a,b) {
-    		if (a===b) 
+    		if (a===b)
     			return 0;
-    		else if (a === "Location") 
+    		else if (a === "Location")
     			return -1;
-    		else if (b === "Location") 
+    		else if (b === "Location")
     			return 1;
-    		else if (a === "Type") 
+    		else if (a === "Type")
     			return -1;
-    		else if (b === "Type") 
+    		else if (b === "Type")
     			return 1;
-    		else if (a === "active") 
+    		else if (a === "active")
     			return -1;
-    		else if (b === "active") 
+    		else if (b === "active")
     			return 1;
-    		else if (a === "value") 
+    		else if (a === "value")
     			return -1;
-    		else if (b === "value") 
+    		else if (b === "value")
     			return 1;
-    		else if (a === "logging") 
+    		else if (a === "logging")
     			return -1;
-    		else if (b === "logging") 
+    		else if (b === "logging")
     			return 1;
-    		else if (a.indexOf("log interval")===0) 
+    		else if (a.indexOf("log interval")===0)
     			return -1;
-    		else if (b.indexOf("log interval")===0) 
+    		else if (b.indexOf("log interval")===0)
     			return 1;
-    		else if (a === "logging type") 
+    		else if (a === "logging type")
     			return -1;
-    		else if (b === "logging type") 
+    		else if (b === "logging type")
     			return 1;
-    		else if (a === "Logging") 
+    		else if (a === "Logging")
     			return -1;
-    		else if (b === "Logging") 
+    		else if (b === "Logging")
     			return 1;
-    		else 
+    		else
     			return 0;
     	}
-    	
+
     	$scope.getColumns = function() {
     	  var sens = $scope.resourcesSet.getResources();
     	  var cols = [];
@@ -86,31 +86,31 @@ angular.module('resources',[])
     	  cols.sort(columnSort);
     	  return cols;
     	};
-    	
+
     	$scope.logAllowed = function(res) {
-    	  if (res.hasOwnProperty('logging')) {    	  
+    	  if (res.hasOwnProperty('logging')) {
     	    return true;
     	  }
     	  return false;
     	};
-    	
+
     	$scope.isLogging = function(res) {
     		if ($scope.logging[res.Location]) return true;
     		return false;
     	};
-    	
+
     	$scope.getLogButtonMsg = function(resource) {
     		if ($scope.isLogging(resource)) {
     			return 'stop logging';
     		}
-    		return 'log';    		
+    		return 'log';
     	};
-    	
+
     	// send HTTP GET
     	$scope.getResources = function() {
     		//console.log('Sending get request...');
     		$http.get($scope.path).then(function(response) {
-    			$scope.resourcesSet.setResources(response.data);  
+    			$scope.resourcesSet.setResources(response.data);
     			var res = $scope.resourcesSet.getResources();
     			for (var i=0;i<res.length;i++) {
     				$scope.logging[res[i].Location] = false;
@@ -118,12 +118,12 @@ angular.module('resources',[])
     					$scope.logging[res[i].Location] = true;
     				}
     			}
-    			
+
     			//console.log('Resources: ');
-    			//console.log($scope.resourcesSet.getResources()); 			    		
+    			//console.log($scope.resourcesSet.getResources());
     		});
     	};
-    	
+
     	// change log settings; send HTTP POST
     	// bool: true: start logging; false: stop logging
     	$scope.recordData = function(res,bool,loggingInterval,selectedType) {
@@ -137,18 +137,18 @@ angular.module('resources',[])
 				$scope.getResources();
     		});
     	};
-    	
+
     	$scope.filterFn = function(column) {
     	  var bool =  column !== '$$hashKey';
     	  return bool;
     	};
-    		
+
     	$scope.init = function() {
     	   console.log('Initializing resources');
     	   $scope.getResources();
     	};
-    	
+
  //*************** init on startup ******************
-  	
+
     	$scope.init();
     });

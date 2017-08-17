@@ -62,7 +62,7 @@ function selectNode(event, data, roomId) {
 	// if (!$("#jsTree_Resources").jstree("is_parent",
 	// data.node)) {
 
-	$.getJSON("/service/resourcevalue?id=" + currentNode, function(data) {
+	$.getJSON("/service/resourcevalue?id=" + currentNode + "&user=" + otusr + "&pw=" + otpwd;", function(data) {
 		resourceDialog(data, currentNode, roomId);
 	});
 	// }
@@ -86,7 +86,7 @@ function resourceDialog(json, currentNode, roomId) {
 
 	// var resourcePath = fullNode.path;
 
-	$.getJSON("/rcsservice/matchType2Sensors?type=" + fullNode.type, function(data) {
+	$.getJSON("/rcsservice/matchType2Sensors?type=" + fullNode.type + "&user=" + otusr + "&pw=" + otpwd;, function(data) {
 		createDialog(data, roomId, fullNode);
 	});
 	// fill dialog with the value of
@@ -129,13 +129,14 @@ function createDialog(data, roomId, fullNode) {
 }
 
 function setResource4Sensor(roomId, resourcePath) {
-	$.post("/rcsservice/setResource4Sensor?roomId=" + roomId + "&resourcePath=" + resourcePath + "&sensor=" + $("#sensor_select").val(), function(data) {
+	$.post("/rcsservice/setResource4Sensor?roomId=" + roomId + "&resourcePath=" + resourcePath + "&sensor=" + $("#sensor_select").val()
+			+  "&user=" + otusr + "&pw=" + otpwd;, function(data) {
 		alert(data);
 	});
 }
 
 function resetRoomSensors(roomId) {
-	$.post("/rcsservice/resetRoomSensors?roomId=" + roomId, function(data) {
+	$.post("/rcsservice/resetRoomSensors?roomId=" + roomId +  "&user=" + otusr + "&pw=" + otpwd;, function(data) {
 		alert(data);
 	});
 }

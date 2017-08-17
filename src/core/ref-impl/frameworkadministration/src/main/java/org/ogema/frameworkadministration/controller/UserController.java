@@ -369,10 +369,10 @@ public class UserController {
 				continue;
 			}
 
-			@SuppressWarnings("deprecation")
-			Map<String, String> registeredResources = appManager.getWebAccessManager().getRegisteredResources(appID);
-			if (registeredResources == null || registeredResources.isEmpty()) { // TODO handle apps that register their
-																				// start page as a servlet
+//			@SuppressWarnings("deprecation")
+//			Map<String, String> registeredResources = appManager.getWebAccessManager().getRegisteredResources(appID);
+			final Map<String, String> registeredResources = app.getWebAccess().getRegisteredResources();
+			if ((registeredResources == null || registeredResources.isEmpty()) && app.getWebAccess().getStartUrl() == null) {
 				continue;
 			}
 

@@ -15,6 +15,10 @@
  */
 package org.ogema.drivers.homematic.xmlrpc.ll;
 
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.List;
@@ -23,6 +27,7 @@ import java.util.Map;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.DeviceDescription;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.HomeMatic;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.ParameterDescription;
+import org.ogema.drivers.homematic.xmlrpc.ll.api.ServiceMessage;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 
@@ -38,11 +43,18 @@ public class HomeMaticClientCli {
         this.client = client;
     }
 
-    public ServiceRegistration<HomeMaticClientCli> register(BundleContext ctx) {
+    public ServiceRegistration<HomeMaticClientCli> register(BundleContext ctx, String commandScope) {
         Dictionary<String, Object> props = new Hashtable<>();
-        props.put("osgi.command.scope", "hm");
-        props.put("osgi.command.function", new String[]{"list", "params", "tim", "read", "readValue", "valueUsage", "set"});
+        props.put("osgi.command.scope", commandScope);
+        props.put("osgi.command.function", new String[]{
+            "list", "params", "tim", "read", "readValue", "valueUsage", "set",
+        "addLink", "removeLink", "getLinkInfo", "getLinks",
+        "deleteDevice", "abortDeleteDevice", "getServiceMessages", "client"});
         return ctx.registerService(HomeMaticClientCli.class, this, props);
+    }
+    
+    public ServiceRegistration<HomeMaticClientCli> register(BundleContext ctx) {
+        return register(ctx, "hm");
     }
 
     /**
@@ -67,9 +79,38 @@ public class HomeMaticClientCli {
             for (Map.Entry<String, ParameterDescription<?>> entrySet : params.entrySet()) {
                 String key = entrySet.getKey();
                 ParameterDescription<?> value = entrySet.getValue();
-                System.out.printf("[%s] %s = %s%n", setName, key, value);
+                
+                System.out.printf("[%s] %s = ", setName, key);
+                printParameterDescription(value, System.out);
+                System.out.printf("%n");                
             }
         }
+    }
+    
+    private void printParameterDescription(ParameterDescription<?> desc, PrintStream out) {
+        Map<String, Object> struct = desc.toMap();
+        out.append("{");
+        boolean firstEntry = true;
+        for (Map.Entry<String, Object> e: struct.entrySet()) {
+            if (firstEntry) {
+                firstEntry = false;
+            } else {
+                out.append(", ");
+            }
+            out.append(e.getKey()).append("=");
+            Object val = e.getValue();
+            if (val.getClass().isArray()) {
+                try {
+                
+                        out.append(Arrays.toString((Object[])val));
+                } catch (StackOverflowError wtf) {
+                    out.append("XXXXXXXXXXXXXXXX");
+                }
+            } else {
+                out.append(val.toString());
+            }
+        }
+        out.append("}");
     }
     
     /**
@@ -81,7 +122,17 @@ public class HomeMaticClientCli {
         DeviceDescription dd = client.getDeviceDescription(addr);
         for (String setName : dd.getParamsets()) {
             Map<String, Object> values = client.getParamset(addr, setName).toMap();
-            System.out.printf("%s values: %s%n", setName, values);
+            List<String> keys = new ArrayList<>(values.keySet());
+            Collections.sort(keys, String.CASE_INSENSITIVE_ORDER);
+            if (keys.isEmpty()) {
+                System.out.printf("%s values: {}%n", setName);
+            } else {
+                System.out.printf("%s values: {%n", setName);
+                for (String key: keys) {
+                    System.out.printf("  %s=%s%n", key, values.get(key));
+                }
+                System.out.printf("}%n", setName);
+            }
         }
     }
     
@@ -114,6 +165,40 @@ public class HomeMaticClientCli {
     
     public void readValue(String address, String valueKey) throws Exception {
         System.out.println(client.<Object>getValue(address, valueKey));
+    }
+    
+    public void addLink(String sender, String receiver, String name, String description) throws Exception {
+        client.addLink(sender, receiver, name, description);
+    }
+    
+    public void removeLink(String sender, String receiver) throws Exception {
+        client.removeLink(sender, receiver);
+    }
+    
+    public Map<String, Object> getLinkInfo(String sender, String receiver) throws Exception {
+        return client.getLinkInfo(sender, receiver);
+    }
+    
+    public void getLinks(String address, int flags) throws Exception {
+        System.out.println(client.getLinks(address, flags));
+    }
+    
+    public void deleteDevice(String address, int flags) throws Exception {
+        client.deleteDevice(address, flags);
+    }
+    
+    public void abortDeleteDevice(String address) throws Exception {
+        client.abortDeleteDevice(address);
+    }
+    
+    public void getServiceMessages() throws Exception {
+        for (ServiceMessage msg: client.getServiceMessages()) {
+            System.out.println(msg);
+        }
+    }
+    
+    public HomeMatic client(String none) {
+        return client;
     }
     
 }
