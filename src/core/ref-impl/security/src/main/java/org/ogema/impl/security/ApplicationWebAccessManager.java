@@ -15,11 +15,12 @@
  */
 package org.ogema.impl.security;
 
-import java.net.URISyntaxException;
 import java.net.URL;
+import java.security.Permission;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.servlet.Servlet;
@@ -29,8 +30,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 import org.ogema.core.application.AppID;
-import org.ogema.core.security.WebAccessManager;
+import org.ogema.webadmin.AdminWebAccessManager;
 import org.osgi.framework.Bundle;
+import org.osgi.framework.PackagePermission;
 import org.osgi.service.http.NamespaceException;
 
 /**
@@ -39,13 +41,14 @@ import org.osgi.service.http.NamespaceException;
  *
  * @author jlapp
  */
-public class ApplicationWebAccessManager implements WebAccessManager {
+public class ApplicationWebAccessManager implements AdminWebAccessManager {
 
 	final AppID appId;
 	final ApplicationWebAccessFactory fac;
 	final static String FILTER_APPLICATION = "FILTER_APPLICATION";
+	private final static Permission adminPackagePermission = new PackagePermission(AdminWebAccessManager.class.getPackage().getName(), "import");
 
-	OgemaHttpContext ctx;
+	volatile OgemaHttpContext ctx;
 
 	ApplicationWebAccessManager(AppID appId, ApplicationWebAccessFactory fac) {
 		this.appId = appId;
@@ -96,6 +99,7 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 	 */
 	@Override
 	public String registerWebResource(String alias, Servlet servlet) {
+		Objects.requireNonNull(servlet);
 		OgemaHttpContext httpCon = getOrCreateHttpContext();
 
 		alias = normalizePath(alias);
@@ -136,13 +140,13 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 
 	@Override
 	public void unregisterWebResource(String alias) {
+		final OgemaHttpContext ctx = this.ctx;
 		if (ctx == null || (ctx.resources.isEmpty() && ctx.servlets.isEmpty())) {
 			fac.logger.warn("unregisterWebResource called on empty context. alias={}", alias);
 		}
 		alias = normalizePath(alias);
 		if (ctx != null) { // only happens if framework is shutting down
-			ctx.resources.remove(alias);
-			ctx.servlets.remove(alias);
+			ctx.unregisterResource(alias);
 		}
 		try {
 			fac.http.unregister(alias);
@@ -155,10 +159,10 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 	public boolean unregisterWebResourcePath(String alias) {
 		alias = normalizePath(alias);
 		String newAlias = extendPath(alias);
+		final OgemaHttpContext ctx = this.ctx;
 		// OgemaHttpContext httpContext = getOrCreateHttpContext();
 		if (ctx != null) { // only happens if framework is shutting down
-			ctx.resources.remove(newAlias);
-			ctx.servlets.remove(newAlias);
+			ctx.unregisterResource(newAlias);
 		}
 		try {
 			fac.http.unregister(newAlias);
@@ -282,8 +286,28 @@ public class ApplicationWebAccessManager implements WebAccessManager {
 	 * @return
 	 * 		null if not logged in, a size two String array {user, one-time-password} otherwise
 	 */
+	@Deprecated
 	public String[] registerStaticResource(HttpServlet servlet, HttpServletRequest req) {
 		return fac.registerStaticResource(servlet, req, appId);
 	}
 
+	@Override
+	public StaticRegistration registerStaticWebResource(String alias, Servlet servlet) {
+		final SecurityManager sman = System.getSecurityManager();
+		if (sman != null)
+			sman.checkPermission(adminPackagePermission);
+		final String path = registerWebResource(alias, servlet); // ensures that ctx != null
+		return getOrCreateHttpContext().addStaticRegistration(path, servlet, this);
+	}
+
+	@Override
+	public String registerBasicResource(String alias, String path) {
+		final SecurityManager sman = System.getSecurityManager();
+		if (sman != null)
+			sman.checkPermission(adminPackagePermission);
+		final String result = registerWebResource(alias, path);
+		getOrCreateHttpContext().addBasicResourceAlias(result);
+		return result;
+	}
+	
 }

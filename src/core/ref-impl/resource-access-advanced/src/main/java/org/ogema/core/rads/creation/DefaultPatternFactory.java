@@ -17,6 +17,9 @@ package org.ogema.core.rads.creation;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
@@ -25,21 +28,30 @@ public class DefaultPatternFactory<P extends ResourcePattern<?>> implements Patt
 
 	private final Constructor<P> m_constructor;
 
-	public DefaultPatternFactory(Class<P> type) {
+	public DefaultPatternFactory(final Class<P> type) {
 		try {
-            m_constructor = type.getConstructor(Resource.class);
-        } catch (NoSuchMethodException | SecurityException ex) {
-            throw new RuntimeException("Could not find default constructor on RAD of type " + type.getCanonicalName() + ". Ensure that the RAD has a public constructur RAD(Resource resource). Otherwise, it cannot be used with the OGEMA advanced access.", ex);
-        }
+			m_constructor = AccessController.doPrivileged(new PrivilegedExceptionAction<Constructor<P>>() {
+
+				@Override
+				public Constructor<P> run() throws Exception {
+					 final Constructor<P> constructor = type.getConstructor(Resource.class);
+			         constructor.setAccessible(true);
+			         return constructor;
+				}
+			});
+		} catch (PrivilegedActionException e) {
+            throw new RuntimeException("Could not find default constructor on RAD of type " + type.getCanonicalName() 
+            	+ ". Ensure that the RAD has a public constructur RAD(Resource resource). Otherwise, it cannot be used with the OGEMA advanced access.", e.getCause());
+		}
 	}
 
 	@Override
-	public P createNewPattern(Resource baseResource) {
+	public P createNewPattern(final Resource baseResource) {
 		P result;
 		try {
             result = m_constructor.newInstance(baseResource);
         } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-            throw new RuntimeException("could not create a RAD object", ex);
+            throw new RuntimeException("could not create a RAD object of type " + m_constructor.getDeclaringClass() + " for resource " + baseResource, ex);
         }
 		return result;
 	}

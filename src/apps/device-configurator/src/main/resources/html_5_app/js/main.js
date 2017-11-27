@@ -115,7 +115,7 @@ function getData(dataRequested) {
 		});
 	}
 
-	//caching devices
+	// caching devices
 		if (dataRequested == "cacheDevices") {
 
 			$.getJSON("/servlet/cache?user=" + otusr + "&pw=" + otpwd + "&llDriverId="
@@ -312,7 +312,11 @@ function showResources() {
 									'text' : node.text
 								};
 							}
-						}
+						},
+						"error": function (jqXHR) { 
+							var data=eval('('+jqXHR.data+')');
+									$('#jsTree_Resources').html("<h3>There was an error while loading data for this tree</h3><p>" + data.xhr.statusText + "</p>"+"<p>" + data.xhr.responseText + "</p>");
+									}
 					},
 					"checkbox" : {
 						"whole_node" : true

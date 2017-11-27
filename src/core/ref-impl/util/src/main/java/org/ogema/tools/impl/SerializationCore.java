@@ -24,7 +24,6 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Method;
 import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
@@ -61,6 +60,7 @@ import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
 import org.ogema.core.resourcemanager.NoSuchResourceException;
 import org.ogema.core.resourcemanager.ResourceAccess;
+import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.core.timeseries.InterpolationMode;
@@ -74,7 +74,6 @@ import org.ogema.serialization.jaxb.ScheduleResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -370,8 +369,9 @@ final class SerializationCore {
 		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
-	protected org.ogema.serialization.jaxb.Resource deserializeJson(Reader reader) throws IOException {
-		return mapper.readValue(reader, org.ogema.serialization.jaxb.Resource.class);
+	protected org.ogema.serialization.jaxb.Resource deserializeJson(Reader reader) throws IOException, ClassNotFoundException {
+        return new JsonReaderJackson().read(reader);
+		//return mapper.readValue(reader, org.ogema.serialization.jaxb.Resource.class);
 	}
 
 	protected org.ogema.serialization.jaxb.Resource deserializeXml(Reader reader) throws IOException {
@@ -387,8 +387,8 @@ final class SerializationCore {
 				@SuppressWarnings("rawtypes")
 				@Override
 				public Object run() throws JAXBException {
-					return ((JAXBElement) UNMARSHALLING_CONTEXT.createUnmarshaller()
-							.unmarshal(src)).getValue();
+                    Object o = UNMARSHALLING_CONTEXT.createUnmarshaller().unmarshal(src);
+                    return (o instanceof JAXBElement)? ((JAXBElement)o).getValue() : o;
 				}
 
 				
@@ -411,7 +411,7 @@ final class SerializationCore {
             }
             Resource linkTarget = resacc.getResource(link.target);
             if (linkTarget == null || !linkTarget.exists()) {
-                LOGGER.warn("invalid link: link target '{}' does not exist", link.parent);
+                LOGGER.warn("invalid link: link target '{}' does not exist", link.target);
                 continue;
             }
             Class<? extends Resource> linkType;
@@ -420,6 +420,8 @@ final class SerializationCore {
                 linkParent.getSubResource(link.name, linkType).setAsReference(linkTarget);
             } catch (ClassNotFoundException ex) {
                 LOGGER.warn("invalid link: unknown type: {}", link.type);
+            } catch (ResourceAlreadyExistsException e) {
+            	LOGGER.warn("invalid link: resource exists with invalid type.", e);
             }
         }
         return rval;
@@ -465,7 +467,7 @@ final class SerializationCore {
 				} else {
 					Resource sub = target.getSubResource(name, inputOgemaType);
 					if (!sub.exists()) {
-						sub.create();
+						target.addDecorator(name, inputOgemaType);
 					}
 					target = sub;
 				}
@@ -629,13 +631,10 @@ final class SerializationCore {
 				org.ogema.serialization.jaxb.Resource subRes = (org.ogema.serialization.jaxb.Resource) o;
 				Class<? extends Resource> subResType = (Class<? extends Resource>) Class.forName(subRes.getType());
 				String name = subRes.getName();
-				Resource ogemaSubRes = target.getSubResource(name);
+				Resource ogemaSubRes = target.getSubResource(name, subResType);
 				if (ogemaSubRes == null || !ogemaSubRes.exists()) {
-					if (isOptionalElement(name, target.getResourceType())) {
-						ogemaSubRes = target.addOptionalElement(name);
-					} else {
-						ogemaSubRes = target.addDecorator(name, subResType);
-					}
+                    // use addDecorator which allows sub resource to be of a subtype of the defined type
+                    ogemaSubRes = target.addDecorator(name, subResType);
 				}
 				unresolvedLinks.addAll(applyInternal(subRes, ogemaSubRes, forceUpdate, trans, resourcesToActivate,
 						resourcesToDeactivate));
@@ -777,6 +776,7 @@ final class SerializationCore {
 		}
 	}
 
+    @SuppressWarnings("deprecation")
 	private static void saveArrayTypeData(org.ogema.serialization.jaxb.Resource input, Resource target, boolean forceUpdate,
 			@SuppressWarnings("deprecation") org.ogema.core.resourcemanager.Transaction trans) throws ClassNotFoundException {
 		Class<?> inputType = Class.forName(input.getType());
@@ -822,6 +822,14 @@ final class SerializationCore {
 				arr[i] = values.get(i);
 			}
 			trans.setTimeArray((TimeArrayResource) target, arr);
+		} else if (input instanceof org.ogema.serialization.jaxb.OpaqueResource) {
+			trans.addResource(target); // XXX
+			byte[] values = ((org.ogema.serialization.jaxb.OpaqueResource) input).getValue();
+            if (target instanceof org.ogema.core.model.simple.OpaqueResource) {
+                trans.setByteArray((org.ogema.core.model.simple.OpaqueResource)target, values);
+            } else {
+                trans.setByteArray((ByteArrayResource)target, values);
+            }
 		}
 	}
 
@@ -871,12 +879,9 @@ final class SerializationCore {
 		return sw.toString();
 	}
 
-	private static final TypeReference<Collection<org.ogema.serialization.jaxb.Resource>> typeRef 
-		= new TypeReference<Collection<org.ogema.serialization.jaxb.Resource>>() {};
-	
 	@SuppressWarnings("unchecked")
 	protected Collection<org.ogema.serialization.jaxb.Resource> deserializeJsonCollection(Reader reader) throws IOException {
-		return (Collection<org.ogema.serialization.jaxb.Resource>) mapper.readValue(reader, typeRef);
+        return new JsonReaderJackson().readCollection(reader);
 	}
 
 	protected static ResourceCollection deserializeXmlCollection(Reader reader) throws IOException {

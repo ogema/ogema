@@ -16,9 +16,6 @@
 package org.ogema.frameworkadministration;
 
 import org.ogema.frameworkadministration.servlet.FAServletAppStore;
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Reference;
-import org.apache.felix.scr.annotations.Service;
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.core.administration.AdministrationManager;
@@ -32,38 +29,38 @@ import org.ogema.frameworkadministration.controller.LoggerController;
 import org.ogema.frameworkadministration.controller.UserController;
 import org.ogema.frameworkadministration.servlet.FAServletLogger;
 import org.ogema.frameworkadministration.servlet.FAServletUser;
-import org.ogema.persistence.ResourceDB;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.useradmin.UserAdmin;
 
-@Component(specVersion = "1.2", immediate = true)
-@Service(Application.class)
+@Component(service = Application.class)
 public class FrameworkAdministration implements Application {
 
 	protected OgemaLogger logger;
 	protected ApplicationManager appMan;
 	protected ResourceManagement resMan;
 	protected ResourceAccess resAcc;
-
-	@Reference
+    
 	private AppStoreController appStoreController;
 
-	@Reference
 	private AdministrationManager administrationManager;
 
-	@Reference
 	private PermissionManager permissionManager;
 
-	@Reference
 	UserAdmin userAdmin;
 
 	private FAServletAppStore appStoreServlet;
 
-	@Reference
-	private ResourceDB resourceDB;
 	private long bundleID;
 	private BundleContext bundleContext;
+    
+    @Activate
+    public void activate(BundleContext ctx) {
+        this.bundleContext = ctx;
+    }
 
 	@Override
 	public void start(ApplicationManager appManager) {
@@ -72,7 +69,6 @@ public class FrameworkAdministration implements Application {
 		this.logger = appManager.getLogger();
 		this.resMan = appManager.getResourceManagement();
 		this.resAcc = appManager.getResourceAccess();
-		this.bundleContext = FrameworkUtil.getBundle(getClass()).getBundleContext();
 
 		logger.debug("{} started", getClass().getName());
 		AccessManager accessManager = permissionManager.getAccessManager();
@@ -128,5 +124,29 @@ public class FrameworkAdministration implements Application {
 		UserController.getInstance().setAdministrationManager(null);
 		UserController.getInstance().setAppManager(null);
 	}
+    
+    @Deactivate
+    public void deactivate(BundleContext ctx) {
+    }
+    
+    @Reference
+    void setAdministrationManager(AdministrationManager administrationManager) {
+        this.administrationManager = administrationManager;
+    }
+
+    @Reference
+    void setPermissionManager(PermissionManager permissionManager) {
+        this.permissionManager = permissionManager;
+    }
+
+    @Reference
+    void setUserAdmin(UserAdmin userAdmin) {
+        this.userAdmin = userAdmin;
+    }
+    
+    @Reference
+    void setAppStoreController(AppStoreController asc) {
+        this.appStoreController = asc;
+    }
 
 }

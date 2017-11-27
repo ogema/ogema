@@ -28,6 +28,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -38,6 +40,8 @@ import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.felix.service.command.Descriptor;
 import org.apache.felix.service.command.Parameter;
+import org.ogema.accesscontrol.AccessManager;
+import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.administration.AdminLogger;
 import org.ogema.core.administration.AdministrationManager;
@@ -50,16 +54,20 @@ import org.ogema.core.administration.RegisteredResourceListener;
 import org.ogema.core.administration.RegisteredStructureListener;
 import org.ogema.core.administration.RegisteredTimer;
 import org.ogema.core.administration.RegisteredValueListener;
+import org.ogema.core.administration.UserAccount;
 import org.ogema.core.application.TimerListener;
 import org.ogema.core.logging.LogLevel;
 import org.ogema.core.logging.LogOutput;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
+import org.ogema.core.security.AppPermission;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleException;
 import org.osgi.framework.FrameworkEvent;
 import org.osgi.framework.FrameworkListener;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.wiring.FrameworkWiring;
+import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
+import org.osgi.service.permissionadmin.PermissionInfo;
 
 /**
  * 
@@ -67,13 +75,16 @@ import org.osgi.framework.wiring.FrameworkWiring;
  */
 @Component(specVersion = "1.2", immediate = true)
 @Properties({ @Property(name = "osgi.command.scope", value = "ogm"), @Property(name = "osgi.command.function", value = {
-		"apps", "clock", "loggers", "log", "dump_cache", "update" }) })
+		"apps", "clock", "loggers", "log", "dump_cache", "update", "listUsers", "createUser", "setNewPassword" }) })
 @Service(ShellCommands.class)
 @Descriptor("OGEMA administration commands")
 public class ShellCommands {
 
 	@Reference
 	protected AdministrationManager admin;
+	
+	@Reference
+	private PermissionManager permMan;
 
 	@Descriptor("list running OGEMA apps")
 	public void apps(@Descriptor("show listeners registered by app") @Parameter(names = { "-l",
@@ -310,8 +321,78 @@ public class ShellCommands {
 		System.out.println(success ? "ok" : "failed");
 	}
 
+	@Descriptor("Create a new user")
+	public void createUser(
+			@Descriptor("Create a natural user (flag absent) or a machine user (flag present)?") 
+			@Parameter(names = {"-m", "--machine" }, absentValue="false", presentValue="true")
+			final boolean machineUser,
+			@Descriptor("Create an admin user? Default: false.") 
+			@Parameter(names = {"-a", "--admin" }, absentValue="false", presentValue="true")			
+			final boolean isAdmin,
+			@Descriptor("The new user id.") 
+			String id) {
+		Objects.requireNonNull(id);
+		id = id.trim();
+		if (id.length() > 25) {
+			throw new IllegalArgumentException("User id too long. Max 25 characters.");
+		}
+		try {
+			admin.getUser(id);
+			System.out.println("Could not create user " + id + ": already exists.");
+			return;
+		} catch (RuntimeException expected) {}
+		admin.createUserAccount(id, !machineUser);
+		System.out.println("User created: " + id);
+		if (isAdmin) {
+			if (!id.equals("master")) {
+				final String result = grantAdminRights(id);
+				if (result != null) {
+					System.out.println("Could no grant admin rights to user " + id + ": " + result);
+				}
+			}
+		}
+	}
+	
+	@Descriptor("List known users")
+	public void listUsers() {
+		final AccessManager accMan = permMan.getAccessManager();
+		System.out.println("Known users:");
+		final StringBuilder sb=  new StringBuilder();
+		for (UserAccount user: admin.getAllUsers()) {
+			sb.append(" ").append(user.getName()).append(": ").append((accMan.isNatural(user.getName()) ? "natural" : "machine") + " user");
+			if (checkUserAdmin(user.getName())) {
+				sb.append(" (admin)");
+			}
+			sb.append('\n');
+		}
+		System.out.println(sb.toString());
+	}
+	
+	@Descriptor("Set new password")
+	public void setNewPassword(
+			@Descriptor("The user id")
+			String user,
+			@Descriptor("The old password")
+			String oldPassword,
+			@Descriptor("The new password")
+			String newPassword) {
+		final UserAccount userAccount;
+		try {
+			userAccount = admin.getUser(user);
+		} catch (RuntimeException e) {
+			System.out.println("User " + user + " does not exist.");
+			return;
+		}
+		try {
+			userAccount.setNewPassword(oldPassword, newPassword);
+			System.out.println("Password reset.");
+		} catch (SecurityException e) {
+			System.out.println("Old password does not match");
+		}
+	}
+	
 	@Descriptor("Updates an ogema app and enforces package refresh before it is started again.")
-	public void update(@Descriptor("The bundle id of the app to be updated.") long id) throws BundleException, InterruptedException {
+	public void update(@Descriptor("The bundle id of the app to be updated.") final long id) throws BundleException, InterruptedException {
 		final Bundle tobeupdated = FrameworkUtil.getBundle(getClass()).getBundleContext().getBundle(id);
 		if (tobeupdated == null) {
 			System.out.println("Bundle with id " + id + " not found.");
@@ -319,12 +400,13 @@ public class ShellCommands {
 		}
 		final Bundle sysbundle = FrameworkUtil.getBundle(getClass()).getBundleContext().getBundle(0);
 		final int state = tobeupdated.getState();
-		
-		tobeupdated.stop();
+		final boolean active = state == Bundle.ACTIVE || state == Bundle.STARTING;
+		if (active) 
+			tobeupdated.stop();
 		tobeupdated.update();
 
 		FrameworkWiring fw = sysbundle.adapt(FrameworkWiring.class);
-//		fw.refreshBundles(Arrays.asList(tobeupdated));
+//				fw.refreshBundles(Arrays.asList(tobeupdated));
 		final CountDownLatch latch = new CountDownLatch(1);
 		// restart must wait until refresh is done, otherwise a bundle lock error may occur
 		final Runnable startTask = new Runnable() {
@@ -348,13 +430,14 @@ public class ShellCommands {
 		final Collection<Bundle> bundlesToBeRefreshed = fw.getDependencyClosure(fw.getRemovalPendingBundles());
 		if (bundlesToBeRefreshed.isEmpty()) {
 			System.out.println("No package refresh required");
-			if (state == Bundle.ACTIVE)
+			if (active)
 				startTask.run();
 			return;
 		}
 		System.out.println("Refreshing " + bundlesToBeRefreshed.size() + " bundles.");
-		if (state != Bundle.ACTIVE) {
-			fw.resolveBundles(bundlesToBeRefreshed);
+		if (!active) {
+			checkForFrameworkExtensionBundle(bundlesToBeRefreshed);
+			fw.refreshBundles(bundlesToBeRefreshed);
 			return;
 		}
 		fw.refreshBundles(bundlesToBeRefreshed, new FrameworkListener() {
@@ -370,5 +453,84 @@ public class ShellCommands {
 		if (!latch.await(30, TimeUnit.SECONDS)) {
 			startTask.run();
 		}
+		
 	}
+	
+	// we assume here that the updated bundle was not active, so in particular not the framework bundle itself
+	private final static void checkForFrameworkExtensionBundle(final Collection<Bundle> bundlesToBeRefreshed) {
+		for (Bundle b: bundlesToBeRefreshed) {
+			if (b.getBundleId() == 0) {
+				// this is a hack to overcome a problem with Felix and Knopflerfish framework bundles when a framework
+				// extension bundle is updated... the framework bundle tries to restart the framework, but this fails for an unknown reason;
+				// the same happens when using the felix:update command followed by refresh, so it is probably nothing we can 
+				// really avoid
+				final String symbName = b.getSymbolicName();
+				if (symbName.contains("felix") || symbName.contains("knopflerfish")) { 
+					System.out.println("A framework extension bundle has been updated; good bye!");
+					// signals the wish to restart the framework to a Java-external launcher;
+					// the same exit code is used by the OGEMA launcher and bnd launcher
+					System.exit(-4); 
+				}
+			}
+		}
+		
+	}
+	
+	/**
+	 * Grants administrator rights to a given user. Only natural user are allowed to be administrators. Adds ALL APPS as
+	 * a role and puts java.security.AllPermission into policies.
+	 * 
+	 * @param user
+	 *            the name of the user as string
+	 * @return null on success, an explanation otherwise
+	 */
+	private String grantAdminRights(String user) {
+		// master is always admin
+		if ("master".equals(user)) {
+			return "Master user is always admin(?)";
+		}
+		final AccessManager accessManager = permMan.getAccessManager();
+		// machine user should not be admin
+		if (!accessManager.isNatural(user)) {
+			return "Machine user cannot be admin.";
+		}
+		AppPermission appPermission = accessManager.getPolicies(user);
+		appPermission.addPermission("java.security.AllPermission", null, null);
+		permMan.installPerms(appPermission);
+		return null;
+	}
+	
+	/**
+	 * Checks if the given user has administrator rights. master always returns true. Machine users always return false.
+	 * Checks for ALL APPS role and java.security.AllPermission policy.
+	 * 
+	 * @param user
+	 *            the name of the user as string
+	 * @return true or false
+	 */
+	private boolean checkUserAdmin(String user) {
+
+		if ("master".equals(user)) {
+			return true;
+		}
+		final AccessManager accessManager = permMan.getAccessManager();
+		// machine user is not allowed to be admin
+		if (!accessManager.isNatural(user)) {
+			return false;
+		}
+
+		String allPerms = "java.security.AllPermission";
+		AppPermission appPermission = accessManager.getPolicies(user);
+		Map<String, ConditionalPermissionInfo> grantedPerms = appPermission.getGrantedPerms();
+		for (ConditionalPermissionInfo cpi : grantedPerms.values()) {
+			PermissionInfo[] permInfo = cpi.getPermissionInfos();
+			for (PermissionInfo pi : permInfo) {
+				if (allPerms.equals(pi.getType())) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
 }

@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.ogema.core.application.ApplicationManager;
+import org.ogema.core.application.Timer;
+import org.ogema.core.application.TimerListener;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.resourcemanager.AccessMode;
@@ -319,9 +321,8 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
         return appMan;
     }
 
-    @Override
-    public void resourceAvailable(ResourceManipulatorModel configuration) {
-        final String id = configuration.application().getValue();
+    private void newConfiguration(final ResourceManipulatorModel configuration, final boolean retry) {
+    	final String id = configuration.application().getValue();
         if (!appId.equals(id)) {// belongs to a different application.
             logger.debug("Resource manipulator configuration resource at " + configuration.getLocation() + " found, but configuration belongs to a different application. Ignoring this.");
             return;
@@ -337,29 +338,50 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
 
         // Create a suitable controller instance.
         final Controller controller;
-        if (existingController != null) 
-        	controller = existingController;
-        else if (configuration instanceof ThresholdModel) {
-            controller = new ThresholdController(appMan, (ThresholdModel) configuration);
-        } else if (configuration instanceof ProgramEnforcerModel) {
-            controller = new ProgramEnforcerController(appMan, (ProgramEnforcerModel) configuration);
-        } else if (configuration instanceof ScheduleSumModel) {
-            controller = new ScheduleSumController(appMan, (ScheduleSumModel) configuration);
-        } else if (configuration instanceof SumModel) {
-        	controller = new SumController(appMan, (SumModel) configuration);
-        } else if (configuration instanceof ScheduleManagementModel) {
-        	if (scheduleManagement == null) // FIXME check if synchronization is needed; presumably not, since this is only called in one single application thread(?)
-        		scheduleManagement = new ScheduleManagementController(appMan);
-        	controller = new ScheduleConfiguration((ScheduleManagementModel) configuration, scheduleManagement, appMan);
-        } else {
-            logger.error("Got resource available callback for unknown or unsupported resource manipulator configuration at " 
-            		+ configuration.getLocation() + " which is of type " + configuration.getResourceType().getCanonicalName() + ". Ignoring the callback.");
-            return;
+        try {
+	        if (existingController != null) 
+	        	controller = existingController;
+	        else if (configuration instanceof ThresholdModel) {
+	            controller = new ThresholdController(appMan, (ThresholdModel) configuration);
+	        } else if (configuration instanceof ProgramEnforcerModel) {
+	            controller = new ProgramEnforcerController(appMan, (ProgramEnforcerModel) configuration);
+	        } else if (configuration instanceof ScheduleSumModel) {
+	            controller = new ScheduleSumController(appMan, (ScheduleSumModel) configuration);
+	        } else if (configuration instanceof SumModel) {
+	        	controller = new SumController(appMan, (SumModel) configuration);
+	        } else if (configuration instanceof ScheduleManagementModel) {
+	        	if (scheduleManagement == null) // FIXME check if synchronization is needed; presumably not, since this is only called in one single application thread(?)
+	        		scheduleManagement = new ScheduleManagementController(appMan);
+	        	controller = new ScheduleConfiguration((ScheduleManagementModel) configuration, scheduleManagement, appMan);
+	        } else {
+	            logger.error("Got resource available callback for unknown or unsupported resource manipulator configuration at " 
+	            		+ configuration.getLocation() + " which is of type " + configuration.getResourceType().getCanonicalName() + ". Ignoring the callback.");
+	            return;
+	        }
+        } catch (IllegalStateException e) {
+        	if (!retry) {
+        		logger.error("Resource manipulator failed to start for configuration {}",configuration,e);
+        		return;
+        	}
+        	appMan.createTimer(10000, new TimerListener() {
+				
+				@Override
+				public void timerElapsed(Timer timer) {
+					timer.destroy();
+					newConfiguration(configuration, false);
+				}
+			});
+        	return;
         }
 
         controller.start();
         controllerMap.put(configuration, controller);
         logger.debug("Started new enforcing a rule of type " + configuration.getResourceType().getCanonicalName() + " at " + configuration.getLocation());
+    }
+    
+    @Override
+    public void resourceAvailable(ResourceManipulatorModel configuration) {
+        newConfiguration(configuration, true);
     }
 
     @Override

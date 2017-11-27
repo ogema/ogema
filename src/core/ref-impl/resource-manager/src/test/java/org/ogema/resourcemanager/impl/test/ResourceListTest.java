@@ -15,6 +15,7 @@
  */
 package org.ogema.resourcemanager.impl.test;
 
+import org.ogema.exam.ResourceAssertions;
 import org.ogema.exam.StructureTestListener;
 
 import java.lang.reflect.Method;
@@ -26,6 +27,7 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
@@ -47,6 +49,7 @@ import org.ogema.model.locations.Room;
 import org.ogema.model.locations.WorkPlace;
 import org.ogema.model.metering.ElectricityMeter;
 import org.ogema.model.prototypes.PhysicalElement;
+import org.ogema.model.smartgriddata.ElectricityPrice;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 
@@ -178,8 +181,7 @@ public class ResourceListTest extends OsgiTestBase {
 		ResourceList<Resource> list = resMan.createResource(newResourceName(), ResourceList.class);
 		assertNull(list.getElementType());
 		list.addDecorator("deco", CoolingDevice.class);
-		//should work according to spec, though it is a bit weird:
-		assertEquals(1, list.getAllElements().size()); //contains the decorator
+		assertEquals(0, list.getAllElements().size());
 		list.add(); //adding to list of undefined type should cause exception
 	}
 
@@ -467,5 +469,70 @@ public class ResourceListTest extends OsgiTestBase {
         //assertTrue(l.await());
         l.assertCallback();
     }
-
+    
+    @Test
+    public void settingElementTypeRetrospectivelyWorks0() {
+		final ResourceList<?> meterList = resMan.createResource(newResourceName(), ResourceList.class);
+    	meterList.addDecorator("test",OnOffSwitch.class);
+        meterList.setElementType(ElectricityMeter.class);
+        Assert.assertEquals("Unexpected size of resource list",0, meterList.size()); 
+        final List<?> list = meterList.getAllElements();
+        Assert.assertEquals("Unexpected size of resource list entries",0, list.size());
+        meterList.delete();
+    }
+    
+    @Test
+    public void settingElementTypeRetrospectivelyWorks1() {
+    	@SuppressWarnings("unchecked")
+		final ResourceList<ElectricityMeter> meterList = resMan.createResource(newResourceName(), ResourceList.class);
+    	final ElectricityMeter sub = meterList.addDecorator("test", ElectricityMeter.class);
+   		Assert.assertEquals(0, meterList.size()); // type not set
+        meterList.setElementType(ElectricityMeter.class);
+        Assert.assertEquals("Unexpected size of resource list",1, meterList.size()); 
+        final List<ElectricityMeter> list = meterList.getAllElements();
+        Assert.assertEquals("Unexpected size of resource list entries",1, list.size());
+        ResourceAssertions.assertLocationsEqual(sub, list.get(0));
+        meterList.delete();
+    }
+    
+    @Test
+    public void resourceListWorksAsReference1() {
+    	final ElectricityMeter meter = resMan.createResource(newResourceName(), ElectricityMeter.class);
+    	final ElectricityPrice price = resMan.createResource(newResourceName(), ElectricityPrice.class);
+    	final String listName = "list";
+    	final ResourceList<?> list = price.getSubResource(listName, ResourceList.class).create();
+    	final OnOffSwitch switch0 = list.addDecorator("test", OnOffSwitch.class);
+    	meter.price().setAsReference(price);
+    	@SuppressWarnings("unchecked")
+		final ResourceList<OnOffSwitch> listCopy = meter.price().getSubResource(listName, ResourceList.class);
+    	listCopy.setElementType(OnOffSwitch.class);
+    	Assert.assertEquals("Unexpected element type in resource list", OnOffSwitch.class, list.getElementType());
+    	Assert.assertEquals("Unexpected resource list size", 1, listCopy.size());
+    	Assert.assertEquals("Unexpected resource list size", 1, list.size());
+    	final List<OnOffSwitch> switches = listCopy.getAllElements();
+    	Assert.assertEquals("Unexpected resource list size", 1, switches.size());
+    	ResourceAssertions.assertLocationsEqual(switch0, switches.get(0));
+    	meter.delete();
+    	price.delete();
+    }
+    
+    @Test
+    public void resourceListWorksAsReference2() {
+    	final ElectricityMeter meter = resMan.createResource(newResourceName(), ElectricityMeter.class);
+    	final ElectricityPrice price = resMan.createResource(newResourceName(), ElectricityPrice.class);
+    	final ResourceList<?> list = resMan.createResource(newResourceName(), ResourceList.class);
+    	final OnOffSwitch switch0 = list.addDecorator("test", OnOffSwitch.class);
+    	@SuppressWarnings("unchecked")
+		final ResourceList<OnOffSwitch> listCopy = (ResourceList<OnOffSwitch>) meter.addDecorator("list",list);
+    	listCopy.setElementType(OnOffSwitch.class);
+    	Assert.assertEquals("Unexpected element type in resource list", OnOffSwitch.class, list.getElementType());
+    	Assert.assertEquals("Unexpected resource list size", 1, listCopy.size());
+    	Assert.assertEquals("Unexpected resource list size", 1, list.size());
+    	final List<OnOffSwitch> switches = listCopy.getAllElements();
+    	Assert.assertEquals("Unexpected resource list size", 1, switches.size());
+    	ResourceAssertions.assertLocationsEqual(switch0, switches.get(0));
+    	meter.delete();
+    	price.delete();
+    }
+    
 }

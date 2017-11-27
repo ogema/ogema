@@ -17,6 +17,13 @@ package org.ogema.tools.resource.util.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
+
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactoryConfigurationError;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ogema.core.model.simple.StringResource;
@@ -27,7 +34,11 @@ import org.ogema.exam.ResourceAssertions;
 import org.ogema.model.locations.Room;
 import org.ogema.model.prototypes.PhysicalElement;
 import org.ogema.tools.resource.util.SerializationUtils;
+import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
+import org.ops4j.pax.exam.spi.reactors.PerClass;
+import org.xml.sax.SAXException;
 
+@ExamReactorStrategy(PerClass.class)
 public class SerializationTest extends OsgiAppTestBase {
 
 	private ResourceManagement rm;
@@ -41,7 +52,6 @@ public class SerializationTest extends OsgiAppTestBase {
 		rm = getApplicationManager().getResourceManagement();
 	}
 
-	
 	@Test
 	public void removeSubresourcesWorks_JSON() {
 		PhysicalElement dummy = rm.createResource(newResourceName(), PhysicalElement.class);
@@ -54,6 +64,24 @@ public class SerializationTest extends OsgiAppTestBase {
 		System.out.println("Applying json " + json);
 		room.delete();
 		getApplicationManager().getSerializationManager().applyJson(json, dummy, false);
+		ResourceAssertions.assertExists(room);
+		assertEquals("Unexpected number of StringResource subresources", 0, room.getSubResources(StringResource.class,true).size());
+		assertEquals("Unexpected number of subresources", 2, room.getSubResources(true).size());
+		dummy.delete();
+	}
+	
+	@Test
+	public void removeSubresourcesWorks_XML() throws SAXException, IOException, ParserConfigurationException, TransformerConfigurationException, TransformerException, TransformerFactoryConfigurationError {
+		PhysicalElement dummy = rm.createResource(newResourceName(), PhysicalElement.class);
+		Room room = dummy.location().room().create();
+		room.name().<StringResource> create().setValue("test");
+		room.getSubResource("testSubRes", StringResource.class).<StringResource> create().setValue("test2");
+		room.temperatureSensor().reading().<TemperatureResource> create().setCelsius(23.2F);
+		String xml = getApplicationManager().getSerializationManager().toXml(dummy);
+		xml = SerializationUtils.removeSubresourcesXml(xml, StringResource.class, true);
+		System.out.println("Applying xml " + xml);
+		room.delete();
+		getApplicationManager().getSerializationManager().applyXml(xml, dummy, false);
 		ResourceAssertions.assertExists(room);
 		assertEquals("Unexpected number of StringResource subresources", 0, room.getSubResources(StringResource.class,true).size());
 		assertEquals("Unexpected number of subresources", 2, room.getSubResources(true).size());

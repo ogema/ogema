@@ -18,18 +18,23 @@ package org.ogema.accesscontrol;
 import java.security.AccessController;
 import java.security.Permission;
 import java.security.PrivilegedAction;
+import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
 import org.ogema.resourcetree.TreeElement;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Zekeriya Mansuroglu
  *
  */
 public class ResourcePermission extends Permission {
+    
+    private static Map<String, Class<?>> resourceTypeClasses = new ConcurrentHashMap<>();
 
 	private static final long serialVersionUID = -7090110935361939550L;
 	public static final String READ = "read";
@@ -47,12 +52,13 @@ public class ResourcePermission extends Permission {
 	public static final int _CREATE = 1 << 3;
 	public static final int _DELETE = 1 << 4;
 	public static final int _ACTIVITY = 1 << 5;
+    private static final String[] ALLACTIONSTRINGS = new String[1<<6];
 	public static final int _ALLACTIONS = _READ | _WRITE | _ADDSUB | _CREATE | _DELETE | _ACTIVITY;
 	public static final int _NOACTIONS = 0;
 	private static final String INVALID_CLASS_NAME = "$";
 	private static final Object RESOURCE_LIST_CLASS_NAME = ResourceList.class.getName();
 
-	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+	private static final Logger LOGGER = org.slf4j.LoggerFactory.getLogger(ResourcePermission.class);
 
 	/**
 	 * The canonical form of the actions "read,write,create,addsub,delete,activity"
@@ -123,7 +129,7 @@ public class ResourcePermission extends Permission {
 			this.wced = true;
 			parseFilter(filter);
 		} catch (Throwable e) {
-			e.printStackTrace();
+			LoggerFactory.getLogger(ResourcePermission.class).error("Failed to create resource permission for filter {} and actions {}",filter,actions);
 			throw e;
 		}
 		setPathType();
@@ -338,14 +344,24 @@ public class ResourcePermission extends Permission {
 
 		}
 	}
+    
+    private Class<?> getClass(final String typename) {
+        Class<?> c = resourceTypeClasses.get(typename);
+        if (c == null) {
+            c = getClassPrivileged(typename);
+            if (c != null) {
+                resourceTypeClasses.put(typename, c);
+            }
+        }
+        return c;
+    }
 
 	private Class<?> getClassPrivileged(final String typename) {
-		Class<?> result = null;
-		final String name = typename;
-		result = AccessController.doPrivileged(new PrivilegedAction<Class<?>>() {
+		Class<?> result = AccessController.doPrivileged(new PrivilegedAction<Class<?>>() {
+            @Override
 			public Class<?> run() {
 				try {
-					return Class.forName(name);
+					return Class.forName(typename);
 				} catch (ClassNotFoundException ioe) {
 					// This exception occurs in particular, as long as no resource of a custom type has been created. 
 					// The log message is misleading in this case; if the resource type is really not exported, no
@@ -483,36 +499,40 @@ public class ResourcePermission extends Permission {
 			actions = ALLACTIONS;
 		}
 		else {
-			StringBuilder sb = new StringBuilder(CANONICAL_ACTIONS_LENGTH);
-			if ((actionsAsMask & _READ) != 0) {
-				sb.append(READ);
-			}
-			if ((actionsAsMask & _WRITE) != 0) {
-				if (sb.length() > 0)
-					sb.append(',');
-				sb.append(WRITE);
-			}
-			if ((actionsAsMask & _CREATE) != 0) {
-				if (sb.length() > 0)
-					sb.append(',');
-				sb.append(CREATE);
-			}
-			if ((actionsAsMask & _ADDSUB) != 0) {
-				if (sb.length() > 0)
-					sb.append(',');
-				sb.append(ADDSUB);
-			}
-			if ((actionsAsMask & _DELETE) != 0) {
-				if (sb.length() > 0)
-					sb.append(',');
-				sb.append(DELETE);
-			}
-			if ((actionsAsMask & _ACTIVITY) != 0) {
-				if (sb.length() > 0)
-					sb.append(',');
-				sb.append(ACTIVITY);
-			}
-			actions = sb.toString();
+            actions = ALLACTIONSTRINGS[actionsAsMask];
+            if (actions == null) {
+                StringBuilder sb = new StringBuilder(CANONICAL_ACTIONS_LENGTH);
+                if ((actionsAsMask & _READ) != 0) {
+                    sb.append(READ);
+                }
+                if ((actionsAsMask & _WRITE) != 0) {
+                    if (sb.length() > 0)
+                        sb.append(',');
+                    sb.append(WRITE);
+                }
+                if ((actionsAsMask & _CREATE) != 0) {
+                    if (sb.length() > 0)
+                        sb.append(',');
+                    sb.append(CREATE);
+                }
+                if ((actionsAsMask & _ADDSUB) != 0) {
+                    if (sb.length() > 0)
+                        sb.append(',');
+                    sb.append(ADDSUB);
+                }
+                if ((actionsAsMask & _DELETE) != 0) {
+                    if (sb.length() > 0)
+                        sb.append(',');
+                    sb.append(DELETE);
+                }
+                if ((actionsAsMask & _ACTIVITY) != 0) {
+                    if (sb.length() > 0)
+                        sb.append(',');
+                    sb.append(ACTIVITY);
+                }
+                actions = sb.toString();
+                ALLACTIONSTRINGS[actionsAsMask] = actions;
+            }
 		}
 		return bitMask;
 	}
@@ -545,12 +565,11 @@ public class ResourcePermission extends Permission {
 	 * @return true, if this granted permission implies the queried permission, false otherwise.
 	 */
 	/* @formatter:on */
-	@Override
-	public boolean implies(Permission p) {
-		if (!(p instanceof ResourcePermission))
+    @Override
+    public boolean implies(Permission p) {
+        if (!(p instanceof ResourcePermission))
 			return false;
-
-		ResourcePermission qp = (ResourcePermission) p;
+        ResourcePermission qp = (ResourcePermission) p;
 		/*
 		 * Condition 1: The action flag of the queried permission was set in the granted permission
 		 */
@@ -567,14 +586,14 @@ public class ResourcePermission extends Permission {
 		 */
 		if (this.type != null) {
 			if (this.type.equals(RESOURCE_LIST_CLASS_NAME)) {
-				logger.warn(
+				LOGGER.warn(
 						"ResourcePermission should not be defined with ResourceList as type! Such a permission doesn't imply any ResourcePermission!");
 				return false;
 			}
 			if (qp.node == null) {
 				if (qp.type != null && (qp.type.equals(RESOURCE_LIST_CLASS_NAME)) && !qp.actions.equals(CREATE)
 						&& !qp.actions.equals(ACTIVITY) && !qp.actions.equals(DELETE)) {
-					logger.warn(
+					LOGGER.warn(
 							"ResourcePermission should be queried with ResourceList as type only at first creation of the resource! Such a permission doesn't imply any ResourcePermission!");
 					return false;
 				}
@@ -584,7 +603,7 @@ public class ResourcePermission extends Permission {
 			else {
 				TreeElement parent = qp.node;
 				boolean success = false;
-				Class<?> cls = getClassPrivileged(this.type);
+				Class<?> cls = getClass(this.type);
 				while (parent != null) {
 					Class<?> parentCls = parent.getType();
 					if (parentCls == ResourceList.class) {

@@ -209,11 +209,11 @@ public class RestTest extends OsgiAppTestBase {
 		final String url = appendUserInfo(baseUrl + "/switch?depth=100");
 		Request req = Request.Get(url).addHeader("Accept", "application/json");
 		String json = req.execute().returnContent().asString();
-		System.out.println("JSON from server:\\n" + json);
+		System.out.println("JSON from server:\n" + json);
 
 		assertNotEquals(json, json = json.replace("47.11", "42.0"));
 
-		System.out.println("send to server:\\n" + json);
+		System.out.println("send to server:\n" + json);
 		Assert.assertEquals(47.11, sw.heatCapacity().getValue(), 0.1d);
 		Request put = Request.Put(url).bodyString(json, ContentType.APPLICATION_JSON);
 		put.execute();

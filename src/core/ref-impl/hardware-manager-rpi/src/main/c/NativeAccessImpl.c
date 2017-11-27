@@ -208,7 +208,7 @@ struct devicesArray *arrayAdd(struct devicesArray *devices, const char *path, in
   if (0 != devices && 0 != path)
   {
     // increase array size if necessary
-    if (devices->current > devices->max)
+    if (devices->current >= devices->max)
     {
       devices = arrayIncrease(devices);
 

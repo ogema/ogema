@@ -16,13 +16,17 @@
 package org.ogema.core.rads.tools;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.rads.creation.PatternFactory;
@@ -53,7 +57,8 @@ public class RadFactory<T extends Resource, P extends ResourcePattern<T>> {
 		//        } catch (NoSuchMethodException | SecurityException ex) {
 		//            throw new RuntimeException("Could not find default constructor on RAD of type " + type.getCanonicalName() + ". Ensure that the RAD has a public constructur RAD(Resource resource). Otherwise, it cannot be used with the OGEMA advanced access.", ex);
 		//        }
-		m_demandedModel = getDemandedModel(type);
+//		m_demandedModel = getDemandedModel(type);
+		m_demandedModel = getGenericClassParameter(type, ResourcePattern.class);
 		m_requiredFields = getResourceInfoRecursively(type, priority);
 	}
 
@@ -84,14 +89,43 @@ public class RadFactory<T extends Resource, P extends ResourcePattern<T>> {
 		return result;
 	}
 
+	// https://stackoverflow.com/questions/18707582/get-actual-type-of-generic-type-argument-on-abstract-superclass
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public static <M extends Resource> Class<M> getDemandedModel(Class<? extends ResourcePattern<M>> radClass) {
-		Type genericSupertype = radClass.getGenericSuperclass();
-		while (!(genericSupertype instanceof ParameterizedType)) {
-			genericSupertype = ((Class) genericSupertype).getGenericSuperclass();
-		}
-		final ParameterizedType radtype = (ParameterizedType) genericSupertype;
-		return (Class<M>) radtype.getActualTypeArguments()[0];
+	private static final <T> Class<T> getGenericClassParameter(final Class<?> parameterizedSubClass, final Class<?> genericSuperClass) {
+	    // a mapping from type variables to actual values (classes)
+	    final Map<TypeVariable<?>, Class<?>> mapping = new HashMap<>();
+
+	    Class<?> klass = parameterizedSubClass;
+	    while (klass != null) {
+	        final Type type = klass.getGenericSuperclass();
+	        if (type instanceof ParameterizedType) {
+	            final ParameterizedType parType = (ParameterizedType) type;
+	            final Type rawType = parType.getRawType();
+	            if (rawType == genericSuperClass) {
+	                // found
+	                final Type t = parType.getActualTypeArguments()[0];
+	                if (t instanceof Class<?>) {
+	                    return (Class<T>) t;
+	                } else {
+	                    return (Class<T>) mapping.get((TypeVariable<?>)t);
+	                }
+	            }
+	            // resolve
+	            final Type[] vars = ((GenericDeclaration)(parType.getRawType())).getTypeParameters();
+	            final Type[] args = parType.getActualTypeArguments();
+	            for (int i = 0; i < vars.length; i++) {
+	                if (args[i] instanceof Class<?>) {
+	                    mapping.put((TypeVariable)vars[i], (Class<?>)args[i]);
+	                } else {
+	                    mapping.put((TypeVariable)vars[i], mapping.get((TypeVariable<?>)(args[i])));
+	                }
+	            }
+	            klass = (Class<?>) rawType;
+	        } else {
+	            klass = klass.getSuperclass();
+	        }
+	    }
+	    throw new IllegalArgumentException("no generic supertype for " + parameterizedSubClass + " of type " + genericSuperClass);
 	}
 
 	/*

@@ -28,7 +28,6 @@ import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.recordeddata.RecordedData;
-import org.ogema.persistence.impl.faketree.ScheduleTreeElement;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.resourcemanager.impl.ResourceDBManager;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
@@ -47,10 +46,10 @@ public class HistoricalSchedule extends DefaultSchedule {
 	private final SingleValueResource parentResource;
 //	private final Class<? extends Value> type;
 
-	public HistoricalSchedule(VirtualTreeElement el, ScheduleTreeElement scheduleElement, String path,
+	public HistoricalSchedule(VirtualTreeElement el, String path,
 			ApplicationResourceManager resMan, ApplicationManager appMan, ResourceDBManager dbMan) {
-		super(el, scheduleElement, path, resMan, appMan, dbMan);
-		this.parentResource = resMan.getResource(scheduleElement.getParent().getParent().getPath()); // this is the parent by location, not by path
+		super(el, path, resMan, appMan, dbMan);
+		this.parentResource = resMan.getResource(getSchedule().getParent().getParent().getPath()); // this is the parent by location, not by path
 		if (parentResource == null)
 			throw new RuntimeException("Internal error: schedule has no parent");
 //		this.type = scheduleElement.getValueType();

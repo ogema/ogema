@@ -27,7 +27,7 @@ import org.ogema.wago.ProcessImage;
 public class Wago750315 implements ProcessImage, BusCoupler {
 
 	/** use the modbus-rtu driver */
-	private static final String DRIVER_ID = "modbus-rtu";
+	private static final String DRIVER_ID = "modbus-combined";
 
 	static final int WORD = 16;
 	static final int BIT = 1;
@@ -58,7 +58,7 @@ public class Wago750315 implements ProcessImage, BusCoupler {
 		currentDOuts = new DigitalOutImpl[16];
 		this.iface = ifaceName;
 		this.devAddr = devAddr;
-		this.deviceParameters = baud + ":8:none:1:none:none:0:500";
+		this.deviceParameters = baud + ":8:none:1:none:none:0";
 		this.channelAccess = channelAccess;
 	}
 
@@ -146,7 +146,7 @@ public class Wago750315 implements ProcessImage, BusCoupler {
 
 		deviceLocator = new DeviceLocator(DRIVER_ID, iface, devAddr, deviceParameters);
 		int regAddr = io.getWordOffset();
-		String channelAddr = "reg:" + regAddr;
+		String channelAddr = devAddr + ":HOLDING_REGISTERS:" + regAddr + ":1";
 		ChannelLocator cl = new ChannelLocator(channelAddr, deviceLocator);
 		ChannelConfiguration cfg = null;
 		try {

@@ -337,4 +337,6 @@ public interface PermissionManager {
 	 */
 	public boolean removePermissionManual(ConditionalPermissionUpdate cpu, Bundle bundle, String permissionClassName,
 			String filterString, String actions);
+
+	public boolean checkWebAccess(AppID accessor, AppID access);
 }

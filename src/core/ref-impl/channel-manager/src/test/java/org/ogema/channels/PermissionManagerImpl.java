@@ -201,4 +201,10 @@ public class PermissionManagerImpl implements PermissionManager {
 		return false;
 	}
 
+	@Override
+	public boolean checkWebAccess(AppID accessor, AppID access) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
 }

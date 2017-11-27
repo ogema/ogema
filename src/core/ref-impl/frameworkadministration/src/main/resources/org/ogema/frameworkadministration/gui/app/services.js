@@ -169,7 +169,7 @@ ngOGFrAdminApp.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', 
 
         this.getAllResources = function(path, config) {
 
-         //   console.log("SERVICE getAllResources: path: ", path);
+            console.log("SERVICE getAllResources: path: ", path);
             var deferred = $q.defer();
 
             $http.get(path, config).

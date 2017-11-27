@@ -58,7 +58,7 @@ public abstract class OsgiAppTestBase {
 	private volatile ApplicationManager appMan;
 	private ServiceRegistration<Application> registration;
 
-	protected final String ogemaVersion = MavenUtils.asInProject().getVersion("org.ogema.core", "api");
+	protected final static String ogemaVersion = MavenUtils.asInProject().getVersion("org.ogema.core", "api");
 
 	protected static int HTTP_PORT = 4712;
 	protected final boolean includeTestBundle;
@@ -137,7 +137,7 @@ public abstract class OsgiAppTestBase {
 				CoreOptions.mavenBundle("commons-io", "commons-io", "2.5"),
 				CoreOptions.mavenBundle("commons-codec", "commons-codec", "1.10"),
 				CoreOptions.mavenBundle("org.apache.commons", "commons-lang3", "3.4"),
-				CoreOptions.mavenBundle("org.json", "json", "20170516"),
+				CoreOptions.mavenBundle("org.json", "json", "20160212"),
 				// <-- apache commons
                 
                 CoreOptions.mavenBundle("com.google.guava", "guava", "19.0"),
@@ -183,8 +183,8 @@ public abstract class OsgiAppTestBase {
 	public Option webConsoleOption() {
 		return CoreOptions.composite(
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.webconsole", "4.2.14"),
-				CoreOptions.mavenBundle("org.apache.servicemix.bundles", "org.apache.servicemix.bundles.commons-io",
-						"1.4_3"),
+//				CoreOptions.mavenBundle("org.apache.servicemix.bundles", "org.apache.servicemix.bundles.commons-io",
+//						"1.4_3"),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.webconsole.plugins.event", "1.1.4"),
 				// CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.inventory", "1.0.4"), // required with
 				// newer version of plugins.ds
@@ -197,9 +197,10 @@ public abstract class OsgiAppTestBase {
 
 	public Option felixGogoShellOption() {
 		return CoreOptions.composite(
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.runtime", "1.0.4"),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.shell", "1.0.0"),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.command", "1.0.2"));
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.runtime", "0.16.2"),
+				// the shell causes ugly VM crashes in tests -> "the forked JVM terminated without properly saying goodbye"
+//				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.shell", "1.0.0"),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.gogo.command", "0.16.0"));
 	}
 
 	public Option ogemaWebFrontentOption() {
@@ -233,7 +234,7 @@ public abstract class OsgiAppTestBase {
 		return getClass().getSimpleName() + "_" + resourceCounter.incrementAndGet();
 	}
 
-	public final ApplicationManager getApplicationManager() {
+	public ApplicationManager getApplicationManager() {
 		return appMan;
 	}
 

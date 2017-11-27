@@ -69,6 +69,19 @@ public interface SampledValueDataPoint extends DataPoint<SampledValue> {
 	 */
 	SampledValue getElement(int idx, InterpolationMode interpolationMode);
 	
+	/**Get next element for the given index
+	 * 
+	 * @param idx
+	 * @return null if the current/last element is the last one or no data exists for the timeseries
+	 */
+	SampledValue getNextElement(int idx);
+	/**Get previous element for the given index
+	 * 
+	 * @param idx
+	 * @return null if the current/last element is the first one or no data exists for the timeseries
+	 */
+	SampledValue getPreviousElement(int idx);
+	
 	@Override
 	SampledValueDataPoint getPrevious(int stepsBack) throws IllegalArgumentException, IllegalStateException;
 	

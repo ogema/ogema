@@ -20,7 +20,7 @@ import org.ogema.core.model.Resource;
 /**
  * Listener for standard resource demands. Resource demands are issued on a resource
  * type. For each resource becoming available that is of the issued type the listener
- * is called once. The path reported in the callback alway is the resource location -
+ * is called once. The path reported in the callback always is the resource location -
  * no additional callbacks are issued for other paths under which the resource may be
  * available. If the resource becomes unavailable, the resourceUnavailable callback is
  * issued if the resource was available previously. That is, subsequent deactivation and

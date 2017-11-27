@@ -15,14 +15,29 @@
  */
 package org.ogema.core.administration;
 
-import java.beans.PropertyChangeListener;
-
 /**
  * Interface for classes providing a different framework time from the system time. As it is possible to run the
  * framework with increased or decreased speed compared to real time (or with an offset) in a test environment, the
  * framework time may differ from real time
  */
 public interface FrameworkClock {
+    
+    /**
+     * Clock change listeners are notified when clock settings are updated.
+     */
+    public static interface ClockChangeListener {
+        
+        void clockChanged(ClockChangedEvent e);
+        
+    }
+    
+    public static interface ClockChangedEvent {
+        
+        float getSimulationFactor();
+        
+        FrameworkClock getClock();
+        
+    }
 
 	/**
 	 * Identifier that the execution time has been changed manually, i.e. a change that is not
@@ -30,12 +45,14 @@ public interface FrameworkClock {
 	 * occured. This identifier is reported to a PropertyChangedListener registered on the
 	 * framework clock.
 	 */
+    @Deprecated
 	public static final String EXECUTION_TIME_CHANGED_PROPERTY = "executionTime";
 
 	/**
 	 * Identifier that the simulation speedup factor has been changed.. This identifier is reported to a PropertyChangedListener registered on the
 	 * framework clock.
 	 */
+    @Deprecated
 	public static final String SIMULATION_FACTOR_CHANGED_PROPERTY = "simulationFactor";
 
 	/** @return framework time defined by clock in ms since epoch */
@@ -71,12 +88,22 @@ public interface FrameworkClock {
 	 * modified outside of the normal progression of time.
 	 * 
 	 * @param listener the property listener.
+     * 
+     * @deprecated PropertyChangeListener requires module java.desktop on Java 9
 	 */
-	void addPropertyChangeListener(PropertyChangeListener listener);
+    @Deprecated
+	void addPropertyChangeListener(java.beans.PropertyChangeListener listener);
 
 	/**
 	 * Removes a previously-registered PropertyChangeListener.
 	 * @param listener Listener to remove.
+     * 
+     * @deprecated PropertyChangeListener requires module java.desktop on Java 9
 	 */
-	void removePropertyChangeListener(PropertyChangeListener listener);
+    @Deprecated
+	void removePropertyChangeListener(java.beans.PropertyChangeListener listener);
+    
+    void addClockChangeListener(ClockChangeListener l);
+    
+    void removeClockChangeListener(ClockChangeListener l);
 }

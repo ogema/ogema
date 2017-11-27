@@ -17,11 +17,11 @@ package org.ogema.resourcemanager.impl.test;
 
 import org.ogema.exam.DemandTestListener;
 import org.ogema.exam.ResourceAssertions;
-import org.ogema.exam.TestApplication;
 import org.ogema.recordeddata.DataRecorderException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -32,7 +32,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Ignore;
 
 import static org.junit.Assert.*;
 
@@ -59,7 +58,6 @@ import org.ogema.core.recordeddata.RecordedDataConfiguration;
 import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
 import org.ogema.core.resourcemanager.ResourceException;
 import org.ogema.core.resourcemanager.ResourceValueListener;
-import org.ogema.model.actors.OnOffSwitch;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 
@@ -1008,6 +1006,45 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		f2.delete();
 		f3.delete();
 		f4.delete();
+	}
+	
+	@Test
+	public void scheduleReferenceWorks() {
+		final FloatResource f1 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final FloatResource f2 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final Schedule schedule1 = f1.forecast();
+		final Schedule schedule2 = f2.forecast().create();
+		f1.forecast().setAsReference(schedule2);
+		ResourceAssertions.assertExists(schedule1);
+		ResourceAssertions.assertLocationsEqual(schedule1, schedule2);
+		schedule1.addValues(Collections.singletonList(new SampledValue(FloatValue.ZERO, 0, Quality.GOOD)));
+		Assert.assertEquals(1, schedule2.size());
+		Assert.assertEquals(1, schedule2.getValues(Long.MIN_VALUE).size());
+		Assert.assertEquals(1, schedule1.size());
+		Assert.assertEquals(1, schedule1.getValues(Long.MIN_VALUE).size());
+		Assert.assertEquals(1, f1.forecast().size());
+		f1.delete();
+		Assert.assertEquals(1, schedule2.size());
+		Assert.assertEquals(1, schedule2.getValues(Long.MIN_VALUE).size());
+		f2.delete();
+	}
+	
+	@Test
+	public void interpolationModeOnReferenceWorks() {
+		final FloatResource f1 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final FloatResource f2 = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final Schedule schedule1 = f1.forecast();
+		final Schedule schedule2 = f2.forecast().create();
+		f1.forecast().setAsReference(schedule2);
+		final InterpolationMode mode = InterpolationMode.LINEAR;
+		ResourceAssertions.assertExists(schedule1);
+		ResourceAssertions.assertLocationsEqual(schedule1, schedule2);
+		schedule1.setInterpolationMode(mode);
+		Assert.assertEquals(mode, schedule2.getInterpolationMode());
+		Assert.assertEquals(mode, f1.forecast().getInterpolationMode());
+		f1.delete();
+		Assert.assertEquals(mode, schedule2.getInterpolationMode());
+		f2.delete();
 	}
 	
 	

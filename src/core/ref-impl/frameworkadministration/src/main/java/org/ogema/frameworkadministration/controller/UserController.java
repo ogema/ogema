@@ -126,8 +126,6 @@ public class UserController {
 			return false;
 		}
 
-		boolean isAdmin = false;
-
 		// The permission "ALL APPS" doesn't longer exist
 		// List<String> appList = accessManager.getAppsPermitted(user);
 		// if (appList != null && appList.contains("ALL APPS")) {
@@ -140,13 +138,13 @@ public class UserController {
 			PermissionInfo[] permInfo = cpi.getPermissionInfos();
 			for (PermissionInfo pi : permInfo) {
 				if (allPerms.equals(pi.getType())) {
-					isAdmin = true;
+					return true;
 				}
 			}
 		}
 		// }
 
-		return isAdmin;
+		return false;
 	}
 
 	/**

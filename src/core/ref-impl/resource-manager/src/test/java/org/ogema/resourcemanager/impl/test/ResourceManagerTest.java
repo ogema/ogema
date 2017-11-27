@@ -132,6 +132,7 @@ public class ResourceManagerTest extends OsgiTestBase {
 	}
 
 	@Test
+    @SuppressWarnings("deprecation")
 	public void uniqueResourceNameWorks() {
 		String requestedName = "blub";
 		resMan.createResource(requestedName, OnOffSwitch.class);

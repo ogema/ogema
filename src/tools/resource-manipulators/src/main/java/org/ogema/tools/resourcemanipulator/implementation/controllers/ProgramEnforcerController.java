@@ -36,6 +36,7 @@ import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.timeseries.InterpolationMode;
+import org.ogema.tools.resource.util.ResourceUtils;
 import org.ogema.tools.resourcemanipulator.model.Filter;
 import org.ogema.tools.resourcemanipulator.model.ProgramEnforcerModel;
 import org.ogema.tools.resourcemanipulator.model.RangeFilter;
@@ -70,30 +71,33 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 		this.appMan = applicationManager;
 		this.logger = applicationManager.getLogger();
 		this.target = configuration.targetResource();
+		if (!target.isReference(false)) {
+			throw new IllegalStateException("Target resource is not set");
+		}
 		final Class<? extends Resource> clazz = configuration.targetResource().getResourceType();
+		String targetSchedule = configuration.scheduleResourceName().isActive() ? configuration.scheduleResourceName().getValue() : "program";
+		if (targetSchedule == null || !ResourceUtils.isValidResourcePath(targetSchedule) || targetSchedule.contains("/")) {
+			appMan.getLogger().error("Invalid target schedule {} in ProrgamEnforcer model {}",targetSchedule, configuration);
+			targetSchedule = "program";
+		}
+		program = target.getSubResource(targetSchedule, AbsoluteSchedule.class);
 		if (BooleanResource.class.isAssignableFrom(clazz)) {
 			resourceType = BooleanResource.class;
-			program = ((BooleanResource) target).program();
 		}
 		else if (IntegerResource.class.isAssignableFrom(clazz)) {
 			resourceType = IntegerResource.class;
-			program = ((IntegerResource) target).program();
 		}
 		else if (TimeResource.class.isAssignableFrom(clazz)) {
 			resourceType = TimeResource.class;
-			program = ((TimeResource) target).program();
 		}
 		else if (FloatResource.class.isAssignableFrom(clazz)) {
 			resourceType = FloatResource.class;
-			program = ((FloatResource) target).program();
 		}
 		else if (StringResource.class.isAssignableFrom(clazz)) {
 			resourceType = StringResource.class;
-			program = ((StringResource) target).program();
 		}
 		else {
 			resourceType = null; // not a valid resource type.
-			program = null;
 			appMan.getLogger().error(
 					"ProgramEnforcer found unexpected resource type " + clazz.getSimpleName()
 							+ ". Must be a value resource type with optional schedule program().");

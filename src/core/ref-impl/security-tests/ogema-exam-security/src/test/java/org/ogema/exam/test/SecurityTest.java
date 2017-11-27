@@ -82,7 +82,7 @@ import aQute.bnd.osgi.Constants;
 // @Ignore
 @RunWith(PaxExam.class)
 // @ExamReactorStrategy(PerClass.class)
-@ExamReactorStrategy(PerMethod.class)
+@ExamReactorStrategy(PerMethod.class) // quite expensive... can we avoid this?
 public class SecurityTest extends OsgiAppTestBase implements Application, ExceptionListener {
 
 	CountDownLatch startLatch = new CountDownLatch(1);

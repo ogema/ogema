@@ -50,6 +50,7 @@ import org.ogema.accesscontrol.ResourceAccessRights;
 import org.ogema.accesscontrol.ResourcePermission;
 import org.ogema.accesscontrol.UserRightsProxy;
 import org.ogema.accesscontrol.Util;
+import org.ogema.accesscontrol.WebAccessPermission;
 import org.ogema.applicationregistry.ApplicationRegistry;
 import org.ogema.core.administration.CredentialStore;
 import org.ogema.core.application.AppID;
@@ -92,9 +93,6 @@ public class DefaultPermissionManager implements PermissionManager {
 	@Reference
 	UserAdmin ua;
 
-//	@Reference
-//	org.apache.felix.useradmin.RoleRepositoryStore store;
-
 	@Reference
 	ApplicationRegistry appreg;
 
@@ -114,6 +112,7 @@ public class DefaultPermissionManager implements PermissionManager {
 
 	AccessManagerImpl accessMan;
 	volatile SecurityManager security;
+	volatile SecurityManager initial;
 	HashSet<String> permNames;
 
 	ConditionalPermissionAdmin cpa;
@@ -183,21 +182,22 @@ public class DefaultPermissionManager implements PermissionManager {
 		this.domainCombiner = new AppDomainCombiner();
 		sc = new ShellCommands(this, bc);
 	}
-	
+
 	// this construction is a workaround to a NoClassDefFoundError in Felix component activator
-	// if the OgemaSecurityManager class (which is an optional dependency) is not available, and 
+	// if the OgemaSecurityManager class (which is an optional dependency) is not available, and
 	// one tries to register it in the activate method
 	private final CountDownLatch registerSecurity() {
 		final CountDownLatch l = new CountDownLatch(1);
 		try {
 			new Thread(new Runnable() {
-				
+
 				@Override
 				public void run() {
 					try {
+						initial = System.getSecurityManager();
 						security = new org.ogema.base.security.OgemaSecurityManager();
 						System.setSecurityManager(security);
-						logger.debug("OGEMA security manager installed: {}",security);
+						logger.debug("OGEMA security manager installed: {}", security);
 					} finally {
 						l.countDown();
 					}
@@ -230,6 +230,12 @@ public class DefaultPermissionManager implements PermissionManager {
 		this.bc = null;
 		this.cpa = null;
 		this.security = null;
+		try {
+			System.setSecurityManager(initial);
+		} catch (Exception ignore) {
+			ignore.printStackTrace();
+		}
+		this.initial = null;
 	}
 
 	private ServiceRegistration<URLStreamHandlerService> urpHandlerRegistratrion;
@@ -348,6 +354,9 @@ public class DefaultPermissionManager implements PermissionManager {
 					security.checkPermission(perm, acc);
 			} catch (SecurityException e) {
 				return false;
+			} catch (Exception e) { // for malformed permissions
+				logger.warn("Unexpected exception in security check",e);
+				return false;
 			}
 		}
 		return true;
@@ -369,9 +378,23 @@ public class DefaultPermissionManager implements PermissionManager {
 			} catch (SecurityException e) {
 				logger.info(e.getMessage());
 				return false;
+			} catch (Exception e) { // for malformed permissions
+				logger.warn("Unexpected exception in security check",e);
+				return false;
 			}
 		}
 		return true;
+	}
+
+	@Override
+	public boolean checkWebAccess(AppID accessor, AppID access) {
+		if (!isSecure())
+			return true;
+		Bundle b = access.getBundle();
+		WebAccessPermission wap = new WebAccessPermission(b.getSymbolicName(), null, null, null);
+		Application app = accessor.getApplication();
+		AccessControlContext acc = getACC(app);
+		return handleSecurity(wap, acc);
 	}
 
 	@Override

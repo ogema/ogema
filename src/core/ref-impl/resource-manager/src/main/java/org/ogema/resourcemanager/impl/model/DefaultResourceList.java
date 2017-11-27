@@ -18,6 +18,8 @@ package org.ogema.resourcemanager.impl.model;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -25,6 +27,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
@@ -36,6 +40,7 @@ import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.resourcemanager.impl.ResourceBase;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 import org.ogema.resourcetree.TreeElement;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -49,18 +54,18 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	 */
 	static final String ELEMENTS = "@elements";
 
-	protected Class<T> elementType;
+	// must be updated when accessed, and protected by lock!
+//	protected Class<T> elementType;
 
-	@SuppressWarnings("unchecked")
 	public DefaultResourceList(VirtualTreeElement el, String path, ApplicationResourceManager appman) {
 		super(el, path, appman);
 		while (el.isReference()) {
 			el = (VirtualTreeElement) el.getReference();
 		}
-		elementType = (Class<T>) el.getResourceListType();
-		if (elementType == null && !el.isDecorator()) {
-			elementType = (Class<T>) findElementTypeOnParent();
-		}
+//		elementType = (Class<T>) el.getResourceListType();
+//		if (elementType == null && !el.isDecorator()) {
+//			elementType = (Class<T>) findElementTypeOnParent();
+//		}
 	}
 
 	protected final Class<? extends Resource> findElementTypeOnParent() {
@@ -88,13 +93,17 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 		return null;
 	}
 
+	// write lock must be held
 	@SuppressWarnings("unchecked")
 	protected void checkType(Resource r) {
+		Class<T> elementType = getElementType();
 		if (elementType == null) {
 			elementType = (Class<T>) findElementTypeOnParent();
+			setElementType(elementType);
 		}
 		if (elementType == null) {
 			elementType = (Class<T>) getEl().getResourceListType();
+			setElementType(elementType);
 		}
 		else {
 			if (!elementType.isAssignableFrom(r.getResourceType())) {
@@ -152,7 +161,11 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
             List<T> rval = new ArrayList<>(elementNames.size());
             boolean update = false;
             for (Iterator<String> it = elementNames.iterator(); it.hasNext();) {
-                T sub = getSubResource(it.next());
+                String name = it.next();
+                if (!isSubResourceReadable(name)) {
+                    continue;
+                }
+                T sub = getSubResource(name);
                 if (sub != null && sub.exists()) {
                     rval.add(sub);
                 } else {
@@ -172,13 +185,16 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	@Override
 	public int size() {
 		getEl();
-		return getElementNames().size();
+//		return getElementNames().size();
+		final TreeElement el = getElementsNode(false);
+		return el == null ? 0 : el.getData().getArrayLength();
 	}
 
 	@Override
 	public <S extends Resource> S addDecorator(String name, Class<S> resourceType)
 			throws ResourceAlreadyExistsException, NoSuchResourceException {
-		if (getElementType() != null && getElementType().isAssignableFrom(resourceType)) {
+		final Class<T> elementType = getElementType();
+		if (elementType != null && elementType.isAssignableFrom(resourceType)) {
 			getResourceDB().lockStructureWrite();
 			try {
 				S dec = super.addDecorator(name, resourceType);
@@ -199,9 +215,10 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 
     @Override
     protected void checkDecoratorCompatibility(Resource newDecorator, TreeElement existingDecorator) {
-        if (getElementType() != null && getElementType().isAssignableFrom(existingDecorator.getType())) {
+    	final Class<T> elementType = getElementType();
+        if (elementType != null && elementType.isAssignableFrom(existingDecorator.getType())) {
             //when replacing a list element, the replacement must also be compatible with the list element type
-            if (!getElementType().isAssignableFrom(newDecorator.getResourceType())) {
+            if (!elementType.isAssignableFrom(newDecorator.getResourceType())) {
                 throw new ResourceAlreadyExistsException("decorator exists and is a list element, cannot be replaced by a non-list element");
             }
         }        
@@ -210,7 +227,8 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	@Override
 	public <S extends Resource> S addDecorator(String name, S decorator) throws ResourceAlreadyExistsException,
 			NoSuchResourceException, ResourceGraphException {
-		if (getElementType() != null && getElementType().isAssignableFrom(decorator.getResourceType())) {
+		final Class<T> elementType = getElementType();
+		if (elementType != null && elementType.isAssignableFrom(decorator.getResourceType())) {
 			getResourceDB().lockStructureWrite();
 			try {
 				S dec = super.addDecorator(name, decorator);
@@ -230,9 +248,9 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	@Override
 	public T add(T arg0) {
 		Objects.requireNonNull(arg0, "reference must not be null");
-		checkType(arg0);
 		getResourceDB().lockStructureWrite();
 		try {
+			checkType(arg0);
 			String name = findNewName();
 			return addDecorator(name, arg0);
 		} finally {
@@ -242,6 +260,7 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 
 	@Override
 	public T add() {
+		final Class<T> elementType = getElementType();
 		if (elementType == null) {
 			throw new IllegalStateException("array element type has not been set.");
 		}
@@ -257,7 +276,7 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	@Override
 	public <S extends T> S add(Class<S> type) {
 		Objects.requireNonNull(type, "type must not be null");
-		if (elementType == null) {
+		if (getElementType() == null) {
 			throw new IllegalStateException("array element type has not been set.");
 		}
 		getResourceDB().lockStructureWrite();
@@ -274,33 +293,72 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 		getResourceDB().lockStructureWrite();
 		try {
 			List<String> elementNames = getElementNames();
+            boolean removed = false;
 			for (T e : getAllElements()) {
 				if (e.equalsLocation(element)) {
 					elementNames.remove(e.getName());
 					e.delete();
 				}
 			}
-			updateElementsNode(elementNames);
+            if (removed) {
+                updateElementsNode(elementNames);
+            }
 		} finally {
 			getResourceDB().unlockStructureWrite();
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Class<T> getElementType() {
-		return elementType;
+		getResourceDB().lockRead();
+		try {
+			return (Class<T>) getEl().getResourceListType();
+		} finally {
+			getResourceDB().unlockRead();
+		}
+//		return elementType;
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public void setElementType(Class<? extends Resource> resType) {
+	public void setElementType(final Class<? extends Resource> resType) {
 		Objects.requireNonNull(resType, "resource type must not be null");
-		if (elementType == null) {
-			elementType = (Class<T>) resType;
+        checkWritePermission();
+		getResourceDB().lockWrite();
+		try {
+			final Class<? extends Resource> oldType = getElementType();
+            if (oldType != null && !oldType.equals(resType)) {
+                throw new IllegalStateException("resource type already set and not equal to new type");
+            }
 			getEl().setResourceListType(resType);
-		}
-		else if (!elementType.equals(resType)) {
-			throw new IllegalStateException("resource type already set and not equal to new type");
+			if (oldType == null) {
+                try {
+                    // explicit class load to create a bundle wiring to the element type class.
+                    // necessary for custom types, so a bundle update will refresh
+                    // the resource manager.
+                    getClass().getClassLoader().loadClass(resType.getCanonicalName());
+                } catch (ClassNotFoundException ex) {
+                    // might happen during unsynchronized bundle shutdown / restart
+                    LoggerFactory.getLogger(ApplicationResourceManager.class).error("very unexpected exception, review code!", ex);
+                }
+                final List<? extends Resource> subs
+                        = AccessController.doPrivileged(new PrivilegedAction<List<? extends Resource>>() {
+                            @Override
+                            public List<? extends Resource> run() {
+                                return getSubResources(resType, false);
+                            }
+                        });
+                if (subs.isEmpty()) {
+                    return;
+                }
+                final List<String> names = new ArrayList<>(subs.size());
+                for (Resource r : subs) {
+                    names.add(r.getName());
+                }
+                updateElementsNode(names);
+			}
+		} finally {
+			getResourceDB().unlockWrite();
 		}
 	}
 
@@ -346,6 +404,9 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	protected void treeElementChildAdded(TreeElement parent, TreeElement child) {
 		super.treeElementChildAdded(parent, child);
 		if (parent.equals(getEl())) {
+			final Class<? extends Resource> elementType = getElementType();
+			if (elementType == null || !elementType.isAssignableFrom(child.getType()))
+				return;
 			String name = child.getName();
 			List<String> elementNames = getElementNames();
 			if (!elementNames.contains(name)) {

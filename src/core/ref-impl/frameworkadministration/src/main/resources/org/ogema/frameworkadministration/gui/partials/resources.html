@@ -23,7 +23,7 @@
             </h3>
         </div>
     </div>
-    <div class="tree col-sm-6">
+    <div class="col-sm-6">
         <div class="row">
             <div class="col-md-12">
                 <h4> Accessinformations for the OGEMA REST-Interface</h4>
@@ -56,14 +56,21 @@
                     An Error occured! No Data found.
                 </div>
                 <p>ResourceTree <button ng-click="getAllResources()" type="button" class="btn btn-xs"><span class="glyphicon glyphicon-refresh"></span>  </button></p>
-                <div treecontrol  class="tree-classic" tree-model="treeData" options="treeOptions" order-by="name" on-selection="showSelected(node)" selected-node="node1">
-                    {{node.name|| "ResourceLink:"}} {{node.value|| node.resourcelink.name || " "}} 
+                <div treecontrol class="tree-boot" tree-model="treeData" options="treeOptions"
+                     order-by="'name'" reverse-order="false"
+                     on-selection="showSelected(node)"
+                     on-node-toggle="loadNode(node.path,expanded,$parentNode)"
+                     expanded-nodes="expandedNodes"
+                     >
+                    {{node.name}} {{node.value || node.resourcelink.name || ""}} 
                 </div>
             </div>
-        </div>        
+
+        </div>
 
     </div>
-    <div class="tree col-sm-6">
+
+    <div class="col-md-12" style="position: fixed; left: 50%; width: 35%; vertical-align: top;">
         <h4> Details </h4>
         <tabset>
             <tab>
@@ -80,18 +87,14 @@
                             <td>
                                 {{data.name}}
                             </td>
-                            <td>
+                            <td ng-if="data.name === 'value' || data.name === 'active'">
+                                <a href="#" editable-text="data.value" buttons="no" onaftersave="updateResource(data.value, tableData, $data)">
+                                    {{data.value}}
+                                </a> 
+                            </td>
+                            <td ng-if="data.name !== 'value' && data.name !== 'active'">
                                 {{data.value}}
                             </td>
-                            <!--td ng-if="data.name != 'value' && data.name != 'active' ">
-                                {{data.value}}
-                            </td>
-                            <td ng-if="data.name == 'value' || data.name == 'active' ">
-                                <a href="#" editable-text="data.value" buttons="no" onaftersave="postSingleValue(data.value,'value' ,$data)">
-                                {{data.value}}
-                                 </a> 
-                            </td-->
-
                         </tr>
                     </table>
                 </div>
@@ -116,8 +119,7 @@
                 </div>
             </tab>
         </tabset>
-
-
-
     </div>
+
+
 </div>

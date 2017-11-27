@@ -11,3 +11,4 @@
 (org.ogema.accesscontrol.AdminPermission "*" "*")
 
 (org.ogema.accesscontrol.ResourcePermission "path=*" "read")
+(org.ogema.accesscontrol.WebAccessPermission "name=org.ogema.ref-impl.framework-administration")

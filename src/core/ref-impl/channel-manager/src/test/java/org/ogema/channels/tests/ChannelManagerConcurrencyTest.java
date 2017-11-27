@@ -53,7 +53,6 @@ public class ChannelManagerConcurrencyTest extends ChannelManagerTestBase  {
 	 * @throws ExecutionException
 	 * @throws TimeoutException
 	 */
-//	@Ignore("ConcurrentModificationException (sporadic)")
 	@Test
 	public void startMultipleDrivers() throws InterruptedException, ExecutionException, TimeoutException {
 		 // guaranteed ConcurrentModificationException with old implementation for ~ 150 drivers, tends to run through for 10 drivers
@@ -161,7 +160,6 @@ public class ChannelManagerConcurrencyTest extends ChannelManagerTestBase  {
 						svcs.add(svc);
 						channelAccess.readUnconfiguredChannels(svcs);
 						SampledValue sv = svcs.get(0).getSampledValue();
-						// FIXME
 						System.out.println( "   channel operation done " + nrChannelWrites);
 						return sv.getValue().getIntegerValue();
 					} catch (Throwable e) { 
@@ -235,7 +233,6 @@ public class ChannelManagerConcurrencyTest extends ChannelManagerTestBase  {
 						svcs.add(svc);
 						channelAccess.readUnconfiguredChannels(svcs);
 						SampledValue sv = svcs.get(0).getSampledValue();
-						// FIXME
 						System.out.println( "   channel operation done " + nrChannelWrites);
 						return sv.getValue().getIntegerValue();
 					} catch (Throwable e) { 

@@ -48,7 +48,7 @@ public interface ResourceList<T extends Resource> extends Resource {
 	 * by the sequence of adding the elements. The set of elements returned is the same as 
 	 * the one obtained from calling
 	 * {@link org.ogema.core.model.Resource#getSubResources}({@link getElementType()},
-	 * false)
+	 * false), if the element type is set. If it is not set, an empty list is returned.
 	 *
 	 * @return list of elements in the list (direct subresources and
 	 * references).
@@ -56,7 +56,7 @@ public interface ResourceList<T extends Resource> extends Resource {
 	List<T> getAllElements();
 
 	/**
-	 * Get number of elements in the list.
+	 * Get number of elements in the list. If the list type is not set, 0 is returned.
 	 *
 	 * @return
 	 */

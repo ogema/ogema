@@ -141,6 +141,7 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
         return false;
     }
 
+    @Deprecated
     String[] registerStaticResource(HttpServlet servlet, HttpServletRequest req, AppID appId) {
     	SessionAuth sauth = (SessionAuth) req.getSession().getAttribute("ogemaAuth");
     	if (sauth == null)
@@ -231,7 +232,5 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
 	public String getStartUrl() {
 		throw new UnsupportedOperationException("Not supported by global WebAccessManager, requires Application-specific WebAccessManager");
 	}
-
-
 
 }

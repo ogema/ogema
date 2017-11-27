@@ -59,7 +59,6 @@ import org.ogema.core.model.units.VelocityResource;
 import org.ogema.core.model.units.VoltageResource;
 import org.ogema.core.model.units.VolumeResource;
 import org.ogema.core.resourcemanager.InvalidResourceTypeException;
-import org.ogema.persistence.impl.faketree.ScheduleTreeElement;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.resourcemanager.impl.ConnectedResource;
 import org.ogema.resourcemanager.impl.DynamicProxyResource;
@@ -311,11 +310,11 @@ public class ResourceFactory {
 				}
 				String loc = locEl.getName();
 
-				ScheduleTreeElement scheduleElement = m_dbMan.getScheduleElement(el);
+//				ScheduleTreeElement scheduleElement = m_dbMan.getScheduleElement(el);
 				if (loc.equals(HistoricalSchedule.PATH_IDENTIFIER))
-					return (T) new HistoricalSchedule(el, scheduleElement, path, m_resMan, m_appMan, m_dbMan);
+					return (T) new HistoricalSchedule(el, path, m_resMan, m_appMan, m_dbMan);
 				else
-					return (T) new DefaultSchedule(el, scheduleElement, path, m_resMan, m_appMan, m_dbMan);
+					return (T) new DefaultSchedule(el, path, m_resMan, m_appMan, m_dbMan);
 			}
 
 			// a plain ValueResource, should probably only occur as virtual resource...

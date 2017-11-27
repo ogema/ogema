@@ -769,11 +769,10 @@ public class TreeElementImpl implements TreeElement {
 	@Override
 	public Class<? extends Resource> getResourceListType() {
 		if (complexArray) {
-			TreeElementImpl node = this;
 			if (reference) {
 				return refered.getResourceListType();
 			}
-			Class<?> cls = node.type;
+			final Class<?> cls = type;
 			if (cls != null) {
 				if (cls == DBConstants.CLASS_COMPLEX_ARR_TYPE)
 					return null;
@@ -790,6 +789,10 @@ public class TreeElementImpl implements TreeElement {
 	@Override
 	public void setResourceListType(Class<? extends Resource> cls) {
 		if (complexArray) {
+			if (reference) {
+				refered.setResourceListType(cls);
+				return;
+			}
 			if (type != null && type != DBConstants.CLASS_COMPLEX_ARR_TYPE && type != cls)
 				throw new InvalidResourceTypeException("ResourceList type already set to " + type.getName());
 			else {

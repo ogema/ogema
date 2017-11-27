@@ -55,8 +55,7 @@ public class WebAccessPermission extends Permission {
 	}
 
 	public WebAccessPermission(String appname, String user, String group, Version version) {
-		super("appname=" + appname + ",user=" + user + ",group=" + group + ",version=" + version == null ? "*"
-				: version.toString());
+		super("appname=" + appname + ",user=" + user + ",group=" + group + ",version=" + version);
 		if (appname == null)
 			appname = "*";
 		if (user == null)
@@ -67,6 +66,8 @@ public class WebAccessPermission extends Permission {
 			this.app = new Param(appname == null ? "*" : appname);
 			this.user = new Param(user);
 			this.group = new Param(group);
+			if (version == null)
+				version = Version.emptyVersion;
 			this.version = version;
 		} catch (Throwable e) {
 			e.printStackTrace();

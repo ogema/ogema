@@ -15,12 +15,29 @@
  */
 package org.ogema.tools.resource.util;
 
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.Iterator;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.TransformerFactoryConfigurationError;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.ogema.core.model.Resource;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 /**
  * Utility methods for de-/serialization of resources.
@@ -117,6 +134,96 @@ public class SerializationUtils {
         		removeSubresources(subsub, typesToBeRemoved, subresourceNames, recursive);
         	}
         }
+    }
+    
+    public static String removeSubresourcesXml(String resourceXml, Class<? extends Resource> typeToBeRemoved, boolean recursive) throws SAXException, IOException, ParserConfigurationException, TransformerConfigurationException, TransformerException, TransformerFactoryConfigurationError {
+    	final Document document = getDocument(resourceXml);
+    	removeSubresourcesXml(document, typeToBeRemoved, recursive);
+    	return toString(document);
+    }
+    
+    public static String removeSubresourcesXml(String resourceXml, Class<? extends Resource>[] typesToBeRemoved, String[] relativePaths, boolean recursive) throws SAXException, IOException, ParserConfigurationException, TransformerConfigurationException, TransformerException, TransformerFactoryConfigurationError {
+    	final Document document = getDocument(resourceXml);
+    	removeSubresourcesXml(document, typesToBeRemoved, relativePaths, recursive);
+    	return toString(document);
+    }
+	
+    @SuppressWarnings("unchecked")
+	public static void removeSubresourcesXml(Document resource, Class<? extends Resource> typeToBeRemoved, boolean recursive) {
+    	removeSubresourcesXml(resource, new Class[]{typeToBeRemoved}, null, recursive);
+    }
+    
+    public static void removeSubresourcesXml(final Node resourceXml, final Class<? extends Resource>[] typesToBeRemoved, 
+    		final String[] subresourceNames, final boolean recursive) {
+    	final String[] typeNames;
+    	if (typesToBeRemoved != null) {
+    		typeNames = new String[typesToBeRemoved.length];
+    		int ind = 0;
+    		for (Class<? extends Resource> type : typesToBeRemoved)
+    			typeNames[ind++] = type.getName();
+    	} else
+    		typeNames = null;
+    	final NodeList nodeList = resourceXml.getChildNodes();
+    	Node node;
+    	for (int i=0;i<nodeList.getLength();i++) {
+    		node = nodeList.item(i);
+    		final String nname = node.getNodeName();
+    		if (nname == null || (!"resource".equals(nname) && !nname.startsWith("og:")))
+    			continue;
+    		boolean done = false;
+    		if (typesToBeRemoved != null && typesToBeRemoved.length > 0) {
+	    		final Node typeNode = getChildNode(node.getChildNodes(), "type");
+	    		if (typeNode != null) {
+		    		final String type = typeNode.getTextContent();
+		    		for (String t : typeNames) {
+		    			if (t.equals(type)) {
+		    				resourceXml.removeChild(node);
+		    				done = true;
+		    				break;
+		    			}
+		    		}
+	    		}
+    		}
+    		if (done)
+    			continue;
+    		if (subresourceNames != null && subresourceNames.length > 0) {
+    			final Node nameNode = getChildNode(node.getChildNodes(), "name");
+    			if (nameNode != null) {
+    				final String name = nameNode.getTextContent();
+		    		for (String n : subresourceNames) {
+		    			if (n.equals(name)) {
+		    				resourceXml.removeChild(node);
+		    				done = true;
+		    				break;
+		    			}
+		    		}
+    			}
+    		}
+    		if (done)
+        		continue;
+    		if (recursive)
+        		removeSubresourcesXml(node, typesToBeRemoved, subresourceNames, recursive);
+    	}
+    }
+    
+    private final static String toString(final Document document) throws TransformerConfigurationException, TransformerException, TransformerFactoryConfigurationError {
+        final StreamResult result = new StreamResult(new StringWriter());
+        TransformerFactory.newInstance().newTransformer().transform(new DOMSource(document), result);
+        return result.getWriter().toString();
+    }
+    
+    private final static Document getDocument(final String xml) throws SAXException, IOException, ParserConfigurationException {
+       return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
+    }
+    
+    private final static Node getChildNode(final NodeList nodeList, final String id) {
+    	Node node;
+    	for (int i=0;i<nodeList.getLength();i++) {
+    		node = nodeList.item(i);
+    		if (id.equals(node.getNodeName()))
+    			return node;
+    	}
+    	return null;
     }
     
 /*    private static String getIdentifier(Class<? extends Resource> type) {

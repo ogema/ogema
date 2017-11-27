@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.ogema</groupId>
 		<artifactId>ogema</artifactId>
-		<version>2.1.1</version>
+		<version>2.1.2</version>
 	</parent>
 
 	<groupId>org.ogema.apps</groupId>
@@ -22,6 +22,7 @@
 		<module>coolspace-controller</module>
 		<module>device-configurator</module>
 		<module>drs485de-console</module>
+		<module>framework-apps-tests</module>
 		<module>grafana-logging</module>
 		<module>grafana-schedule-viewer</module>
 		<module>graph-generator</module>

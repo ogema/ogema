@@ -27,6 +27,7 @@ import com.ghgande.j2mod.modbus.ModbusSlaveException;
 import com.ghgande.j2mod.modbus.msg.ReadMultipleRegistersRequest;
 import com.ghgande.j2mod.modbus.msg.ReadMultipleRegistersResponse;
 import com.ghgande.j2mod.modbus.msg.WriteMultipleRegistersRequest;
+import com.ghgande.j2mod.modbus.msg.WriteSingleRegisterRequest;
 import com.ghgande.j2mod.modbus.procimg.Register;
 import com.ghgande.j2mod.modbus.procimg.SimpleRegister;
 
@@ -36,22 +37,22 @@ public class HoldingChannel extends Channel {
 	public static final int MAX_WRITE = 123;
 
 	private final ReadMultipleRegistersRequest readRequest;
-	private final WriteMultipleRegistersRequest writeRequest;
+	private WriteMultipleRegistersRequest writeMultipleRequest;
+	private WriteSingleRegisterRequest writeSingleRequest;
+	private int registerCount;
 
 	public HoldingChannel(ChannelLocator locator, String[] splitAddress) {
 		super(locator);
 
 		int device;
 		int reg;
-		int count;
-
 		// decode the argument string
 		// channelAddressString format:
 		// "<DEVICE_ID>:COILS:<REGISTERNUMBER>:<COUNT>"
 		try {
 			device = Integer.decode(splitAddress[0]).intValue();
 			reg = Integer.decode(splitAddress[2]).intValue();
-			count = Integer.decode(splitAddress[3]).intValue();
+			registerCount = Integer.decode(splitAddress[3]).intValue();
 
 		} catch (NullPointerException | IllegalArgumentException e) {
 			throw new IllegalArgumentException("could not create Channel with Address " + locator.getChannelAddress(),
@@ -62,19 +63,35 @@ public class HoldingChannel extends Channel {
 
 		readRequest.setUnitID(device);
 		readRequest.setReference(reg);
-		readRequest.setWordCount(count);
+		readRequest.setWordCount(registerCount);
+		if (registerCount > 1) {
+			writeMultipleRequest = new WriteMultipleRegistersRequest();
 
-		writeRequest = new WriteMultipleRegistersRequest();
+			writeMultipleRequest.setUnitID(device);
+			writeMultipleRequest.setReference(reg);
 
-		writeRequest.setUnitID(device);
-		writeRequest.setReference(reg);
+			Register[] registers = new Register[registerCount];
+			for (int i = 0; i < registers.length; i++) {
+				registers[i] = new SimpleRegister(0);
+			}
 
-		Register[] registers = new Register[count];
-		for (int i = 0; i < registers.length; i++) {
-			registers[i] = new SimpleRegister(0);
+			writeMultipleRequest.setRegisters(registers);
 		}
+		else if (registerCount == 1) {
+			writeSingleRequest = new WriteSingleRegisterRequest();
 
-		writeRequest.setRegisters(registers);
+			writeSingleRequest.setUnitID(device);
+			writeSingleRequest.setReference(reg);
+
+			Register register = new SimpleRegister(0);
+			writeSingleRequest.setRegister(register);
+		}
+		else {
+			// Should never happen, that a negative register count is encoded in the channel descriptor
+			throw new IllegalArgumentException(
+					"could not create Channel with this address due to negative register count: "
+							+ locator.getChannelAddress());
+		}
 	}
 
 	@Override
@@ -108,26 +125,29 @@ public class HoldingChannel extends Channel {
 
 	@Override
 	public void writeValue(Connection connection, Value value) throws IOException {
-
-		// WriteMultipleRegistersResponse response;
-		int[] array;
-		Register[] registers;
+		Object ov = value.getObjectValue();
 
 		try {
-			array = (int[]) value.getObjectValue();
-			registers = writeRequest.getRegisters();
-			for (int i = 0; i < array.length; i++) {
-				registers[i].setValue(array[i]);
+			if (registerCount == 1) { // is the value a single integer or an array of it?
+				int singleInt = (Integer) ov;
+				Register register = writeSingleRequest.getRegister();
+				register.setValue(singleInt);
+				connection.executeTransaction(writeSingleRequest);
+			}
+			else {
+				int[] array;
+				Register[] registers;
+				array = (int[]) value.getObjectValue();
+				registers = writeMultipleRequest.getRegisters();
+				for (int i = 0; i < array.length; i++) {
+					registers[i].setValue(array[i]);
+				}
+				connection.executeTransaction(writeMultipleRequest);
 			}
 
-			/* response = (WriteMultipleRegistersResponse) */ connection.executeTransaction(writeRequest);
-
 		} catch (ModbusSlaveException mse) {
-			// System.out.println("Slave Exception: " + mse.getType());
-			// mse.printStackTrace();
 			throw new IOException("Slave Exception: " + mse.getType(), mse);
 		} catch (Exception e) {
-			// e.printStackTrace();
 			throw new IOException(e);
 		}
 	}

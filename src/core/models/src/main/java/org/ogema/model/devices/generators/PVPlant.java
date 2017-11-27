@@ -15,12 +15,14 @@
  */
 package org.ogema.model.devices.generators;
 
+import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.units.AngleResource;
 import org.ogema.core.model.units.AreaResource;
 import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.model.sensors.GeographicDirectionSensor;
+import org.ogema.model.sensors.SolarIrradiationSensor;
 
 /**
  * Resource type for a PV plant. As a complete physical device, this is intended
@@ -78,4 +80,11 @@ public interface PVPlant extends ElectricityGenerator {
 	 * 3: dual-axis tracking
 	 * */
 	IntegerResource tracking();
+	
+	/**
+	 * Solar irradiation sensors relevant to this plant.
+	 * @return
+	 */
+	ResourceList<SolarIrradiationSensor> irradiationSensors();
+	
 }

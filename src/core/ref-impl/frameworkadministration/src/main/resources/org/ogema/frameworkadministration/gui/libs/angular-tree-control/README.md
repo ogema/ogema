@@ -1,15 +1,20 @@
-Angular Tree Control [![Build Status](https://travis-ci.org/wix/angular-tree-control.png)](https://travis-ci.org/wix/angular-tree-control) [![Coverage Status](https://coveralls.io/repos/wix/angular-tree-control/badge.png)](https://coveralls.io/r/wix/angular-tree-control)
+Angular Tree Control
 ================
+
+[![npm version](https://badge.fury.io/js/angular-tree-control.svg)](https://badge.fury.io/js/angular-tree-control)
+[![Bower version](https://badge.fury.io/bo/angular-tree-control.svg)](http://badge.fury.io/bo/angular-tree-control)
+[![Build Status](https://travis-ci.org/wix/angular-tree-control.svg)](https://travis-ci.org/wix/angular-tree-control)
+[![Coverage Status](https://coveralls.io/repos/wix/angular-tree-control/badge.svg)](https://coveralls.io/r/wix/angular-tree-control)
 
 Pure [AngularJS](http://www.angularjs.org) based tree control component.
 
 [![ScreenShot](https://raw.github.com/wix/angular-tree-control/master/images/sample.png)](http://jsfiddle.net/8ApLX/5/)
 
-Running sample on [jsFiddle](http://jsfiddle.net/8ApLX/5/)
+To get started, check out [wix.github.io/angular-tree-control](http://wix.github.io/angular-tree-control/)
 
 ## Why yet another tree control
 
-We have tried a number of tree controls built for angular and experience a of issues with each. As a result we decided
+We have tried a number of tree controls built for angular and experience a lot of issues with each. As a result we decided
 to build a new tree control with the following design guidelines
 
 - Isolated scope - the tree control should not pollute the scope it is rendered at
@@ -102,26 +107,32 @@ Attributes of angular treecontrol
 
 - `treecontrol` : the treeview element.
 - element content : the template to evaluate against each node (and the parent scope of the tree) for the node label.
-- `tree-model` : the tree data on the `$scope`. This can be an array of nodes or a single node.
+- `tree-model` : [Node|Array[Node]] the tree data on the `$scope`. This can be an array of nodes or a single node.
+- `selected-node` : [Node], used when `multiSelection=false`. Binding for the selected node in the tree. Updating this value updates the selection displayed in the tree. Selecting a node in the tree will update this value.
+- `selected-nodes` : [Array[Node]], used when `multiSelection=true`. Binding for the selected nodes in the tree. Updating this value updates the selection displayed in the tree. Selecting a node in the tree will update this value.
+- `expanded-nodes` : [Array[Node]] binding for the expanded nodes in the tree. Updating this value updates the nodes that are expanded in the tree.
+- `on-selection` : `(node, selected)` callback called whenever selecting a node in the tree. The callback expression can use the selected node (`node`) and a boolean which indicates if the node was selected or deselected (`selected`).
+- `on-node-toggle` : `(node, expanded)` callback called whenever a node expands or collapses in the tree. The callback expression can use the toggled node (`node`) and a boolean which indicates expansion or collapse (`expanded`).
 - `options` : different options to customize the tree control.
+  - `multiSelection` : [Boolean] enable multiple nodes selection in the tree.
   - `nodeChildren` : the name of the property of each node that holds the node children. Defaults to 'children'.
   - `dirSelectable` : are directories (nodes with children) selectable? If not, clicking on the dir label will expand and contact the dir. Defaults to `true`.
+  - `allowDeselect` : are nodes deselectable? If not, clicking on the label will not deselect node. Defaults to `true`.
   - `equality` : the function used to determine equality between old nodes and new ones when checking whether a replacement node should be expanded and/or marked as selected. Defaults to a function which uses `angular.equals()` on everything except the property indicated in `nodeChildren`.
   - `isLeaf` : function (node) -> boolean used to determine if a node is a leaf or branch. The default function checks for existence of children of the node to determine leaf or branch.
-  - `defaultExpanded` : array[node] - an array of nodes to be expanded in the tree by default
   - `injectClasses` : allows to inject additional CSS classes into the tree DOM
     - `ul` : inject classes into the ul elements
     - `li` : inject classes into the li elements
     - `liSelected` : inject classes into the li elements only when the node is selected
-    - `iExpanded` : inhect classes into the 'i' element for the expanded nodes
-    - `iCollapsed` : inhect classes into the 'i' element for the collapsed nodes
-    - `iLeaf` : inhect classes into the 'i' element for leaf nodes
-    - `label` : inhect classes into the div element around the label
-    - `labelSelected` : inhect classes into the div element around the label only when the node is selected
-- `on-selection` : function to call on the current `$scope` on node selection.
-- `selected-node` : parameter on the `$scope` to update with the current selection.
-- `order-by` : value for ng-repeat to use for ording sibling nodes
+    - `iExpanded` : inject classes into the 'i' element for the expanded nodes
+    - `iCollapsed` : inject classes into the 'i' element for the collapsed nodes
+    - `iLeaf` : inject classes into the 'i' element for leaf nodes
+    - `label` : inhject classes into the div element around the label
+    - `labelSelected` : inject classes into the div element around the label only when the node is selected
+- `order-by` : value for ng-repeat to use for ordering sibling nodes
 - `reverse-order` : whether or not to reverse the ordering of sibling nodes based on the value of `order-by`
+- `filter-expression` : value for ng-repeat to use for filtering the sibling nodes
+- `filter-comparator` : value for ng-repeat to use for comparing nodes with the filter expression
 
 ### The tree labels
 

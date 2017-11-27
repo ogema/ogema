@@ -61,4 +61,11 @@ public interface ProgramEnforcerModel extends ResourceManipulatorModel {
 	 * deactivation status is retained.
 	 */
 	BooleanResource deactivateIfValueMissing();
+	
+	/**
+	 * Default value: "program"
+	 * @return
+	 */
+	StringResource scheduleResourceName();
+	
 }

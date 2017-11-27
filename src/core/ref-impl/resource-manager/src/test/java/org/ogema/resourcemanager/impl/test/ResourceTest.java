@@ -403,7 +403,7 @@ public class ResourceTest extends OsgiTestBase {
         elSwitch.ratedValues().lowerLimit().setAsReference(elSwitch2.ratedValues().lowerLimit().create());
         assertEquals(expectedResources, new HashSet<>(elSwitch.getDirectSubResources(true)));
         
-        elSwitch.ratedValues().addDecorator("bar", (Resource) elSwitch2.heatCapacity().create());        
+        elSwitch.ratedValues().addDecorator("bar", elSwitch2.heatCapacity().create());        
         assertEquals(expectedResources, new HashSet<>(elSwitch.getDirectSubResources(true)));
     }
 
@@ -516,6 +516,16 @@ public class ResourceTest extends OsgiTestBase {
     }
     
     @Test
+    public void addDecoratorCanConstrainOptionalElementType() {
+        final TypeTestResource test = resMan.createResource(newResourceName(), TypeTestResource.class);
+        IntegerResource sub = test.addDecorator("value", IntegerResource.class);
+        ResourceAssertions.assertExists(test.value());
+        assertEquals(IntegerResource.class, test.value().getResourceType());
+        //this failed:
+        test.addDecorator("value", IntegerResource.class);
+    }
+    
+    @Test
     public void virtualOptionalElementTypeCanBeFurtherRestricted() {
     	final TypeTestResource test = resMan.createResource(newResourceName(), TypeTestResource.class);
     	final ValueResource val = test.value();
@@ -551,6 +561,22 @@ public class ResourceTest extends OsgiTestBase {
     	PowerResource valueAsPower = test.addDecorator(val.getName(), PowerResource.class);
     	ResourceAssertions.assertLocationsEqual(valueAsFloat, valueAsPower);
     	Assert.assertEquals(PowerResource.class, valueAsPower.getResourceType());
+    	test.delete();
+    }
+    
+    @Test
+    public void virtualOptionalElementTypeCanBeRecreatedWithIncompatibleType() {
+    	final TypeTestResource test = resMan.createResource(newResourceName(), TypeTestResource.class);
+    	final ValueResource val = test.value();
+    	FloatResource valueAsFloat = test.getSubResource(val.getName(), FloatResource.class).create();
+    	Assert.assertEquals(FloatResource.class, valueAsFloat.getResourceType());
+    	ResourceAssertions.assertLocationsEqual(val, valueAsFloat);
+    	valueAsFloat.delete();
+        IntegerResource someInteger = test.addDecorator("x", IntegerResource.class);
+    	//IntegerResource valueAsInteger = test.addDecorator(val.getName(), IntegerResource.class);
+        IntegerResource valueAsInteger = test.value().setAsReference(someInteger);
+    	ResourceAssertions.assertLocationsEqual(valueAsFloat, valueAsInteger);
+    	Assert.assertEquals(IntegerResource.class, valueAsInteger.getResourceType());
     	test.delete();
     }
        

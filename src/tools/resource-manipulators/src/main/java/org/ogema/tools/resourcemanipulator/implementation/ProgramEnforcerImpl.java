@@ -15,9 +15,14 @@
  */
 package org.ogema.tools.resourcemanipulator.implementation;
 
+import org.ogema.tools.resource.util.ResourceUtils;
 import org.ogema.tools.resourcemanipulator.ResourceManipulatorImpl;
+
+import java.util.Objects;
+
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ValueResource;
+import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.tools.resourcemanipulator.configurations.ProgramEnforcer;
 import org.ogema.tools.resourcemanipulator.model.ProgramEnforcerModel;
@@ -34,6 +39,7 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 	private AccessPriority m_priority;
 	private boolean m_exclusiveAccessRequired;
 	private boolean m_deactivate;
+	private String m_scheduleName;
 
 	// Configuration this is connected to (null if not connected)
 	private ProgramEnforcerModel m_config;
@@ -50,6 +56,7 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 		m_exclusiveAccessRequired = configResource.exclusiveAccessRequired().getValue();
 		m_config = configResource;
 		m_deactivate = m_config.deactivateIfValueMissing().getValue();
+		m_scheduleName = m_config.scheduleResourceName().isActive() ? m_config.scheduleResourceName().getValue() : null;
 	}
 
 	public ProgramEnforcerImpl(ResourceManipulatorImpl base) {
@@ -60,6 +67,7 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 		m_exclusiveAccessRequired = false;
 		m_deactivate = true;
 		m_config = null;
+		m_scheduleName = null;
 	}
 
 	@Override
@@ -82,7 +90,9 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 		m_config.priority().setValue(m_priority.toString());
 		m_config.deactivateIfValueMissing().create();
 		m_config.deactivateIfValueMissing().setValue(m_deactivate);
-
+		if (m_scheduleName != null) {
+			m_config.scheduleResourceName().<StringResource> create().setValue(m_scheduleName);
+		}
 		m_config.activate(true);
 		return true;
 	}
@@ -129,6 +139,18 @@ public class ProgramEnforcerImpl implements ProgramEnforcer {
 	@Override
 	public void setRangeFilter(float lowerBoundary, float upperBoundary) throws RuntimeException {
 		setRangeFilter(lowerBoundary, upperBoundary, 0);
+	}
+	
+	@Override
+	public void setTargetScheduleName(String scheduleName) {
+		m_scheduleName = Objects.requireNonNull(scheduleName);
+		if (scheduleName.contains("/") || !ResourceUtils.isValidResourcePath(scheduleName))
+			throw new IllegalArgumentException("Illegal schedule name " +scheduleName);
+	}
+	
+	@Override
+	public String getTargetScheduleName() {
+		return m_scheduleName != null ? m_scheduleName : "program";
 	}
 
 	@Override

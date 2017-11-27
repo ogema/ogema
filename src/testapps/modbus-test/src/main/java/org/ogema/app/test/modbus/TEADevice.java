@@ -24,7 +24,7 @@
  *
  * All Rights reserved
  */
-package org.ogema.app.securityconsumer;
+package org.ogema.app.test.modbus;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +42,7 @@ import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
 import org.ogema.core.channelmanager.driverspi.SampledValueContainer;
 import org.ogema.core.channelmanager.measurements.IntegerValue;
+import org.ogema.core.channelmanager.measurements.ObjectValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.channelmanager.measurements.Value;
@@ -62,7 +63,7 @@ import org.slf4j.LoggerFactory;
  * @author pau
  *
  */
-public class TEADevice implements ResourceListener {
+public class TEADevice {
 	private final static Logger logger = LoggerFactory.getLogger(TEADevice.class);
 
 	// use the modbus-tcp driver
@@ -105,14 +106,14 @@ public class TEADevice implements ResourceListener {
 	private static final String CHANNEL_ADDRESS_26D = "0:HOLDING_REGISTERS:2600:87";
 	private static final String CHANNEL_ADDRESS_27D = "0:HOLDING_REGISTERS:2700:87";
 
-	private static final String TEST_HOLDING = "15:HOLDING_REGISTERS:0:1";
+	private static final String TEST_HOLDING_SINGLE = "15:HOLDING_REGISTERS:1:1";
+	private static final String TEST_HOLDING_MULTIPLE = "15:HOLDING_REGISTERS:2:4";
 	private static final String TEST_INPUT = "15:INPUT_REGISTERS:0:1";
 	private static final String TEST_COILS = "15:COILS:0:2";
 	private static final String TEST_DISCRETE = "15:DISCRETE_INPUTS:0:8";
 
 	private final ApplicationManager appManager;
 	private final ChannelAccess channelAccess;
-	private Timer timer;
 
 	private TEAResource dataResource;
 	private final TEAConfigurationModel configurationResource;
@@ -120,7 +121,14 @@ public class TEADevice implements ResourceListener {
 	private List<ChannelConfiguration> channelConfigurations;
 	ChannelEventListener channelEventListener;
 
+	private ChannelConfiguration singleHoldingRegisterConfig;
+
+	private ChannelConfiguration multipleHoldingRegisterConfig;
+
+	private boolean running;
+
 	public TEADevice(ApplicationManager appManager, TEAConfigurationModel configurationResource) {
+		running = true;
 		channelConfigurations = new ArrayList<>();
 		String dataResourceName;
 
@@ -130,31 +138,17 @@ public class TEADevice implements ResourceListener {
 
 		this.configurationResource = configurationResource;
 
-		// add listener for updated configuration values
-		// Are we also notified when a subelement changes?
-		// -> TF: Yes, because it is registered recursively.
-		// I strongly recommend against doing it that way, though. Can eat an arbitrary amount of performance.
-		configurationResource.addResourceListener(this, true);
-
-		List<ChannelLocator> channelLocators = createChannelLocators(configurationResource);
+		List<ChannelConfiguration> channelConfigs = createChannelConfigs(configurationResource);
 		dataResourceName = configurationResource.resourceName().getValue();
 
-		try {
-			for (ChannelLocator channel : channelLocators) {
-				channelConfigurations.add(channelAccess.addChannel(channel, Direction.DIRECTION_INOUT, 5000));
-			}
-			channelEventListener = new ChannelEventListener() {
+		channelEventListener = new ChannelEventListener() {
 
-				@Override
-				public void channelEvent(EventType type, List<SampledValueContainer> channels) {
-					// for (SampledValueContainer c : channels) {
-					// TODO implement processChannelValue
-					// processChannelValue(c.getChannelLocator().getChannelAddress(),
-					// c.getSampledValue().getValue());
-					update(channels);
-					// }
-				}
-			};
+			@Override
+			public void channelEvent(EventType type, List<SampledValueContainer> channels) {
+				update(channels);
+			}
+		};
+		try {
 			channelAccess.registerUpdateListener(channelConfigurations, channelEventListener);
 		} catch (ChannelAccessException e) {
 			e.printStackTrace();
@@ -167,25 +161,35 @@ public class TEADevice implements ResourceListener {
 			e1.printStackTrace();
 		}
 
-		// update();
-
 		// activate the now functional model
 		dataResource.activate(true);
 
-		// timer = appManager.createTimer(5000);
-		// timer.addListener(this);
-	}
+		new Thread(new Runnable() {
 
-	// private int count;
-	//
-	// private SampledValue getSimulationValue(ChannelLocator channelLocator) throws ChannelAccessException
-	// {
-	// int array[] = new int[82];
-	//
-	// array[54] = count++;
-	//
-	// return new SampledValue(new ObjectValue(array), System.currentTimeMillis(), Quality.GOOD);
-	// }
+			@Override
+			public void run() {
+				try {
+					int value = 0;
+					int[] regs = new int[4];
+					ObjectValue ov = new ObjectValue(regs);
+					while (running) {
+						channelAccess.setChannelValue(singleHoldingRegisterConfig, new IntegerValue(value++));
+						regs[0] = value++;
+						regs[1] = value++;
+						regs[2] = value++;
+						regs[3] = value++;
+						channelAccess.setChannelValue(multipleHoldingRegisterConfig, ov);
+						try {
+							Thread.sleep(4711);
+						} catch (InterruptedException e) {
+						}
+					}
+				} catch (Throwable e) {
+					e.printStackTrace();
+				}
+			}
+		}).start();
+	}
 
 	private void update(List<SampledValueContainer> channels) {
 
@@ -209,18 +213,18 @@ public class TEADevice implements ResourceListener {
 
 	}
 
-	private List<ChannelLocator> createChannelLocators(TEAConfigurationModel configuration) {
+	private List<ChannelConfiguration> createChannelConfigs(TEAConfigurationModel configuration) {
 
 		DeviceLocator deviceLocator;
-		List<ChannelLocator> channels = new ArrayList<ChannelLocator>();
+		// List<ChannelLocator> channels = new ArrayList<ChannelLocator>();
 		String interfaceId = configuration.interfaceId().getValue();
 		String deviceAddress = configuration.deviceAddress().getValue();
 		String deviceParameters = configuration.deviceParameters().getValue();
 
 		deviceLocator = new DeviceLocator(DRIVER_ID, interfaceId, deviceAddress, deviceParameters);
 
-		channels.add(new ChannelLocator(CHANNEL_ADDRESS_IV, deviceLocator));
-		channels.add(new ChannelLocator(CHANNEL_ADDRESS_SV, deviceLocator));
+		// channels.add(new ChannelLocator(CHANNEL_ADDRESS_IV, deviceLocator));
+		// channels.add(new ChannelLocator(CHANNEL_ADDRESS_SV, deviceLocator));
 		// deviceLocator = channelAccess.getDeviceLocator(DRIVER_ID, interfaceId, deviceAddress, deviceParameters);
 		//
 		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_1D, deviceLocator));
@@ -251,14 +255,25 @@ public class TEADevice implements ResourceListener {
 		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_26D, deviceLocator));
 		// channels.add(channelAccess.getChannelLocator(CHANNEL_ADDRESS_27D, deviceLocator));
 
-		deviceLocator = new DeviceLocator(DRIVER_ID, "", "127.0.0.1", "");
+		// deviceLocator = new DeviceLocator(DRIVER_ID, "", "127.0.0.1", "");
 
 		// channels.add(channelAccess.getChannelLocator(TEST_INPUT, deviceLocator));
-		// channels.add(channelAccess.getChannelLocator(TEST_HOLDING, deviceLocator));
-		// channels.add(new ChannelLocator("15:COILS:0:8", deviceLocator));
-		// channels.add(channelAccess.getChannelLocator(TEST_DISCRETE, deviceLocator));
+		try {
 
-		return channels;
+			this.singleHoldingRegisterConfig = channelAccess.addChannel(
+					new ChannelLocator(TEST_HOLDING_SINGLE, deviceLocator), Direction.DIRECTION_INOUT, 5000);
+			channelConfigurations.add(singleHoldingRegisterConfig);
+			this.multipleHoldingRegisterConfig = channelAccess.addChannel(
+					new ChannelLocator(TEST_HOLDING_MULTIPLE, deviceLocator), Direction.DIRECTION_INOUT, 5000);
+			channelConfigurations.add(multipleHoldingRegisterConfig);
+			// channels.add(new ChannelLocator("15:COILS:0:8", deviceLocator));
+			// channels.add(channelAccess.getChannelLocator(TEST_DISCRETE, deviceLocator));
+		} catch (ChannelAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return channelConfigurations;
 	}
 
 	// @Override
@@ -273,15 +288,7 @@ public class TEADevice implements ResourceListener {
 
 	/** Configuration has been deleted, close the channel to the device. */
 	public void close() {
-		// what to do with the resources? Just drop them.
-		// remove listeners
-		try {
-			configurationResource.removeResourceListener(this);
-		} catch (ResourceException e) {
-
-		}
-
-		timer.stop();
+		running = false;
 		dataResource.deactivate(true);
 		try {
 			for (ChannelConfiguration channel : channelConfigurations) {
@@ -292,76 +299,4 @@ public class TEADevice implements ResourceListener {
 		}
 	}
 
-	/** If the configuration changed, update the channel accordingly. */
-	@Override
-	public void resourceChanged(Resource resource) {
-		logger.info("TEADevice.resourceChanged:" + resource.getName() + "/" + resource.getClass().getName());
-		// did the channel layout change?
-		List<ChannelLocator> newChan = createChannelLocators(configurationResource);
-
-		List<ChannelLocator> tmpList = new ArrayList<ChannelLocator>();
-
-		for (ChannelConfiguration configuration : channelConfigurations) {
-			tmpList.add(configuration.getChannelLocator());
-		}
-
-		if (!tmpList.equals(newChan)) {
-
-			for (ChannelConfiguration channel : channelConfigurations) {
-				channelAccess.deleteChannel(channel);
-			}
-
-			try {
-				channelConfigurations.clear();
-				for (ChannelLocator locator : newChan) {
-					channelConfigurations.add(channelAccess.addChannel(locator, Direction.DIRECTION_INOUT,
-							configurationResource.timeout().getValue()));
-				}
-			} catch (ChannelAccessException e) {
-				appManager.getLogger().error("channelAccess.addChannel({})", channelConfigurations, e);
-			}
-		}
-
-		// did the timeout change?
-		long newTimeout = configurationResource.timeout().getValue();
-		if (timer.getTimingInterval() != newTimeout) {
-			timer.setTimingInterval(newTimeout);
-		}
-
-		// did the name change?
-		String newId = configurationResource.resourceName().getValue();
-
-		if ("teaController"/* dataResource.controller.getName() */ != newId) {
-			ResourceManagement resourceManager = appManager.getResourceManagement();
-
-			// the resource is renamed, in this case delete the old and create a
-			// new one
-			try {
-				resourceManager.deleteResource("teaController"/* dataResource.controller.getName() */);
-			} catch (ResourceException e) {
-				e.printStackTrace();
-			}
-			// dataResourceId = newId;
-			try {
-				dataResource = new TEAResource(resourceManager, newId);
-				dataResource.activate(true);
-			} catch (ResourceException e1) {
-				e1.printStackTrace();
-			}
-		}
-
-		if (resource instanceof IntegerResource) {
-			if (resource.isActive() && resource.isWriteable()) {
-				try {
-					int intValue = (int) ((IntegerResource) resource).getValue();
-					Value value = new IntegerValue(intValue);
-
-					// ChannelLocator channel = newChan.get(1); // writable SV is index "1"
-					channelAccess.setChannelValue(channelConfigurations.get(1), value);
-				} catch (ChannelAccessException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-	}
 }

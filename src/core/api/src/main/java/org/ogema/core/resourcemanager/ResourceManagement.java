@@ -60,7 +60,9 @@ public interface ResourceManagement {
 	 * @param appResourceName
 	 *            resource name chosen by the application
 	 * @return resource name that will be unique on the system and will not change.
+	 * @deprecated will be removed in a future version; choose a sufficiently unique name instead
 	 */
+	@Deprecated
 	public String getUniqueResourceName(String appResourceName);
 
 	/**

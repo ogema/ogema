@@ -1,0 +1,9 @@
+# all permissions granted to preinstalled bundles
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "file:*"] (java.security.AllPermission) } "allfiles"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "mvn:*"] (java.security.AllPermission) } "allmvn"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "link:classpath:*"] (java.security.AllPermission) } "allclasspath"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (java.security.AllPermission) } "alllocal"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "reference:file:*"] (java.security.AllPermission) } "allreferences"
+# user rights proxies:
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "urp:*"] (org.osgi.framework.PackagePermission "org.ogema.accesscontrol" "import") (org.osgi.framework.PackagePermission "org.osgi.*" "import") (org.osgi.framework.PackagePermission "org.ogema.core.application" "import") (org.osgi.framework.PackagePermission "org.slf4j" "import") (org.osgi.framework.PackagePermission "org.apache.felix.scr.annotations" "import") (org.osgi.framework.ServicePermission "org.ogema.accesscontrol.UserRightsProxy" "register") (org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register") (org.osgi.framework.ServicePermission "org.ogema.accesscontrol.PermissionManager" "get")} "urps"
+

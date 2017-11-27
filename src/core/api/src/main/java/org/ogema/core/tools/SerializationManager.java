@@ -379,6 +379,15 @@ public interface SerializationManager {
 	 * @return the newly created sub-resources.
 	 */
 	Collection<Resource> createResourcesFromXml(String xml);
+    
+    /**
+	 * Add the resources described in the XML document as new toplevel resources
+	 *
+	 * @param input XML document for a collection of resources. 
+	 * 		Note that this differs from the format for a single resource.
+	 * @return the newly created sub-resources.
+	 */
+    Collection<Resource> createResourcesFromXml(Reader input);
 	
 	/**
 	 * Add the resources described in the Json document as new toplevel resources
@@ -388,6 +397,15 @@ public interface SerializationManager {
 	 * @return the newly created sub-resources.
 	 */
 	Collection<Resource> createResourcesFromJson(String json);
+    
+    /**
+	 * Add the resources described in the Json document as new toplevel resources
+	 *
+	 * @param json JSON document for a collection of resources. 
+	 * 		Note that this differs from the format for a single resource.
+	 * @return the newly created sub-resources.
+	 */
+	Collection<Resource> createResourcesFromJson(Reader json);
 	
 	/**
 	 * Add the resources described in the XML document as new subresources of
@@ -399,6 +417,17 @@ public interface SerializationManager {
 	 * @return the newly created sub-resources.
 	 */
 	Collection<Resource> createResourcesFromXml(String xml, Resource parent);
+    
+    /**
+	 * Add the resources described in the XML document as new subresources of
+	 * the given parent resource.
+	 *
+	 * @param xml XML document for a collection of resources. 
+	 * 		Note that this differs from the format for a single resource.
+	 * @param parent resource in which to add the new resource.
+	 * @return the newly created sub-resources.
+	 */
+	Collection<Resource> createResourcesFromXml(Reader xml, Resource parent);
 	
 	/**
 	 * Add the resources described in the JSON document as new subresources of
@@ -410,5 +439,16 @@ public interface SerializationManager {
 	 * @return the newly created sub-resources.
 	 */
 	Collection<Resource> createResourcesFromJson(String json, Resource parent);
+    
+    /**
+	 * Add the resources described in the JSON document as new subresources of
+	 * the given parent resource.
+	 *
+	 * @param json JSON document for a collection of resources. 
+	 * 		Note that this differs from the format for a single resource.
+	 * @param parent resource in which to add the new resource.
+	 * @return the newly created sub-resources.
+	 */
+	Collection<Resource> createResourcesFromJson(Reader json, Resource parent);
 
 }

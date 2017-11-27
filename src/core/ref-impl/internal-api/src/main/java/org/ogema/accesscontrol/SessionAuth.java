@@ -33,10 +33,11 @@ public class SessionAuth implements HttpSessionBindingListener {
 	public static final String AUTH_ATTRIBUTE_NAME = "ogemaAuth";
 	public static final String USER_CREDENTIAL = "usrCred";
 
-	Authorization auth;
-	HttpSession ses;
+	private final Authorization auth;
+	private final HttpSession ses;
 
-	Map<String, String> otpList;
+	// TODO housekeeping
+	private final Map<String, String> otpList;
 
 		/**
 		 * Returns a live view of the otp list
@@ -49,13 +50,13 @@ public class SessionAuth implements HttpSessionBindingListener {
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 	// User usr;
-	private AccessManager accMngr;
+	private final AccessManager accMngr;
 
 	// public User getUsr() {
 	// return usr;
 	// }
 
-	static Random rnd;
+	private static final Random rnd;
 
 	public SessionAuth(Authorization auth, AccessManager accessManager, HttpSession ses) {
 		this.auth = auth;

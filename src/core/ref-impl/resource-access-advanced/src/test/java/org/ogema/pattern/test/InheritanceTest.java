@@ -26,11 +26,19 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Before;
 import org.junit.Test;
 import org.ogema.core.model.Resource;
+import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.pattern.PatternListener;
+import org.ogema.core.resourcemanager.pattern.ResourcePattern;
+import org.ogema.exam.ResourceAssertions;
+import org.ogema.model.locations.Room;
+import org.ogema.model.prototypes.PhysicalElement;
+import org.ogema.model.sensors.TemperatureSensor;
 import org.ops4j.pax.exam.ProbeBuilder;
 import org.ops4j.pax.exam.TestProbeBuilder;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
+
+import junit.framework.Assert;
 
 @ExamReactorStrategy(PerClass.class)
 public class InheritanceTest extends OsgiTestBase {
@@ -87,7 +95,6 @@ public class InheritanceTest extends OsgiTestBase {
 	}
 
 	@Test
-	//        @Ignore
 	public void findLoseRefindForChildRad() throws InterruptedException {
 
 		final CountingListener listener = new CountingListener(1, 1);
@@ -108,4 +115,30 @@ public class InheritanceTest extends OsgiTestBase {
 		room.type.setValue(0);
         assertTrue("pattern should become available", listener.foundLatch.await(10, TimeUnit.SECONDS));
 	}
+	
+	@Test
+	public void doublyParametrizedPatternWorks() {
+		final SubPattern pattern = advAcc.createResource(newResourceName(), SubPattern.class);
+		Assert.assertNotNull(pattern.model);
+		ResourceAssertions.assertExists(pattern.model);
+		Assert.assertEquals(TemperatureSensor.class, pattern.model.getResourceType());
+		pattern.model.delete();
+	}
+	
+	private static class DoublyParametrizedPattern<S, T extends PhysicalElement> extends ResourcePattern<T> {
+
+		public DoublyParametrizedPattern(Resource match) {
+			super(match);
+		}
+		
+	}
+	
+	private static class SubPattern extends DoublyParametrizedPattern<Float, TemperatureSensor> {
+		
+		public SubPattern(Resource match) {
+			super(match);
+		}
+		
+	}
+	
 }

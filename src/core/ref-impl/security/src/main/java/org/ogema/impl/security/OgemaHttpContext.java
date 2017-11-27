@@ -35,6 +35,7 @@ import java.net.SocketException;
 import java.net.URL;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
@@ -42,6 +43,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -51,9 +53,11 @@ import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.SessionAuth;
 import org.ogema.accesscontrol.Util;
+import org.ogema.applicationregistry.ApplicationRegistry;
+import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.application.AppID;
 import org.ogema.core.application.Application;
-import org.ogema.core.logging.LoggerFactory;
+import org.ogema.webadmin.AdminWebAccessManager;
 import org.osgi.service.http.HttpContext;
 import org.slf4j.Logger;
 
@@ -69,17 +73,18 @@ import org.slf4j.Logger;
  */
 public class OgemaHttpContext implements HttpContext {
 
-	private final PermissionManager pm;
 	static final Boolean httpEnable;
-	private static final boolean xservletEnable;
+	// private static final boolean xservletEnable;
 
-	AppID owner;
+	final AppID owner;
 
-	LoggerFactory factory;
+//	LoggerFactory factory;
 
-	// note: the following three maps are actually concurrent hash maps, but there is a strange incompatibility with
-	// Java 7 when building this in a Java 8 environment, if one declares the maps to be ConcurrentHashMap (here: error on shutdown)
-	// see https://stackoverflow.com/questions/32954041/concurrenthashmap-crashing-application-compiled-with-jdk-8-but-targeting-jre-7
+	// note: the following four maps are actually concurrent hash maps, but there is a strange incompatibility with
+	// Java 7 when building this in a Java 8 environment, if one declares the maps to be ConcurrentHashMap (here: error
+	// on shutdown)
+	// see
+	// https://stackoverflow.com/questions/32954041/concurrenthashmap-crashing-application-compiled-with-jdk-8-but-targeting-jre-7
 
 	// alias vs. resource path
 	final Map<String, String> resources;
@@ -87,9 +92,17 @@ public class OgemaHttpContext implements HttpContext {
 	final Map<String, String> servlets;
 
 	final Map<String, String> sessionsOtpqueue;
+	
+	// alias vs registration; synchronized on this; use {@link #getStaticRegistrations()} to create the map
+	volatile Map<String, AdminWebAccessManager.StaticRegistration> staticRegistrations;
+	// aliases; subset of resourcse key set; synchronized on resources
+	volatile Collection<String> nonOtpResources;
 
 	private final static Logger logger = org.slf4j.LoggerFactory.getLogger(OgemaHttpContext.class.getName());
 	private final AccessManager accessMngr;
+	private ApplicationRegistry appReg;
+
+	private PermissionManager permMan;
 
 	// loopback addresses and host names to determine if a request comes from the loopback interface
 	private static final Set<String> loopbackAddresses = new HashSet<>();
@@ -114,16 +127,17 @@ public class OgemaHttpContext implements HttpContext {
 	public OgemaHttpContext(PermissionManager pm, AppID app) {
 		Objects.requireNonNull(pm);
 		Objects.requireNonNull(app);
-		this.resources = new ConcurrentHashMap<>();
-		this.servlets = new ConcurrentHashMap<>();
+		this.resources = new ConcurrentHashMap<>(3);
+		this.servlets = new ConcurrentHashMap<>(3);
 		this.sessionsOtpqueue = new ConcurrentHashMap<>();
-		this.pm = pm;
+		this.appReg = pm.getApplicationRegistry();
 		this.accessMngr = pm.getAccessManager();
 		this.owner = app;
+		this.permMan = pm;
 	}
 
 	public void close() {
-		// note: this does not prevent the alias to be unregisterd from the http service, which is taken care
+		// note: this does not prevent the alias to be unregistered from the http service, which is taken care
 		// of by ApplicationWebAccessManager and ApplicationTracker
 		resources.clear();
 		servlets.clear();
@@ -143,17 +157,17 @@ public class OgemaHttpContext implements HttpContext {
 	public boolean handleSecurity(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		final String currenturi = request.getRequestURI();
 		final String info = request.getPathInfo();
-		if (Configuration.DEBUG && logger.isDebugEnabled()) {
+		if (Configuration.DEBUG && logger.isTraceEnabled()) {
 			StringBuffer url = request.getRequestURL();
 			String servletpath = request.getServletPath();
 			String query = request.getQueryString();
 			String trans = request.getPathTranslated();
-			logger.debug("Current URI: " + currenturi);
-			logger.debug("Current URL: " + url);
-			logger.debug("Servlet path: " + servletpath);
-			logger.debug("Path info: " + info);
-			logger.debug("Query String: " + query);
-			logger.debug("Path Translated: " + trans);
+			logger.trace("Current URI: " + currenturi);
+			logger.trace("Current URL: " + url);
+			logger.trace("Servlet path: " + servletpath);
+			logger.trace("Path info: " + info);
+			logger.trace("Query String: " + query);
+			logger.trace("Path Translated: " + trans);
 		}
 		/*
 		 * If the request requires a secure connection and the getScheme method in the request does not return 'https'
@@ -224,25 +238,39 @@ public class OgemaHttpContext implements HttpContext {
 		/*
 		 * Satisfaction of APP-SEC 16
 		 */
-		if (xservletEnable) {
-			// check if its a servlet request. In this case only the one time password is to be checked.
-			/*
-			 * Get The authentication information
-			 */
+		// 1. Check if it is a servlet query
+		String key = servlets.get(currenturi);
+		if (key == null)
+			key = Util.startsWithAnyKey(servlets, currenturi); // FIXME safe?
+		// 1.1 If not skip further checks related to OTP
+		boolean result = true;
+		if (key != null && !isStaticServlet(currenturi)) {
+			// 2. Determine the App that owns the servlet (it's the field value owner)
+			AppID servletOwner = owner;
+			// 3. Get the app that owns the referrer of the servlet
 			String usr = request.getParameter(OTUNAME);
 			String pwd = request.getParameter(OTPNAME);
-
-			String key = servlets.get(currenturi);
-			if (key == null)
-				key = Util.startsWithAnyKey(servlets, currenturi);
-			if (key != null) {
-				// a web page may be generated dynamically in a servlet
-				if (currenturi.endsWith(".html") && request.getMethod().equals("GET"))
-					return true;
-				if (usr == null)
-					return false;
-				return pm.getWebAccess().authenticate(httpses, usr, pwd);
+			// 3.1 if its a servlet request and no one time credentials are present, than no access is permitted
+			AppID urlOwner = null;
+			if (usr != null) {
+				// 3.2 the OTP should match, if not we assume that urlOwner doesn't have the permission for this servlet
+				// access
+				AdminApplication app = appReg.getAppById(usr);
+				urlOwner = app.getID();
+				result = permMan.getWebAccess(urlOwner).authenticate(httpses, usr, pwd);
 			}
+			else
+				result = false;
+			// 4. Compare both apps, if they don't match the urlOwner app needs WebAccessPermission to the app that owns
+			// the servlet.
+			if (result && !servletOwner.equals(urlOwner)) {
+				result = permMan.checkWebAccess(urlOwner, servletOwner);
+			}
+		}
+		if (!result) {
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+					"Servlet access unauthorized. Check your one time credentials.");
+			return false;
 		}
 
 		/*
@@ -316,7 +344,7 @@ public class OgemaHttpContext implements HttpContext {
 		if (name.charAt(0) != '/')
 			name = "/" + name;
 		if (Configuration.DEBUG)
-			logger.debug("getResource: " + name);
+			logger.debug("getResource: {}", name);
 		Application app = owner.getApplication();
 		URL url = null;
 
@@ -329,7 +357,8 @@ public class OgemaHttpContext implements HttpContext {
 			// If this method is called before the first call to handlesecurity no session was registered yet. In this
 			// case
 			// we return just a dummy URL.
-			sesid = requestThreadLocale.get();
+			if (!isNonOtpResource(key))
+				sesid = requestThreadLocale.get();
 		}
 
 		// this should only return the bundles jar resources
@@ -363,7 +392,50 @@ public class OgemaHttpContext implements HttpContext {
 		// MimeType of the default HttpContext will be used.
 		return null;
 	}
-
+	
+	private final boolean isStaticServlet(final String uri) {
+		final Map<String,AdminWebAccessManager.StaticRegistration> statics = this.staticRegistrations;
+		if (statics == null)
+			return false;
+		return statics.containsKey(uri);
+	}
+	
+	private synchronized Map<String, AdminWebAccessManager.StaticRegistration> getStaticRegistrations() {
+		if (staticRegistrations == null) 
+			staticRegistrations = new ConcurrentHashMap<>(3);
+		return staticRegistrations;
+	}
+	
+	synchronized AdminWebAccessManager.StaticRegistration addStaticRegistration(final String path, final Servlet servlet, final ApplicationWebAccessManager wam) {
+		final AdminWebAccessManager.StaticRegistration staticReg = new StaticRegistrationImpl(servlet, path, wam);
+		getStaticRegistrations().put(staticReg.getPath(), staticReg);
+		return staticReg;
+	}
+	
+	private final boolean isNonOtpResource(final String alias) {
+		final Collection<String> nonOtps = this.nonOtpResources;
+		if (nonOtps == null)
+			return false;
+		return nonOtps.contains(alias);
+	}
+	
+	void addBasicResourceAlias(String path) {
+		synchronized (resources) {
+			if (nonOtpResources == null)
+				nonOtpResources = new HashSet<>();
+			nonOtpResources.add(path);
+		}
+	}
+	
+	void unregisterResource(String alias) {
+		servlets.remove(alias);
+		if (resources.remove(alias) == null)
+			return;
+		final Collection<String> nonOtps = this.nonOtpResources;
+		if (nonOtps != null)
+			nonOtps.remove(alias);
+	}
+	
 	static {
 		httpEnable = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
 
@@ -373,17 +445,77 @@ public class OgemaHttpContext implements HttpContext {
 			}
 		});
 		/*
-		 * Switch to enable/disable servlet access restrictions after APP-SEC 16: Access to a web resource
-		 * out of a previously downloaded web page shall only be granted, if the requested web resource is a
-		 * static content or the dynamic content (servlet) is registered by the same app as the source of
-		 * the web page.
+		 * Switch to enable/disable servlet access restrictions after APP-SEC 16: Access to a web resource out of a
+		 * previously downloaded web page shall only be granted, if the requested web resource is a static content or
+		 * the dynamic content (servlet) is registered by the same app as the source of the web page.
 		 */
-		xservletEnable = System.getSecurityManager() != null && AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
-
-			@Override
-			public Boolean run() {
-				return Boolean.getBoolean("org.ogema.xservletacces.enable");
-			}
-		});
+		// xservletEnable = System.getSecurityManager() != null && AccessController.doPrivileged(new
+		// PrivilegedAction<Boolean>() {
+		//
+		// @Override
+		// public Boolean run() {
+		// return Boolean.getBoolean("org.ogema.xservletaccess.enable");
+		// }
+		// });
 	}
+	
+	private final static class StaticRegistrationImpl implements AdminWebAccessManager.StaticRegistration {
+		
+//		private final Servlet servlet;
+		private final String path;
+		private final ApplicationWebAccessManager wam;
+		private volatile boolean unregistered = false;
+		
+		public StaticRegistrationImpl(Servlet servlet, String path, ApplicationWebAccessManager wam) {
+//			this.servlet = Objects.requireNonNull(servlet);
+			Objects.requireNonNull(servlet);
+			this.path = Objects.requireNonNull(path);
+			this.wam = Objects.requireNonNull(wam);
+		}
+
+		@Override
+		public String getPath() {
+			return path;
+		}
+
+		// TODO clean up; restrict # of otp per user?
+		@Override
+		public String[] generateOneTimePwd(HttpServletRequest req) {
+			if (unregistered)
+				throw new IllegalStateException("Servlet has been unregistered: " + path);
+			final OgemaHttpContext ctx = wam.ctx;
+			if (ctx == null)
+				return null;
+			final HttpSession session = req.getSession();
+			if (session == null)
+				return null;
+			final String otp = ctx.registerOTP(ctx.owner, req.getSession());
+			if (otp == null)
+				return null;
+			return new String[] { ctx.owner.getIDString(), otp };
+		}
+
+		@Override
+		public void unregister() {
+			synchronized (this) {
+				if (unregistered)
+					return;
+				unregistered = true;
+			}
+			final OgemaHttpContext ctx = wam.ctx;
+			if (ctx != null) {
+				synchronized (ctx) {
+					final Map<String, AdminWebAccessManager.StaticRegistration> statics = ctx.staticRegistrations;
+					if (statics != null) {
+						statics.remove(path);
+						if (statics.isEmpty())
+							ctx.staticRegistrations = null;
+					}
+				}
+			}
+			wam.unregisterWebResource(path);
+		}
+		
+	}
+
 }

@@ -1,0 +1,342 @@
+/**
+ * This file is part of OGEMA.
+ *
+ * OGEMA is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3
+ * as published by the Free Software Foundation.
+ *
+ * OGEMA is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.ogema.tests.security.testbase;
+
+import java.io.InputStream;
+import java.security.AllPermission;
+import java.security.Permission;
+import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.junit.Assert;
+import org.ogema.accesscontrol.ResourcePermission;
+import org.ogema.accesscontrol.WebAccessPermission;
+import org.ogema.applicationregistry.ApplicationListener;
+import org.ogema.applicationregistry.ApplicationRegistry;
+import org.ogema.core.administration.UserAccount;
+import org.ogema.core.application.AppID;
+import org.ogema.core.application.Application;
+import org.ogema.core.application.ApplicationManager;
+import org.ogema.tests.security.testbase.app.impl.TestApp;
+import org.ogema.tests.security.testbase.servlet.TestWebresource;
+import org.ops4j.pax.tinybundles.core.TinyBundle;
+import org.ops4j.pax.tinybundles.core.TinyBundles;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.BundleEvent;
+import org.osgi.framework.BundleException;
+import org.osgi.framework.BundleListener;
+import org.osgi.framework.Constants;
+import org.osgi.framework.InvalidSyntaxException;
+import org.osgi.framework.PackagePermission;
+import org.osgi.framework.ServicePermission;
+import org.osgi.framework.ServiceReference;
+import org.osgi.service.condpermadmin.ConditionInfo;
+import org.osgi.service.condpermadmin.ConditionalPermissionAdmin;
+import org.osgi.service.condpermadmin.ConditionalPermissionUpdate;
+import org.osgi.service.permissionadmin.PermissionInfo;
+
+/**
+ * Utility methods for permissions creation, app/bundle creation, user creation, etc.
+ */
+public class SecurityTestUtils {
+	
+	private final static AtomicInteger testAppCnt = new AtomicInteger(0);
+	private final static AtomicInteger permissionCnt = new AtomicInteger(0);
+	
+	/**
+	 * Creates a new test app in a bundle, and installs it. No permissions are set for the bundle.
+	 * @param ctx
+	 * @param locationPrefix
+	 * @return
+	 * @throws BundleException
+	 */
+	public static Bundle installTestAppAsBundle(final BundleContext ctx, final String locationPrefix) throws BundleException {
+		final String id = "ogema.test.app" + testAppCnt.getAndIncrement();
+		final TinyBundle tb = TinyBundles.bundle().add(TestApp.class);
+			tb.add(TestApp.WEBRESOURCE_PATH.substring(1) + "/index.html", TestWebresource.getWebResource());
+		final InputStream in = tb
+			.set(Constants.BUNDLE_SYMBOLICNAME, id)
+			.set(Constants.BUNDLE_ACTIVATOR, TestApp.class.getName())
+			.set(Constants.EXPORT_PACKAGE, "!" +TestApp.class.getPackage().getName()) // required?
+			.set(Constants.IMPORT_PACKAGE, 
+					Bundle.class.getPackage().getName() + ";" +
+					Application.class.getPackage().getName()) 
+			.build();
+		final Bundle bundle = ctx.installBundle(locationPrefix + ":" + id, in);
+		return bundle;
+	}
+	
+	/**
+	 * Installs a test app, sets all import permissions for it, starts it, and returns 
+	 * the corresponding application manager.
+	 * @param ctx
+	 * @param timeout
+	 * @param unit
+	 * @return
+	 * @throws InvalidSyntaxException
+	 * @throws BundleException
+	 * @throws InterruptedException
+	 */
+	public final static ApplicationManager installAppAndGetAppManager(final BundleContext ctx, final long timeout, final TimeUnit unit) 
+			throws InvalidSyntaxException, BundleException, InterruptedException {
+		final ApplicationRegistry registry = getService(ctx, ApplicationRegistry.class);
+		final CountDownLatch latch = new CountDownLatch(1);
+		final AtomicReference<Application> appRef = new AtomicReference<Application>(null);
+		final ApplicationListener listener = new ApplicationListener() {
+			
+			@Override
+			public void appRemoved(AppID app) {}
+			
+			@Override
+			public void appInstalled(AppID app) {
+				if (!app.getApplication().getClass().getName().equals(TestApp.class.getName()))
+					return;
+				appRef.set(app.getApplication());
+				latch.countDown();
+			}
+		};
+		registry.registerAppListener(listener);
+		final Bundle b = installTestAppAsBundle(ctx, "testlocation");
+		final ConditionalPermissionAdmin cpa = getService(ctx, ConditionalPermissionAdmin.class);
+		final ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
+		addImportPermissions(b, "*", cpa, cpu);
+		addServicePermission(b, Application.class, false, cpa, cpu);
+		cpu.commit();
+		b.start();
+		Assert.assertEquals("Test app bundle did not start", Bundle.ACTIVE, b.getState());
+		Assert.assertTrue(latch.await(10, TimeUnit.SECONDS));
+		registry.unregisterAppListener(listener);
+		final Application app = appRef.get();
+		Assert.assertNotNull(app);
+		final ApplicationManager newAppMan = TestApp.getAppManager(app, timeout, unit);
+		Assert.assertNotNull("Application manager is null",newAppMan);
+		return newAppMan;
+	}
+	
+	public final static void uninstallApp(final ApplicationManager appMan) throws BundleException {
+		appMan.getAppID().getBundle().uninstall();
+	}
+
+	public static <S> S getService(final BundleContext ctx, final Class<S> clazz) {
+		final ServiceReference<S> ref = ctx.getServiceReference(clazz);
+		return ref == null ? null : ctx.getService(ref);
+	}
+	
+	/**
+	 * Adds a resource permission for the bundle belonging to the passed application manager.
+	 * @param ctx
+	 * @param path
+	 * @param resourceType
+	 * @param appMan
+	 * @param actions
+	 * 		not null; wildcard "*" for all actions
+	 */
+	public final static void addResourcePermission(final BundleContext ctx, final String path, final String resourceType, final ApplicationManager appMan,
+			final String actions) {
+		final ConditionalPermissionAdmin cpa = getService(ctx, ConditionalPermissionAdmin.class);
+		final ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
+		addResourcePermission(cpa, cpu, path, resourceType, appMan, actions, true);
+		cpu.commit();
+	}
+	
+	/**
+	 * Denies a resource permission for the bundle belonging to the passed application manager.
+	 * @param ctx
+	 * @param path
+	 * @param resourceType
+	 * @param appMan
+	 * @param actions
+	 * 		not null; wildcard "*" for all actions
+	 */
+	public final static void denyResourcePermission(final BundleContext ctx, final String path, final String resourceType, final ApplicationManager appMan,
+			final String actions) {
+		final ConditionalPermissionAdmin cpa = getService(ctx, ConditionalPermissionAdmin.class);
+		final ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
+		addResourcePermission(cpa, cpu, path, resourceType, appMan, actions, false);
+		cpu.commit();
+	}
+	
+	/**
+	 * 
+	 * @param ctx
+	 * @param path
+	 * @param resourceType
+	 * @param appMan
+	 * @param actions
+	 * 		not null; wildcard "*" for all actions
+	 */
+	public final static void addResourcePermission(final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update, 
+			final String path, final String resourceType, final ApplicationManager appMan, final String actions, final boolean allowOrDeny) {
+		Assert.assertFalse("Path and type conditions must not both be null",path == null && resourceType == null);
+		Objects.requireNonNull(actions);
+		final StringBuilder sb = new StringBuilder();
+		if (resourceType != null) 
+			sb.append("type=").append(resourceType);
+		if (path != null) {
+			if (resourceType != null)
+				sb.append(',');
+			sb.append("path=").append(path);
+		}
+		addPermission(appMan.getAppID().getBundle(), ResourcePermission.class, sb.toString(), actions, cpAdmin, update, allowOrDeny);
+	}
+	
+	public final static void addServicePermission(final Bundle bundle, final Class<?> service, boolean getOrRegister,
+			final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update) {
+		addServicePermission(bundle, service.getName(), getOrRegister, cpAdmin, update);
+	}
+	
+	public final static void addServicePermission(final Bundle bundle, final String service, boolean getOrRegister,
+			final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update) {
+		addPermission(bundle, ServicePermission.class, service, getOrRegister ? ServicePermission.GET : ServicePermission.REGISTER, cpAdmin, update, true);
+	}
+	
+	/**
+	 * Note: it is required to call update.commit() before the added permission is applied.
+	 * @param bundle
+	 * @param packageImport
+	 * 		Wildcard allowed at the end, e.g. "org.osgi.*", or "*" for all packages
+	 * @param cpAdmin
+	 * @param update
+	 */
+	public static void addImportPermissions(final Bundle bundle, final String packageImport, 
+			final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update) {
+		addImportPermissions(bundle, packageImport, cpAdmin, update, true);
+	}
+	
+	/**
+	 * Note: it is required to call update.commit() before the added permission is applied.
+	 * @param bundle
+	 * @param packageImport
+	 * 		Wildcard allowed at the end, e.g. "org.osgi.*", or "*" for all packages
+	 * @param cpAdmin
+	 * @param update
+	 */
+	public static void denyImportPermissions(final Bundle bundle, final String packageImport, 
+			final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update) {
+		addImportPermissions(bundle, packageImport, cpAdmin, update, false);
+	}
+	
+	public static void addImportPermissions(final Bundle bundle, final String packageImport, 
+			final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update, final boolean allowOrDeny) {
+		addPermission(bundle, PackagePermission.class, packageImport, PackagePermission.IMPORT, cpAdmin, update, allowOrDeny);
+	}
+	
+	/**
+	 * Note: it is required to call update.commit() before the added permission is applied.
+	 * @param bundle
+	 * @param cpAdmin
+	 * @param update
+	 */
+	public static void addAllPermissions(final Bundle bundle, final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update) {
+		addPermission(bundle, AllPermission.class, null, null, cpAdmin, update, true);
+	}
+
+	public static void addAllPermissions(final Bundle bundle, final BundleContext ctx) {
+		addPermission(bundle, AllPermission.class, null, null, ctx, true);
+	}
+	
+	public static void addWebResourcePermission(final ApplicationManager appMan, final String app, final BundleContext ctx) { 
+		addPermission(appMan.getAppID().getBundle(), WebAccessPermission.class, "name=" + (app == null ? "*" : app), null, ctx, true);
+	}
+	
+	public static void addWebResourcePermission(final Bundle bundle, final String app, 
+			final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update, final boolean allowOrDeny) {
+		addPermission(bundle, WebAccessPermission.class, "name=" + (app == null ? "*" : app), null, cpAdmin, update, allowOrDeny);
+	}
+	
+	/**
+	 * Add permission and commit the permissions update
+	 * @param bundle
+	 * @param type
+	 * @param name
+	 * 		may be null
+	 * @param actions
+	 * 		may be null
+	 * @param cpAdmin
+	 * @param update
+	 * @param allowOrDeny
+	 * @return
+	 * 		whether or not the permission update was successful. See {@link ConditionalPermissionUpdate#commit()}.
+	 */
+	public static boolean addPermission(final Bundle bundle, final Class<? extends Permission> type, final String name, final String actions, 
+			final BundleContext ctx, final boolean allowOrDeny) {
+		final ConditionalPermissionAdmin cpa = getService(ctx, ConditionalPermissionAdmin.class);
+		final ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
+		addPermission(bundle, type, name, actions, cpa, cpu, allowOrDeny);
+		return cpu.commit();
+	}
+	
+	/**
+	 * Add permission but do not commit the permissions update yet
+	 * @param bundle
+	 * @param type
+	 * @param name
+	 * 		may be null
+	 * @param actions
+	 * 		may be null
+	 * @param cpAdmin
+	 * @param update
+	 * @param allowOrDeny
+	 */
+	public static void addPermission(final Bundle bundle, final Class<? extends Permission> type, final String name, final String actions, 
+			final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update, final boolean allowOrDeny) {
+		update.getConditionalPermissionInfos().add(
+				cpAdmin.newConditionalPermissionInfo(
+						"testCond" + permissionCnt.getAndIncrement(), 
+						new ConditionInfo[] {
+			 					new ConditionInfo("org.osgi.service.condpermadmin.BundleLocationCondition", new String[]{bundle.getLocation()}) }, 
+						new PermissionInfo[] {
+							 new PermissionInfo(type.getName(), name, actions)}, 
+						allowOrDeny ? "allow" : "deny"));
+	}
+	
+	public static UserAccount createPrivilegedNaturalUser(final String user, final ApplicationManager appMan) throws InterruptedException {
+		final BundleContext ctx = appMan.getAppID().getBundle().getBundleContext();
+		final CountDownLatch latch = new CountDownLatch(1);
+		final AtomicReference<Bundle> bundle = new AtomicReference<Bundle>(null);
+		// FIXME relies on implementation details
+		final BundleListener listener = new BundleListener() {
+			
+			@Override
+			public void bundleChanged(BundleEvent event) {
+				if (event.getType() == BundleEvent.INSTALLED) {
+					final Bundle b = event.getBundle();
+					if (("urp:" + user).equals(b.getLocation())) {
+						bundle.set(b);
+						latch.countDown();
+					}
+				}
+			}
+		};
+		ctx.addBundleListener(listener);
+		final UserAccount userAcc = appMan.getAdministrationManager().createUserAccount(user, true);
+		final Bundle target;
+		if (!latch.await(3, TimeUnit.SECONDS))
+			target = ctx.getBundle("urp:" + user);
+		else
+			target = bundle.get();
+		ctx.removeBundleListener(listener);
+		Assert.assertNotNull("User bundle not registered",target);
+		addAllPermissions(target, ctx);
+		return userAcc;
+	}
+
+	
+}

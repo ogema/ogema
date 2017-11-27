@@ -15,8 +15,6 @@
  */
 package org.ogema.application.manager.impl.scheduler;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.Executor;
@@ -34,7 +32,7 @@ import org.slf4j.Logger;
 
 @Component
 @Service(TimerScheduler.class)
-public class DefaultTimerScheduler implements TimerScheduler, PropertyChangeListener {
+public class DefaultTimerScheduler implements TimerScheduler, FrameworkClock.ClockChangeListener {
 
     protected final PriorityQueue<ApplicationTimer> timers = new PriorityQueue<>();
     protected Thread dispatchThread;
@@ -103,13 +101,13 @@ public class DefaultTimerScheduler implements TimerScheduler, PropertyChangeList
         dispatchThread = new Thread(dispatchImpl);
         dispatchThread.setName("OGEMA timer dispatcher");
         dispatchThread.setDaemon(true);
-        clock.addPropertyChangeListener(this);
+        clock.addClockChangeListener(this);
         start();
     }
 
     @Deactivate
     protected void deactivate(Map<String, ?> config) {
-        clock.removePropertyChangeListener(this);
+        clock.removeClockChangeListener(this);
         shutdown();
     }
 
@@ -169,7 +167,7 @@ public class DefaultTimerScheduler implements TimerScheduler, PropertyChangeList
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent evt) {
+    public void clockChanged(FrameworkClock.ClockChangedEvent e) {
         synchronized (timers) {
             timers.notifyAll();
         }

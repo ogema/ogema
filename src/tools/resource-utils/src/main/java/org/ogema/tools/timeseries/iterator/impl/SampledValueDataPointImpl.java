@@ -122,7 +122,16 @@ public class SampledValueDataPointImpl extends DataPointImpl<SampledValue> imple
 		// case interpolationMode linear
 		return new SampledValue(new SampledValue(new FloatValue(result), now, qual));
 	}
-	
+
+	@Override
+	public SampledValue getNextElement(int idx) {
+		return nextValues.get(idx);
+	}
+	@Override
+	public SampledValue getPreviousElement(int idx) {
+		return previousValues.get(idx);
+	}
+
 	@Override
 	public float getSum(boolean ignoreMissingPoints, InterpolationMode mode) {
 		float value = 0;

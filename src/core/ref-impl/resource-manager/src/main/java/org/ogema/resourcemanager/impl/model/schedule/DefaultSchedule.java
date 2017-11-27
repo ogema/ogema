@@ -27,6 +27,7 @@ import org.ogema.core.model.schedule.AbsoluteSchedule;
 import org.ogema.core.model.schedule.RelativeSchedule;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.persistence.impl.faketree.ScheduleTreeElement;
+import org.ogema.persistence.impl.faketree.ScheduleTreeElementFactory;
 import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.resourcemanager.impl.ResourceBase;
 import org.ogema.resourcemanager.impl.ResourceDBManager;
@@ -43,20 +44,32 @@ public class DefaultSchedule extends ResourceBase implements org.ogema.core.mode
 		org.ogema.core.model.schedule.ForecastSchedule, AbsoluteSchedule, RelativeSchedule {
 
 	private final ApplicationManager m_appMan;
-	// FIXME this needs to change when a reference is set or replaced; need a ScheduleTreeElementRegistry!
-	private final ScheduleTreeElement m_scheduleElement;
+	// this needs to change when a reference is set or replaced; need a ScheduleTreeElementRegistry
+//	private final ScheduleTreeElement m_scheduleElement;
 	private final ResourceDBManager m_dbMan;
+	private final ScheduleTreeElementFactory m_treeElementFactory;
 
-	public DefaultSchedule(VirtualTreeElement el, ScheduleTreeElement scheduleElement, String path,
+	public DefaultSchedule(VirtualTreeElement el, String path,
 			ApplicationResourceManager resMan, ApplicationManager appMan, ResourceDBManager dbMan) {
 		super(el, path, resMan);
 		m_appMan = appMan;
-		m_scheduleElement = scheduleElement;
+//		m_scheduleElement = scheduleElement;
 		m_dbMan = dbMan;
+		m_treeElementFactory = m_dbMan.getScheduleTreeElementFactory();
+
 	}
 
 	final ScheduleTreeElement getSchedule() {
-		return m_scheduleElement;
+		resMan.lockRead();
+		VirtualTreeElement e;
+		try {
+			e = getEl();
+			while (e.isReference())
+				e = (VirtualTreeElement) e.getReference();
+		} finally {
+			resMan.unlockRead();
+		}
+		return m_treeElementFactory.get(e);
 	}
 
 	@Override
@@ -66,7 +79,7 @@ public class DefaultSchedule extends ResourceBase implements org.ogema.core.mode
 		m_dbMan.startTransaction();
 		try {
 			DefaultSchedule s = super.create();
-			m_scheduleElement.create();
+			getSchedule().create();
 			return (T) s;
 		} finally {
 			m_dbMan.finishTransaction();
@@ -79,9 +92,10 @@ public class DefaultSchedule extends ResourceBase implements org.ogema.core.mode
     	m_dbMan.startTransaction();
 		try {
 			if (!isReference(false)) {
-		        getSchedule().deleteValues();
-		        getSchedule().setLastModified(-1);
-		        m_scheduleElement.getScheduleElement().delete();
+				final ScheduleTreeElement ste = getSchedule();
+		        ste.deleteValues();
+		        ste.setLastModified(-1);
+		        ste.getScheduleElement().delete();
 			} else {
 				// TODO this is not working!
 			}

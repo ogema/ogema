@@ -16,6 +16,8 @@ rundirs/felix-native-conf/bundle/jetty-7.6.13-sources/
 rundirs/OgemaRunnerNetBeans/dist/
 rundirs/*/config/zwave_cache/OZW_Log.txt
 rundirs/*/config/channelmapper.config
+rundirs/empuron/
+rundirs/luellwitz/
 build/
 tmp/
 temp/

@@ -91,7 +91,7 @@ class PrimaryDemandListener<T extends Resource, P extends ResourcePattern<T>> {
             } catch (RuntimeException e) {
             	// happens regularly
             	m_log.debug("Could not create a pattern object; probably the resource was immediately deleted "
-            			+ "after being created: " + resource,e);
+            			+ "after being created: {}",resource,e);
             	return;
             } catch (Exception ex) {
             	throw new RuntimeException("could not create a RAD object for " + resource, ex); // XXX ?

@@ -15,12 +15,11 @@
  */
 package org.ogema.application.manager.impl;
 
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
 import java.io.IOException;
 import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 import org.apache.felix.scr.annotations.Component;
@@ -44,7 +43,27 @@ public class SimulationClock implements FrameworkClock {
 	protected volatile long startTimeSystem = System.currentTimeMillis();
 	protected volatile long startTimeFramework;
 	protected volatile float simulationFactor = 1.0f;
-	protected PropertyChangeSupport listeners = new PropertyChangeSupport(this);
+	protected java.beans.PropertyChangeSupport propertyListeners;
+    protected ConcurrentLinkedQueue<ClockChangeListener> listeners = new ConcurrentLinkedQueue<>();
+    
+    final class ClockEvent implements ClockChangedEvent {
+        
+        final float factor;
+
+        public ClockEvent(float factor) {
+            this.factor = factor;
+        }
+        
+        @Override
+        public float getSimulationFactor() {
+            return factor;
+        }
+
+        @Override
+        public FrameworkClock getClock() {
+            return SimulationClock.this;
+        }
+    }
 
 	/**
 	 * System or configuration property ({@value} ) that can be used to disable this clock (set to {@code true}).
@@ -126,7 +145,8 @@ public class SimulationClock implements FrameworkClock {
 	}
 
 	@Override
-	public boolean setSimulationFactor(float simulationFactor) {
+    @SuppressWarnings("deprecation")
+	public synchronized boolean setSimulationFactor(float simulationFactor) {
 		if (simulationFactor < 0) {
 			throw new IllegalArgumentException("illegal simulation factor: " + simulationFactor);
 		}
@@ -134,18 +154,43 @@ public class SimulationClock implements FrameworkClock {
 		this.startTimeSystem = System.currentTimeMillis();
 		float oldFactor = this.simulationFactor;
 		this.simulationFactor = simulationFactor;
-		listeners.firePropertyChange(SIMULATION_FACTOR_CHANGED_PROPERTY, oldFactor, simulationFactor);
+        if (propertyListeners != null) {
+            propertyListeners.firePropertyChange(SIMULATION_FACTOR_CHANGED_PROPERTY, oldFactor, simulationFactor);
+        }
+        if (!listeners.isEmpty()) {
+            ClockEvent e = new ClockEvent(simulationFactor);
+            for (ClockChangeListener l: listeners) {
+                l.clockChanged(e);
+            }
+        }
 		return true;
 	}
 
 	@Override
-	public void addPropertyChangeListener(PropertyChangeListener listener) {
-		listeners.addPropertyChangeListener(listener);
+    @Deprecated
+	public synchronized void addPropertyChangeListener(java.beans.PropertyChangeListener listener) {
+        if (propertyListeners == null) {
+            propertyListeners = new java.beans.PropertyChangeSupport(this);
+        }
+		propertyListeners.addPropertyChangeListener(listener);
 	}
 
 	@Override
-	public void removePropertyChangeListener(PropertyChangeListener listener) {
-		listeners.removePropertyChangeListener(listener);
+    @Deprecated
+	public void removePropertyChangeListener(java.beans.PropertyChangeListener listener) {
+        if (propertyListeners != null) {
+            propertyListeners.removePropertyChangeListener(listener);
+        }
 	}
+
+    @Override
+    public void addClockChangeListener(ClockChangeListener l) {
+        listeners.add(l);
+    }
+
+    @Override
+    public void removeClockChangeListener(ClockChangeListener l) {
+        listeners.remove(l);
+    }
 
 }

@@ -29,7 +29,7 @@ public abstract class CountDownDelayedExecutionTimer implements TimerListener {
 	
 	public abstract void delayedExecution();
 
-	/** Note: The timer is not started automatically after construction, only after call of start
+	/** Time starts automatically after construction
 	 * @param appMan
 	 * @param countDownTime time in milliseconds until the method delayedExecution is called
 	 * */

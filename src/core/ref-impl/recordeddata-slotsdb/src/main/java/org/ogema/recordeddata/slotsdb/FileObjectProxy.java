@@ -21,6 +21,8 @@ import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -661,7 +663,13 @@ public final class FileObjectProxy {
 			// encoding should be compatible with usual linux & windows file system file names
 			encodedLabel = URLEncoder.encode(label, "UTF-8");
 			// should be false in any reasonable system
-			boolean use252F = Boolean.getBoolean("org.ogema.recordeddata.slotsdb.use252F");
+			boolean use252F = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
+				@Override
+				public Boolean run() {
+					return Boolean.getBoolean("org.ogema.recordeddata.slotsdb.use252F");
+				}
+			});
+					
 			if (use252F) {
 				encodedLabel = encodedLabel.replace("%2F", "%252F");				
 			} else {

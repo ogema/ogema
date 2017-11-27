@@ -44,6 +44,13 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.ogema.core.model.array.ArrayResource;
+import org.ogema.core.model.array.BooleanArrayResource;
+import org.ogema.core.model.array.ByteArrayResource;
+import org.ogema.core.model.array.FloatArrayResource;
+import org.ogema.core.model.array.IntegerArrayResource;
+import org.ogema.core.model.array.StringArrayResource;
+import org.ogema.core.model.array.TimeArrayResource;
 
 /**
  *
@@ -54,7 +61,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Deprecated 
 public class FastJsonGenerator {
 
-	final static JsonFactory jsonFactory = new JsonFactory();
+	final static JsonFactory JSONFACTORY = new JsonFactory();
 	private JsonGenerator jGen = null;
 	private StateController stateControl = null;
 
@@ -81,13 +88,9 @@ public class FastJsonGenerator {
 	 */
 	public void serialize(Writer writer, Resource resource, SerializationManager serializationManager)
 			throws IOException {
-		jGen = jsonFactory.createJsonGenerator(writer).useDefaultPrettyPrinter();
+		jGen = JSONFACTORY.createJsonGenerator(writer).useDefaultPrettyPrinter();
 		this.stateControl = new StateController(serializationManager, resource); 
-		try {
-			this.serializeResource(resource);
-		} catch (Throwable e) {
-			LoggerFactory.getLogger(getClass()).error("error in serialization", e);
-		}
+    	this.serializeResource(resource);
 		jGen.flush();
 	}
 
@@ -101,7 +104,7 @@ public class FastJsonGenerator {
 	/* FIXME?: this will always serialize embedded schedules (timeseries) as link */
 	public void serialize(Writer writer, Object obj, SerializationManager serializationManager) throws IOException {
 		ObjectMapper mapper = SerializationCore.createJacksonMapper(true);
-		jGen = jsonFactory.createJsonGenerator(writer).useDefaultPrettyPrinter().setCodec(mapper);
+		jGen = JSONFACTORY.createJsonGenerator(writer).useDefaultPrettyPrinter().setCodec(mapper);
 		jGen.writeObject(obj);
 		jGen.flush();
 	}
@@ -183,16 +186,15 @@ public class FastJsonGenerator {
 	 * @param resource
 	 * @throws IOException
 	 */
-	@SuppressWarnings("deprecation")
 	private void writeSimpleResourceValue(Resource resource) throws IOException {
-		if (!(resource instanceof SingleValueResource)) {
+		if (!(resource instanceof SingleValueResource || resource instanceof ArrayResource)) {
 			return;
 		}
 		if (resource instanceof BooleanResource) {
-			jGen.writeBooleanField("value", ((BooleanResource) resource).getValue());
+			jGen.writeBooleanField(SINGLEVALUE, ((BooleanResource) resource).getValue());
 		}
 		else if (resource instanceof FloatResource) {
-			jGen.writeNumberField("value", ((FloatResource) resource).getValue());
+			jGen.writeNumberField(SINGLEVALUE, ((FloatResource) resource).getValue());
 			if (resource instanceof PhysicalUnitResource) {
 				PhysicalUnit u = ((PhysicalUnitResource) resource).getUnit();
 				if (u != null) {
@@ -201,19 +203,64 @@ public class FastJsonGenerator {
 			}
 		}
 		else if (resource instanceof IntegerResource) {
-			jGen.writeNumberField("value", ((IntegerResource) resource).getValue());
+			jGen.writeNumberField(SINGLEVALUE, ((IntegerResource) resource).getValue());
 		}
 		else if (resource instanceof TimeResource) {
-			jGen.writeNumberField("value", ((TimeResource) resource).getValue());
+			jGen.writeNumberField(SINGLEVALUE, ((TimeResource) resource).getValue());
 		}
 		else if (resource instanceof StringResource) {
-			jGen.writeStringField("value", ((StringResource) resource).getValue());
+			jGen.writeStringField(SINGLEVALUE, ((StringResource) resource).getValue());
 		}
 		else if (resource instanceof org.ogema.core.model.simple.OpaqueResource) {
 			// Jackson default Base64 variant (which is Base64Variants.MIME_NO_LINEFEEDS)
-			jGen.writeBinaryField("value", ((org.ogema.core.model.simple.OpaqueResource) resource).getValue());
-		}
+			jGen.writeBinaryField(SINGLEVALUE, ((org.ogema.core.model.simple.OpaqueResource) resource).getValue());
+		} else if (resource instanceof ArrayResource) {
+            if (resource instanceof BooleanArrayResource) {
+                BooleanArrayResource arr = (BooleanArrayResource) resource;
+                jGen.writeArrayFieldStart(ARRAYVALUES);
+                for (boolean b: arr.getValues()) {
+                    jGen.writeBoolean(b);
+                }
+                jGen.writeEndArray();
+            } else if (resource instanceof ByteArrayResource) {
+                ByteArrayResource arr = (ByteArrayResource) resource;
+                jGen.writeBinaryField(ARRAYVALUES, arr.getValues());
+            } else if (resource instanceof FloatArrayResource) {
+                FloatArrayResource arr = (FloatArrayResource) resource;
+                jGen.writeArrayFieldStart(ARRAYVALUES);
+                for (float f: arr.getValues()) {
+                    jGen.writeNumber(f);
+                }
+                jGen.writeEndArray();
+            } else if (resource instanceof IntegerArrayResource) {
+                IntegerArrayResource arr = (IntegerArrayResource) resource;
+                jGen.writeArrayFieldStart(ARRAYVALUES);
+                for (int i: arr.getValues()) {
+                    jGen.writeNumber(i);
+                }
+                jGen.writeEndArray();
+            } else if (resource instanceof StringArrayResource) {
+                StringArrayResource arr = (StringArrayResource) resource;
+                jGen.writeArrayFieldStart(ARRAYVALUES);
+                for (String s: arr.getValues()) {
+                    jGen.writeString(s);
+                }
+                jGen.writeEndArray();
+            } else if (resource instanceof TimeArrayResource) {
+                TimeArrayResource arr = (TimeArrayResource) resource;
+                jGen.writeArrayFieldStart(ARRAYVALUES);
+                for (long l: arr.getValues()) {
+                    jGen.writeNumber(l);
+                }
+                jGen.writeEndArray();
+            } else {
+                LoggerFactory.getLogger(getClass()).error(
+                        "unsupported ArrayResource type: {}", resource.getResourceType());
+            }
+        }
 	}
+    private static final String ARRAYVALUES = "values";
+    private static final String SINGLEVALUE = "value";
 
 	/**
 	 * Just writes the fields to json needed for a resource-link. No further rekursive calls are done.
@@ -277,42 +324,42 @@ public class FastJsonGenerator {
 		BooleanWriter(BooleanValue.class) {
 			@Override
 			public void writeValue(SampledValue v, JsonGenerator jGen) throws IOException {
-				jGen.writeBooleanField("value", v.getValue().getBooleanValue());
+				jGen.writeBooleanField(SINGLEVALUE, v.getValue().getBooleanValue());
 				jGen.writeStringField("@type", "SampledBoolean");
 			}
 		},
 		FloatWriter(FloatValue.class) {
 			@Override
 			public void writeValue(SampledValue v, JsonGenerator jGen) throws IOException {
-				jGen.writeNumberField("value", v.getValue().getFloatValue());
+				jGen.writeNumberField(SINGLEVALUE, v.getValue().getFloatValue());
 				jGen.writeStringField("@type", "SampledFloat");
 			}
 		},
 		IntWriter(IntegerValue.class) {
 			@Override
 			public void writeValue(SampledValue v, JsonGenerator jGen) throws IOException {
-				jGen.writeNumberField("value", v.getValue().getIntegerValue());
+				jGen.writeNumberField(SINGLEVALUE, v.getValue().getIntegerValue());
 				jGen.writeStringField("@type", "SampledInteger");
 			}
 		},
 		LongWriter(LongValue.class) {
 			@Override
 			public void writeValue(SampledValue v, JsonGenerator jGen) throws IOException {
-				jGen.writeNumberField("value", v.getValue().getLongValue());
+				jGen.writeNumberField(SINGLEVALUE, v.getValue().getLongValue());
 				jGen.writeStringField("@type", "SampledLong");
 			}
 		},
 		StringWriter(StringValue.class) {
 			@Override
 			public void writeValue(SampledValue v, JsonGenerator jGen) throws IOException {
-				jGen.writeStringField("value", v.getValue().getStringValue());
+				jGen.writeStringField(SINGLEVALUE, v.getValue().getStringValue());
 				jGen.writeStringField("@type", "SampledString");
 			}
 		},
 		DefaultWriter(Value.class) {
 			@Override
 			public void writeValue(SampledValue v, JsonGenerator jGen) throws IOException {
-				jGen.writeStringField("value", v.getValue().getStringValue());
+				jGen.writeStringField(SINGLEVALUE, v.getValue().getStringValue());
 				jGen.writeStringField("@type", "SampledString");
 			}
 		};

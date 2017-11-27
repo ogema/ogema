@@ -104,7 +104,7 @@ public class InitialImport {
 			Resource resource = useJson ? sm.createFromJson(content) : sm.createFromXml(content);
 			logger.debug("Resource created: {}", resource);
 		} catch (Exception e) {
-			logger.error("Could not create resource {}", e);
+			logger.error("Could not create resource from {}",content, e);
 		}
 	}
 

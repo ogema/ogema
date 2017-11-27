@@ -46,6 +46,9 @@ import com.google.common.base.Function;
  */
 public class TimeSeriesUtils {
 	
+	// use static methods to access this
+	private  TimeSeriesUtils() {}
+	
 	/**
 	 * Get an unmodifiable MemoryTimeSeries representation of the input time series.
 	 * All operations that modify the time series, such as adding or deleting points, throw

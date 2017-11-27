@@ -13,7 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ogema.app.securityconsumer;
+package org.ogema.app.test.modbus;
 
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.units.ElectricCurrentResource;

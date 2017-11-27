@@ -58,8 +58,8 @@ public class PatternFinder<P extends ResourcePattern<?>> {
 		if (resource == null)
 			modelMatches = (List<Resource>) ra.getResources(resType);
 		else 
-			modelMatches = (List<Resource>) resource.getSubResources(resType, recursive); 
-		// System.out.println("  Pattern finder has " + modelMatches.size() + " model matches for resource type " + resType.getSimpleName());
+			modelMatches = (List<Resource>) resource.getSubResources(resType, recursive);
+//		System.out.println("  Pattern finder has " + modelMatches.size() + " model matches for resource type " + resType.getSimpleName() + "; pattern: " + radFactory.m_type);
 		Iterator<Resource> it = modelMatches.iterator();
 		while (it.hasNext()) {
 			Resource res = it.next();

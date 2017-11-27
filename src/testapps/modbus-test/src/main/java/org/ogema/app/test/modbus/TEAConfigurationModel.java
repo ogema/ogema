@@ -24,7 +24,7 @@
  *
  * All Rights reserved
  */
-package org.ogema.app.securityconsumer;
+package org.ogema.app.test.modbus;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.IntegerResource;

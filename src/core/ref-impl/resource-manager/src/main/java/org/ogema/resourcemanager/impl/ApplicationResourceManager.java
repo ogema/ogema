@@ -413,8 +413,9 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	}
 
 	@Override
+    @Deprecated
 	public String getUniqueResourceName(String appResourceName) {
-		return dbMan.getUniqueResourceName(appResourceName, getAppId());
+		return dbMan.getUniqueResourceName(appResourceName, Long.toString(appMan.getAppID().getBundle().getBundleId()));
 	}
 
 	/*

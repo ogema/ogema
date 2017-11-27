@@ -39,7 +39,7 @@ public class Activator implements Application {
 		String portName = getPortName(appManager.getHardwareManager());
 		if (portName == null) {
 			HardwareManager hwmngr = appManager.getHardwareManager();
-			Collection<HardwareDescriptor> descriptors = hwmngr.getHardwareDescriptors(".+:0403:6001:FTUEMLV4");
+			Collection<HardwareDescriptor> descriptors = hwmngr.getHardwareDescriptors(".+:0403:6001:.*");
 			for (HardwareDescriptor descr : descriptors) {
 				// TODO handle multiple connections
 				portName = ((UsbHardwareDescriptor) descr).getPortName();
@@ -49,6 +49,9 @@ public class Activator implements Application {
 			logger.error(
 					"Modbus Portname undefined. Please specify a valid portname via the property org.ogema.driver.modbus.rtu.portname and start the app again!");
 			return;
+		}
+		else {
+			logger.info("Modbus RTU Portname detected " + portName);
 		}
 		outsMap = new Vector<>(4);
 		init750504Resources(appManager.getResourceAccess(), appManager.getResourceManagement());

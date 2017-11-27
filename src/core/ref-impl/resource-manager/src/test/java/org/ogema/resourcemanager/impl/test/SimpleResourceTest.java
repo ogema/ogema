@@ -60,6 +60,20 @@ public class SimpleResourceTest extends OsgiTestBase {
 		assertNotEquals(-1, res.stateControl().getLastUpdateTime());
 		assertTrue(res.stateControl().getLastUpdateTime() >= beforeUpdate);
 	}
+    
+    @Test
+	public void lastUpdateTimeWorksOnReferences() throws Exception {
+        OnOffSwitch res = resMan.createResource(newResourceName(), OnOffSwitch.class);
+		assertEquals(-1, res.stateControl().getLastUpdateTime());
+		res.stateControl().create();
+		assertEquals(-1, res.stateControl().getLastUpdateTime());
+		long beforeUpdate = getApplicationManager().getFrameworkTime();
+        BooleanResource ref = res.addDecorator("ref", res.stateControl());
+		ref.setValue(true);
+        assertNotEquals(-1, res.stateControl().getLastUpdateTime());
+		//assertNotEquals(-1, ref.getLastUpdateTime());
+		assertTrue(res.stateControl().getLastUpdateTime() >= beforeUpdate);
+	}
 
 	@Test
 	public void decoratorsWorkOnSimpleResources() throws ResourceException {

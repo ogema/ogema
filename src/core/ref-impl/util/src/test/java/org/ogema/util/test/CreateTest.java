@@ -24,12 +24,10 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 import org.ogema.core.model.ResourceList;
-import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.tools.SerializationManager;
 import org.ogema.exam.OsgiAppTestBase;
-import org.ogema.exam.ResourceAssertions;
 import org.ogema.model.actors.MultiSwitch;
 import org.ops4j.pax.exam.ProbeBuilder;
 import org.ops4j.pax.exam.TestProbeBuilder;
@@ -122,7 +120,7 @@ public class CreateTest extends OsgiAppTestBase {
 	}
     
     @Test public void createWorksForTopLevelCustomResourceLists() {
-        String resname = resman.getUniqueResourceName("CreateCustomListTest");
+        String resname = newResourceName();
         @SuppressWarnings("unchecked")
         ResourceList<CustomType> l = resman.createResource(resname, ResourceList.class);
         l.setElementType(CustomType.class);

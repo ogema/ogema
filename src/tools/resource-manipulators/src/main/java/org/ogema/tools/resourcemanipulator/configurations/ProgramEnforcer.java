@@ -91,6 +91,18 @@ public interface ProgramEnforcer extends ManipulatorConfiguration {
 	 * This method must only be called after the {@link #commit()} has been called, otherwise a {@link RuntimeException} is thrown.
 	 */
 	void setRangeFilter(float lowerBoundary, float upperBoundary, int mode) throws RuntimeException;
+	
+	/**
+	 * Set a custom resource name for the schedule subresource (default: "program")
+	 * @param scheduleName
+	 */
+	void setTargetScheduleName(String scheduleName);
+	
+	/**
+	 * Get the resource name of the schedule subresource (default: "program")
+	 * @return
+	 */
+	String getTargetScheduleName();
 
 	/**
 	 * If set to true, the target resource is deactivated when no valid schedule value is available, otherwise

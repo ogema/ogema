@@ -47,12 +47,25 @@ public class SystemClock implements FrameworkClock {
 	}
 
 	@Override
+    @Deprecated
 	public void addPropertyChangeListener(PropertyChangeListener listener) {
 		//this clock does not support such property changes.
 	}
 
 	@Override
+    @Deprecated
 	public void removePropertyChangeListener(PropertyChangeListener listener) {
+        //this clock does not support such property changes.
 	}
+
+    @Override
+    public void addClockChangeListener(ClockChangeListener l) {
+        //this clock does not create events.
+    }
+
+    @Override
+    public void removeClockChangeListener(ClockChangeListener l) {
+        //this clock does not create events.
+    }
 
 }

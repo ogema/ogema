@@ -17,8 +17,10 @@ package org.ogema.persistence.impl.faketree;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 
 /**
@@ -29,21 +31,39 @@ public class ScheduleTreeElementFactory {
 
     private final Cache<String, ScheduleTreeElement> cache = CacheBuilder.newBuilder().softValues().build();
     
+	// in cache.get a guava-internal class may be loaded which accesses a system property in 
+    // its static initializer... bound to fail if there is an app in the call stack, hence the privileged access
+	// TODO guava issue?
     public ScheduleTreeElement get(final VirtualTreeElement element) {
         try {
-            ScheduleTreeElement e = cache.get(element.getPath(), new Callable<ScheduleTreeElement>() {
-                @Override
-                public ScheduleTreeElement call() throws Exception {
-                    return new ScheduleTreeElement(element);
-                }
-            });
+            final ScheduleTreeElement e = AccessController.doPrivileged(new PrivilegedExceptionAction<ScheduleTreeElement>() {
+
+				@Override
+				public ScheduleTreeElement run() throws Exception {
+					return cache.get(element.getPath(), new ScheduleTreeElementCallable(element));
+				}
+			});    		
             if (!e.baseElement.isVirtual()) {
                 e.create();
             }
             return e;
-        } catch (ExecutionException ee) {
+        } catch (PrivilegedActionException ee) {
             return new ScheduleTreeElement(element);
         }
     }
-
+    
+    private final static class ScheduleTreeElementCallable implements Callable<ScheduleTreeElement> {
+    	
+    	final VirtualTreeElement element;
+    	
+    	private ScheduleTreeElementCallable(VirtualTreeElement element) {
+    		this.element = element;
+		}
+    	
+    	@Override
+        public ScheduleTreeElement call() throws Exception {
+            return new ScheduleTreeElement(element);
+        }
+    }
+    
 }

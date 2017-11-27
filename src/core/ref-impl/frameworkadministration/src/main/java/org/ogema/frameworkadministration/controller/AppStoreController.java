@@ -42,11 +42,6 @@ import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.io.IOUtils;
-import org.apache.felix.scr.annotations.Activate;
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Deactivate;
-import org.apache.felix.scr.annotations.Reference;
-import org.apache.felix.scr.annotations.Service;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -75,23 +70,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * 
  * @author tgries
  */
-@Component
-@Service(AppStoreController.class)
+@Component( service = AppStoreController.class )
 public class AppStoreController {
 
 //	private static AppStoreController instance = null;
 //	private static final String DONT_APPEND = "no_index_html";
 
-	@Reference
 	private AdministrationManager administrationManager;
-	@Reference
 	private PermissionManager permissionManager;
-	@Reference
 	private ResourceDB resourceDB;
 
 	private BundleContext bundleContext;
@@ -623,6 +618,21 @@ public class AppStoreController {
 		}
 		return file;
 	}
+    
+    @Reference
+    public void setAdministrationManager(AdministrationManager administrationManager) {
+        this.administrationManager = administrationManager;
+    }
+
+    @Reference
+    public void setPermissionManager(PermissionManager permissionManager) {
+        this.permissionManager = permissionManager;
+    }
+
+    @Reference
+    public void setResourceDB(ResourceDB resourceDB) {
+        this.resourceDB = resourceDB;
+    }
 
 	public AdministrationManager getAdministrationManager() {
 		return administrationManager;

@@ -104,13 +104,13 @@ public class ScriptCommandsGoGo implements Application {
 	}
 
 	@Descriptor("evaluate (run) file in script engine")
-	public void run(String f) {
+	public Object run(String f) {
 		File file = new File(f);
 		InputStream is = null;
 		try {
 			if (file.exists()) {
 				try {
-					evalIs(is = new FileInputStream(file));
+					return evalIs(is = new FileInputStream(file));
 				} catch (FileNotFoundException fe) {
 					System.out.println(fe.getMessage());
 				}
@@ -121,7 +121,7 @@ public class ScriptCommandsGoGo implements Application {
 					System.out.println("not found: " + f);
 				}
 				else {
-					evalIs(is);
+					return evalIs(is);
 				}
 			}
 		} finally {
@@ -133,6 +133,7 @@ public class ScriptCommandsGoGo implements Application {
 				}
 			}
 		}
+        return null;
 	}
 
 	@Descriptor("initialize a new script engine (e.g. 'javascript' or 'Groovy')")
@@ -165,12 +166,13 @@ public class ScriptCommandsGoGo implements Application {
 		}
 	}
 
-	protected void evalIs(InputStream is) {
+	protected Object evalIs(InputStream is) {
 		InputStreamReader reader = new InputStreamReader(is);
 		try {
-			engine.eval(reader);
+			return engine.eval(reader);
 		} catch (ScriptException se) {
 			System.out.println(se);
+            return se;
 		}
 	}
     

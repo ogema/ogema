@@ -108,7 +108,7 @@ public abstract class ResourceBase implements ConnectedResource {
 	 * Use instead of handleResourceUpdate when holding the resource lock
 	 */
 	protected void handleResourceUpdateInternal(final boolean valueChanged) {
-		el.setLastModified(resMan.getApplicationManager().getFrameworkTime());
+		setLastUpdateTime();
 		if (!el.isActive())
 			return;
 		resMan.getDatabaseManager().getElementInfo(el).fireResourceChanged(this,
@@ -143,7 +143,7 @@ public abstract class ResourceBase implements ConnectedResource {
 
 	@Override
 	public boolean equalsLocation(Resource other) {
-		return getLocation().equals(other.getLocation());
+		return other != null && getLocation().equals(other.getLocation());
 	}
 
 	@Override
@@ -481,6 +481,24 @@ public abstract class ResourceBase implements ConnectedResource {
                 }
             }
             return result;
+        } finally {
+            resMan.getDatabaseManager().unlockStructureRead();
+        }
+    }
+    
+    /**
+     * @param name sub resource name.
+     * @return true iff app has read permission for sub resource or sub resource does not exist.
+     */
+    protected boolean isSubResourceReadable(String name) {
+        Objects.requireNonNull(name, "name must not be null");
+        resMan.getDatabaseManager().lockStructureRead();
+        try {
+            TreeElement childElement = getEl().getChild(name);
+            if (childElement == null) {
+                return true;
+            }
+            return resMan.getAccessRights(childElement).isReadPermitted();
         } finally {
             resMan.getDatabaseManager().unlockStructureRead();
         }
@@ -879,6 +897,10 @@ public abstract class ResourceBase implements ConnectedResource {
                         if (existingDecorator.isVirtual()) {
                             existingDecorator.constrainType(resourceType);
                         } else {
+                            if (resourceType.isAssignableFrom(existingType)) {
+                                //existing resource already matches requested type
+                                return getSubResource(name);
+                            }
                             throw new ResourceAlreadyExistsException("Cannot add decorator " + name + " of type "
                                 + resourceType.getSimpleName() + ": Decorator with type " + existingType.getSimpleName()
                                 + " already exists.");
@@ -1575,11 +1597,19 @@ public abstract class ResourceBase implements ConnectedResource {
 	}
 
 	protected void setLastUpdateTime() {
-		getTreeElement().setLastModified(resMan.getApplicationManager().getFrameworkTime());
+        TreeElement te = getTreeElement();
+        while (te.isReference()) {
+            te = te.getReference();
+        }
+		te.setLastModified(resMan.getApplicationManager().getFrameworkTime());
 	}
 
 	protected long getLastUpdateTime() {
-		return getTreeElement().getLastModified();
+        TreeElement te = getTreeElement();
+        while (te.isReference()) {
+            te = te.getReference();
+        }
+        return te.getLastModified();
 	}
 	
 	private List<String> computeAliases() {
@@ -1651,7 +1681,7 @@ public abstract class ResourceBase implements ConnectedResource {
     public List<Resource> getReferencingNodes(boolean transitive) {
         resMan.getDatabaseManager().lockStructureRead();
         try {
-            Collection<TreeElement> refs = resMan.getDatabaseManager().getElementInfo(el).getReferences(getPath(), transitive);
+            Collection<TreeElement> refs = resMan.getDatabaseManager().getElementInfo(getEl()).getReferences(getPath(), transitive);
             if (refs == null || refs.isEmpty()) {
                 return Collections.emptyList();
             }

@@ -591,6 +591,10 @@ public class ResourceDBManager {
         return revisionCounter.incrementAndGet();
     }
     
+    public ScheduleTreeElementFactory getScheduleTreeElementFactory() {
+    	return scheduleFactory;
+    }
+    
     public ScheduleTreeElement getScheduleElement(VirtualTreeElement base) {
         lockStructureRead();
         try {
