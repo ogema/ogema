@@ -15,6 +15,7 @@
  */
 package org.ogema.tools.resourcemanipulator.implementation.controllers;
 
+import java.util.Date;
 import java.util.List;
 
 import org.ogema.core.application.ApplicationManager;
@@ -29,6 +30,9 @@ import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.tools.resource.util.MultiTimeSeriesUtils;
+import org.ogema.tools.resourcemanipulator.configurations.ManipulatorConfiguration;
+import org.ogema.tools.resourcemanipulator.configurations.ScheduleSum;
+import org.ogema.tools.resourcemanipulator.model.ResourceManipulatorModel;
 import org.ogema.tools.resourcemanipulator.model.ScheduleSumModel;
 import org.ogema.tools.resourcemanipulator.timer.CountDownTimer;
 import org.ogema.tools.timeseries.api.FloatTimeSeries;
@@ -46,6 +50,7 @@ public class ScheduleSumController implements Controller, ResourceStructureListe
 	private final ScheduleSumModel m_config;
 	private final CountDownTimer m_timer;
 	private final OgemaLogger m_logger;
+	private volatile Long lastExecutionTime;
 
 	public ScheduleSumController(ApplicationManager appMan, ScheduleSumModel configuration) {
 		m_config = configuration;
@@ -63,13 +68,14 @@ public class ScheduleSumController implements Controller, ResourceStructureListe
 			input.addStructureListener(this);
 			input.addValueListener(this);
 		}
-//		evaluate(); // fails a test
 		for (Schedule input : m_config.inputs().getAllElements()) {
 			if (input.isActive() && !input.isEmpty()) {
+				m_logger.debug("Schedule sum controller started: {}",m_config);
 				m_timer.start();
 				return; 
 			}
 		}
+		m_logger.debug("Schedule sum controller started; inputs not active: {}",m_config);
 	}
 
 	@Override
@@ -80,12 +86,18 @@ public class ScheduleSumController implements Controller, ResourceStructureListe
 		}
 	}
 
+	@Override
+	public Class<? extends ManipulatorConfiguration> getType() {
+		return ScheduleSum.class;
+	}
+	
 	/**
 	 * Evaluates the mapping and writes the result into the target resource.
 	 */
 	final void evaluate() {
-		List<Schedule> inputs = m_config.inputs().getAllElements();
-		AbsoluteSchedule output = m_config.resultBase().program();
+		m_logger.trace("Evaluating schedule sum {}",m_config);
+		final List<Schedule> inputs = m_config.inputs().getAllElements();
+		final AbsoluteSchedule output = m_config.resultBase().program();
 		for (Schedule schedule : inputs) {
 			if (schedule.getLocation().equals(output.getLocation())) {
 				String msg = this.getClass().getSimpleName() + ": input schedule "
@@ -106,6 +118,7 @@ public class ScheduleSumController implements Controller, ResourceStructureListe
 		if (emptySum) {
 			if (m_config.deactivateEmptySum().getValue() || m_config.activationControl().getValue()) 
 				output.deactivate(false);
+			lastExecutionTime = m_timer.getExecutionTime();
 			return;
 		}
 		
@@ -117,22 +130,30 @@ public class ScheduleSumController implements Controller, ResourceStructureListe
 			startTime = Long.MIN_VALUE;
 		else
 			startTime = getStartTime(m_config.latestTimestamps(), inputs);
-		if (startTime == Long.MAX_VALUE)
+		if (startTime == Long.MAX_VALUE) {
+			m_logger.trace("No further schedule sum values available: {}",m_config);
 			return;
+		}
 		// TODO determine end time
 		final long endTime;
 		if (m_config.writeImmediately().getValue() && m_config.writeImmediately().isActive())
 			endTime = Long.MAX_VALUE;
 		else
 			endTime = getEndTime(inputs);
+		if (startTime > endTime) {
+			m_logger.trace("No further values for schedule sum {}",output);
+			return;
+		}
 		final FloatTimeSeries result = MultiTimeSeriesUtils.add(inputs, startTime, endTime, ignoreGaps, null, false);
+		if (m_logger.isTraceEnabled()) 
+			m_logger.trace("New schedule sum values for {}, for period {} to {}. Nr values: {}",m_config.getPath(),new Date(startTime), new Date(endTime), result.size());
 		output.replaceValues(startTime, Long.MAX_VALUE, result.getValues(startTime)); // TODO replace lacks option to pass calculation time
 //		output.addValues(result.getValues(startTime), m_timer.getExecutionTime());
 		if (m_config.activationControl().getValue()) 
 			output.activate(false);
 		if (evaluateState)
 			setLastUpdateTimes(m_config.latestTimestamps(), inputs, endTime);
-		
+		lastExecutionTime = m_timer.getExecutionTime();
 		// deprecated 
 		
 		// perform summation over all active inputs.
@@ -249,6 +270,21 @@ public class ScheduleSumController implements Controller, ResourceStructureListe
 	@Override
 	public void timerElapsed(Timer timer) {
 		evaluate();
+	}
+	
+	@Override
+	public ResourceManipulatorModel getConfigurationResource() {
+		return m_config;
+	}
+	
+	@Override
+	public Long getLastExecutionTime() {
+		return lastExecutionTime;
+	}
+	
+	@Override
+	public String toString() {
+		return "Schedule sum for target " + m_config.resultBase().program().getLocation() + ", configuration: " + getConfigurationResource().getName();
 	}
 
 }

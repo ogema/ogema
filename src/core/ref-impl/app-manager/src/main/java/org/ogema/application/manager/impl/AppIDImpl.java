@@ -15,10 +15,17 @@
  */
 package org.ogema.application.manager.impl;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.servlet.http.HttpSession;
+
+import org.ogema.accesscontrol.Constants;
+import org.ogema.accesscontrol.RedirectionURLHandler;
+import org.ogema.accesscontrol.SessionAuth;
 import org.ogema.core.application.AppID;
 import org.ogema.core.application.Application;
 import org.osgi.framework.Bundle;
@@ -76,7 +83,7 @@ public class AppIDImpl implements AppID {
 		if (begin > end)
 			end = loc.length();
 //		String appName = app.getClass().getSimpleName();
-		return String.format("[%d]_%s@%d", instanceCounter.incrementAndGet(), app.getClass(), bundle.getBundleId(),
+		return String.format("[%d]_%s@%d", instanceCounter.incrementAndGet(), app.getClass().getName(), bundle.getBundleId(),
 				bundle.getLocation());
 		//.substring(begin, end));// loc.substring(begin, end) + "_" + bundle.getBundleId();
 		//return String.format("%s@%d/%s", appName, bundle.getBundleId(), loc.substring(begin, end));
@@ -143,5 +150,25 @@ public class AppIDImpl implements AppID {
 	@Override
 	public String getVersion() {
 		throw uoe;
+	}
+	@Override
+	public URL getOneTimePasswordInjector(String name, HttpSession ses) {
+		// Get the corresponding session authorization
+		// String otp = registerOTP(owner, sesid);
+		SessionAuth auth = (SessionAuth) ses.getAttribute(Constants.AUTH_ATTRIBUTE_NAME);
+		if (auth == null)
+			return null;
+
+		String otp = auth.registerAppOtp(this);
+		if (otp == null)
+			return null;
+
+		URL url = null;
+		try {
+			url = new URL("ogema", getIDString(), 0, name, new RedirectionURLHandler(this, name, otp));
+		} catch (MalformedURLException e) {
+			throw new RuntimeException(e);
+		}
+		return url;
 	}
 }

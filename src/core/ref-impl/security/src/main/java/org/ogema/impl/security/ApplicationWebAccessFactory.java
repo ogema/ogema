@@ -117,6 +117,14 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
         appWAMs.put(app, aw);
         return aw;
     }
+    
+    synchronized boolean closeWebAccess(AppID app) {
+    	final ApplicationWebAccessManager wam = appWAMs.remove(app);
+    	if (wam == null)
+    		return false;
+    	wam.close();
+    	return true;
+    }
 
     ApplicationWebAccessManager getAppWAM(AppID appId) {
         return appWAMs.get(appId);

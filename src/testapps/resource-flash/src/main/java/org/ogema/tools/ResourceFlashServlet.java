@@ -98,7 +98,7 @@ public class ResourceFlashServlet extends HttpServlet {
 		this.rm = am.getResourceManagement();
 		this.classLoaders = new ArrayList<>();
 		this.objects = new ArrayList<>();
-		FloatResource fl = rm.createResource(rm.getUniqueResourceName("__testFloatRes__"), FloatResource.class);
+		FloatResource fl = rm.createResource("__testFloatRes__", FloatResource.class);
 		this.schedule = fl.program().create();
 		schedule.activate(false);
 		classLoaders.add(Resource.class.getClassLoader());

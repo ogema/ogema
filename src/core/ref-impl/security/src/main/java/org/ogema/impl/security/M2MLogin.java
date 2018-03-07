@@ -22,6 +22,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+
+import org.ogema.accesscontrol.Constants;
 import org.ogema.accesscontrol.PermissionManager;
 
 import org.ogema.accesscontrol.SessionAuth;
@@ -78,7 +80,7 @@ public class M2MLogin extends HttpServlet {
 			User user = (User) admin.getRole(usr);
 			Authorization author = admin.getAuthorization(user);
 			SessionAuth sauth = new SessionAuth(author, permMan.getAccessManager(), ses);
-			ses.setAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME, sauth);
+			ses.setAttribute(Constants.AUTH_ATTRIBUTE_NAME, sauth);
 
 			/*
 			 * Handle Request which is received before login was sent. This request is responded with the login page,

@@ -29,7 +29,6 @@ import static org.ogema.accesscontrol.Constants.OTUNAME;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.MalformedURLException;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.URL;
@@ -50,6 +49,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.ogema.accesscontrol.AccessManager;
+import org.ogema.accesscontrol.Constants;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.SessionAuth;
 import org.ogema.accesscontrol.Util;
@@ -57,6 +57,7 @@ import org.ogema.applicationregistry.ApplicationRegistry;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.application.AppID;
 import org.ogema.core.application.Application;
+import org.ogema.core.security.WebAccessManager;
 import org.ogema.webadmin.AdminWebAccessManager;
 import org.osgi.service.http.HttpContext;
 import org.slf4j.Logger;
@@ -78,7 +79,7 @@ public class OgemaHttpContext implements HttpContext {
 
 	final AppID owner;
 
-//	LoggerFactory factory;
+	// LoggerFactory factory;
 
 	// note: the following four maps are actually concurrent hash maps, but there is a strange incompatibility with
 	// Java 7 when building this in a Java 8 environment, if one declares the maps to be ConcurrentHashMap (here: error
@@ -92,7 +93,7 @@ public class OgemaHttpContext implements HttpContext {
 	final Map<String, String> servlets;
 
 	final Map<String, String> sessionsOtpqueue;
-	
+
 	// alias vs registration; synchronized on this; use {@link #getStaticRegistrations()} to create the map
 	volatile Map<String, AdminWebAccessManager.StaticRegistration> staticRegistrations;
 	// aliases; subset of resourcse key set; synchronized on resources
@@ -137,8 +138,6 @@ public class OgemaHttpContext implements HttpContext {
 	}
 
 	public void close() {
-		// note: this does not prevent the alias to be unregistered from the http service, which is taken care
-		// of by ApplicationWebAccessManager and ApplicationTracker
 		resources.clear();
 		servlets.clear();
 		sessionsOtpqueue.clear();
@@ -190,7 +189,7 @@ public class OgemaHttpContext implements HttpContext {
 
 		logger.debug("SessionID: {}", httpses.getId());
 		logger.debug("HTTP-Referer: {}", request.getHeader("Referer"));
-		if ((sesAuth = (SessionAuth) httpses.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME)) == null) {
+		if ((sesAuth = (SessionAuth) httpses.getAttribute(Constants.AUTH_ATTRIBUTE_NAME)) == null) {
 			// Store the request, so that it could be responded after successful login.
 			if (!request.getRequestURL().toString().endsWith("favicon.ico")) {
 				if (request.getRequestURI().equals("/ogema") || request.getRequestURI().equals("/ogema/")) {
@@ -256,8 +255,13 @@ public class OgemaHttpContext implements HttpContext {
 				// 3.2 the OTP should match, if not we assume that urlOwner doesn't have the permission for this servlet
 				// access
 				AdminApplication app = appReg.getAppById(usr);
+				final WebAccessManager wam = app != null ? permMan.getWebAccess(app.getID()) : null;
+				if (wam == null) { // happens when the bundle gets updated -> need to refresh the session 
+					response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+					return false;
+				}
+				result = wam.authenticate(httpses, usr, pwd);
 				urlOwner = app.getID();
-				result = permMan.getWebAccess(urlOwner).authenticate(httpses, usr, pwd);
 			}
 			else
 				result = false;
@@ -366,21 +370,12 @@ public class OgemaHttpContext implements HttpContext {
 		if (sesid == null)
 			return app.getClass().getResource(name);
 
-		// Get the corresponding session authorization
-		String otp = registerOTP(owner, sesid);
-		if (otp == null)
-			return null;
-
-		try {
-			url = new URL("ogema", owner.getIDString(), 0, name, new RedirectionURLHandler(owner, name, otp));
-		} catch (MalformedURLException e) {
-			throw new RuntimeException(e);
-		}
+		url = owner.getOneTimePasswordInjector(name, sesid);
 		return url;
 	}
 
 	private String registerOTP(AppID app, HttpSession ses) {
-		SessionAuth auth = (SessionAuth) ses.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME);
+		SessionAuth auth = (SessionAuth) ses.getAttribute(Constants.AUTH_ATTRIBUTE_NAME);
 		if (auth == null)
 			return null;
 		String otp = auth.registerAppOtp(app);
@@ -392,33 +387,34 @@ public class OgemaHttpContext implements HttpContext {
 		// MimeType of the default HttpContext will be used.
 		return null;
 	}
-	
+
 	private final boolean isStaticServlet(final String uri) {
-		final Map<String,AdminWebAccessManager.StaticRegistration> statics = this.staticRegistrations;
+		final Map<String, AdminWebAccessManager.StaticRegistration> statics = this.staticRegistrations;
 		if (statics == null)
 			return false;
 		return statics.containsKey(uri);
 	}
-	
+
 	private synchronized Map<String, AdminWebAccessManager.StaticRegistration> getStaticRegistrations() {
-		if (staticRegistrations == null) 
+		if (staticRegistrations == null)
 			staticRegistrations = new ConcurrentHashMap<>(3);
 		return staticRegistrations;
 	}
-	
-	synchronized AdminWebAccessManager.StaticRegistration addStaticRegistration(final String path, final Servlet servlet, final ApplicationWebAccessManager wam) {
+
+	synchronized AdminWebAccessManager.StaticRegistration addStaticRegistration(final String path,
+			final Servlet servlet, final ApplicationWebAccessManager wam) {
 		final AdminWebAccessManager.StaticRegistration staticReg = new StaticRegistrationImpl(servlet, path, wam);
 		getStaticRegistrations().put(staticReg.getPath(), staticReg);
 		return staticReg;
 	}
-	
+
 	private final boolean isNonOtpResource(final String alias) {
 		final Collection<String> nonOtps = this.nonOtpResources;
 		if (nonOtps == null)
 			return false;
 		return nonOtps.contains(alias);
 	}
-	
+
 	void addBasicResourceAlias(String path) {
 		synchronized (resources) {
 			if (nonOtpResources == null)
@@ -426,7 +422,7 @@ public class OgemaHttpContext implements HttpContext {
 			nonOtpResources.add(path);
 		}
 	}
-	
+
 	void unregisterResource(String alias) {
 		servlets.remove(alias);
 		if (resources.remove(alias) == null)
@@ -435,7 +431,7 @@ public class OgemaHttpContext implements HttpContext {
 		if (nonOtps != null)
 			nonOtps.remove(alias);
 	}
-	
+
 	static {
 		httpEnable = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
 
@@ -458,16 +454,16 @@ public class OgemaHttpContext implements HttpContext {
 		// }
 		// });
 	}
-	
+
 	private final static class StaticRegistrationImpl implements AdminWebAccessManager.StaticRegistration {
-		
-//		private final Servlet servlet;
+
+		// private final Servlet servlet;
 		private final String path;
 		private final ApplicationWebAccessManager wam;
 		private volatile boolean unregistered = false;
-		
+
 		public StaticRegistrationImpl(Servlet servlet, String path, ApplicationWebAccessManager wam) {
-//			this.servlet = Objects.requireNonNull(servlet);
+			// this.servlet = Objects.requireNonNull(servlet);
 			Objects.requireNonNull(servlet);
 			this.path = Objects.requireNonNull(path);
 			this.wam = Objects.requireNonNull(wam);
@@ -515,7 +511,7 @@ public class OgemaHttpContext implements HttpContext {
 			}
 			wam.unregisterWebResource(path);
 		}
-		
+
 	}
 
 }

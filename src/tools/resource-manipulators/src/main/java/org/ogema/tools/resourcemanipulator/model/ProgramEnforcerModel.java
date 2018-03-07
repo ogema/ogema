@@ -45,7 +45,7 @@ public interface ProgramEnforcerModel extends ResourceManipulatorModel {
 	BooleanResource exclusiveAccessRequired();
 
 	/**
-	 * Update interval. Set to <=0 for "on schedule update".
+	 * Update interval. Set to &lt;=0 for "on schedule update".
 	 */
 	TimeResource updateInterval();
 

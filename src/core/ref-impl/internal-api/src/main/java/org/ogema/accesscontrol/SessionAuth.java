@@ -30,9 +30,6 @@ import org.slf4j.Logger;
 
 public class SessionAuth implements HttpSessionBindingListener {
 
-	public static final String AUTH_ATTRIBUTE_NAME = "ogemaAuth";
-	public static final String USER_CREDENTIAL = "usrCred";
-
 	private final Authorization auth;
 	private final HttpSession ses;
 

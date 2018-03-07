@@ -15,8 +15,6 @@
  */
 package org.ogema.resourcemanager.virtual;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.MapMaker;
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
@@ -179,7 +177,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
     }
 
     @Override
-    public VirtualTreeElement addChild(String name, Class<? extends Resource> type, boolean isDecorating)
+    public VirtualTreeElement addChild(final String name, final Class<? extends Resource> type, final boolean isDecorating)
             throws ResourceAlreadyExistsException, ResourceNotFoundException, InvalidResourceTypeException {
         Objects.requireNonNull(type);
         VirtualTreeElement existingChild = getChild(name);
@@ -213,6 +211,7 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
 
     @Override
     public synchronized DefaultVirtualTreeElement addReference(TreeElement ref, String name, boolean isDecorating) {
+        assert !isVirtual() : "addReference called on virtual element " + getPath();
         TreeElement direktRef = ref;
         while (direktRef instanceof DefaultVirtualTreeElement) {
             direktRef = ((DefaultVirtualTreeElement) direktRef).el;
@@ -222,7 +221,8 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
         DefaultVirtualTreeElement reference;
         if (existingChild != null) {
             reference = existingChild;
-            reference.setEl(getEl().addReference(direktRef, name, isDecorating));
+            TreeElement refEl = getEl().addReference(direktRef, name, isDecorating);
+            reference.setEl(refEl);
         } else {
             reference = resourceDB.getElement(getEl().addReference(direktRef, name, isDecorating));
         }
@@ -391,7 +391,8 @@ public class DefaultVirtualTreeElement implements VirtualTreeElement {
             assert !parent.isVirtual();
             Object userObject = el.getResRef();
             Class<? extends Resource> type = getType();
-            TreeElement realElement = getRealElement(parent.addChild(getName(), type, isDecorator()));
+            final boolean optionalElement = !isDecorator();
+            TreeElement realElement = getRealElement(parent.addChild(getName(), type, !optionalElement));
             setEl(realElement);
             // Quickfix for bug when storing schedule resources
             initEmptyArrays(type);

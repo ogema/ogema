@@ -13,11 +13,6 @@
  * You should have received a copy of the GNU General Public License
  * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.ogema.impl.administration;
 
 import java.io.IOException;
@@ -75,7 +70,7 @@ import org.osgi.service.permissionadmin.PermissionInfo;
  */
 @Component(specVersion = "1.2", immediate = true)
 @Properties({ @Property(name = "osgi.command.scope", value = "ogm"), @Property(name = "osgi.command.function", value = {
-		"apps", "clock", "loggers", "log", "dump_cache", "update", "listUsers", "createUser", "setNewPassword" }) })
+		"apps", "clock", "loggers", "log", "dump_cache", "update", "listUsers", "createUser", "deleteUser", "setNewPassword" }) })
 @Service(ShellCommands.class)
 @Descriptor("OGEMA administration commands")
 public class ShellCommands {
@@ -205,12 +200,21 @@ public class ShellCommands {
 		}
 	}
 
-	@Descriptor("Display framework clock settings")
-	public void clock(@Descriptor("set the simulation factor (value>=0)") @Parameter(names = { "-f",
-			"--factor" }, absentValue = "-1.0") float factor) {
+	@Descriptor("Display or set framework clock settings")
+	public void clock(
+			@Descriptor("set the simulation factor (value>=0)") 
+			@Parameter(names = { "-f", "--factor" }, absentValue = "-1.0") float factor,
+			@Descriptor("set the current time (in ms since 1st January 1970)")
+			@Parameter(names = { "-t", "--timestamp"}, absentValue = (Long.MAX_VALUE + "")) long timestamp) {
 		FrameworkClock cl = admin.getFrameworkClock();
-		if (factor >= 0) {
+		if (factor >= 0 && timestamp !=  Long.MAX_VALUE) {
+			cl.setSimulationTimeAndFactor(timestamp, factor);
+		}
+		else if (factor >= 0) {
 			cl.setSimulationFactor(factor);
+		}
+		else if (timestamp != Long.MAX_VALUE) {
+			cl.setSimulationTime(timestamp);
 		}
 		System.out.printf("%s%n%tc\tfactor=%f%n", cl.getName(), cl.getExecutionTime(), cl.getSimulationFactor());
 	}
@@ -352,6 +356,23 @@ public class ShellCommands {
 			}
 		}
 	}
+	
+	@Descriptor("Delete a user")
+	public void deleteUser(
+			@Descriptor("The user id to be deleted.") 
+			String id) {
+		Objects.requireNonNull(id);
+		id = id.trim();
+		try {
+			admin.getUser(id);
+		} catch (RuntimeException expected) {
+			System.out.println("Could not delete user " + id + ": does not exist.");
+			return;
+		}
+		admin.removeUserAccount(id);
+		System.out.println("User " + id + " deleted.");
+	}
+			
 	
 	@Descriptor("List known users")
 	public void listUsers() {

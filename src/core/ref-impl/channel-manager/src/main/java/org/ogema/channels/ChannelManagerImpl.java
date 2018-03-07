@@ -15,12 +15,15 @@
  */
 package org.ogema.channels;
 
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.servlet.http.HttpSession;
 
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Reference;
@@ -401,6 +404,12 @@ public class ChannelManagerImpl implements ChannelAccess {
 
 		private ChannelManagerImpl getOuterType() {
 			return ChannelManagerImpl.this;
+		}
+
+		@Override
+		public URL getOneTimePasswordInjector(String path, HttpSession ses) {
+			// TODO Auto-generated method stub
+			return null;
 		}
 	}
 	

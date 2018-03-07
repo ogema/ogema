@@ -50,11 +50,13 @@ import org.ogema.recordeddata.DataRecorderException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// FIXME implementation is problematic... creates FileObjectList instances without keeping track of them.
+// Hence, it is impossible to reliably close all folders and execute delete jobs, for instance
 public final class FileObjectProxy {
 
 	private static final int FLEXIBLE_STORING_PERIOD = -1;
 
-	private final static Logger logger = LoggerFactory.getLogger(FileObjectProxy.class);
+	final static Logger logger = LoggerFactory.getLogger(FileObjectProxy.class);
 	
 	// not thread safe, need to create new instances 
 	private final static SimpleDateFormat getDateFormat() {
@@ -64,7 +66,7 @@ public final class FileObjectProxy {
 	/**
 	 * For creation and deletion (write lock), resp. parsing (read lock), of folders
 	 */
-	private final ReadWriteLock folderLock = new ReentrantReadWriteLock();
+	final ReadWriteLock folderLock = new ReentrantReadWriteLock();
 
 	private final File rootNode;
 	/**
@@ -337,31 +339,38 @@ public final class FileObjectProxy {
 		 * requires synchro
 		 */
 		private void deleteFoldersOlderThen(int limit_days) throws IOException {
-			Calendar limit = Calendar.getInstance(); // TODO make a field calendar instead of creation of a new instance each time
-//			limit.setTimeInMillis(System.currentTimeMillis() - (86400000L * limit_days));
-			if (clock != null)
-				limit.setTimeInMillis(clock.getExecutionTime() - (86400000L * limit_days));
-			else // only relevant for tests
-				limit.setTimeInMillis(System.currentTimeMillis() - (86400000L * limit_days));
+			final long now = clock != null ? clock.getExecutionTime() : System.currentTimeMillis();
+			deleteFoldersFrom(now  - (86400000L * limit_days), true);
+		}
+		
+		/*
+		 * requires synchro
+		 */
+		void deleteFoldersFrom(final long start, final boolean olderOrNewer) throws IOException {
+			Calendar limit = Calendar.getInstance();
+			limit.setTimeInMillis(start);
 			final SimpleDateFormat sdf = getDateFormat();
-			Iterator<File> iterator = days.iterator();
+			final Iterator<File> iterator = days.iterator();
 			try {
 				while (iterator.hasNext()) {
 					File curElement = iterator.next();
 					logger.trace("Deleting old log data: {}", curElement);
-					if (sdf.parse(curElement.getName()).getTime() + 86400000 < limit.getTimeInMillis()) { /*
-																											 * compare
-																											 * folder 's
-																											 * oldest value
-																											 * to limit
-																											 */
-						logger.info("Folder: " + curElement.getName() + " is older then " + limit_days
-								+ " Days. Will be deleted.");
+					final long folderTime = sdf.parse(curElement.getName()).getTime();
+					final boolean matches = olderOrNewer ? folderTime + 86400000 < limit.getTimeInMillis() : folderTime  + 86400000 > limit.getTimeInMillis();
+					if (matches) { /* compare folder 's oldest value to limit */
+						if (olderOrNewer)
+							logger.info("Folder: " + curElement.getName() + " is older then " + limit_days + " Days. Will be deleted.");
+						else
+							logger.info("Folder: " + curElement.getName() + " is in the future. Will be deleted");
 						deleteRecursiveFolder(curElement);
+						if (curElement.exists()) {
+							logger.warn("Folder deletion failed... still exists: {}", curElement);
+						}
 					}
 					else {
 						/* oldest existing Folder is not to be deleted yet */
-						break;
+						if (olderOrNewer)
+							break;
 					}
 				}
 				loadDays();
@@ -369,6 +378,18 @@ public final class FileObjectProxy {
 				logger.error("Error during sorting Files: Any Folder doesn't match yyyymmdd Format?");
 			}
 		}
+	}
+	
+	/*
+	 * Requires folder lock
+	 */
+	void deleteFutureFolders() throws IOException {
+		clearOpenFilesHashMap();
+		loadDays();
+		final long now = clock != null ? clock.getExecutionTime() : System.currentTimeMillis();
+		final DeleteJob delete = deleteJob != null ? deleteJob : new DeleteJob();
+		delete.deleteFoldersFrom(now, false);
+		cache.clearCache();
 	}
 
 	private SizeWatcher createScheduledSizeWatcher() {
@@ -465,7 +486,7 @@ public final class FileObjectProxy {
 		appendValue(id, value, timestamp, state, configuration, false);
 	}
 
-	private void appendValue(String id, double value, long timestamp, byte state,
+	private void appendValue(final String label0, double value, long timestamp, byte state,
 			RecordedDataConfiguration configuration, boolean hasWriteLock) throws IOException {
 
 		long storingPeriod;
@@ -479,21 +500,21 @@ public final class FileObjectProxy {
 		}
 
 		FileObject toStoreIn = null;
-		id = encodeLabel(id);
+		final String labelEncoded = encodeLabel(label0);
 		String strDate = getStrDate(timestamp);
 		
 		final boolean requiresNewFolder;
 		if (!hasWriteLock) 
 			folderLock.readLock().lock();
 		try {
-			requiresNewFolder = !openFilesHM.containsKey(id + strDate)|| openFilesHM.get(id + strDate).size() == 0;
+			requiresNewFolder = !openFilesHM.containsKey(labelEncoded + strDate)|| openFilesHM.get(labelEncoded + strDate).size() == 0;
 			// in this case we need to abort the current operation and start again, this time holding the write lock
 			if (requiresNewFolder && !hasWriteLock) {
 				hasWriteLock = true; // required to avoid releasing the read lock twice (see finally block)
 				folderLock.readLock().unlock();
 				folderLock.writeLock().lock();
 				try {
-					appendValue(id, value, timestamp, state, configuration, true);
+					appendValue(label0, value, timestamp, state, configuration, true);
 				} finally {
 					folderLock.writeLock().unlock();
 				}
@@ -506,10 +527,10 @@ public final class FileObjectProxy {
 			 * the Hashtable size will be monitored, to not have too many opened Filestreams.
 			 */
 			if (requiresNewFolder) {
-				deleteEntryFromLastDay(timestamp, id);
+				deleteEntryFromLastDay(timestamp, labelEncoded);
 				controlHashtableSize();
-				FileObjectList first = new FileObjectList(rootNode.getPath() + "/" + strDate + "/" + id, cache, id);
-				openFilesHM.put(id + strDate, first);
+				FileObjectList first = new FileObjectList(rootNode.getPath() + "/" + strDate + "/" + labelEncoded, cache, labelEncoded);
+				openFilesHM.put(labelEncoded + strDate, first);
 	
 				/*
 				 * If FileObjectList for this label does not contain any FileObjects yet, a new one will be created. Data
@@ -519,13 +540,13 @@ public final class FileObjectProxy {
 	
 					if (configuration.getStorageType().equals(StorageType.FIXED_INTERVAL)) {
 						// fixed interval
-						toStoreIn = new ConstantIntervalFileObject(rootNode.getPath() + "/" + strDate + "/" + id + "/c"
-								+ timestamp + SlotsDb.FILE_EXTENSION, cache.getCache(id, "c" + timestamp  + SlotsDb.FILE_EXTENSION));
+						toStoreIn = new ConstantIntervalFileObject(rootNode.getPath() + "/" + strDate + "/" + labelEncoded + "/c"
+								+ timestamp + SlotsDb.FILE_EXTENSION, cache.getCache(labelEncoded, "c" + timestamp  + SlotsDb.FILE_EXTENSION));
 					}
 					else {
 						/* flexible interval */
-						toStoreIn = new FlexibleIntervalFileObject(rootNode.getPath() + "/" + strDate + "/" + id + "/f"
-								+ timestamp + SlotsDb.FILE_EXTENSION, cache.getCache(id, "f" + timestamp  + SlotsDb.FILE_EXTENSION));
+						toStoreIn = new FlexibleIntervalFileObject(rootNode.getPath() + "/" + strDate + "/" + labelEncoded + "/f"
+								+ timestamp + SlotsDb.FILE_EXTENSION, cache.getCache(labelEncoded, "f" + timestamp  + SlotsDb.FILE_EXTENSION));
 					}
 	
 					long roundedTimestamp = getRoundedTimestamp(timestamp, configuration);
@@ -534,7 +555,7 @@ public final class FileObjectProxy {
 					
 					toStoreIn.close(); /* close() also calls flush(). */
 					
-					openFilesHM.get(id + strDate).reLoadFolder(cache, id);
+					openFilesHM.get(labelEncoded + strDate).reLoadFolder(cache, labelEncoded);
 					return;
 				}
 			}
@@ -542,7 +563,7 @@ public final class FileObjectProxy {
 			/*
 			 * There is a FileObjectList for this day.
 			 */
-			FileObjectList listToStoreIn = openFilesHM.get(id + strDate);
+			FileObjectList listToStoreIn = openFilesHM.get(labelEncoded + strDate);
 			if (listToStoreIn.size() > 0) {
 				toStoreIn = listToStoreIn.getCurrentFileObject();
 	
@@ -563,7 +584,7 @@ public final class FileObjectProxy {
 			 * The storing Period may have changed. In this case, a new FileObject must be created.
 			 */
 			if (toStoreIn.getStoringPeriod() == storingPeriod || toStoreIn.getStoringPeriod() == 0) {
-				toStoreIn = openFilesHM.get(id + strDate).getCurrentFileObject();
+				toStoreIn = openFilesHM.get(labelEncoded + strDate).getCurrentFileObject();
 				long roundedTimestamp = getRoundedTimestamp(timestamp, configuration);
 				toStoreIn.append(value, roundedTimestamp, state);
 				if (flusher == null) {
@@ -579,19 +600,19 @@ public final class FileObjectProxy {
 				 */
 				if (toStoreIn.getTimestampForLatestValue() < timestamp) {
 					if (storingPeriod != FLEXIBLE_STORING_PERIOD) { /* constant intervall */
-						toStoreIn = new ConstantIntervalFileObject(rootNode.getPath() + "/" + strDate + "/" + id + "/c"
-								+ timestamp + SlotsDb.FILE_EXTENSION, cache.getCache(id, "c" + timestamp  + SlotsDb.FILE_EXTENSION));
+						toStoreIn = new ConstantIntervalFileObject(rootNode.getPath() + "/" + strDate + "/" + labelEncoded + "/c"
+								+ timestamp + SlotsDb.FILE_EXTENSION, cache.getCache(labelEncoded, "c" + timestamp  + SlotsDb.FILE_EXTENSION));
 					}
 					else { /* flexible intervall */
-						toStoreIn = new FlexibleIntervalFileObject(rootNode.getPath() + "/" + strDate + "/" + id + "/f"
-								+ timestamp + SlotsDb.FILE_EXTENSION, cache.getCache(id, "f" + timestamp  + SlotsDb.FILE_EXTENSION));
+						toStoreIn = new FlexibleIntervalFileObject(rootNode.getPath() + "/" + strDate + "/" + labelEncoded + "/f"
+								+ timestamp + SlotsDb.FILE_EXTENSION, cache.getCache(labelEncoded, "f" + timestamp  + SlotsDb.FILE_EXTENSION));
 					}
 					toStoreIn.createFileAndHeader(timestamp, storingPeriod);
 					toStoreIn.append(value, timestamp, state);
 					if (flusher == null) {
 						toStoreIn.flush();
 					}
-					openFilesHM.get(id + strDate).reLoadFolder(cache, id);
+					openFilesHM.get(labelEncoded + strDate).reLoadFolder(cache, labelEncoded);
 				}
 			}
 		} finally {
@@ -610,36 +631,15 @@ public final class FileObjectProxy {
 	 * @return
 	 */
 	public static long getRoundedTimestamp(long timestamp, RecordedDataConfiguration configuration) {
-
-		// FIXME: checking the configuration shouldn't be part of this method. If flexible interval is used, this method
-		// shouldn't be even called. Requires major refactoring!
-
-		if (configuration == null) {
-			// configuration doesn't exist. assuming flexible interval which needs no rounding
+		if (configuration == null || configuration.getStorageType() != StorageType.FIXED_INTERVAL) {
 			return timestamp;
 		}
+		long stepInterval = configuration.getFixedInterval();
 
-		if (configuration.getStorageType() == null) {
-			// storage type doesn't exist. assuming flexible interval which needs no rounding
-			return timestamp;
+		if (stepInterval <= 0) {
+			throw new IllegalArgumentException("FixedInterval size needs to be greater than 0 ms");
 		}
-
-		if (configuration.getStorageType().equals(StorageType.FIXED_INTERVAL)) {
-			// fixed interval
-
-			long stepInterval = configuration.getFixedInterval();
-
-			if (stepInterval <= 0) {
-				throw new IllegalArgumentException("FixedInterval size needs to be greater than 0 ms");
-			}
-			return getRoundedTimestamp(timestamp, stepInterval);
-
-		}
-		else {
-			// flexible interval - which needs no rounding
-			return timestamp;
-		}
-
+		return getRoundedTimestamp(timestamp, stepInterval);
 	}
 
 	// FIXME shouldn't be accessible from outside. ConstantIntervalFileObjects needs this as workaround.
@@ -682,17 +682,17 @@ public final class FileObjectProxy {
 
 	//Note: Comprehensive revision to fix the method. The previous version could just find data from the
 	//current day
-	public SampledValue readNextValue(String label, long t, RecordedDataConfiguration configuration)
+	public SampledValue readNextValue(final String label0, final long t, final RecordedDataConfiguration configuration)
 			throws IOException {
 		long timestamp = getRoundedTimestamp(t, configuration);
-		label = encodeLabel(label);
+		final String labelEncoded = encodeLabel(label0);
 //		List<FileObjectList> days = getFoldersForIntervalSorted(label, timestamp, Long.MAX_VALUE);
 //		if(days.isEmpty()) return null;
 		FileObjectList folder;
 		SampledValue result = null;
 		folderLock.readLock().lock();
 		try {
-			 folder = getNextFolder(label, timestamp);
+			 folder = getNextFolder(labelEncoded, timestamp);
 		
 //			List<FileObject> folList = days.get(0).getFileObjectsStartingAt(timestamp);
 			if (folder == null)
@@ -700,7 +700,7 @@ public final class FileObjectProxy {
 			List<FileObject> folList = folder.getFileObjectsStartingAt(timestamp);
 			if(folList.isEmpty()) {
 				//check next day // XXX should probably not happen
-				folder = getNextFolder(label, folder);
+				folder = getNextFolder(labelEncoded, folder);
 				if (folder == null)
 					return null;
 				folList = folder.getFileObjectsStartingAt(timestamp);
@@ -738,22 +738,21 @@ public final class FileObjectProxy {
 			timestamp += delta;
 			if (timestamp <= t)
 				timestamp += delta;
-			return readNextValue(label, timestamp, configuration);
+			return readNextValue(label0, timestamp, configuration);
 		}
 		
 		return result;
 
 	}
 	
-	public SampledValue readPreviousValue(String label, long t, RecordedDataConfiguration configuration) throws IOException {
-
+	public SampledValue readPreviousValue(final String label0, final long t, final RecordedDataConfiguration configuration) throws IOException {
 		long timestamp = getRoundedTimestamp(t, configuration);
-		label = encodeLabel(label);
+		final String labelEncoded = encodeLabel(label0);
 		final List<FileObjectList> days;
 		SampledValue result= null;
 		folderLock.readLock().lock();
 		try {
-			days = getFoldersForIntervalSorted(label, Long.MIN_VALUE, timestamp);
+			days = getFoldersForIntervalSorted(labelEncoded, Long.MIN_VALUE, timestamp);
 		
 			if (days.isEmpty()) 
 				return null;
@@ -792,7 +791,7 @@ public final class FileObjectProxy {
 			timestamp = timestamp- delta;
 			if (timestamp >= t)
 				timestamp =timestamp- delta;
-			return readNextValue(label, timestamp, configuration);
+			return readNextValue(label0, timestamp, configuration);
 		}
 		return result;
 
@@ -1161,7 +1160,7 @@ public final class FileObjectProxy {
 	/** 
 	 * requires folder write lock
 	 */
-	private void clearOpenFilesHashMap() throws IOException {
+	void clearOpenFilesHashMap() throws IOException {
 		Iterator<FileObjectList> itr = openFilesHM.values().iterator();
 		while (itr.hasNext()) { // kick out everything
 			itr.next().closeAllFiles();

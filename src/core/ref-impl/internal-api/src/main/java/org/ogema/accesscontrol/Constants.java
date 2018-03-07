@@ -21,5 +21,8 @@ public final class Constants {
 	public static final String OTUNAME = "user";
 
 	// User management constants
-//	public static final String PASSWORD_NAME = "password";
+	// public static final String PASSWORD_NAME = "password";
+	public static final String AUTH_ATTRIBUTE_NAME = "ogemaAuth";
+	public static final String USER_CREDENTIAL = "usrCred";
+
 }

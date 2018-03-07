@@ -27,6 +27,9 @@ import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
+import org.ogema.tools.resourcemanipulator.configurations.ManipulatorConfiguration;
+import org.ogema.tools.resourcemanipulator.configurations.Sum;
+import org.ogema.tools.resourcemanipulator.model.ResourceManipulatorModel;
 import org.ogema.tools.resourcemanipulator.model.SumModel;
 import org.ogema.tools.resourcemanipulator.timer.CountDownTimer;
 
@@ -41,6 +44,7 @@ public class SumController implements Controller, ResourceStructureListener,
 
 	private final SumModel m_config;
 	private final CountDownTimer m_timer;
+	private volatile Long lastExecTime;
 	private final OgemaLogger m_logger;
 	private volatile boolean active = false;
 
@@ -72,6 +76,11 @@ public class SumController implements Controller, ResourceStructureListener,
 			input.removeStructureListener(this);
 			input.removeValueListener(this);
 		}
+	}
+
+	@Override
+	public Class<? extends ManipulatorConfiguration> getType() {
+		return Sum.class;
 	}
 
 	/**
@@ -173,11 +182,11 @@ public class SumController implements Controller, ResourceStructureListener,
 		}
 		else {
 			// String or Boolean -> don't make sum for that resource types ...
-			String msg = "SumManipulator result type is " + clazz.getName() + " which is " + "not supported ...";
+			String msg = "SumManipulator result type of "+m_config.getLocation()+" is " + clazz.getName() + " which is " + "not supported ...";
 			m_logger.error(msg);
 			throw new IllegalArgumentException(msg);
 		}
-
+		lastExecTime = m_timer.getExecutionTime();
 	}
 
 	@Override
@@ -210,4 +219,19 @@ public class SumController implements Controller, ResourceStructureListener,
 		evaluate();
 	}
 
+	@Override
+	public Long getLastExecutionTime() {
+		return lastExecTime;
+	}
+	
+	@Override
+	public ResourceManipulatorModel getConfigurationResource() {
+		return m_config;
+	}
+	
+	@Override
+	public String toString() {
+		return "SumController for " + m_config.resultBase().getLocation() + ", configuration: " + getConfigurationResource().getName();
+	}
+	
 }

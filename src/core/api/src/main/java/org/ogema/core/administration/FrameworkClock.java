@@ -80,6 +80,22 @@ public interface FrameworkClock {
 	 *             if the requested simulation factor is {@code <= 0}
 	 */
 	boolean setSimulationFactor(float simulationFactor);
+	
+	/**
+	 * Set the simulation time, in milliseconds since epoch
+	 * @param timestamp
+	 * 		new simulation time
+	 * @return
+	 */
+	boolean setSimulationTime(long timestamp);
+	
+	/**
+	 * See {@link #setSimulationTime(long)} and {@link #setSimulationFactor(float)}.
+	 * @param timestamp
+	 * @param factor
+	 * @return
+	 */
+	boolean setSimulationTimeAndFactor(long timestamp, float factor);
 
 	/**
 	 * Registered property listeners must be notified when the simulation factor

@@ -48,7 +48,7 @@ public class CountDownAbsoluteTimer implements TimerListener {
 	/**
 	 * 
 	 * @param appMan
-	 * @param countDownTime
+	 * @param absoluteTime
 	 * @param callOnPast if true the callback will be initiated immediately if the countDownTime is
 	 * 		in the past relative to the framework time. If false an exception is thrown if the
 	 * 		countDoenTime is in the past.

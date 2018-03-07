@@ -15,7 +15,9 @@
  */
 package org.ogema.tools.resource.util.test;
 
+import com.google.common.base.Function;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -26,13 +28,17 @@ import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
+import org.ogema.core.channelmanager.measurements.StringValue;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.core.timeseries.ReadOnlyTimeSeries;
+import org.ogema.core.timeseries.TimeSeries;
 import org.ogema.exam.OsgiAppTestBase;
 import org.ogema.tools.resource.util.MultiTimeSeriesUtils;
 import org.ogema.tools.resource.util.TimeSeriesUtils;
 import org.ogema.tools.timeseries.api.FloatTimeSeries;
 import org.ogema.tools.timeseries.implementations.FloatTreeTimeSeries;
+import org.ogema.tools.timeseries.implementations.TreeTimeSeries;
+import org.ogema.tools.timeseries.iterator.api.MultiTimeSeriesBuilder;
 import org.ogema.tools.timeseries.iterator.api.MultiTimeSeriesIterator;
 import org.ogema.tools.timeseries.iterator.api.SampledValueDataPoint;
 import org.ogema.tools.timeseries.iterator.api.MultiTimeSeriesIteratorBuilder;
@@ -119,6 +125,40 @@ public class MultiTimeSeriesTest extends OsgiAppTestBase {
 		// here we expect two boundary points to be added
 		Assert.assertEquals("MultiIterator for a single time series returned an unexpected number of points. ",t.size(start, end) + 2, cnt);
 	}
+    
+    @Test public void stringTimeSeriesWorkWithFunction() {
+        TimeSeries ts1 = new TreeTimeSeries(StringValue.class);
+        ts1.addValue(0, new StringValue("a"));
+        ts1.addValue(100, new StringValue("c"));
+        
+        TimeSeries ts2 = new TreeTimeSeries(StringValue.class);
+        ts2.addValue(0, new StringValue("")); //otherwise, result has a BAD value at 0
+        ts2.addValue(50, new StringValue("b"));
+        ts2.addValue(150, new StringValue("d"));
+        
+        TimeSeries expected = new TreeTimeSeries(StringValue.class);
+        expected.addValue(0, new StringValue("a"));
+        expected.addValue(50, new StringValue("b"));
+        expected.addValue(100, new StringValue("c"));
+        expected.addValue(150, new StringValue("d"));
+        
+        Function<Collection<String>, String> smax = new Function<Collection<String>, String>() {
+            @Override
+            public String apply(Collection<String> input) {
+                String max = "";
+                for (String s: input) {
+                    if (s.compareTo(max)>0) {
+                        max = s;
+                    }
+                }
+                return max;
+            };
+        };
+        ReadOnlyTimeSeries s = MultiTimeSeriesBuilder.newBuilder(Arrays.<ReadOnlyTimeSeries>asList(ts1, ts2), String.class)
+                .setFunction(smax).setInterpolationModeForConstituents(InterpolationMode.STEPS).build();
+        System.out.println(s.getValues(0));
+        Assert.assertEquals(expected.getValues(0), s.getValues(0));
+    }
 	
 	@Test
 	public void twoTimeSeriesIteratorWorksBasic() {

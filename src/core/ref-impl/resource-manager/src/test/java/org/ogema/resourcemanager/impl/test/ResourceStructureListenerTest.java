@@ -509,53 +509,44 @@ public class ResourceStructureListenerTest extends OsgiTestBase {
 	public void callbackEventTypeWorks() throws InterruptedException {
 		final OnOffSwitch sw = resMan.createResource(newResourceName(), OnOffSwitch.class);
 		final OnOffSwitch sw2 = resMan.createResource(newResourceName(), OnOffSwitch.class);
-		EventTestListener listener = new EventTestListener();
+		StructureTestListener listener = new StructureTestListener();
 		sw.stateControl().addStructureListener(listener);
 
 		// create 
 		sw.stateControl().create();
-		listener.latch.await(5, TimeUnit.SECONDS);
-		assertEquals(EventType.RESOURCE_CREATED, listener.lastType);
+        listener.awaitEvent(RESOURCE_CREATED, 5, TimeUnit.SECONDS);
 		// activate
 		listener.reset();
 		sw.stateControl().activate(false);
-		listener.latch.await(5, TimeUnit.SECONDS);
-		assertEquals(EventType.RESOURCE_ACTIVATED, listener.lastType);
+		listener.awaitEvent(RESOURCE_ACTIVATED, 5, TimeUnit.SECONDS);
 		// add reference
 		listener.reset();
 		sw2.stateControl().setAsReference(sw.stateControl());
-		listener.latch.await(5, TimeUnit.SECONDS);
-		assertEquals(EventType.REFERENCE_ADDED, listener.lastType);
+		listener.awaitEvent(REFERENCE_ADDED, 5, TimeUnit.SECONDS);
 		// add subresource
 		listener.reset();
 		Resource subres = sw.stateControl().getSubResource("testDecorator", OnOffSwitch.class).create();
-		listener.latch.await(5, TimeUnit.SECONDS);
-		assertEquals(EventType.SUBRESOURCE_ADDED, listener.lastType);
+		listener.awaitEvent(SUBRESOURCE_ADDED, 5, TimeUnit.SECONDS);
 		// remove reference
 		listener.reset();
 		sw2.stateControl().delete();
-		assertTrue("missing callback, expected " + EventType.REFERENCE_REMOVED, listener.latch.await(5, TimeUnit.SECONDS));
-		assertEquals(EventType.REFERENCE_REMOVED, listener.lastType); 
+		listener.awaitEvent(REFERENCE_REMOVED, 5, TimeUnit.SECONDS);
 		// deactivate
 		listener.reset();
 		sw.stateControl().deactivate(false);
-		listener.latch.await(5, TimeUnit.SECONDS);
-		assertEquals(EventType.RESOURCE_DEACTIVATED, listener.lastType);
+		listener.awaitEvent(RESOURCE_DEACTIVATED, 5, TimeUnit.SECONDS);
 		// remove subresource
 		listener.reset();
 		subres.delete();
-		listener.latch.await(5, TimeUnit.SECONDS);
-		assertEquals(EventType.SUBRESOURCE_REMOVED, listener.lastType);
+		listener.awaitEvent(SUBRESOURCE_REMOVED, 5, TimeUnit.SECONDS);
 		// delete
 		listener.reset();
 		sw.stateControl().delete();
-		listener.latch.await(5, TimeUnit.SECONDS);
-		assertEquals(EventType.RESOURCE_DELETED, listener.lastType);
+		listener.awaitEvent(RESOURCE_DELETED, 5, TimeUnit.SECONDS);
 		// recreate
 		listener.reset();
 		sw.stateControl().create();
-		listener.latch.await(5, TimeUnit.SECONDS);
-		assertEquals(EventType.RESOURCE_CREATED, listener.lastType);
+		listener.awaitEvent(RESOURCE_CREATED, 5, TimeUnit.SECONDS);
 		// clean up
 		sw.stateControl().removeStructureListener(listener);
 		sw2.delete();

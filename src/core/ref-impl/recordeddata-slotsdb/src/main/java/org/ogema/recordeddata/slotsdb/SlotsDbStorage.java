@@ -584,6 +584,7 @@ class SlotsDbStorage implements RecordedDataStorage {
 	}
 
 	@Override
+    @Deprecated
 	public Long getTimeOfLatestEntry() {
 		// TODO
 		return null;

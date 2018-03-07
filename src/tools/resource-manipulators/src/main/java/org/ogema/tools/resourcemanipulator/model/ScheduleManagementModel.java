@@ -27,7 +27,7 @@ public interface ScheduleManagementModel extends ResourceManipulatorModel {
 
 	/**
 	 * Resource that is being controlled by this application is the subresource
-	 * "schedule" of type {@see org.ogema.core.model.schedule.Schedule}.
+	 * "schedule" of type org.ogema.core.model.schedule.Schedule.
 	 */
 	FloatResource targetResourceParent();
 
@@ -45,7 +45,7 @@ public interface ScheduleManagementModel extends ResourceManipulatorModel {
 //	BooleanResource exclusiveAccessRequired();
 
 	/**
-	 * Update interval in ms. Must be > 0. If not set, a default value is used.
+	 * Update interval in ms. Must be &gt; 0. If not set, a default value is used.
 	 */
 	TimeResource updateInterval(); 
 	

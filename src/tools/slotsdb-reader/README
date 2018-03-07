@@ -8,4 +8,14 @@ Build in Eclipse:
 	Select run configuration corresponding to slotsdb-reader, and choose an output file name <FILENAME>.jar
 
 Run:
-java -jar <FILENAME>.jar path/to/slotsdb/file
+java -jar <FILENAME>.jar path/to/slotsdb/folder
+
+Specify the slots db base folder, typically the "data/slotsdb" subfolder of a rundir.
+Optional arguments:
+	-c					Print to console, instead of writing to a file
+	-i <LONG> 			sample to a periodic timeseries with interval <LONG> (in milliseconds)
+	-s <LONG or DATE>	start time: specify either the time in milliseconds since epoch, or a date string
+							in the format "yyy-MM-dd'T'HH:mm:ss:SSS" (everything starting at months is optional,
+							hence for example "2017" or "2017-11-01T15:30" are both valid inputs).
+	-e <LONG or DATE>	end time: see start time
+

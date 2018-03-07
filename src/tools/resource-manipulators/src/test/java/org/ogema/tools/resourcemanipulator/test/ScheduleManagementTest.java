@@ -40,17 +40,16 @@ import org.ogema.tools.resourcemanipulator.schedulemgmt.DeletionAction;
 import org.ogema.tools.resourcemanipulator.schedulemgmt.InterpolationAction;
 import org.ogema.tools.resourcemanipulator.schedulemgmt.TimeSeriesReduction;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
-import org.ops4j.pax.exam.spi.reactors.PerMethod;
+import org.ops4j.pax.exam.spi.reactors.PerClass;
 
-//@ExamReactorStrategy(PerClass.class) 
-@ExamReactorStrategy(PerMethod.class) 
+@ExamReactorStrategy(PerClass.class) 
 public class ScheduleManagementTest extends OsgiAppTestBase {
 
 	// values must not be changed randomly
 	private static final long DIFFERENCE = 60000 * 10; // 1h
 	private static final long DELTA= 1000; // 1s
 	private static long NR_POINTS = DIFFERENCE / DELTA;
-	private AbsoluteSchedule floatSchedule;
+	private volatile AbsoluteSchedule floatSchedule;
 	
 	public ScheduleManagementTest() {
 		super(true);

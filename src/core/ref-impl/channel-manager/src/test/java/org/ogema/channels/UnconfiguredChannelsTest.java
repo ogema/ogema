@@ -17,9 +17,12 @@ package org.ogema.channels;
 
 import static org.junit.Assert.*;
 
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.servlet.http.HttpSession;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -172,6 +175,12 @@ public class UnconfiguredChannelsTest {
 
 		@Override
 		public String getVersion() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public URL getOneTimePasswordInjector(String path, HttpSession ses) {
 			// TODO Auto-generated method stub
 			return null;
 		}

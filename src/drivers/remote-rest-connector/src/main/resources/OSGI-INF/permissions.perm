@@ -17,5 +17,5 @@
 (org.ogema.accesscontrol.ResourcePermission "type=*" "read,write,addsub,create,activity,delete")
 
 # needed to shut down the executor
-("java.lang.RuntimePermission" "modifyThread")
+(java.lang.RuntimePermission "modifyThread")
 

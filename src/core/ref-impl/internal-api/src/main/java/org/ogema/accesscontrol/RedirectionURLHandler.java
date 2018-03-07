@@ -13,7 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.ogema.impl.security;
+package org.ogema.accesscontrol;
 
 import java.net.URL;
 import java.net.URLConnection;
@@ -27,7 +27,7 @@ public class RedirectionURLHandler extends URLStreamHandler {
 	private AppID app;
 	private String otp;
 
-	protected RedirectionURLHandler(AppID owner, String name, String otp) {
+	public RedirectionURLHandler(AppID owner, String name, String otp) {
 		this.app = owner;
 		this.name = name;
 		this.otp = otp;

@@ -27,16 +27,18 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
+import org.ogema.model.actors.OnOffSwitch;
 
 import org.ogema.model.devices.buildingtechnology.ElectricDimmer;
 import org.ogema.model.devices.connectiondevices.ThermalValve;
-import org.ogema.model.devices.sensoractordevices.SingleSwitchBox;
 import org.ogema.model.sensors.ElectricPowerSensor;
 import org.ogema.model.sensors.LightSensor;
 import org.ogema.model.sensors.MotionSensor;
 import org.ogema.model.sensors.OccupancySensor;
 import org.ogema.model.sensors.TemperatureSensor;
 import org.ogema.model.sensors.TouchSensor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import tuwien.auto.calimero.datapoint.Datapoint;
 import tuwien.auto.calimero.exception.KNXException;
@@ -47,6 +49,8 @@ import tuwien.auto.calimero.link.medium.TPSettings;
 import tuwien.auto.calimero.process.ProcessCommunicator;
 
 public class KNXUtils {
+    
+    static final Logger LOGGER = LoggerFactory.getLogger(KNXUtils.class);
 
 	String getDpt(final ConnectionInfo conInfo) {
 
@@ -81,7 +85,7 @@ public class KNXUtils {
 			dpStr = "12.001";
 		}
 
-		if (conInfo.getType().equals(SingleSwitchBox.class.getSimpleName())) {
+		if (conInfo.getType().equals(OnOffSwitch.class.getSimpleName())) {
 
 			dpStr = "1.001";
 
@@ -250,21 +254,13 @@ public class KNXUtils {
 	}
 
 	private static SearchResponse[] search(NetworkInterface in, InetAddress iA) throws Exception {
-
-		Discoverer d = new Discoverer(iA, 0, false);
+		Discoverer d = new Discoverer(iA, 0, false, false);
 		try {
-			d.startSearch(12345, in, 5, false);
-		} catch (Throwable ex) {
-			// ex.printStackTrace();
-			ex.printStackTrace();
+			d.startSearch(0, in, 5, true);
+		} catch (InterruptedException | KNXException ex) {
+            LOGGER.warn("error searching for KNX/IP interface on network {}", in, ex);
 		}
-		// wait until search finished, and update console 4 times/second with
-		// received search responses
-		SearchResponse[] res = null;
-		while (d.isSearching()) {
-			res = d.getSearchResponses();
-		}
-		return res;
+		return d.getSearchResponses();
 	}
 
 	KNXNetworkLinkIP getNetLinkIpPrivileged(final ConnectionInfo conInfo, final String address, final int port)
@@ -272,10 +268,10 @@ public class KNXUtils {
 		return AccessController.doPrivileged(new PrivilegedExceptionAction<KNXNetworkLinkIP>() {
 
 			@Override
-			public KNXNetworkLinkIP run() throws UnknownHostException, KNXException {
-				return new KNXNetworkLinkIP(KNXNetworkLinkIP.TUNNEL, new InetSocketAddress(InetAddress
+			public KNXNetworkLinkIP run() throws UnknownHostException, KNXException, InterruptedException {
+				return new KNXNetworkLinkIP(KNXNetworkLinkIP.TUNNELING, new InetSocketAddress(InetAddress
 						.getByName(conInfo.getIntface()), 0), new InetSocketAddress(InetAddress.getByName(address),
-						port), false, new TPSettings(false));
+						port), false, new TPSettings());
 			}
 		});
 	}
@@ -285,7 +281,7 @@ public class KNXUtils {
 		AccessController.doPrivileged(new PrivilegedExceptionAction<Void>() {
 
 			@Override
-			public Void run() throws KNXException {
+			public Void run() throws KNXException, InterruptedException {
 				pc.read(dp);
 				pc.detach();
 				return null;
@@ -314,5 +310,5 @@ public class KNXUtils {
 	public String getIPAddress(final ConnectionInfo conInfo) {
 		return conInfo.getKnxRouter().substring(0, conInfo.getKnxRouter().indexOf(":"));
 	}
-
+    
 }

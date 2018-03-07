@@ -31,133 +31,132 @@ import tuwien.auto.calimero.process.ProcessListener;
 
 public class MyProcessListener implements ProcessListener {
 
-	ConnectionInfo conn = null;
-	GroupAddress main = null;
+    ConnectionInfo conn = null;
+    GroupAddress main = null;
 
-	MyProcessListener(final ConnectionInfo connInfo, final GroupAddress grpAddress,
-			Map<String, KNXNetworkLinkIP> knxNetConnections, final OgemaLogger logger) {
-		this.conn = connInfo;
-		this.main = grpAddress;
+    MyProcessListener(final ConnectionInfo connInfo, final GroupAddress grpAddress,
+            Map<String, KNXNetworkLinkIP> knxNetConnections, final OgemaLogger logger) {
+        this.conn = connInfo;
+        this.main = grpAddress;
 
-	}
+    }
 
-	public void detached(DetachEvent e) {
-		// TODO Auto-generated
-		// method stub
-	}
+    public void detached(DetachEvent e) {
+        // TODO Auto-generated
+        // method stub
+    }
 
-	public void groupWrite(ProcessEvent e) {
-		// TODO Auto-generated
-		// method stub
+    public void groupWrite(ProcessEvent e) {
+        // TODO Auto-generated
+        // method stub
 
-		try {
+        try {
 
-			final DPTXlatorBoolean tr = new DPTXlatorBoolean(DPTXlatorBoolean.DPT_SWITCH);
-			tr.setData(e.getASDU());
+            final DPTXlatorBoolean tr = new DPTXlatorBoolean(DPTXlatorBoolean.DPT_SWITCH);
+            tr.setData(e.getASDU());
 
-			if (e.getSourceAddr().toString().trim().equals(conn.getPhyaddress())
-					&& e.getDestination().toString().equals(main.toString())) {
+            if (e.getSourceAddr().toString().trim().equals(conn.getPhyaddress())
+                    && e.getDestination().toString().equals(main.toString())) {
 
-				conn.setValue(tr.getValue());
+                conn.setValue(tr.getValue());
 
-				if (tr.getValueBoolean()) {
+                if (tr.getValueBoolean()) {
 
-					writingToRessource(true);
+                    writingToRessource(true);
 
-				}
-				else {
-					writingToRessource(false);
-				}
+                } else {
+                    writingToRessource(false);
+                }
 
-			}
+            }
 
-		} catch (Exception e1) {
+        } catch (Exception e1) {
 
-		}
+        }
 
-	}
+    }
 
-	private void writingToRessource(boolean detect) {
+    private void writingToRessource(boolean detect) {
 
-		if (detect) {
+        if (detect) {
 
-			if (conn.getRessource().isActive()) {
+            if (conn.getRessource().isActive()) {
 
-				if (conn.getRessource() instanceof OccupancySensor) {
+                if (conn.getRessource() instanceof OccupancySensor) {
 
-					OccupancySensor sensor = (OccupancySensor) conn.getRessource();
+                    OccupancySensor sensor = (OccupancySensor) conn.getRessource();
 
-					if (!sensor.reading().getValue()) {
+                    if (!sensor.reading().getValue()) {
 
-						sensor.reading().setValue(true);
+                        sensor.reading().setValue(true);
 
-					}
+                    }
 
-				}
-				if (conn.getRessource() instanceof MotionSensor) {
+                }
+                if (conn.getRessource() instanceof MotionSensor) {
 
-					MotionSensor sensor = (MotionSensor) conn.getRessource();
+                    MotionSensor sensor = (MotionSensor) conn.getRessource();
 
-					if (!sensor.reading().getValue()) {
+                    if (!sensor.reading().getValue()) {
 
-						sensor.reading().setValue(true);
+                        sensor.reading().setValue(true);
 
-					}
-				}
+                    }
+                }
 
-				if (conn.getRessource() instanceof TouchSensor) {
+                if (conn.getRessource() instanceof TouchSensor) {
 
-					TouchSensor sensor = (TouchSensor) conn.getRessource();
+                    TouchSensor sensor = (TouchSensor) conn.getRessource();
 
-					if (!sensor.reading().getValue()) {
+                    if (!sensor.reading().getValue()) {
 
-						sensor.reading().setValue(true);
+                        sensor.reading().setValue(true);
 
-					}
-				}
+                    }
+                }
 
-			}
+            }
 
-		}
+        }
 
-		if (!detect) {
+        if (!detect) {
 
-			if (conn.getRessource().isActive()) {
+            if (conn.getRessource().isActive()) {
 
-				if (conn.getRessource() instanceof OccupancySensor) {
+                if (conn.getRessource() instanceof OccupancySensor) {
 
-					OccupancySensor sensor = (OccupancySensor) conn.getRessource();
+                    OccupancySensor sensor = (OccupancySensor) conn.getRessource();
 
-					if (sensor.reading().getValue()) {
+                    if (sensor.reading().getValue()) {
 
-						sensor.reading().setValue(false);
+                        sensor.reading().setValue(false);
 
-					}
+                    }
 
-				}
-				if (conn.getRessource() instanceof MotionSensor) {
+                }
+                if (conn.getRessource() instanceof MotionSensor) {
 
-					MotionSensor sensor = (MotionSensor) conn.getRessource();
+                    MotionSensor sensor = (MotionSensor) conn.getRessource();
 
-					if (sensor.reading().getValue()) {
+                    if (sensor.reading().getValue()) {
 
-						sensor.reading().setValue(false);
+                        sensor.reading().setValue(false);
 
-					}
-				}
+                    }
+                }
 
-				if (conn.getRessource() instanceof TouchSensor) {
+                if (conn.getRessource() instanceof TouchSensor) {
 
-					TouchSensor sensor = (TouchSensor) conn.getRessource();
+                    TouchSensor sensor = (TouchSensor) conn.getRessource();
 
-					if (sensor.reading().getValue()) {
+                    if (sensor.reading().getValue()) {
 
-						sensor.reading().setValue(false);
+                        sensor.reading().setValue(false);
 
-					}
-				}
-			}
-		}
-	}
+                    }
+                }
+            }
+        }
+    }
 
 }

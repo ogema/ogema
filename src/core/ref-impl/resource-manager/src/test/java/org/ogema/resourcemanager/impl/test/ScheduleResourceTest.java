@@ -712,6 +712,19 @@ public class ScheduleResourceTest extends OsgiTestBase {
 		Assert.assertEquals("Historical data schedule contains unexpected number of points", values.size(), fr.historicalData().size(0, Long.MAX_VALUE));
 		fr.delete();
 	}
+    
+    @Test
+	public void historicalScheduleCanBeDeleted() {
+		FloatResource fr = resMan.createResource(newResourceName() + ((int) (Math.random() * 100000)), FloatResource.class);
+		fr.historicalData().create();
+		List<SampledValue> values = new ArrayList<>();
+		values.add(new SampledValue(new FloatValue(23F), 1, Quality.GOOD));
+		values.add(new SampledValue(new FloatValue(3), 4, Quality.GOOD));
+        fr.historicalData().addValues(values);
+		assertFalse(fr.historicalData().isEmpty());
+        fr.historicalData().deleteValues();
+        assertTrue(fr.historicalData().isEmpty());
+	}
 	
 	@Test 
 	public void getPreviousValueWorks() {

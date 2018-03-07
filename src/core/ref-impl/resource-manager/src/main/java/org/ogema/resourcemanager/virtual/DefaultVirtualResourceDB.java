@@ -210,23 +210,28 @@ public class DefaultVirtualResourceDB implements VirtualResourceDB {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    protected synchronized DefaultVirtualTreeElement getElement(TreeElement el) {
-        while (el instanceof DefaultVirtualTreeElement) {
-            el = ((DefaultVirtualTreeElement) el).getEl();
-        }
-        String path = el.getPath();
-        DefaultVirtualTreeElement vEl = elements.getIfPresent(path);
-        
-        //assert vEl == null || !(el instanceof DefaultVirtualTreeElement) || ((el instanceof DefaultVirtualTreeElement) && el == vEl) : "duplicate DefaultVirtualTreeElement: " + el + " | " + vEl;
-        
-        if (vEl == null) {
-            vEl = new DefaultVirtualTreeElement(el, this);
-            elements.put(path, vEl);
-        } else if (vEl.getEl() != el) {  // FIXME it is unclear here which element is new
-        	//System.out.printf("REPLACE ELEMENT at %s: %s%n", path, el);
-            vEl.setEl(el);
-        }
-        return vEl;
+    public DefaultVirtualTreeElement getElement(TreeElement el) {
+    	final String path = el.getPath();
+    	DefaultVirtualTreeElement vEl0 = elements.getIfPresent(path);
+    	if (vEl0 != null && vEl0.getEl() == el) {
+    		return vEl0;
+    	}
+    	synchronized (this) {
+    		while (el instanceof DefaultVirtualTreeElement) {
+	            el = ((DefaultVirtualTreeElement) el).getEl();
+	        }
+	        DefaultVirtualTreeElement vEl = elements.getIfPresent(path);
+	        //assert vEl == null || !(el instanceof DefaultVirtualTreeElement) || ((el instanceof DefaultVirtualTreeElement) && el == vEl) : "duplicate DefaultVirtualTreeElement: " + el + " | " + vEl;
+	        
+	        if (vEl == null) {
+	            vEl = new DefaultVirtualTreeElement(el, this);
+	            elements.put(path, vEl);
+	        } else if (vEl.getEl() != el) {  // FIXME it is unclear here which element is new
+	        	//System.out.printf("REPLACE ELEMENT at %s: %s%n", path, el);
+	            vEl.setEl(el);
+	        }
+	        return vEl;
+		}
     }
     
     protected synchronized DefaultVirtualTreeElement getElement(String name, TreeElement parent, Class<? extends Resource> type, boolean decorator) {

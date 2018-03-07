@@ -45,6 +45,16 @@ public class SystemClock implements FrameworkClock {
 	public boolean setSimulationFactor(float simulationFactor) {
 		return false;
 	}
+	
+	@Override
+	public boolean setSimulationTime(long timestamp) {
+		return false;
+	}
+	
+	@Override
+	public boolean setSimulationTimeAndFactor(long timestamp, float factor) {
+		return false;
+	}
 
 	@Override
     @Deprecated

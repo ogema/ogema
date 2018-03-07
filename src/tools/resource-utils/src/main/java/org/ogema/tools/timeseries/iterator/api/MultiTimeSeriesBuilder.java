@@ -64,8 +64,9 @@ public class MultiTimeSeriesBuilder<N> {
 	private MultiTimeSeriesBuilder(Collection<ReadOnlyTimeSeries> timeSeries, Class<N> type) {
 		this.timeSeries = Objects.requireNonNull(timeSeries);
 		this.type = Objects.requireNonNull(type);
-		if (type != Float.class && type != Integer.class && type != Long.class && type != Boolean.class)
-			throw new IllegalArgumentException("Illegal type, must be either Float.class, Boolean.class, Integer.class or Long.class, got " + type);
+		if (type != Float.class && type != Integer.class && type != Long.class && type != Boolean.class && type != String.class)
+			throw new IllegalArgumentException(
+                    "Illegal type, must be either Float, Boolean, Integer or Long or String, got " + type);
 	}
 	
 	/**

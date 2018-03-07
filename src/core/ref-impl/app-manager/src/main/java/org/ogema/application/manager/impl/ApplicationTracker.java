@@ -228,8 +228,6 @@ public class ApplicationTracker {
             AppAdminAccessImpl aaa = appAdmins.remove(app);
             if (appMan != null) {
                 appMan.stopApplication();
-                unregisterWebResources(appMan.getAppID());
-                unregisterServlets(appMan.getAppID());
                 appMan.close();
             } else {
                 logger.warn("tried to remove non existent app {}", app);
@@ -245,24 +243,6 @@ public class ApplicationTracker {
             		aaa.registration.unregister();
             }
             return appMan != null ? appMan.getAppID() : null;
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    private void unregisterWebResources(AppID app) {
-        WebAccessManager webAccess = getWebAccessManager(app);
-        assert webAccess != null;
-        for (String alias : webAccess.getRegisteredResources(app).keySet().toArray(new String[]{})) {
-            webAccess.unregisterWebResource(alias);
-        }
-    }
-    
-    @SuppressWarnings("deprecation")
-    private void unregisterServlets(AppID app) {
-        WebAccessManager webAccess = getWebAccessManager(app);
-        assert webAccess != null;
-        for (String alias : webAccess.getRegisteredServlets(app).toArray(new String[]{})) {
-            webAccess.unregisterWebResource(alias);
         }
     }
 
@@ -312,4 +292,9 @@ public class ApplicationTracker {
     protected WebAccessManager getWebAccessManager(AppID app) {
         return permissionManager.getWebAccess(app);
     }
+    
+    protected boolean closeWebAccessManager(AppID app) {
+    	return permissionManager.closeWebAccess(app);
+    }
+    
 }

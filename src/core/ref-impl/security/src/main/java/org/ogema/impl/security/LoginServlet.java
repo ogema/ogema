@@ -25,6 +25,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import org.ogema.accesscontrol.Constants;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.SessionAuth;
 import org.osgi.service.useradmin.Authorization;
@@ -61,7 +62,7 @@ public class LoginServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		failureInspector.cleanUp();
 		HttpSession session = req.getSession();
-		if (session.getAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME) != null) {
+		if (session.getAttribute(Constants.AUTH_ATTRIBUTE_NAME) != null) {
 			resp.sendRedirect("/ogema/index.html");
 			return;
 		}
@@ -142,8 +143,8 @@ public class LoginServlet extends HttpServlet {
 			// invalidate old session to prevent session hijacking:
 			req.getSession(false).invalidate();
 			session = req.getSession(true);
-			session.setAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME, sauth);
-			session.setAttribute(SessionAuth.USER_CREDENTIAL, pwd);
+			session.setAttribute(Constants.AUTH_ATTRIBUTE_NAME, sauth);
+			session.setAttribute(Constants.USER_CREDENTIAL, pwd);
 
 			/*
 			 * Handle Request which is received before login was sent. This request is responded with the login page,

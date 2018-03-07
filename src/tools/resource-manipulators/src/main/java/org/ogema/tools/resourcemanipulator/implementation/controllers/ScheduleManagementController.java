@@ -78,8 +78,8 @@ public class ScheduleManagementController implements TimerListener {
 		List<ScheduleConfiguration> executables = new ArrayList<ScheduleConfiguration>();
 		for (ScheduleConfiguration cfg: managedSchedules.values()) {
 			long itv = cfg.getExecutionInterval();
-			long lastExec = cfg.getLastExecutionTime();
-			long next = lastExec + itv;
+			final Long lastExec = cfg.getLastExecutionTime();
+			long next = lastExec == null ? current : lastExec + itv;
 			if (next <= current + TOLERANCE_INTERVAL) {
 				executables.add(cfg);
 				next = current + itv;

@@ -27,7 +27,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.ogema.core.channelmanager.measurements.SampledValue;
-import org.ogema.recordeddata.slotsdb.SlotsDbCache.RecordedDataCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

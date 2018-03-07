@@ -24,7 +24,7 @@
  *
  * All Rights reserved
  */
-package org.ogema.persistence.test;
+package org.ogema.tests.persistence;
 
 import static java.lang.Math.PI;
 
@@ -40,7 +40,7 @@ import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
-import org.ogema.impl.persistence.DBResourceIO;
+//import org.ogema.impl.persistence.DBResourceIO;@@@
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
@@ -95,8 +95,8 @@ public class Activator implements BundleActivator, Application {
 		// check if its the first run
 		File f = new File(appMngr.getDataFile("") + "/.lock");
 		if (f.exists()) {
-			if (!checkResources(ra))
-				DBResourceIO.copyFiles();
+			// if (!checkResources(ra))@@@@
+			// DBResourceIO.copyFiles();@@@@
 		}
 		else {
 			try {

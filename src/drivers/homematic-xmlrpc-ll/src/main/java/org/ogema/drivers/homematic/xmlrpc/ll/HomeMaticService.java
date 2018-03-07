@@ -130,6 +130,7 @@ public class HomeMaticService {
         @Override
         public Void event(String interfaceId, String address, String valueKey, int value) {
             HmEvent e = new DefaultHmEvent(interfaceId, address, valueKey, value);
+            logger.trace("event({},{},{},{})", interfaceId, address, valueKey, value);
             List<HmEvent> events = Collections.singletonList(e);
             for (HmEventListener l : eventListeners) {
                 l.event(events);
@@ -159,10 +160,12 @@ public class HomeMaticService {
                 String methodName = call.get("methodName").toString();
                 Object[] callParams = (Object[]) call.get("params");
                 if ("event".equals(methodName)) {
-                    events.add(new DefaultHmEvent(String.valueOf(callParams[0]),
-                            String.valueOf(callParams[1]),
-                            String.valueOf(callParams[2]),
-                            callParams[3]));
+                    String interfaceId = String.valueOf(callParams[0]);
+                    String address = String.valueOf(callParams[1]);
+                    String valueKey = String.valueOf(callParams[2]);
+                    Object value = callParams[3];
+                    logger.trace("event({},{},{},{})", interfaceId, address, valueKey, value);
+                    events.add(new DefaultHmEvent(interfaceId, address, valueKey, value));
                 } else {
                     logger.warn("unsupported multicall method: {}", methodName);
                     for (int j = 0; j < callParams.length; j++) {

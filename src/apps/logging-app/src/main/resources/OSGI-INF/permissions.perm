@@ -1,11 +1,16 @@
 (org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.osgi.framework.ServicePermission "ogema.logging.app.ShellCommands" "register")
 (org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
 (org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
 (org.osgi.framework.PackagePermission "org.slf4j" "import")
 (org.osgi.framework.PackagePermission "javax.servlet" "import")
 (org.osgi.framework.PackagePermission "javax.servlet.*" "import")
 (org.osgi.framework.PackagePermission "org.slf4j" "import")
-
+(org.osgi.framework.PackagePermission "org.osgi.framework" "import")
+(org.osgi.framework.PackagePermission "org.apache.felix.service.command" "import")
 (org.osgi.framework.PackagePermission "org.json" "import")
 
 (org.ogema.accesscontrol.ResourcePermission "path=*" "read")
+
+# FIXME
+(org.osgi.framework.AdminPermission "*" "context")

@@ -21,6 +21,9 @@ import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
+import org.ogema.tools.resourcemanipulator.configurations.ManipulatorConfiguration;
+import org.ogema.tools.resourcemanipulator.configurations.Threshold;
+import org.ogema.tools.resourcemanipulator.model.ResourceManipulatorModel;
 import org.ogema.tools.resourcemanipulator.model.ThresholdModel;
 
 /**
@@ -36,8 +39,11 @@ public class ThresholdController implements Controller, ResourceValueListener<Fl
 	private float m_threshold;
 	private boolean m_invert;
 	private boolean m_equalityExceeds;
+	private final ApplicationManager appMan;
+	private Long lastExecTime;
 
 	public ThresholdController(ApplicationManager appMan, ThresholdModel configuration) {
+		this.appMan = appMan;
 		m_config = configuration;
 	}
 
@@ -54,6 +60,11 @@ public class ThresholdController implements Controller, ResourceValueListener<Fl
 		m_config.source().removeValueListener(this);
 	}
 
+	@Override
+	public Class<? extends ManipulatorConfiguration> getType() {
+		return Threshold.class;
+	}
+	
 	/**
 	 * Update the rules how the threshold shall be calculated, including the
 	 * question if the target resource should be set active or inactive.
@@ -87,6 +98,7 @@ public class ThresholdController implements Controller, ResourceValueListener<Fl
 			target.setValue(newState);
 			target.activate(false);
 		}
+		lastExecTime = appMan.getFrameworkTime();
 	}
 
 	@Override
@@ -99,4 +111,18 @@ public class ThresholdController implements Controller, ResourceValueListener<Fl
 		updateAndEnforceRules();
 	}
 
+	@Override
+	public ResourceManipulatorModel getConfigurationResource() {
+		return m_config;
+	}
+	
+	@Override
+	public Long getLastExecutionTime() {
+		return lastExecTime;
+	}
+	
+	public String toString() {
+		return "ThresholdController for " + m_config.target().getLocation() + ", configuration: " + getConfigurationResource().getName();
+	}
+	
 }

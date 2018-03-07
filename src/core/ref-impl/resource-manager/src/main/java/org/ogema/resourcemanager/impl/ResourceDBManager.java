@@ -17,7 +17,6 @@ package org.ogema.resourcemanager.impl;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
@@ -43,7 +42,6 @@ import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.persistence.ResourceDB;
 import org.ogema.persistence.impl.faketree.ScheduleTreeElement;
 import org.ogema.persistence.impl.faketree.ScheduleTreeElementFactory;
-import org.ogema.persistence.impl.mem.MemoryTreeElement;
 import org.ogema.recordeddata.DataRecorder;
 import org.ogema.resourcemanager.impl.timeseries.DefaultRecordedData;
 import org.ogema.resourcemanager.virtual.DefaultVirtualResourceDB;
@@ -61,12 +59,12 @@ import org.slf4j.Logger;
  * @author jlapp
  */
 public class ResourceDBManager {
-
+	
 	/* app id used by this class when creating TreeElements for internal use */
 	final static String APP_ID_SYSTEM = "system";
 	final static String ELEMENTNAME_UNIQUENAMES = "@uniquenames";
 
-	private final VirtualResourceDB resdb;
+	final VirtualResourceDB resdb;
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 	@SuppressWarnings("unused")
 	private final AccessManager access;

@@ -18,6 +18,10 @@
  */
 package org.ogema.core.application;
 
+import java.net.URL;
+
+import javax.servlet.http.HttpSession;
+
 import org.ogema.core.security.AppPermissionType.AdminAction;
 import org.osgi.framework.Bundle;
 
@@ -27,9 +31,9 @@ import org.osgi.framework.Bundle;
  */
 public interface AppID {
 	/**
-	 * Get a unique string as an id for this application. Note: this is not invariant under restart of
-	 * the framework, and it also changes when the application is removed and reinstalled. 
-	 * For an invariant app id, use the bundle symbolic name (see {@link #getBundle()}).
+	 * Get a unique string as an id for this application. Note: this is not invariant under restart of the framework,
+	 * and it also changes when the application is removed and reinstalled. For an invariant app id, use the bundle
+	 * symbolic name (see {@link #getBundle()}).
 	 * 
 	 * @return Id string of the owner application or null if any exception occurs.
 	 */
@@ -48,7 +52,7 @@ public interface AppID {
 	 * 
 	 * @return Applications bundle reference
 	 */
-	Bundle getBundle();
+	public Bundle getBundle();
 
 	/**
 	 * Returns the application reference which is associated with the owner application of this AppID or null if the
@@ -56,26 +60,28 @@ public interface AppID {
 	 * 
 	 * @return Owners application reference.
 	 */
-	Application getApplication();
+	public Application getApplication();
 
 	/**
 	 * Gets the name of the owner user.
 	 *
 	 * @return the name string
 	 */
-	String getOwnerUser();
+	public String getOwnerUser();
 
 	/**
 	 * Gets the name of the group, the owner user is a member of it.
 	 *
 	 * @return the name string
 	 */
-	String getOwnerGroup();
+	public String getOwnerGroup();
 
 	/**
 	 * Gets the version string of the app.
 	 *
 	 * @return the name string
 	 */
-	String getVersion();
+	public String getVersion();
+
+	public URL getOneTimePasswordInjector(String path, HttpSession ses);
 }

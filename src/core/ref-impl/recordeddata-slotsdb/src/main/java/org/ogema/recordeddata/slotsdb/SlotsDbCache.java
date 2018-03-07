@@ -42,7 +42,7 @@ class SlotsDbCache {
 	}
 	
 	final RecordedDataCache getCache(String encodedRecordedData, String filename) {
-		return new RecordedDataCache(encodedRecordedData, filename);
+		return new RecordedDataCacheImpl(this, encodedRecordedData, filename);
 	}
 	
 	void clearCache() {
@@ -52,26 +52,28 @@ class SlotsDbCache {
 	/**
 	 * One instance per FileObject
 	 */
-	final class RecordedDataCache {
+	private final static class RecordedDataCacheImpl implements RecordedDataCache {
 		
 		private final String key;
+		private final SlotsDbCache globalCache;
 		
-		private RecordedDataCache(String recordedDataId, String file) {
+		private RecordedDataCacheImpl(SlotsDbCache cache, String recordedDataId, String file) {
+			this.globalCache = cache;
 			assert !recordedDataId.contains("/") : "Illegal character \"/\" in recorded data id " + recordedDataId; 
 			assert !file.contains("/") : "Illegal character \"/\" in filename " + file; 
 			this.key = recordedDataId + "/" + file;
 		}
 		
-		void cache(List<SampledValue> values) {
-			SlotsDbCache.this.cache(key, values);
+		public void cache(List<SampledValue> values) {
+			globalCache.cache(key, values);
 		}
 		
-		void invalidate() {
-			SlotsDbCache.this.invalidate(key);
+		public void invalidate() {
+			globalCache.invalidate(key);
 		}
 		
-		List<SampledValue> getCache() {
-			return SlotsDbCache.this.getCache(key);
+		public List<SampledValue> getCache() {
+			return globalCache.getCache(key);
 		}
 		
 	}

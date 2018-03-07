@@ -130,6 +130,13 @@ public interface PermissionManager {
 	 * @return WebAccessManager for that AppID
 	 */
 	public WebAccessManager getWebAccess(AppID app);
+	
+	/**
+	 * Close the WebAccessManager for a given app.
+	 * @param app
+	 * @return
+	 */
+	public boolean closeWebAccess(AppID app);
 
 	/**
 	 * Gets the implementation dependent object that support the injection of permissions and the manipulation of the

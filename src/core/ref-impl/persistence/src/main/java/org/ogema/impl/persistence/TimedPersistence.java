@@ -15,9 +15,6 @@
  */
 package org.ogema.impl.persistence;
 
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -61,26 +58,15 @@ public class TimedPersistence implements PersistencePolicy {
 
 				boolean fileChanged = false;
 				Change ch = null;
-				Set<Entry<Integer, Change>> tlrs = db.resourceIO.changes.entrySet();
-				for (Map.Entry<Integer, Change> entry : tlrs) {
-
-					ch = entry.getValue();
+				while ((ch = db.resourceIO.fifo.poll()) != null) {
 					if (ch.status == ChangeInfo.DELETED) {
 						db.resourceIO.offsetByID.remove(ch.id);
-						db.resourceIO.changes.remove(ch.id);
+						// db.resourceIO.changes.remove(ch.id);
 						fileChanged = true;
 						continue;
 					}
-					// Update persistent data in the archive file...
-					// if (stop) {
-					// timer.cancel();
-					// fileChanged = false;
-					// break;
-					// }
 					TreeElementImpl e = db.resNodeByID.get(ch.id);
 					db.resourceIO.storeResource(e);
-					// ...and remove the changed info.
-					db.resourceIO.changes.remove(ch.id);
 					fileChanged = true;
 				}
 				if (fileChanged) {
@@ -88,6 +74,7 @@ public class TimedPersistence implements PersistencePolicy {
 					db.resourceIO.updateDirectory();
 				}
 				running = false;
+				db.resourceIO.changes.clear();
 			} catch (Throwable e) {
 				e.printStackTrace();
 				running = false;
@@ -106,7 +93,19 @@ public class TimedPersistence implements PersistencePolicy {
 	@Override
 	public void store(int resID, org.ogema.persistence.PersistencePolicy.ChangeInfo changeInfo) {
 		synchronized (storageTask) {
-			db.resourceIO.changes.put(resID, new Change(resID, changeInfo));
+			// check if the resource with this is is already queued
+			Change change = db.resourceIO.changes.get(resID);
+			if (change != null) {
+				// change the status of the change object only if it wasn't deleted before
+				if (change.status != ChangeInfo.DELETED)
+					change.status = changeInfo;
+			}
+			else {
+				change = new Change(resID, changeInfo);
+				db.resourceIO.changes.put(resID, change);
+				db.resourceIO.fifo.offer(change);
+
+			}
 		}
 	}
 

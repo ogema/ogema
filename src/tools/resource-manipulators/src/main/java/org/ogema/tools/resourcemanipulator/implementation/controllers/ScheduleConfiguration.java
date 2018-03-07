@@ -20,6 +20,9 @@ import java.util.TreeMap;
 
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.schedule.Schedule;
+import org.ogema.tools.resourcemanipulator.configurations.ManipulatorConfiguration;
+import org.ogema.tools.resourcemanipulator.configurations.ScheduleManagement;
+import org.ogema.tools.resourcemanipulator.model.ResourceManipulatorModel;
 import org.ogema.tools.resourcemanipulator.model.ScheduleManagementModel;
 import org.ogema.tools.resourcemanipulator.model.schedulemgmt.ScheduleDeletionAction;
 import org.ogema.tools.resourcemanipulator.model.schedulemgmt.ScheduleDownsamplingAction;
@@ -35,14 +38,16 @@ public class ScheduleConfiguration implements Controller {
 	public final static long DEFAULT_UPDATE_INTERVAL = 60000 * 60 * 24; // once per day
 	private static final long MINIMUM_UPDATE_INTERVAL = 60000;
 	private final Schedule schedule;
-	private long lastExecutionTime = -1;
+	private volatile Long lastExecutionTime = null;
 	private final long executionInterval;
+	private final ScheduleManagementModel config; 
 	private final ScheduleManagementController smc;
 	private final ApplicationManager am;
 	// Map<AgeThreshold, Action>
 	private final NavigableMap<Long, TimeSeriesReduction> actions = new TreeMap<Long, TimeSeriesReduction>();
 	
 	public ScheduleConfiguration(ScheduleManagementModel item, ScheduleManagementController smc, ApplicationManager am) {
+		this.config = item;
 		this.schedule = item.targetResourceParent().getSubResource("schedule", Schedule.class);
 		this.smc = smc;
 		this.am = am;
@@ -72,6 +77,11 @@ public class ScheduleConfiguration implements Controller {
 		}
 	}
 	
+	@Override
+	public Class<? extends ManipulatorConfiguration> getType() {
+		return ScheduleManagement.class;
+	}
+	
 	public void addAction(long ageThreshold, TimeSeriesReduction action) {
 		actions.put(ageThreshold, action);
 	}
@@ -85,7 +95,7 @@ public class ScheduleConfiguration implements Controller {
 		return schedule;
 	}
 	
-	public long getLastExecutionTime() {
+	public Long getLastExecutionTime() {
 		return lastExecutionTime;
 	}
 	
@@ -98,6 +108,11 @@ public class ScheduleConfiguration implements Controller {
 	}
 	
 	@Override
+	public ResourceManipulatorModel getConfigurationResource() {
+		return config;
+	}
+	
+	@Override
 	public void start() {
 		smc.addConfiguration(this);
 	}
@@ -105,5 +120,10 @@ public class ScheduleConfiguration implements Controller {
 	@Override
 	public void stop() {
 		smc.removeConfiguration(this);
+	}
+	
+	@Override
+	public String toString() {
+		return "ScheduleConfiguration for configuration " + getConfigurationResource().getName();
 	}
 }

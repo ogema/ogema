@@ -49,7 +49,6 @@ import org.ogema.core.resourcemanager.ResourceException;
 import org.ogema.core.resourcemanager.ResourceNotFoundException;
 import org.ogema.core.timeseries.TimeSeries;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
-import org.ogema.resourcetree.SimpleResourceData;
 import org.ogema.resourcetree.TreeElement;
 import org.ogema.tools.timeseries.api.MemoryTimeSeries;
 import org.ogema.tools.timeseries.implementations.TreeTimeSeries;
@@ -65,7 +64,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Timo Fischer, Fraunhofer IWES
  */
-public class ScheduleTreeElement implements TreeElement, TimeSeries {
+public class ScheduleTreeElement implements TimeSeries {
 
 	// names of the sub-tree-elements containing the data. May not be legal resource names.
 	public static final String OWN_NAME = "+schedule", TIME_NAME = "+t", QUALITY_NAME = "+q", UPDATE_TIME_NAME = "+u",
@@ -140,9 +139,9 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 		}
 		m_schedule = new TreeTimeSeries(m_valueType);
 
-		final TreeElement existingInterpolationMode = getChild(INTERPOLATION_NAME);
+		final TreeElement existingInterpolationMode = scheduleDataElement.getChild(INTERPOLATION_NAME);
 		if (existingInterpolationMode == null) {
-			m_interpolationMode = addChild(INTERPOLATION_NAME, IntegerResource.class, true);
+			m_interpolationMode = scheduleDataElement.addChild(INTERPOLATION_NAME, IntegerResource.class, true);
 			m_interpolationMode.getData().setInt(InterpolationMode.NONE.getInterpolationMode());
 		}
 		else {
@@ -176,12 +175,12 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 	 */
 	private TreeElement getOrAddChild(String name, Class<? extends Resource> type, boolean isDecorating)
 			throws ResourceAlreadyExistsException, InvalidResourceTypeException {
-		final TreeElement existingElement = getChild(name);
+		final TreeElement existingElement = scheduleDataElement.getChild(name);
 		if (existingElement != null) {
 			return existingElement;
 		}
 
-		final TreeElement result = addChild(name, type, isDecorating);
+		final TreeElement result = scheduleDataElement.addChild(name, type, isDecorating);
 
 		// in case of array pseudoresources to be created, initialize with empty array.
 		if (FloatArrayResource.class.isAssignableFrom(type)) {
@@ -463,135 +462,17 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 		}
 	}
 
-	/*-------------------------------------------------------------------------
-	 * Methods defined on parent class TreeElement are passed on to the underlying
-	 * tree element.
-	 -------------------------------------------------------------------------*/
-	@Override
-	final public String getAppID() {
-		return scheduleDataElement.getAppID();
-	}
-
-	@Override
-	final public void setAppID(String appID) {
-		scheduleDataElement.setAppID(appID);
-	}
-
-	@Override
-	final public Object getResRef() {
-		return scheduleDataElement.getResRef();
-	}
-
-	@Override
-	final public void setResRef(Object resRef) {
-		scheduleDataElement.setResRef(resRef);
-	}
-
-	@Override
-	final public boolean isActive() {
-		return scheduleDataElement.isActive();
-	}
-
-	@Override
-	final public void setActive(boolean active) {
-		scheduleDataElement.setActive(active);
-	}
-
-	@Override
-	final public TreeElement getParent() {
-		return scheduleDataElement.getParent();
-	}
-
-	@Override
-	final public int getResID() {
-		return scheduleDataElement.getResID();
-	}
-
-	@Override
-	final public int getTypeKey() {
-		return scheduleDataElement.getTypeKey();
-	}
-
-	@Override
-	final public String getName() {
-		return scheduleDataElement.getName();
-	}
-
-	@Override
-	final public Class<? extends Resource> getType() {
-		return scheduleDataElement.getType();
-	}
-
-	@Override
-	final public boolean isNonpersistent() {
-		return scheduleDataElement.isNonpersistent();
-	}
-
-	@Override
-	final public boolean isDecorator() {
-		return scheduleDataElement.isDecorator();
-	}
-
-	@Override
-	final public boolean isToplevel() {
-		return scheduleDataElement.isToplevel();
-	}
-
-	@Override
-	final public boolean isReference() {
-		return scheduleDataElement.isReference();
-	}
-
-	@Override
-	public boolean isComplexArray() {
-		return false;
-	}
-
-	@Override
-	final public TreeElement getReference() {
-		return scheduleDataElement.getReference();
-	}
-
-	@Override
-	final public TreeElement addChild(String name, Class<? extends Resource> type, boolean isDecorating)
-			throws ResourceAlreadyExistsException, InvalidResourceTypeException {
-		return scheduleDataElement.addChild(name, type, isDecorating);
-	}
-
-	@Override
-	final public TreeElement addReference(TreeElement ref, String name, boolean isDecorating) {
-		return scheduleDataElement.addReference(ref, name, isDecorating);
-	}
-
-	@Override
-	final public List<TreeElement> getChildren() {
-		return scheduleDataElement.getChildren();
-	}
-
-	@Override
-	final public TreeElement getChild(String childName) {
-		return scheduleDataElement.getChild(childName);
-	}
-
-	@Override
-	final public SimpleResourceData getData() throws ResourceNotFoundException, UnsupportedOperationException {
-		return scheduleDataElement.getData();
-	}
-
-	@Override
-	final public void fireChangeEvent() {
-		scheduleDataElement.fireChangeEvent();
-	}
-
-	@Override
 	public void setLastModified(long time) {
 		scheduleDataElement.setLastModified(time);
 	}
 
-	@Override
 	public long getLastModified() {
 		return scheduleDataElement.getLastModified();
 	}
+    
+    public TreeElement getParent() {
+        return scheduleDataElement.getParent();
+    }
 
 	/**
 	 *
@@ -803,29 +684,6 @@ public class ScheduleTreeElement implements TreeElement, TimeSeries {
 		}
 	}
 
-	@Override
-	public String getPath() {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public Class<? extends Resource> getResourceListType() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public void setResourceListType(Class<? extends Resource> cls) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public String getLocation() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-    
     public VirtualTreeElement getScheduleElement() {
         return scheduleDataElement;
     }

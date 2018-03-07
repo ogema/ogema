@@ -26,7 +26,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.junit.After;
 import org.junit.Before;
 import org.ogema.core.application.ApplicationManager;
-import org.ogema.exam.OsgiAppTestBase;
+import org.ogema.exam.latest.LatestVersionsTestBase;
 import org.ops4j.pax.exam.Configuration;
 import org.ops4j.pax.exam.CoreOptions;
 import org.ops4j.pax.exam.Option;
@@ -42,7 +42,7 @@ import org.osgi.framework.InvalidSyntaxException;
  * <br>
  * Further permissions can be created using the methods in {@link SecurityTestUtils}.  
  */
-public class SecurityTestBase extends OsgiAppTestBase {
+public class SecurityTestBase extends LatestVersionsTestBase {
 	
 	// there is no general logout servlet in OGEMA; if needed, register one in a derived class,
 	// using the registerLogoutService method below
@@ -122,8 +122,9 @@ public class SecurityTestBase extends OsgiAppTestBase {
 //		newOpt[sup.length+1] = CoreOptions.mavenBundle("org.ops4j.pax.tinybundles", "tinybundles", "3.0.0-SNAPSHOT");
 		// fixed version: https://github.com/ops4j/org.ops4j.pax.tinybundles/pull/5/commits/8d937dc20cb4c2a27fd2ebf525265a29774fb34f#diff-29b75b1167ddd229bf1e891adfd3e6d1R121
 		// FIXME replace by new release asap
-		newOpt[sup.length+1] = CoreOptions.bundle("file:lib/tinybundles-3.0.0-SNAPSHOT.jar");
-		newOpt[sup.length+2] = CoreOptions.mavenBundle("biz.aQute.bnd", "biz.aQute.bndlib", "3.4.0");
+//		newOpt[sup.length+1] = CoreOptions.bundle("file:lib/tinybundles-3.0.0-SNAPSHOT.jar");
+		newOpt[sup.length+1] = CoreOptions.mavenBundle("org.ops4j.pax.tinybundles", "tinybundles", "3.0.0");
+		newOpt[sup.length+2] = CoreOptions.mavenBundle("biz.aQute.bnd", "biz.aQute.bndlib", "3.5.0");
 		newOpt[sup.length+3] = CoreOptions.mavenBundle("org.ogema.tests", "ogema-exam-security2", ogemaVersion);
 		newOpt[sup.length+4] = CoreOptions.mavenBundle("org.apache.httpcomponents", "httpclient-osgi", "4.5.3");
 		newOpt[sup.length+5] = CoreOptions.mavenBundle("org.apache.httpcomponents", "httpcore-osgi", "4.4.6");

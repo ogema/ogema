@@ -21,15 +21,16 @@ import java.util.Hashtable;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.administration.FrameworkClock;
+import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.ComponentException;
+import org.slf4j.LoggerFactory;
 
 /**
  * 
@@ -40,7 +41,8 @@ import org.osgi.service.component.ComponentException;
 public class SimulationClock implements FrameworkClock {
 
 	private final static String SERVICE_PID = "org.ogema.application.manager.impl.SimulationClock";
-	protected volatile long startTimeSystem = System.currentTimeMillis();
+	private volatile BundleContext ctx;
+	protected volatile long startTimeSystem;
 	protected volatile long startTimeFramework;
 	protected volatile float simulationFactor = 1.0f;
 	protected java.beans.PropertyChangeSupport propertyListeners;
@@ -81,6 +83,7 @@ public class SimulationClock implements FrameworkClock {
 	public static final String SIMULATION_FACTOR = "org.ogema.defaultclock.speedfactor";
 
 	protected void activate(ComponentContext ctx, Map<String, ?> config) {
+		this.ctx = ctx.getBundleContext();
 		boolean disabledInProperties = Boolean.getBoolean(DISABLE);
 		boolean disabledInConfig = Boolean.valueOf(String.valueOf(config.get(DISABLE)));
 		if (disabledInProperties) {
@@ -89,42 +92,60 @@ public class SimulationClock implements FrameworkClock {
 		if (disabledInConfig) {
 			throw new ComponentException("disabled by component configuration.");
 		}
-		long time;
-		Object timestamp = config.get("timestamp");
-		if (timestamp != null) {  // either read from ConfigAdmin properties
-			time = (long) timestamp;
+		startTimeSystem = System.currentTimeMillis();
+		final long time;
+		if (config.containsKey("startTimeSystem") && config.containsKey("startTimeFramework") && config.containsKey("simulationFactor")) {
+			final long lastStartTimeSystem = (Long) config.get("startTimeSystem");
+			final long lastStartTimeFramework = (Long) config.get("startTimeFramework");
+			simulationFactor = (Float) config.get("simulationFactor");
+			time = (long) ((startTimeSystem - lastStartTimeSystem) * simulationFactor + lastStartTimeFramework);
 		}
 		else {  // or from system property, or use default: system time
 			time = Long.getLong(TIMESTAMP, startTimeSystem);
+			String aux = System.getProperty(SIMULATION_FACTOR);
+			if (aux != null) {
+				try {
+					simulationFactor = Float.parseFloat(aux);
+				} catch (NumberFormatException e) { /* ignore */ }
+			}
 		}
 		startTimeFramework = time;
-		String aux = System.getProperty(SIMULATION_FACTOR);
-		if (aux != null) {
-			try {
-				simulationFactor = Float.parseFloat(aux);
-			} catch (NumberFormatException e) { /* ignore */ }
-		}
+	}
+	
+	@org.apache.felix.scr.annotations.Modified
+	protected void modified(ComponentContext ctx, Map<String, ?> config) {
+		// only here to avoid component restarts when we update the configuration properties
 	}
 
 	// note: this is only executed on a proper shutdown
 	protected void deactivate(ComponentContext ctx, Map<String, ?> config) {
-		Long dummy = Long.getLong(TIMESTAMP);
-		if (dummy != null) {  // we only set the time explicitly if the framework clock has been set by a system property
-			ServiceReference<ConfigurationAdmin> sr = ctx.getBundleContext().getServiceReference(ConfigurationAdmin.class);
-			if (sr != null) {
-				ConfigurationAdmin configAdmin = ctx.getBundleContext().getService(sr);
-				try {
-					Configuration cfg = configAdmin.getConfiguration(SERVICE_PID);
-					Dictionary<String, Object> props = cfg.getProperties();
-					if (props == null) {
-						props = new Hashtable<>();
-					}
-					props.put("timestamp", getExecutionTime());
-					cfg.update(props);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+		this.ctx = null;
+	}
+	
+	// persistence is only used if simulation clock deviates from system clock, i.e. if simulation factor 
+	// or timestamp have been set via the admin interface
+	private void persistTimeConfig() {
+		ServiceReference<ConfigurationAdmin> sr = null;
+		try {
+			sr = ctx.getServiceReference(ConfigurationAdmin.class);
+		} catch (IllegalStateException | NullPointerException e) {}
+		if (sr == null) {
+			LoggerFactory.getLogger(SimulationClock.class).warn("Configuration admin not found... cannot persist time information");
+			return;
+		}
+		final ConfigurationAdmin configAdmin = ctx.getService(sr);
+		try {
+			Configuration cfg = configAdmin.getConfiguration(SERVICE_PID);
+			Dictionary<String, Object> props = cfg.getProperties();
+			if (props == null) {
+				props = new Hashtable<>();
 			}
+			props.put("startTimeSystem", startTimeSystem);
+			props.put("startTimeFramework", startTimeFramework);
+			props.put("simulationFactor", simulationFactor);
+			cfg.update(props);
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -143,17 +164,64 @@ public class SimulationClock implements FrameworkClock {
 	public float getSimulationFactor() {
 		return simulationFactor;
 	}
-
+	
 	@Override
-    @SuppressWarnings("deprecation")
-	public synchronized boolean setSimulationFactor(float simulationFactor) {
+	public synchronized boolean setSimulationTimeAndFactor(long timestamp, float factor) {
+		final float oldFactor = this.simulationFactor;
+		final long oldT = getExecutionTime();
+		final boolean result = setSimulationTimeInternal(timestamp) | setSimulationFactorInternal(factor);
+		if (propertyListeners != null) {
+            propertyListeners.firePropertyChange(EXECUTION_TIME_CHANGED_PROPERTY, oldT, timestamp);
+            propertyListeners.firePropertyChange(SIMULATION_FACTOR_CHANGED_PROPERTY, oldFactor, simulationFactor);
+        }
+        if (!listeners.isEmpty()) {
+            ClockEvent e = new ClockEvent(simulationFactor);
+            for (ClockChangeListener l: listeners) {
+                l.clockChanged(e);
+            }
+        }
+	    persistTimeConfig();
+		return result;
+	}
+	
+	private boolean setSimulationTimeInternal(final long timestamp) {
+		this.startTimeFramework = timestamp;
+		this.startTimeSystem = System.currentTimeMillis();
+		return true;
+	}
+	
+	private boolean setSimulationFactorInternal(final float simulationFactor) {
 		if (simulationFactor < 0) {
 			throw new IllegalArgumentException("illegal simulation factor: " + simulationFactor);
 		}
 		this.startTimeFramework = getExecutionTime();
 		this.startTimeSystem = System.currentTimeMillis();
-		float oldFactor = this.simulationFactor;
 		this.simulationFactor = simulationFactor;
+		return true;
+	}
+	
+	@Override
+	public synchronized boolean setSimulationTime(long timestamp) {
+		final long oldTimestamp = getExecutionTime();
+		final boolean result  = setSimulationTimeInternal(timestamp);
+        if (propertyListeners != null) {
+            propertyListeners.firePropertyChange(EXECUTION_TIME_CHANGED_PROPERTY, oldTimestamp, timestamp);
+        }
+        if (!listeners.isEmpty()) {
+            ClockEvent e = new ClockEvent(simulationFactor);
+            for (ClockChangeListener l: listeners) {
+                l.clockChanged(e);
+            }
+        }
+        persistTimeConfig();
+		return result;
+	}
+
+	@Override
+    @SuppressWarnings("deprecation")
+	public synchronized boolean setSimulationFactor(float simulationFactor) {
+		float oldFactor = this.simulationFactor;
+		final boolean result = setSimulationFactorInternal(simulationFactor);
         if (propertyListeners != null) {
             propertyListeners.firePropertyChange(SIMULATION_FACTOR_CHANGED_PROPERTY, oldFactor, simulationFactor);
         }
@@ -163,7 +231,8 @@ public class SimulationClock implements FrameworkClock {
                 l.clockChanged(e);
             }
         }
-		return true;
+        persistTimeConfig();
+		return result;
 	}
 
 	@Override

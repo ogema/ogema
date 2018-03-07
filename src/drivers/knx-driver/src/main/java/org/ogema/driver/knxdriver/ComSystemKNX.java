@@ -38,6 +38,8 @@ import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceException;
 import org.ogema.core.resourcemanager.ResourceManagement;
+import org.ogema.core.resourcemanager.ResourceValueListener;
+import org.ogema.model.actors.OnOffSwitch;
 import org.ogema.model.communication.CommunicationInformation;
 import org.ogema.model.communication.DeviceAddress;
 import org.ogema.model.communication.IPAddressV4;
@@ -45,7 +47,6 @@ import org.ogema.model.communication.KNXAddress;
 import org.ogema.model.communication.PollingConfiguration;
 import org.ogema.model.devices.buildingtechnology.ElectricDimmer;
 import org.ogema.model.devices.connectiondevices.ThermalValve;
-import org.ogema.model.devices.sensoractordevices.SingleSwitchBox;
 import org.ogema.model.prototypes.PhysicalElement;
 import org.ogema.model.sensors.ElectricPowerSensor;
 import org.ogema.model.sensors.LightSensor;
@@ -65,7 +66,9 @@ import tuwien.auto.calimero.datapoint.StateDP;
 import tuwien.auto.calimero.dptxlator.DPT;
 import tuwien.auto.calimero.dptxlator.DPTXlator2ByteFloat;
 import tuwien.auto.calimero.dptxlator.DPTXlator4ByteUnsigned;
+import tuwien.auto.calimero.exception.KNXFormatException;
 import tuwien.auto.calimero.exception.KNXIllegalArgumentException;
+import tuwien.auto.calimero.link.KNXLinkClosedException;
 import tuwien.auto.calimero.link.KNXNetworkLinkIP;
 import tuwien.auto.calimero.process.ProcessCommunicator;
 import tuwien.auto.calimero.process.ProcessCommunicatorImpl;
@@ -114,138 +117,100 @@ public class ComSystemKNX implements KNXdriverI {
 	}
 
 	public int addKNXDeviceToRessource(ConnectionInfo conInfo) {
-
 		final ResourceManagement resMan = aManager.getResourceManagement();
 		int status = 0; // Status
-
 		try {
-
 			if (conInfo.getType().equals(LightSensor.class.getSimpleName())) {
-
 				LightSensor device = resMan.createResource(conInfo.getName(), LightSensor.class);
-
 				device.reading().create();
-				createReadWriteableComInfo(device, true, false);
-
+    			createReadWriteableComInfo(device, true, false);
 				conInfo.setRessource(device);
-
 				activateConnection(conInfo);
-
+                logger.debug("added {}: {}", device.getResourceType().getSimpleName(), device.getPath());
 			}
 
 			if (conInfo.getType().equals(TemperatureSensor.class.getSimpleName())) {
-
 				TemperatureSensor device = resMan.createResource(conInfo.getName(), TemperatureSensor.class);
-
 				device.reading().create();
 				createReadWriteableComInfo(device, true, false);
-
 				conInfo.setRessource(device);
-
 				activateConnection(conInfo);
-
+                logger.debug("added {}: {}", device.getResourceType().getSimpleName(), device.getPath());
 			}
 
 			if (conInfo.getType().equals(MotionSensor.class.getSimpleName())) {
-
 				MotionSensor device = resMan.createResource(conInfo.getName(), MotionSensor.class);
-
 				device.reading().create();
 				createReadWriteableComInfo(device, true, false);
-
 				conInfo.setRessource(device);
 				conInfo.setListener(true);
 				activateConnection(conInfo);
-
+                logger.debug("added {}: {}", device.getResourceType().getSimpleName(), device.getPath());
 			}
 
 			if (conInfo.getType().equals(OccupancySensor.class.getSimpleName())) {
-
 				OccupancySensor device = resMan.createResource(conInfo.getName(), OccupancySensor.class);
-
 				device.reading().create();
 				createReadWriteableComInfo(device, true, false);
-
 				conInfo.setRessource(device);
 				conInfo.setListener(true);
 				activateConnection(conInfo);
-
+                logger.debug("added {}: {}", device.getResourceType().getSimpleName(), device.getPath());
 			}
 
 			if (conInfo.getType().equals(TouchSensor.class.getSimpleName())) {
-
 				TouchSensor device = resMan.createResource(conInfo.getName(), TouchSensor.class);
-
 				device.reading().create();
 				createReadWriteableComInfo(device, true, false);
-
 				conInfo.setRessource(device);
 				conInfo.setListener(true);
 				activateConnection(conInfo);
-
+                logger.debug("added {}: {}", device.getResourceType().getSimpleName(), device.getPath());
 			}
 
 			if (conInfo.getType().equals(ElectricPowerSensor.class.getSimpleName())) {
-
 				ElectricPowerSensor device = resMan.createResource(conInfo.getName(), ElectricPowerSensor.class);
-
 				device.reading().create();
 				createReadWriteableComInfo(device, true, false);
-
 				conInfo.setRessource(device);
-
 				activateConnection(conInfo);
-
+                logger.debug("added {}: {}", device.getResourceType().getSimpleName(), device.getPath());
 			}
 
-			if (conInfo.getType().equals(SingleSwitchBox.class.getSimpleName())) {
-
-				SingleSwitchBox device = resMan.createResource(conInfo.getName(), SingleSwitchBox.class);
-
-				device.onOffSwitch().stateControl().create();
+			if (conInfo.getType().equals(OnOffSwitch.class.getSimpleName())) {
+				OnOffSwitch device = resMan.createResource(conInfo.getName(), OnOffSwitch.class);
+				device.stateControl().create();
 				createReadWriteableComInfo(device, true, false);
-
 				conInfo.setRessource(device);
-
 				activateConnection(conInfo);
-
+                logger.debug("added {}: {}", device.getResourceType().getSimpleName(), device.getPath());
 			}
 
 			if (conInfo.getType().equals(ElectricDimmer.class.getSimpleName())) {
-
 				ElectricDimmer device = resMan.createResource(conInfo.getName(), ElectricDimmer.class);
-
 				device.setting().create();
 				device.setting().stateControl().create();
 				device.setting().stateFeedback().create();
 				createReadWriteableComInfo(device, true, false);
-
 				conInfo.setRessource(device);
-
 				activateConnection(conInfo);
-
+                logger.debug("added {}: {}", device.getResourceType().getSimpleName(), device.getPath());
 			}
 
 			if (conInfo.getType().equals(ThermalValve.class.getSimpleName())) {
-
 				ThermalValve device = resMan.createResource(conInfo.getName(), ThermalValve.class);
-
 				device.setting().create();
 				createReadWriteableComInfo(device, true, false);
-
 				conInfo.setRessource(device);
-
 				activateConnection(conInfo);
-			}
+                logger.debug("added {}: {}", device.getResourceType().getSimpleName(), device.getPath());
+            }
 
-		} catch (Exception e) {
-
+		} catch (CommunicationException | ResourceException e) {
+            logger.debug("exception while adding device", e);
 			status = 4;
-
 		}
-
 		return status;
-
 	}
 
 	private void activateConnection(ConnectionInfo conInfo) throws CommunicationException {
@@ -384,16 +349,14 @@ public class ComSystemKNX implements KNXdriverI {
 
 	}
 
-    @SuppressWarnings("deprecation")
 	private void addListener(final ConnectionInfo conn) {
 
-        @SuppressWarnings("deprecation")
-		org.ogema.core.resourcemanager.ResourceListener resListen = null;
+		ResourceValueListener<Resource> resListen = null;
 		ResourceDemandListener<Resource> resDem = null;
 
 		if (!conn.isSensor()) {
 
-			resListen = new org.ogema.core.resourcemanager.ResourceListener() {
+			resListen = new ResourceValueListener<Resource>() {
 				// public class TempChange implements ResourceListener {
 				@Override
 				public void resourceChanged(Resource resource) {
@@ -413,7 +376,7 @@ public class ComSystemKNX implements KNXdriverI {
 
 		else {
 
-			resListen = new org.ogema.core.resourcemanager.ResourceListener() {
+			resListen = new ResourceValueListener<Resource>() {
 				@Override
 				public void resourceChanged(Resource resource) {
 					// TODO Auto-generated method stub
@@ -437,14 +400,13 @@ public class ComSystemKNX implements KNXdriverI {
 		conn.setResDemandListener(resDem);
 		conn.setResListener(resListen);
 
-		conn.getRessource().addResourceListener(resListen, true);
+		conn.getRessource().addValueListener(resListen, true);
 
 		aManager.getResourceAccess().addResourceDemand(conn.getRessource().getResourceType(), resDem);
 	}
 
-    @SuppressWarnings("deprecation")
-	private void removeListener(org.ogema.core.resourcemanager.ResourceListener resListener, Resource res) {
-		res.removeResourceListener(resListener);
+	private void removeListener(ResourceValueListener<Resource> resourceValueListener, Resource res) {
+		res.removeValueListener(resourceValueListener);
 	}
 
 	public boolean disconnectResource(String resourceName) {
@@ -516,28 +478,18 @@ public class ComSystemKNX implements KNXdriverI {
 		readingThread = new Thread(new Runnable() {
 			@Override
 			public void run() {
-				// TODO Auto-generated method stub
-
-				while (activated) {
-
+				while (!Thread.interrupted() && activated) {
 					final long curr = System.currentTimeMillis();
-
 					try {
-
 						synchronized (storage.getDeviceConnections()) {
-
 							for (final ConnectionInfo conn : storage.getDeviceConnections()) {
-
 								if (conn.getLastAccess() + conn.getTimeStep() <= curr && conn.getTimeStep() >= 0
 										&& !conn.isListener()) {
 									updateConnection(conn, curr);
-
 									conn.setLastAccess(curr);
-
 								}
 							}
 						}
-
 						try {
 							Thread.sleep(200);
 						} catch (InterruptedException e) {
@@ -545,66 +497,53 @@ public class ComSystemKNX implements KNXdriverI {
 							// e.printStackTrace();
 						}
 					} catch (Exception ex) {
-						logger.error(ex.getMessage());
+						logger.error("exception in reading thread", ex);
 					}
 				}
-
+                logger.debug("{} terminated", Thread.currentThread().getName());
 			}
 		});
 		readingThread.setName("KNX reading thread");
 		readingThread.start();
-
 	}
 
 	private void writingToActor() {
-
 		writingThread = new Thread(new Runnable() {
 			@Override
 			public void run() {
 				// TODO Auto-generated method stub
 
-				while (activated) {
-
+				while (!Thread.interrupted() && activated) {
 					final long curr = System.currentTimeMillis();
-
 					try {
-
 						synchronized (storage.getDeviceConnections()) {
-
 							for (final ConnectionInfo conn : storage.getDeviceConnections()) {
-
-								if (!conn.isSensor()) {
-									if (conn.isUpdateToSend()) {
-										Thread t = new Thread(new Runnable() {
-											@Override
-											public void run() {
-
-												updateConnection(conn, curr);
-
-												conn.setLastAccess(curr);
-
-												conn.setUpdateToSend(false);
-
-											}
-										});
-
-										t.start();
-									}
-								}
-							}
-						}
-
-						try {
-							Thread.sleep(200);
-						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							// e.printStackTrace();
-						}
+                                if (!conn.isSensor()) {
+                                    if (conn.isUpdateToSend()) {
+                                        Thread t = new Thread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                updateConnection(conn, curr);
+                                                conn.setLastAccess(curr);
+                                                conn.setUpdateToSend(false);
+                                            }
+                                        });
+                                        t.start();
+                                    }
+                                }
+                            }
+                        }
+                        try {
+                            Thread.sleep(200);
+                        } catch (InterruptedException e) {
+                            // TODO Auto-generated catch block
+                            // e.printStackTrace();
+                        }
 					} catch (Exception ex) {
 						logger.error(ex.getMessage());
 					}
 				}
-
+                logger.debug("{} terminated", Thread.currentThread().getName());
 			}
 		});
 		writingThread.setName("KNX writing thread");
@@ -682,11 +621,11 @@ public class ComSystemKNX implements KNXdriverI {
 						}
 					}
 
-					if (conn.getRessource() instanceof SingleSwitchBox) {
+					if (conn.getRessource() instanceof OnOffSwitch) {
 
-						SingleSwitchBox swtch = (SingleSwitchBox) conn.getRessource();
+						OnOffSwitch swtch = (OnOffSwitch) conn.getRessource();
 
-						boolean value2 = swtch.onOffSwitch().stateControl().getValue();
+						boolean value2 = swtch.stateControl().getValue();
 
 						if (value2) {
 							setGroupValue(conn, "on");
@@ -719,28 +658,26 @@ public class ComSystemKNX implements KNXdriverI {
 		try {
 
 			netLinkIp = storage.getKnxNetConnections().get(conn.getKnxRouter());
+            if (netLinkIp == null) {
+                logger.warn(" Value to " + conn.getKnxRouter() + "/" + conn.getGroupAddress()
+						+ " could not be set => no connection");
+                return;
+			}
 
 			synchronized (netLinkIp) {
-
 				pc = new ProcessCommunicatorImpl(netLinkIp);
-
 				GroupAddress main = null;
 				main = new GroupAddress(conn.getGroupAddress());
 				Datapoint dp = new StateDP(main, "", 0, conn.getDptStr());
 				knxUtils.writeAndDetachPrivileged(pc, dp, value);
+                logger.debug("wrote {}, {}", dp, value);
 			}
-		} catch (Exception ex) {
-			pc.detach();
-			if (netLinkIp == null) {
-
-				logger.info(" Value to " + conn.getKnxRouter() + "/" + conn.getGroupAddress()
-						+ " could not be set => no connection");
-
-			}
-			else {
-				logger.info("Value to " + conn.getKnxRouter() + "/" + conn.getGroupAddress() + " could not be set => "
-						+ ex.getMessage());
-			}
+		} catch (PrivilegedActionException | KNXFormatException | KNXLinkClosedException ex) {
+            if (pc != null) {
+                pc.detach();
+            }
+    		logger.info("Value to " + conn.getKnxRouter() + "/" + conn.getGroupAddress() + " could not be set => "
+					+ ex.getMessage());
 		}
 	}
 
@@ -907,6 +844,7 @@ public class ComSystemKNX implements KNXdriverI {
 	}
 
 	public int addConnection(final String connectionString) {
+        logger.debug("adding connection: {}", connectionString);
 
 		final ConnectionInfo conInfo = knxUtils.createConnectionInfo(connectionString);
 
@@ -951,82 +889,70 @@ public class ComSystemKNX implements KNXdriverI {
 	}
 
 	private int searchSensor(final ConnectionInfo conInfo) {
-		KNXNetworkLinkIP netLinkIp = null;
-
+		KNXNetworkLinkIP netLinkIp;
 		try {
-
-			final List<ConnectionInfo> foundDevice = new ArrayList<ConnectionInfo>();
-
-			String dptStr;
-
-			dptStr = knxUtils.getDpt(conInfo);
-
+			final List<ConnectionInfo> foundDevice = new ArrayList<>();
+			String dptStr = knxUtils.getDpt(conInfo);
+            logger.debug("searching for {}", dptStr);
 			if (dptStr != null) {
-
 				conInfo.setDptStr(dptStr);
-
 				netLinkIp = storage.getKnxNetConnections().get(conInfo.getKnxRouter());
-
 				if (netLinkIp != null) {
-
 					final ProcessCommunicator pc = new ProcessCommunicatorImpl(netLinkIp);
-
 					final GroupAddress main = new GroupAddress(conInfo.getGroupAddress());
-
 					final Datapoint dp = new StateDP(main, "", 0, dptStr);
-
 					pc.addProcessListener(new ProcessListener() {
+                        @Override
 						public void detached(DetachEvent e) {
 							// TODO Auto-generated method stub
 						}
-
+                        @Override
 						public void groupWrite(ProcessEvent e) {
 							// TODO Auto-generated method stub
-
 							if (e.getDestination().toString().equals(main.toString())
 									&& !storage.getNotAllowedDevices().contains((e.getSourceAddr().toString()))
 									&& e.getSourceAddr().toString().equals(conInfo.getPhyaddress())) {
-
-								foundDevice.add(conInfo);
+                                synchronized (foundDevice) {
+                                    foundDevice.add(conInfo);
+                                    foundDevice.notifyAll();
+                                }
 							}
 						}
 					});
-
+                    logger.debug("reading {}", dp);
 					knxUtils.readAndDetachPrivileged(pc, dp);
-
-					int sleepCounter = 0;
-
-					while (true) {
-						if (foundDevice.size() > 0) {
-							break;
-						}
-						if (sleepCounter == 700) {
-							break;
-						}
-
-						sleepCounter++;
-						Thread.sleep(10);
-					}
-
+                    
+                    long start = System.currentTimeMillis();
+                    int timeout = 7000;
+                    while (foundDevice.isEmpty() && (start+timeout > System.currentTimeMillis())){
+                        synchronized (foundDevice) {
+                            foundDevice.wait(timeout + timeout - System.currentTimeMillis());
+                        }
+                    }
 					if (!foundDevice.isEmpty()) {
+                        logger.debug("adding device for {}", dptStr);
 						return addKNXDeviceToRessource(foundDevice.get(0));
 					}
 					else {
+                        logger.debug("{} not found", dptStr);
 						return 2;
 					}
-				}
-				else {
+				} else {
+                    logger.debug("no connection for {}", conInfo.getKnxRouter());
 					return 1;
 				}
-			}
-			else {
+			} else {
+                logger.debug("missing DPT string");
 				return 3;
 			}
 		} catch (KNXIllegalArgumentException ex) {
+            logger.debug("", ex);
 			return 3;
 		} catch (PrivilegedActionException ex) {
+            logger.debug("", ex.getCause());
 			return 2;
-		} catch (Exception ex) {
+		} catch (InterruptedException | KNXFormatException | KNXLinkClosedException ex) {
+            logger.debug("", ex);
 			return 1;
 		}
 	}
@@ -1152,6 +1078,8 @@ public class ComSystemKNX implements KNXdriverI {
 
 		}
 		activated = false;
+        readingThread.interrupt();
+        writingThread.interrupt();
 		Iterator<ConnectionInfo> it2 = storage.getDeviceConnections().iterator();
 		ConnectionInfo conn = null;
 		while (it.hasNext()) {

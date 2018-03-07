@@ -402,7 +402,7 @@ public class ElementInfo {
 	}
 
 	public void transferListeners(TreeElement target) {
-		ElementInfo targetElementInfo = (ElementInfo) target.getResRef();
+		ElementInfo targetElementInfo = man.getElementInfo(target);
 		for (InternalValueChangedListenerRegistration reg : getResourceListeners()) {
 			if (!(reg instanceof ResourceListenerRegistration) || !((ResourceListenerRegistration) reg).isRecursive()) {
 				targetElementInfo.addListener(reg);

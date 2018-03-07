@@ -19,6 +19,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import org.apache.wicket.protocol.http.servlet.ServletWebRequest;
 import org.apache.wicket.request.cycle.RequestCycle;
+import org.ogema.accesscontrol.Constants;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.SessionAuth;
 import org.ogema.webresourcemanager.impl.internal.MyWebResourceManager;
@@ -59,9 +60,9 @@ public class WebAccessLogin {
             MySessionAuth sauth = new MySessionAuth(author, permissionManager.getAccessManager(), user, ses);
             req.getSession(false).invalidate();
             ses = req.getSession(true);
-            ses.setAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME, sauth);
+            ses.setAttribute(Constants.AUTH_ATTRIBUTE_NAME, sauth);
             ses.setAttribute(OLDREQ_ATTR_NAME, null);
-            OgemaAuthentificatedWebsession.get().setAttribute(SessionAuth.AUTH_ATTRIBUTE_NAME, sauth);
+            OgemaAuthentificatedWebsession.get().setAttribute(Constants.AUTH_ATTRIBUTE_NAME, sauth);
             OgemaAuthentificatedWebsession.get().setRoles(author.getRoles()); 
             return true;
         }

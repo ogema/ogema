@@ -29,8 +29,8 @@ import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.core.timeseries.TimeSeries;
 
 /**
- * For a time series with interpolation mode {@see org.ogema.core.timeseries.InterpolationMode#STEPS}
- * or {@see org.ogema.core.timeseries.InterpolationMode#NONE},
+ * For a time series with interpolation mode {@link org.ogema.core.timeseries.InterpolationMode#STEPS}
+ * or {@link org.ogema.core.timeseries.InterpolationMode#NONE},
  * delete all data points whose value and quality equal the previous ones. 
  */
 public class StepsReductionAction extends TimeSeriesReduction {

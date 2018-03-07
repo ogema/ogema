@@ -55,4 +55,5 @@ public class OgemaSecurityManager extends SecurityManager {
 			super.checkPermission(new FilePermission(file, "delete"));
 		}
 	}
+	
 }

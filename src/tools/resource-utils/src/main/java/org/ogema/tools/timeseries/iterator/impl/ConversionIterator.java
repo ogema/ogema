@@ -132,7 +132,7 @@ abstract class ConversionIterator implements Iterator<SampledValue> {
 		
 	}
 	
-	static class FunctionIterator<N extends Number> extends ConversionIterator {
+	static class FunctionIterator<N> extends ConversionIterator {
 		
 		private final FunctionMultiTimeSeries<N> timeSeries;
 

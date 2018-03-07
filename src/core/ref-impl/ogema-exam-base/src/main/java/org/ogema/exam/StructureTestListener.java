@@ -54,7 +54,8 @@ public class StructureTestListener implements ResourceStructureListener {
 
     @Override
     public void resourceStructureChanged(ResourceStructureEvent event) {
-        System.out.printf("%s: %s, %s%n", event.getType(), event.getSource(), event.getChangedResource());
+        //printf might cause deadlock
+        System.out.println(String.format("%s: %s, %s", event.getType(), event.getSource(), event.getChangedResource()));
         lastEvent = event;
         EventType type = event.getType();
         if (expectedSource != null) {

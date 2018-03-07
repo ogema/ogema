@@ -5,7 +5,7 @@
 	<parent>
 		<artifactId>ref-impl</artifactId>
 		<groupId>org.ogema.ref-impl</groupId>
-		<version>2.1.2</version>
+		<version>2.1.3</version>
 		<relativePath>../../pom.xml</relativePath>
 	</parent>
 
@@ -60,6 +60,11 @@
 
 	<dependencies>
 		<dependency>
+			<groupId>org.apache.felix</groupId>
+			<artifactId>org.apache.felix.framework</artifactId>
+			<version>5.6.10</version>
+		</dependency>
+		<dependency>
 			<groupId>org.ogema.core</groupId>
 			<artifactId>api</artifactId>
 		</dependency>
@@ -70,10 +75,7 @@
 		<dependency>
 			<groupId>org.osgi</groupId>
 			<artifactId>org.osgi.core</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.osgi</groupId>
-			<artifactId>org.osgi.compendium</artifactId>
+			<version>6.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -83,14 +85,17 @@
 		<dependency>
 		    <groupId>org.ops4j.pax.tinybundles</groupId>
 		    <artifactId>tinybundles</artifactId>
-		    <version>3.0.0-SNAPSHOT</version>
-		    <!-- FIXME currently need a fixed version -->
-		    <scope>system</scope>
-		    <systemPath>${basedir}/lib/tinybundles-3.0.0-SNAPSHOT.jar</systemPath>
+		    <version>3.0.0</version>
+		</dependency>
+		<dependency>
+		    <groupId>biz.aQute.bnd</groupId>
+		    <artifactId>biz.aQute.bndlib</artifactId>
+		    <version>3.5.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.ogema.ref-impl</groupId>
-			<artifactId>ogema-exam-base</artifactId>
+			<artifactId>ogema-exam-base2</artifactId>
+			<version>${project.parent.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.ogema.core</groupId>
@@ -102,6 +107,7 @@
             <artifactId>httpclient-osgi</artifactId>
             <version>4.3</version>
         </dependency>
+        
 	</dependencies>
 
 </project>

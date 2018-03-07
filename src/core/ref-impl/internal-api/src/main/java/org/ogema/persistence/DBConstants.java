@@ -55,21 +55,21 @@ public class DBConstants {
 	 * Type keys to be stored persistently in order to parse values properly. Only basic types have different type keys
 	 * where all complex types have the same type key.
 	 */
-	static final public int TYPE_KEY_BOOLEAN = 0;
-	static final public int TYPE_KEY_FLOAT = 1;
-	static final public int TYPE_KEY_INT = 2;
-	static final public int TYPE_KEY_LONG = 3;
-	static final public int TYPE_KEY_STRING = 4;
-	static final public int TYPE_KEY_BOOLEAN_ARR = 5;
-	static final public int TYPE_KEY_FLOAT_ARR = 6;
-	static final public int TYPE_KEY_INT_ARR = 7;
-	static final public int TYPE_KEY_LONG_ARR = 8;
-	static final public int TYPE_KEY_STRING_ARR = 9;
-	static final public int TYPE_KEY_COMPLEX_ARR = 10;
-	static final public int TYPE_KEY_COMPLEX = 11;
-	static final public int TYPE_KEY_OPAQUE = 12;
+	public static final int TYPE_KEY_BOOLEAN = 0;
+	public static final int TYPE_KEY_FLOAT = 1;
+	public static final int TYPE_KEY_INT = 2;
+	public static final int TYPE_KEY_LONG = 3;
+	public static final int TYPE_KEY_STRING = 4;
+	public static final int TYPE_KEY_BOOLEAN_ARR = 5;
+	public static final int TYPE_KEY_FLOAT_ARR = 6;
+	public static final int TYPE_KEY_INT_ARR = 7;
+	public static final int TYPE_KEY_LONG_ARR = 8;
+	public static final int TYPE_KEY_STRING_ARR = 9;
+	public static final int TYPE_KEY_COMPLEX_ARR = 10;
+	public static final int TYPE_KEY_COMPLEX = 11;
+	public static final int TYPE_KEY_OPAQUE = 12;
 	public static final int NONSPECIFIC_VALUE = 15;
-	static final public int TYPE_KEY_INVALID = -1;
+	public static final int TYPE_KEY_INVALID = -1;
 
 	/*
 	 * Default path and file name informations for the archives containing the persistent data. The default values can
@@ -110,36 +110,36 @@ public class DBConstants {
 	/*
 	 * Class references of known basic resources to be cached for more efficient access.
 	 */
-	public static Class<?> CLASS_SIMPLE_TYPE;
-	public static Class<Resource> CLASS_BASIC_TYPE;
-	public static Class<BooleanResource> CLASS_BOOL_TYPE;
-	public static Class<FloatResource> CLASS_FLOAT_TYPE;
-	public static Class<IntegerResource> CLASS_INT_TYPE;
-	public static Class<TimeResource> CLASS_TIME_TYPE;
-	public static Class<StringResource> CLASS_STRING_TYPE;
-	public static Class<org.ogema.core.model.simple.OpaqueResource> CLASS_OPAQUE_TYPE;
-	public static Class<BooleanArrayResource> CLASS_BOOL_ARR_TYPE;
-	public static Class<ByteArrayResource> CLASS_BYTE_ARR_TYPE;
-	public static Class<FloatArrayResource> CLASS_FLOAT_ARR_TYPE;
-	public static Class<IntegerArrayResource> CLASS_INT_ARR_TYPE;
-	public static Class<TimeArrayResource> CLASS_TIME_ARR_TYPE;
-	public static Class<StringArrayResource> CLASS_STRING_ARR_TYPE;
+	public static final Class<?> CLASS_SIMPLE_TYPE;
+	public static final Class<Resource> CLASS_BASIC_TYPE;
+	public static final Class<BooleanResource> CLASS_BOOL_TYPE;
+	public static final Class<FloatResource> CLASS_FLOAT_TYPE;
+	public static final Class<IntegerResource> CLASS_INT_TYPE;
+	public static final Class<TimeResource> CLASS_TIME_TYPE;
+	public static final Class<StringResource> CLASS_STRING_TYPE;
+	public static final Class<org.ogema.core.model.simple.OpaqueResource> CLASS_OPAQUE_TYPE;
+	public static final Class<BooleanArrayResource> CLASS_BOOL_ARR_TYPE;
+	public static final Class<ByteArrayResource> CLASS_BYTE_ARR_TYPE;
+	public static final Class<FloatArrayResource> CLASS_FLOAT_ARR_TYPE;
+	public static final Class<IntegerArrayResource> CLASS_INT_ARR_TYPE;
+	public static final Class<TimeArrayResource> CLASS_TIME_ARR_TYPE;
+	public static final Class<StringArrayResource> CLASS_STRING_ARR_TYPE;
 	@SuppressWarnings("rawtypes")
-	public static Class<ResourceList> CLASS_COMPLEX_ARR_TYPE;
+	public static final Class<ResourceList> CLASS_COMPLEX_ARR_TYPE;
 
 	public static String CLASS_COMPLEX_ARR_NAME = "org.ogema.core.model.ResourceList";
 
-	public static Class<Boolean> CLASS_BOOL_VALUE;
-	public static Class<Integer> CLASS_INT_VALUE;
-	public static Class<Float> CLASS_FLOAT_VALUE;
-	public static Class<Long> CLASS_LONG_VALUE;
-	public static Class<byte[]> CLASS_OPAQUE_VALUE;
-	public static Class<String> CLASS_STRING_VALUE;
-	public static Class<boolean[]> CLASS_BOOL_ARR_VALUE;
-	public static Class<int[]> CLASS_INT_ARR_VALUE;
-	public static Class<float[]> CLASS_FLOAT_ARR_VALUE;
-	public static Class<String[]> CLASS_STRING_ARR_VALUE;
-	public static Class<?> CLASS_VALUE_RESOURCE;
+	public static final Class<Boolean> CLASS_BOOL_VALUE;
+	public static final Class<Integer> CLASS_INT_VALUE;
+	public static final Class<Float> CLASS_FLOAT_VALUE;
+	public static final Class<Long> CLASS_LONG_VALUE;
+	public static final Class<byte[]> CLASS_OPAQUE_VALUE;
+	public static final Class<String> CLASS_STRING_VALUE;
+	public static final Class<boolean[]> CLASS_BOOL_ARR_VALUE;
+	public static final Class<int[]> CLASS_INT_ARR_VALUE;
+	public static final Class<float[]> CLASS_FLOAT_ARR_VALUE;
+	public static final Class<String[]> CLASS_STRING_ARR_VALUE;
+	public static final Class<?> CLASS_VALUE_RESOURCE;
 
 	static {
 		try {

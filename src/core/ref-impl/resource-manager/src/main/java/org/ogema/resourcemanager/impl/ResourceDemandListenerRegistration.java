@@ -82,7 +82,14 @@ public class ResourceDemandListenerRegistration implements RegisteredResourceDem
             return;
         }
         availableResources.remove(el);
-        final Resource resource = resman.findResource(el);
+        final Resource resource;
+        try {
+        	resource = resman.findResource(el);
+        } catch (SecurityException e) {
+        	// the other resource manager may not have the permission to read this resource, or some parent of it
+        	// unclear when exactly this happens
+        	return;
+        }
         if (resource == null) { 
         	resman.logger.error("Resource unavailable callback cannot be fired, resource {} not found. This is an internal framework error.", 
         			(el != null ? el.getPath() : null));

@@ -91,7 +91,7 @@ public class JsonReaderJackson {
             return link != null;
         }
 
-        @SuppressWarnings("deprecation")
+        @SuppressWarnings({"deprecation", "null"})
         Object toSpecializedResource() throws ClassNotFoundException {
             if (link != null) {
                 ResourceLink l = new ResourceLink();
@@ -433,7 +433,7 @@ public class JsonReaderJackson {
     private static final ScheduleReader<Float> SCHEDULEREADERFLOAT = new ScheduleReader<Float>() {
         @Override
         Float readValue(JsonParser p) throws IOException {
-            return p.getFloatValue();
+            return p.getCurrentToken().isNumeric() ? p.getFloatValue() : Float.valueOf(p.getText());
         }
 
         @Override

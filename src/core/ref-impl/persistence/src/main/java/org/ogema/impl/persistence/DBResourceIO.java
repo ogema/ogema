@@ -25,11 +25,12 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayDeque;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -73,11 +74,13 @@ public class DBResourceIO {
 
 	// String currentDataFileName;
 
-	private static final int CHANGES_BUFFER_SIZE = 1024;
+	private static final int CHANGES_BUFFER_SIZE = 128;
 	private static final int DEFAULT_MIN_COMPACTION_FILE_SIZE = 1020 * 1024; // 1MB
 	private static final float DEFAULT_MIN_COMPACTION_GARBAGE_SIZE = .75f; // 75%
 
 	private int garbage;
+
+	Queue<Change> fifo = new ArrayDeque<Change>(CHANGES_BUFFER_SIZE);
 
 	final ConcurrentHashMap<Integer, Change> changes;
 
@@ -148,9 +151,6 @@ public class DBResourceIO {
 		 */
 		dbPathName = System.getProperty(DBConstants.DB_PATH_PROP, DBConstants.DB_PATH_NAME);
 		currentPath = dbPathName;
-		// dbResourcesFileName = System.getProperty(DBConstants.RESOURCES_FILE_PROP,
-		// DBConstants.RESOURCES_ARCHIVE_NAME);
-		// dbDirFileName = System.getProperty(DBConstants.DIR_FILE_PROP, DBConstants.DIR_FILE_NAME);
 		dbResourcesFileName = DBConstants.RESOURCES_ARCHIVE_NAME;
 		dbDirFileName = DBConstants.DIR_FILE_NAME;
 
@@ -491,6 +491,7 @@ public class DBResourceIO {
 		 * Changes can be cleared, because all of the resources which are alive are to be stored into the new file.
 		 */
 		changes.clear();
+		fifo.clear();
 		offsetByID.clear();
 		Set<Entry<Integer, TreeElementImpl>> tlrs = database.resNodeByID.entrySet();
 		for (Map.Entry<Integer, TreeElementImpl> entry : tlrs) {
@@ -509,8 +510,6 @@ public class DBResourceIO {
 	void storeResource(TreeElementImpl node) {
 		// The old content is now garbage
 		garbage += node.footprint;
-		// reset size of the resource within the persistence
-		// node.footprint = 0;
 
 		if (Configuration.LOGGING)
 			logger.debug("Store Resource " + node.path);
@@ -684,11 +683,6 @@ public class DBResourceIO {
 
 	private void postProcess() {
 		/*
-		 * Remove sub resources of deleted custom model resources from the unhandled list.
-		 */
-		// handleRemoved(unsortedParents);
-		// handleRemoved(unsortedRefs);
-		/*
 		 * Place the unsorted node in the tree.
 		 */
 		handleUnsorted(unsortedParents);
@@ -701,30 +695,6 @@ public class DBResourceIO {
 		unsortedParents.clear();
 		unsortedRefs.clear();
 	}
-
-	/**
-	 * Remove all unsorted sub resources that are unreachable because their top level resource is removed due to failed
-	 * load of the model class.
-	 * 
-	 * @param map
-	 */
-	// private void handleRemoved(Map<Integer, TreeElementImpl> map) {
-	// Set<Entry<Integer, TreeElementImpl>> unreachables = unreachableCustomTypes.entrySet();
-	// for (Map.Entry<Integer, TreeElementImpl> entry1 : unreachables) {
-	// TreeElementImpl e1 = entry1.getValue();
-	// if (database.activatePersistence)
-	// database.persistence.store(e1.resID, ChangeInfo.DELETED);
-	// Set<Entry<Integer, TreeElementImpl>> unsorteds = map.entrySet();
-	// for (Map.Entry<Integer, TreeElementImpl> entry2 : unsorteds) {
-	// TreeElementImpl e2 = entry2.getValue();
-	// if (e2.path.startsWith(e1.path)) {
-	// map.remove(e2.resID);
-	// if (database.activatePersistence)
-	// database.persistence.store(e2.resID, ChangeInfo.DELETED);
-	// }
-	// }
-	// }
-	// }
 
 	/**
 	 * When database starts up, the persistent stored resource information are parsed and the resource tree is set up.
@@ -1139,9 +1109,6 @@ public class DBResourceIO {
 	}
 
 	boolean putResource(TreeElementImpl e) {
-		// Collect all ResourceLists to remove those with unspecified type.
-		// if (e.type == ResourceList.class)
-		// resourceLists.add(e);
 		boolean unsorted = false;
 		// determine the parent node
 		TreeElementImpl parent = database.resNodeByID.get(e.parentID);
@@ -1163,8 +1130,9 @@ public class DBResourceIO {
 			// Check if the parent is a ResourceList. In this case, this is the right moment to set the resource type
 			// info.
 			if (parent.typeKey == DBConstants.TYPE_KEY_COMPLEX_ARR && parent.type == DBConstants.CLASS_COMPLEX_ARR_TYPE
-					&& !e.name.equals("@elements"))
-				parent.type = e.type;
+					&& !e.name.equals("@elements")) {
+				//parent.type = e.type;
+            }
 		}
 		// Check if the node is a reference
 		TreeElementImpl refered = null;
@@ -1307,8 +1275,6 @@ public class DBResourceIO {
 	 * Used by the tests only
 	 */
 	void reset() {
-		// dirFiles.closeAll();
-		// resDataFiles.closeAll();
 		closeAll();
 		System.gc();
 		dirFiles.reset();

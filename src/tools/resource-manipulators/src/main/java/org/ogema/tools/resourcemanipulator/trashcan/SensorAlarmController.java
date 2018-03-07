@@ -19,7 +19,10 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.resourcemanager.ResourceValueListener;
+import org.ogema.tools.resourcemanipulator.ResourceManipulator;
+import org.ogema.tools.resourcemanipulator.configurations.ManipulatorConfiguration;
 import org.ogema.tools.resourcemanipulator.implementation.controllers.Controller;
+import org.ogema.tools.resourcemanipulator.model.ResourceManipulatorModel;
 
 /**
  * Alarm supervisor for one sensor-alarm pair.
@@ -46,6 +49,11 @@ public class SensorAlarmController implements Controller, ResourceValueListener<
 	public void stop() {
 		m_device.reading.removeValueListener(this);
 	}
+	
+	@Override
+	public Class<? extends ManipulatorConfiguration> getType() {
+		return null;
+	}	
 
 	/**
 	 * Checks if limits of the sensor are violated.
@@ -71,6 +79,17 @@ public class SensorAlarmController implements Controller, ResourceValueListener<
 		final boolean currentState = m_device.trigger.getValue();
 		if (currentState != alarmState)
 			m_device.trigger.setValue(alarmState);
+	}
+
+	@Override
+	public ResourceManipulatorModel getConfigurationResource() {
+		return m_device.model;
+	}
+
+	@Override
+	public Long getLastExecutionTime() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

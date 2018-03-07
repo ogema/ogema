@@ -76,7 +76,19 @@ and open the template in the editor.
 	  	      		<label>&nbsp;Logging type &nbsp;</label><select class="form-control" ng-model="selectedType"><option ng-repeat="loggingType in loggingTypes">{{loggingType}}</option></select>
 	  	      	</div>
 	        </div>
-	        <p>{{message}}</p>	
+	        <p>{{message}}</p>
+	        <h3>Special Resources</h3>
+   	        <div class="form-inline">
+   	        	<div class="form-group">
+	   	       		<label>Log all sensor values &nbsp;</label><button ng-Click="logSensors()" class="btn btn-primary">Activate</button><br><br>
+	   	       	</div>
+	   	    </div>
+   	        <div class="form-inline">
+	   	       	<div class="form-group">
+	   	       		<label>Log all actor values &nbsp;</label><button ng-Click="logActors()" class="btn btn-primary">Activate</button><br><br>
+	   	       	</div>
+	        </div>
+	        <p>{{activateMsg}}</p>
 	        <h3>Resources</h3>
 	        <div id="resourceContainer"></div>
 			<button ng-Click="getResources()" class="btn btn-success">Update</button><br><br>

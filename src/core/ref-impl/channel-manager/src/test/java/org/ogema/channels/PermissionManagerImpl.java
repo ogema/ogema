@@ -45,6 +45,12 @@ public class PermissionManagerImpl implements PermissionManager {
 	}
 
 	@Override
+	public boolean closeWebAccess(AppID app) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	
+	@Override
 	public boolean installPerms(AppPermission perm) {
 		// TODO Auto-generated method stub
 		return false;

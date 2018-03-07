@@ -57,6 +57,7 @@ import org.ogema.resourcetree.TreeElement;
 import org.ogema.resourcetree.listeners.InternalStructureListenerRegistration;
 import org.ogema.resourcetree.listeners.InternalValueChangedListenerRegistration;
 import org.ogema.resourcetree.listeners.ResourceLock;
+import org.ogema.resourcemanager.virtual.DefaultVirtualResourceDB;
 import org.ogema.resourcemanager.virtual.VirtualTreeElement;
 import org.slf4j.Logger;
 
@@ -99,7 +100,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		this.accessedResources = new HashSet<>();
 		this.structureListeners = new HashSet<>();
 		this.resourceDemands = new HashSet<>();
-        this.accessRights = CacheBuilder.newBuilder().weakKeys().weakValues().build();//new ConcurrentHashMap<>();
+        this.accessRights = CacheBuilder.newBuilder().softValues().build();//new ConcurrentHashMap<>();
 		logger = org.slf4j.LoggerFactory.getLogger("org.ogema.core.resourcemanager-" + app.getClass().getName());
 	}
 
@@ -218,23 +219,23 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	}
     
     @SuppressWarnings("unchecked")
-	private <T extends Resource> T createResourceObject(VirtualTreeElement el, String path, boolean privileged) {
+	<T extends Resource> T createResourceObject(VirtualTreeElement el, String path, boolean privileged) {
         ResourceBase result;
         /*
 		 * @Security: Create ResourceAccessRights instance which is injected into the proxy object.
 		 */
 		final ResourceAccessRights access = getAccessRights(el);
 		if (!privileged) {
-			if (System.getSecurityManager() != null && logger.isDebugEnabled()) {
-				logger.debug("{}@{} (created by {}): read={}, write={}, add={}, create={}, delete={}", app.getClass()
+			if (System.getSecurityManager() != null && logger.isTraceEnabled()) {
+				logger.trace("{}@{} (created by {}): read={}, write={}, add={}, create={}, delete={}", app.getClass()
 						.getSimpleName(), path, el.getAppID(), access.isReadPermitted(), access.isWritePermitted(), access
 						.isAddsubPermitted(), access.isCreatePermitted(), access.isDeletePermitted());
 			}
 	
 			if (!access.isReadPermitted()) {
 				throw new SecurityException(String.format(
-						"You do not have permission to read the resource at %s, location %s", path, getLocationElement(el)
-								.getPath()));
+						"Application %s does not have permission to read the resource at %s, location %s",
+                        appMan.getAppID().getIDString(),path, getLocationElement(el).getPath()));
 			}
 		} 
 		Class<? extends Resource> type = el.getType();
@@ -468,6 +469,19 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		}
 		return findResourcePrivileged(path);
 	}
+	
+	@Override
+	public <T extends Resource> List<T> getResources(Class<T> resourceType) {
+		if (resourceType == Resource.class)
+			resourceType = null; // more efficient
+		dbMan.lockStructureRead();
+		try {
+//			return getResourcesClassic(resourceType);
+			return getResourcesViaTreeElements(resourceType);
+		} finally {
+			dbMan.unlockStructureRead();
+		}
+	}
 
 	/*
 	 * @Security: This method is based on the sub call to getToplevelResources that ensures that only resources are
@@ -475,16 +489,16 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	 * its the same way like getToplevelResources, so that the list returned contains only proxy references that already
 	 * registered for this particular app via getResource or ResourceDemandListener.
 	 */
-	@Override
+	@Deprecated
 	@SuppressWarnings("unchecked")
-	public <T extends Resource> List<T> getResources(Class<T> resourceType) {
+	private <T extends Resource> List<T> getResourcesClassic(final Class<T> resourceType) {
 		// Check all top-level resources and all their direct resources if they match the required type.
 		final List<T> result = new ArrayList<>();
 		for (Resource topRes : getToplevelResources(null)) {
 			if (resourceType == null || resourceType.isAssignableFrom(topRes.getResourceType())) {
 				result.add((T) topRes);
 			}
-			for (Resource subRes : topRes.getDirectSubResources(true)) {
+			for (Resource subRes : ((ResourceBase)topRes).getDirectSubResources(resourceType, true)) {
 				// resourceType == null is a special case for ResourceList resources.
 				if (resourceType == null
 						|| (subRes.getResourceType() != null && resourceType.isAssignableFrom(subRes.getResourceType()))) {
@@ -494,7 +508,39 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		}
 		return result;
 	}
-
+	
+	@SuppressWarnings("unchecked")
+	private <T extends Resource> List<T> getResourcesViaTreeElements(final Class<T> resourceType) {
+		final List<Resource> result0 = new ArrayList<>();
+		final Collection<TreeElement> topElements = dbMan.getAllToplevelResources();
+		final boolean secure = System.getSecurityManager() != null;
+		for (TreeElement el : topElements) {
+			appendSubResources(resourceType, result0, el, true, secure);			
+		}
+		return (List<T>) result0;		
+	}
+	
+	void appendSubResources(final Class<? extends Resource> resourceType, final List<Resource> result, final TreeElement base, 
+			final boolean recursive, final boolean secure) {
+		if (!ResourceBase.validResourceName(base.getName()))
+			return;
+		if ((resourceType == null || resourceType.isAssignableFrom(base.getType()))	&& (!secure || permissionManager.getAccessRights(app, base).isReadPermitted())) {
+			try {
+//				final Resource r = findResource("/" + base.getPath());
+				result.add(createResourceObject(((DefaultVirtualResourceDB) dbMan.resdb).getElement(base), "/" + base.getPath(), false));
+			} catch (SecurityException | InvalidResourceTypeException e) {
+				logger.warn("Unexpected exception", e);
+			}
+		}
+		if (!recursive)
+			return;
+		for (TreeElement sub : base.getChildren()) {
+			if (sub.isReference())
+				continue;
+			appendSubResources(resourceType, result, sub, recursive, secure);
+		}
+	}
+	
 	/*
 	 * @Security: This method ensures that only resources are returned, their proxy objects already equipped with the
 	 * resource access rights.

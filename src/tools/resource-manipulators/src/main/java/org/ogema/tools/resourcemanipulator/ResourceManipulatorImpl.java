@@ -15,6 +15,8 @@
  */
 package org.ogema.tools.resourcemanipulator;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,6 +42,7 @@ import org.ogema.tools.resourcemanipulator.configurations.Threshold;
 import org.ogema.tools.resourcemanipulator.implementation.ProgramEnforcerImpl;
 import org.ogema.tools.resourcemanipulator.implementation.ScheduleManagementImpl;
 import org.ogema.tools.resourcemanipulator.implementation.ScheduleSumImpl;
+import org.ogema.tools.resourcemanipulator.implementation.ShellCommands;
 import org.ogema.tools.resourcemanipulator.implementation.SumImpl;
 import org.ogema.tools.resourcemanipulator.implementation.ThresholdConfigurationImpl;
 import org.ogema.tools.resourcemanipulator.implementation.controllers.Controller;
@@ -57,6 +60,9 @@ import org.ogema.tools.resourcemanipulator.model.ScheduleSumModel;
 import org.ogema.tools.resourcemanipulator.model.SumModel;
 import org.ogema.tools.resourcemanipulator.model.ThresholdModel;
 import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.ServiceReference;
 
 /**
  * Implementation of the new approach for the {@link ResourceManipulator}, which
@@ -76,6 +82,7 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
     // a single controller manages all schedules; it is constructed when needed for the first time
     private ScheduleManagementController scheduleManagement = null;
 
+    // accessed by reflections in ShellCommands -> do not refactor
     private final Map<ResourceManipulatorModel, Controller> controllerMap = new HashMap<>();
 
     public ResourceManipulatorImpl(ApplicationManager applicationManager) {
@@ -88,10 +95,8 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
         appId = bdl.getSymbolicName();
     }
 
-
     @Override
     public void start() {
-
         // find the common root node.
         final List<CommonConfigurationNode> existingNodes = resAcc.getToplevelResources(CommonConfigurationNode.class);
         if (existingNodes.isEmpty()) {
@@ -112,6 +117,11 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
         }
 
         resAcc.addResourceDemand(ResourceManipulatorModel.class, this);
+        try {
+        	registerWithShellCommands(this, true);
+        } catch (Exception e) {
+        	logger.warn("Shell registration failed",e);
+        }
     }
 
     @Override
@@ -123,6 +133,11 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
     @Override
     public void stop() {
         resAcc.removeResourceDemand(ResourceManipulatorModel.class, this);
+        try {
+        	registerWithShellCommands(this, false);
+        } catch (Exception e) {
+        	logger.warn("Shell registration failed",e);
+        }
 //        Iterator<Controller> it = controllerMap.values().iterator();
 //        while (it.hasNext()) {
 //        	Controller ct = it.next();
@@ -350,7 +365,7 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
 	        } else if (configuration instanceof SumModel) {
 	        	controller = new SumController(appMan, (SumModel) configuration);
 	        } else if (configuration instanceof ScheduleManagementModel) {
-	        	if (scheduleManagement == null) // FIXME check if synchronization is needed; presumably not, since this is only called in one single application thread(?)
+	        	if (scheduleManagement == null)
 	        		scheduleManagement = new ScheduleManagementController(appMan);
 	        	controller = new ScheduleConfiguration((ScheduleManagementModel) configuration, scheduleManagement, appMan);
 	        } else {
@@ -407,5 +422,39 @@ public class ResourceManipulatorImpl implements ResourceManipulator, ResourceDem
         if (scheduleManagement != null)
         	scheduleManagement.close();
     }
+    
+    @Override
+    public String toString() {
+    	return "ResourceManipulatorImpl for " + appId;
+    }
 
+    private static void registerWithShellCommands(final ResourceManipulatorImpl impl, final boolean registerOrUnregister) {
+    	
+    	AccessController.doPrivileged(new PrivilegedAction<Void>() {
+
+			@Override
+			public Void run() {
+				final Bundle b = FrameworkUtil.getBundle(ResourceManipulatorImpl.class);
+				if (b == null) {
+					impl.logger.warn("Failed to retrieve bundle, cannot register ResourceManipulator with ShellCommands");
+					return null;
+				}
+				final BundleContext ctx = b.getBundleContext();
+				if (ctx == null)
+					return null;
+				final ServiceReference<ShellCommands> ref = ctx.getServiceReference(ShellCommands.class);
+				if (ref == null)
+					return null;
+				final ShellCommands shell = ctx.getService(ref);
+				if (registerOrUnregister)
+					shell.manipulatorAdded(impl.appId, impl);
+				else
+					shell.manipulatorRemoved(impl.appId);
+				return null;
+			}
+		});
+    	
+    }
+    
+    
 }

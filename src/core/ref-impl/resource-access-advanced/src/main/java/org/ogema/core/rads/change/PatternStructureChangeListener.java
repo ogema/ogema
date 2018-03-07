@@ -87,15 +87,19 @@ public class PatternStructureChangeListener extends InternalStructureListenerReg
 
     @Override
 	public void queueSubResourceAddedEvent(final TreeElement subresource) {
-		Resource subResource = findResource(subresource, target);
-		patternListener.trigger(DefaultCompoundEvent.createResourceAddedEvent(target, subResource));
+    	try {
+    		Resource subResource = findResource(subresource, target);
+    		patternListener.trigger(DefaultCompoundEvent.createResourceAddedEvent(target, subResource));
+    	} catch (SecurityException expected) {}
 	}
 
     @Override
 	public void queueSubResourceRemovedEvent(final TreeElement subresource) {
-		Resource subResource = findResource(subresource, target);
-		assert subResource != null;
-		patternListener.trigger(DefaultCompoundEvent.createResourceRemovedEvent(target, subResource));
+    	try {
+    		Resource subResource = findResource(subresource, target);
+    		assert subResource != null;
+    		patternListener.trigger(DefaultCompoundEvent.createResourceRemovedEvent(target, subResource));
+    	} catch (SecurityException expected) {}
 	}
 	
     @Override

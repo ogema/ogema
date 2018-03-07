@@ -16,7 +16,9 @@
 package org.ogema.impl.security;
 
 import java.net.URL;
+import java.security.AccessController;
 import java.security.Permission;
+import java.security.PrivilegedAction;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -46,7 +48,8 @@ public class ApplicationWebAccessManager implements AdminWebAccessManager {
 	final AppID appId;
 	final ApplicationWebAccessFactory fac;
 	final static String FILTER_APPLICATION = "FILTER_APPLICATION";
-	private final static Permission adminPackagePermission = new PackagePermission(AdminWebAccessManager.class.getPackage().getName(), "import");
+	private final static Permission adminPackagePermission = new PackagePermission(
+			AdminWebAccessManager.class.getPackage().getName(), "import");
 
 	volatile OgemaHttpContext ctx;
 
@@ -63,8 +66,15 @@ public class ApplicationWebAccessManager implements AdminWebAccessManager {
 	}
 
 	synchronized void close() {
-		if (ctx != null)
+		if (ctx != null) {
+			for (String alias : ctx.resources.keySet()) {
+				unregisterWebResource(alias, true);
+			} 
+			for (String alias : ctx.servlets.keySet()) {
+				unregisterWebResource(alias, true);
+			}
 			ctx.close();
+		}
 		ctx = null;
 	}
 
@@ -140,8 +150,12 @@ public class ApplicationWebAccessManager implements AdminWebAccessManager {
 
 	@Override
 	public void unregisterWebResource(String alias) {
+		unregisterWebResource(alias, false);
+	}
+
+	private void unregisterWebResource(String alias, boolean silent) {
 		final OgemaHttpContext ctx = this.ctx;
-		if (ctx == null || (ctx.resources.isEmpty() && ctx.servlets.isEmpty())) {
+		if (!silent && (ctx == null || (ctx.resources.isEmpty() && ctx.servlets.isEmpty()))) {
 			fac.logger.warn("unregisterWebResource called on empty context. alias={}", alias);
 		}
 		alias = normalizePath(alias);
@@ -151,10 +165,11 @@ public class ApplicationWebAccessManager implements AdminWebAccessManager {
 		try {
 			fac.http.unregister(alias);
 		} catch (IllegalArgumentException iae) {
-			fac.logger.error("No registration found " + alias);
+			if (!silent)
+				fac.logger.info("No registration found " + alias);
 		}
 	}
-
+	
 	@Override
 	public boolean unregisterWebResourcePath(String alias) {
 		alias = normalizePath(alias);
@@ -212,20 +227,28 @@ public class ApplicationWebAccessManager implements AdminWebAccessManager {
 		}
 		else {
 			Map<String, String> registeredResources = getRegisteredResources(appId);
-			Bundle b = appId.getBundle();
+			final Bundle b = appId.getBundle();
 			// Look for the first occurrence of index.html within the registered paths.
 			Set<Entry<String, String>> entries = registeredResources.entrySet();
 			for (Entry<String, String> e : entries) {
 				String alias = e.getKey();
-				String path = e.getValue();
-				Enumeration<URL> urls = b.findEntries(path, "index.html", true);
+				final String path = e.getValue();
+				final Enumeration<URL> urls = AccessController.doPrivileged(new PrivilegedAction<Enumeration<URL>>() {
+
+					@Override
+					public Enumeration<URL> run() {
+						return b.findEntries(path, "index.html", true);
+					}
+				});
 				if (urls != null) {
 					String url = urls.nextElement().getPath();
+					final int length = alias.length();
+					if (length > 0 && alias.charAt(length-1) == '/')
+						return url.replaceFirst(path, alias.substring(0, length-1)); 
 					return url.replaceFirst(path, alias);
 				}
 			}
 		}
-
 		return fac.baseUrls.get(appId.getIDString());
 	}
 
@@ -281,10 +304,10 @@ public class ApplicationWebAccessManager implements AdminWebAccessManager {
 
 	/**
 	 * Proposal for a new API method: register a servlet as a static web page
+	 * 
 	 * @param servlet
 	 * @param req
-	 * @return
-	 * 		null if not logged in, a size two String array {user, one-time-password} otherwise
+	 * @return null if not logged in, a size two String array {user, one-time-password} otherwise
 	 */
 	@Deprecated
 	public String[] registerStaticResource(HttpServlet servlet, HttpServletRequest req) {
@@ -309,5 +332,5 @@ public class ApplicationWebAccessManager implements AdminWebAccessManager {
 		getOrCreateHttpContext().addBasicResourceAlias(result);
 		return result;
 	}
-	
+
 }

@@ -337,6 +337,7 @@ public class ApplicationManagerImpl implements ApplicationManager, TimerRemovedL
 			advAcc = null;
 		}
 		resMan.close();
+		tracker.closeWebAccessManager(appID);
 		if (!executor.isTerminated()) 
 			logger.error("App {} did not shut down properly, there are still running tasks",appID.getIDString());
 		else

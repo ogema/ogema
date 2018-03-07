@@ -33,8 +33,14 @@ import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.ReferenceCardinality;
+import org.apache.felix.scr.annotations.ReferencePolicy;
+import org.apache.felix.scr.annotations.ReferencePolicyOption;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.administration.FrameworkClock;
+import org.ogema.core.administration.FrameworkClock.ClockChangeListener;
+import org.ogema.core.administration.FrameworkClock.ClockChangedEvent;
+import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.recordeddata.RecordedDataConfiguration;
 import org.ogema.recordeddata.DataRecorder;
 import org.ogema.recordeddata.DataRecorderException;
@@ -47,9 +53,17 @@ import org.osgi.framework.BundleContext;
  * and for flushing, run on system time, the criterion when to remove 
  * old data is based on framework time.
  */
+@Reference(
+		referenceInterface = FrameworkClock.class,
+		cardinality = ReferenceCardinality.OPTIONAL_UNARY,
+		policy = ReferencePolicy.STATIC,
+		policyOption = ReferencePolicyOption.RELUCTANT,
+		bind = "setFrameworkClock",
+		unbind = "removeFrameworkClock"
+)
 @Component(immediate = true)
 @Service(DataRecorder.class)
-public class SlotsDb implements DataRecorder {
+public class SlotsDb implements DataRecorder, ClockChangeListener {
 
 //	private final static Logger logger = LoggerFactory.getLogger(SlotsDb.class);
 
@@ -65,7 +79,7 @@ public class SlotsDb implements DataRecorder {
 
 		@Override
 		public String run() {
-			return System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase() + ".dbfolder");
+			return System.getProperty("org.ogema.recordeddata.slotsdb.dbfolder");
 		}
 	});
 			
@@ -93,7 +107,7 @@ public class SlotsDb implements DataRecorder {
 
 		@Override
 		public String run() {
-			return System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase() + ".max_open_folders");
+			return System.getProperty("org.ogema.recordeddata.slotsdb.max_open_folders");
 		}
 	});
 			
@@ -115,7 +129,7 @@ public class SlotsDb implements DataRecorder {
 
 		@Override
 		public String run() {
-			return System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase() + ".limit_days");
+			return System.getProperty("org.ogema.recordeddata.slotsdb.limit_days");
 		}
 		
 	});
@@ -127,7 +141,7 @@ public class SlotsDb implements DataRecorder {
 
 		@Override
 		public String run() {
-			return System.getProperty(SlotsDb.class.getPackage().getName().toLowerCase() + ".limit_size");
+			return System.getProperty("org.ogema.recordeddata.slotsdb.limit_size");
 		}
 	});
 
@@ -141,19 +155,46 @@ public class SlotsDb implements DataRecorder {
 	 */
 	public final static int INITIAL_DELAY = 10000;
 
-	/*
-	 * Interval for scanning expired, old data. Set this to 86400000 to scan
+    /**
+     * System property ({@value}) for setting {@link #DATA_EXPIRATION_CHECK_INTERVAL},
+     * default value is 86400000 (24 hours).
+     */
+    public final static String DATA_EXPIRATION_CHECK_INTERVAL_PROPERTY = "org.ogema.recordeddata.slotsdb.scanning_interval";
+    
+	/**
+	 * Interval (milliseconds) for scanning expired, old data. Set this to 86400000 to scan
 	 * every 24 hours.
 	 */
-	public final static int DATA_EXPIRATION_CHECK_INTERVAL = 5000;
+	public final static int DATA_EXPIRATION_CHECK_INTERVAL = AccessController.doPrivileged(new PrivilegedAction<Integer>() {
 
+		@Override
+		public Integer run() {
+			return Integer.getInteger(DATA_EXPIRATION_CHECK_INTERVAL_PROPERTY, 86400000);
+		}
+	});
+    
 	private String dbRootFolder; // quasi-final
 	private FileObjectProxy proxy; // quasi-final
 	private String SLOTS_DB_STORAGE_ID_PATH; // quasi-final
 	private final Map<String, SlotsDbStorage> slotsDbStorages = new HashMap<String, SlotsDbStorage>();
 	
-	@Reference
-	FrameworkClock clock;  
+	volatile FrameworkClock clock;  
+	
+	void setFrameworkClock(FrameworkClock clock) {
+		this.clock = clock;
+		try {
+			clock.addClockChangeListener(this);
+		} catch (Exception ignore) {}
+	
+	}
+	
+	void removeFrameworkClock(FrameworkClock clock) {
+		if (clock == this.clock)
+			this.clock = null;
+		try {
+			clock.removeClockChangeListener(this);
+		} catch (Exception ignore) {}
+	}
 	
 	public SlotsDb() {}
 	
@@ -307,5 +348,37 @@ public class SlotsDb implements DataRecorder {
 		}
 		return ids;
 	}
+	
+	@Override
+	public void clockChanged(ClockChangedEvent e) {
+		final FrameworkClock clock = e.getClock();
+		if (clock != this.clock)
+			return;
+		final long now = clock.getExecutionTime();
+		synchronized (slotsDbStorages) {
+			proxy.folderLock.writeLock().lock();
+			try {
+				boolean futureDataExists = false;
+				for (SlotsDbStorage s: slotsDbStorages.values()) {
+					final SampledValue sv = s.getPreviousValue(Long.MAX_VALUE);
+					if (sv != null && sv.getTimestamp() > now) {
+						futureDataExists = true;
+						break;
+					}
+				}
+				if (!futureDataExists)
+					return;
+				FileObjectProxy.logger.info("Found future log data after a clock change event... cleaning up.");
+				proxy.deleteFutureFolders();
+			} catch (IOException e1) {
+				FileObjectProxy.logger.error("Clean up operation failed",e1);
+			} finally {
+				proxy.folderLock.writeLock().unlock();
+			}
+		}
+	}
+	
+	
+	
 
 }

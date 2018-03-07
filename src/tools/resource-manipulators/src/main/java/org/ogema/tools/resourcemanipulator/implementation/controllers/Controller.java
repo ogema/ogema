@@ -15,6 +15,10 @@
  */
 package org.ogema.tools.resourcemanipulator.implementation.controllers;
 
+import org.ogema.tools.resourcemanipulator.ResourceManipulator;
+import org.ogema.tools.resourcemanipulator.configurations.ManipulatorConfiguration;
+import org.ogema.tools.resourcemanipulator.model.ResourceManipulatorModel;
+
 /**
  * Common interface for the different controllers.
  * @author Timo Fischer, Fraunhofer IWES
@@ -30,4 +34,16 @@ public interface Controller {
 	 * Stops the controller.
 	 */
 	void stop();
+	
+	Class<? extends ManipulatorConfiguration> getType();
+	
+	ResourceManipulatorModel getConfigurationResource();
+	
+	/**
+	 * Last execution time, if known. In general, this information 
+	 * is not persisted. Returns null if no action has been performed yet.
+	 * @return
+	 */
+	Long getLastExecutionTime();
+	
 }

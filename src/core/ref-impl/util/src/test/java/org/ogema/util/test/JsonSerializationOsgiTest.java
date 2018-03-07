@@ -32,6 +32,7 @@ import org.ogema.core.model.Resource;
 import org.ogema.core.model.array.ByteArrayResource;
 import org.ogema.core.model.array.StringArrayResource;
 import org.ogema.core.model.schedule.Schedule;
+import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.units.PowerResource;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.tools.SerializationManager;
@@ -120,6 +121,97 @@ public class JsonSerializationOsgiTest extends OsgiAppTestBase {
         
         sman.applyJson(output.toString(), pow, true);
         Assert.assertEquals(values, s.getValues(0));
+    }
+    
+    /* test de-/serialization of float NaN and Infinity values */
+    @Test
+    public void floatScheduleWithSpecialValuesWork() throws IOException {
+        PowerResource pow = resman.createResource(newResourceName(), PowerResource.class);
+        Schedule s = pow.program().create();
+        Collection<SampledValue> values = Arrays.asList(
+                new SampledValue(new FloatValue(Float.NaN), 0, Quality.GOOD),
+                new SampledValue(new FloatValue(Float.POSITIVE_INFINITY), 1, Quality.GOOD),
+                new SampledValue(new FloatValue(Float.NEGATIVE_INFINITY), 2, Quality.GOOD));
+        s.addValues(values);
+        
+        StringWriter output = new StringWriter();
+		sman.setMaxDepth(100);
+        sman.setSerializeSchedules(true);
+		sman.writeJson(output, pow);
+		//System.out.println(output);
+        
+        Assert.assertEquals(values, s.getValues(0));
+        s.addValue(3, new FloatValue(7));
+        Assert.assertNotEquals(values, s.getValues(0));
+        s.deleteValues();
+        Assert.assertTrue(s.getValues(0).isEmpty());
+        
+        sman.applyJson(output.toString(), pow, true);
+        Assert.assertEquals(3, s.getValues(0).size());
+        Assert.assertTrue(Float.isNaN(s.getValue(0).getValue().getFloatValue()));
+        Assert.assertTrue(Float.isInfinite(s.getValue(1).getValue().getFloatValue()));
+        Assert.assertTrue(0 < s.getValue(1).getValue().getFloatValue());
+        Assert.assertTrue(Float.isInfinite(s.getValue(2).getValue().getFloatValue()));
+        Assert.assertTrue(0 > s.getValue(2).getValue().getFloatValue());
+    }
+    
+    @Test
+    public void floatNaNWorks() throws IOException {
+        FloatResource f = resman.createResource(newResourceName(), FloatResource.class);
+        f.setValue(Float.NaN);
+        
+        StringWriter output = new StringWriter();
+		sman.setMaxDepth(100);
+        sman.setSerializeSchedules(true);
+		sman.writeJson(output, f);
+		System.out.println(output);
+        
+        Assert.assertTrue(Float.isNaN(f.getValue()));
+        f.setValue(0);
+        Assert.assertFalse(Float.isNaN(f.getValue()));
+        
+        sman.applyJson(output.toString(), f, true);
+        Assert.assertTrue(Float.isNaN(f.getValue()));
+    }
+    
+    @Test
+    public void floatInfinityWorks() throws IOException {
+        FloatResource f = resman.createResource(newResourceName(), FloatResource.class);
+        f.setValue(Float.POSITIVE_INFINITY);
+        
+        StringWriter output = new StringWriter();
+		sman.setMaxDepth(100);
+        sman.setSerializeSchedules(true);
+		sman.writeJson(output, f);
+		System.out.println(output);
+        
+        Assert.assertTrue(Float.isInfinite(f.getValue()));
+        f.setValue(0);
+        Assert.assertFalse(Float.isInfinite(f.getValue()));
+        
+        sman.applyJson(output.toString(), f, true);
+        Assert.assertTrue(Float.isInfinite(f.getValue()));
+        Assert.assertTrue(0 < f.getValue());
+    }
+    
+    @Test
+    public void floatNegativeInfinityWorks() throws IOException {
+        FloatResource f = resman.createResource(newResourceName(), FloatResource.class);
+        f.setValue(Float.NEGATIVE_INFINITY);
+        
+        StringWriter output = new StringWriter();
+		sman.setMaxDepth(100);
+        sman.setSerializeSchedules(true);
+		sman.writeJson(output, f);
+		System.out.println(output);
+        
+        Assert.assertTrue(Float.isInfinite(f.getValue()));
+        f.setValue(0);
+        Assert.assertFalse(Float.isInfinite(f.getValue()));
+        
+        sman.applyJson(output.toString(), f, true);
+        Assert.assertTrue(Float.isInfinite(f.getValue()));
+        Assert.assertTrue(0 > f.getValue());
     }
     
     @Test

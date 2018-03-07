@@ -25,7 +25,6 @@ import org.apache.http.util.EntityUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.tests.security.testbase.SecurityTestBase;

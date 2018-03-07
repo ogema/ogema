@@ -136,6 +136,11 @@ public class DefaultPermissionManager implements PermissionManager {
 		return ((ApplicationWebAccessFactory) webAccess).createApplicationWebAccessManager(app);
 	}
 
+	@Override
+	public boolean closeWebAccess(AppID app) {
+		return ((ApplicationWebAccessFactory) webAccess).closeWebAccess(app);
+	}
+	
 	@Activate
 	public synchronized void activate(BundleContext bc) throws BundleException {
 		this.bc = bc;

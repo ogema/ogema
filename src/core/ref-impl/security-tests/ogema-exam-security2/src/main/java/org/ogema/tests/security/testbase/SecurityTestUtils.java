@@ -16,8 +16,10 @@
 package org.ogema.tests.security.testbase;
 
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.security.AllPermission;
 import java.security.Permission;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -47,8 +49,11 @@ import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.PackagePermission;
 import org.osgi.framework.ServicePermission;
 import org.osgi.framework.ServiceReference;
+import org.osgi.service.condpermadmin.BundleLocationCondition;
+import org.osgi.service.condpermadmin.Condition;
 import org.osgi.service.condpermadmin.ConditionInfo;
 import org.osgi.service.condpermadmin.ConditionalPermissionAdmin;
+import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
 import org.osgi.service.condpermadmin.ConditionalPermissionUpdate;
 import org.osgi.service.permissionadmin.PermissionInfo;
 
@@ -152,7 +157,7 @@ public class SecurityTestUtils {
 			final String actions) {
 		final ConditionalPermissionAdmin cpa = getService(ctx, ConditionalPermissionAdmin.class);
 		final ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
-		addResourcePermission(cpa, cpu, path, resourceType, appMan, actions, true);
+		addResourcePermission(cpa, cpu, path, resourceType, appMan, actions, true, -1);
 		cpu.commit();
 	}
 	
@@ -169,9 +174,28 @@ public class SecurityTestUtils {
 			final String actions) {
 		final ConditionalPermissionAdmin cpa = getService(ctx, ConditionalPermissionAdmin.class);
 		final ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
-		addResourcePermission(cpa, cpu, path, resourceType, appMan, actions, false);
+		addResourcePermission(cpa, cpu, path, resourceType, appMan, actions, false, 0);
 		cpu.commit();
 	}
+    
+    public static void printBundlePermissions(Bundle b, PrintStream out) {
+        final ConditionalPermissionAdmin cpa = getService(b.getBundleContext(), ConditionalPermissionAdmin.class);
+        final ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
+        for (ConditionalPermissionInfo cpi: cpu.getConditionalPermissionInfos()) {
+            ConditionInfo[] cis = cpi.getConditionInfos();
+            for (ConditionInfo ci: cis) {
+                if (ci.getType().equals("org.osgi.service.condpermadmin.BundleLocationCondition")) {
+                    Condition blc = BundleLocationCondition.getCondition(b, ci);
+                    if (blc.isSatisfied()) {
+                        out.println(cpi);
+                    }
+                }
+            }
+            if (cis.length == 0) {
+                out.println(cpi);
+            }
+        }
+    }
 	
 	/**
 	 * 
@@ -183,7 +207,7 @@ public class SecurityTestUtils {
 	 * 		not null; wildcard "*" for all actions
 	 */
 	public final static void addResourcePermission(final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update, 
-			final String path, final String resourceType, final ApplicationManager appMan, final String actions, final boolean allowOrDeny) {
+			final String path, final String resourceType, final ApplicationManager appMan, final String actions, final boolean allowOrDeny, int index) {
 		Assert.assertFalse("Path and type conditions must not both be null",path == null && resourceType == null);
 		Objects.requireNonNull(actions);
 		final StringBuilder sb = new StringBuilder();
@@ -194,7 +218,7 @@ public class SecurityTestUtils {
 				sb.append(',');
 			sb.append("path=").append(path);
 		}
-		addPermission(appMan.getAppID().getBundle(), ResourcePermission.class, sb.toString(), actions, cpAdmin, update, allowOrDeny);
+		addPermission(appMan.getAppID().getBundle(), ResourcePermission.class, sb.toString(), actions, cpAdmin, update, allowOrDeny, index);
 	}
 	
 	public final static void addServicePermission(final Bundle bundle, final Class<?> service, boolean getOrRegister,
@@ -204,7 +228,7 @@ public class SecurityTestUtils {
 	
 	public final static void addServicePermission(final Bundle bundle, final String service, boolean getOrRegister,
 			final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update) {
-		addPermission(bundle, ServicePermission.class, service, getOrRegister ? ServicePermission.GET : ServicePermission.REGISTER, cpAdmin, update, true);
+		addPermission(bundle, ServicePermission.class, service, getOrRegister ? ServicePermission.GET : ServicePermission.REGISTER, cpAdmin, update, true, -1);
 	}
 	
 	/**
@@ -235,7 +259,7 @@ public class SecurityTestUtils {
 	
 	public static void addImportPermissions(final Bundle bundle, final String packageImport, 
 			final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update, final boolean allowOrDeny) {
-		addPermission(bundle, PackagePermission.class, packageImport, PackagePermission.IMPORT, cpAdmin, update, allowOrDeny);
+		addPermission(bundle, PackagePermission.class, packageImport, PackagePermission.IMPORT, cpAdmin, update, allowOrDeny, -1);
 	}
 	
 	/**
@@ -245,7 +269,7 @@ public class SecurityTestUtils {
 	 * @param update
 	 */
 	public static void addAllPermissions(final Bundle bundle, final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update) {
-		addPermission(bundle, AllPermission.class, null, null, cpAdmin, update, true);
+		addPermission(bundle, AllPermission.class, null, null, cpAdmin, update, true, -1);
 	}
 
 	public static void addAllPermissions(final Bundle bundle, final BundleContext ctx) {
@@ -258,7 +282,7 @@ public class SecurityTestUtils {
 	
 	public static void addWebResourcePermission(final Bundle bundle, final String app, 
 			final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update, final boolean allowOrDeny) {
-		addPermission(bundle, WebAccessPermission.class, "name=" + (app == null ? "*" : app), null, cpAdmin, update, allowOrDeny);
+		addPermission(bundle, WebAccessPermission.class, "name=" + (app == null ? "*" : app), null, cpAdmin, update, allowOrDeny, -1);
 	}
 	
 	/**
@@ -279,7 +303,7 @@ public class SecurityTestUtils {
 			final BundleContext ctx, final boolean allowOrDeny) {
 		final ConditionalPermissionAdmin cpa = getService(ctx, ConditionalPermissionAdmin.class);
 		final ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
-		addPermission(bundle, type, name, actions, cpa, cpu, allowOrDeny);
+		addPermission(bundle, type, name, actions, cpa, cpu, allowOrDeny, -1);
 		return cpu.commit();
 	}
 	
@@ -294,10 +318,15 @@ public class SecurityTestUtils {
 	 * @param cpAdmin
 	 * @param update
 	 * @param allowOrDeny
+     * @param index position at which to insert new permission, use -1 to append.
 	 */
 	public static void addPermission(final Bundle bundle, final Class<? extends Permission> type, final String name, final String actions, 
-			final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update, final boolean allowOrDeny) {
-		update.getConditionalPermissionInfos().add(
+			final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update, final boolean allowOrDeny, int index) {
+        List<ConditionalPermissionInfo> permissions = update.getConditionalPermissionInfos();
+        if (index == -1) {
+            index = permissions.size();
+        }
+		permissions.add(index,
 				cpAdmin.newConditionalPermissionInfo(
 						"testCond" + permissionCnt.getAndIncrement(), 
 						new ConditionInfo[] {

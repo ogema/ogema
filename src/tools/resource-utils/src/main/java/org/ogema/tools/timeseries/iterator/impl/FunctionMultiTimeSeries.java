@@ -35,6 +35,7 @@ import org.ogema.tools.timeseries.iterator.api.DataPoint;
 import org.ogema.tools.timeseries.iterator.api.MultiTimeSeriesIteratorBuilder;
 
 import com.google.common.base.Function;
+import org.ogema.core.channelmanager.measurements.StringValue;
 
 /**
  * Provides either the sum or averages of the input time series;
@@ -43,7 +44,7 @@ import com.google.common.base.Function;
  * @param <N> 
  * 		either Float, Integer or Long
  */
-public class FunctionMultiTimeSeries<N extends Number> extends MultiTimeSeries {
+public class FunctionMultiTimeSeries<N> extends MultiTimeSeries {
 	
 	private final InterpolationMode imode;
 	private final List<InterpolationMode> modes;
@@ -65,7 +66,7 @@ public class FunctionMultiTimeSeries<N extends Number> extends MultiTimeSeries {
 			modes.add(ts.getInterpolationMode());
 		this.modes = Collections.unmodifiableList(modes);
 		this.type = type;
-		if (type != Float.class && type != Integer.class && type != Long.class)
+		if (type != Float.class && type != Integer.class && type != Long.class && type != String.class)
 			throw new IllegalArgumentException("Illegal type, must be either Float.class, Integer.class or Long.class, got " + type);
 	}
 	
@@ -77,6 +78,9 @@ public class FunctionMultiTimeSeries<N extends Number> extends MultiTimeSeries {
 			return (N) (Integer) sv.getValue().getIntegerValue();
 		if (type == Long.class)
 			return (N) (Long) sv.getValue().getLongValue();
+        if (type == String.class) {
+            return (N) sv.getValue().getStringValue();
+        }
 		return (N) (Float) sv.getValue().getFloatValue();
 	}
 	
@@ -86,6 +90,9 @@ public class FunctionMultiTimeSeries<N extends Number> extends MultiTimeSeries {
 			return (N) (Float) Float.NaN;
 		if (type == Integer.class || type == Long.class)
 			return (N) (Long) 0L;
+        if (type == String.class) {
+            return (N) "";
+        }
 		return (N) (Float) Float.NaN;
 	}
 	
@@ -98,6 +105,9 @@ public class FunctionMultiTimeSeries<N extends Number> extends MultiTimeSeries {
 			return new IntegerValue((Integer) value); 
 		if (type == Long.class)
 			return new LongValue((Long) value);
+        if (type == String.class) {
+            return new StringValue((String) value);
+        }
 		return new FloatValue((Float) value);
 	}
 	

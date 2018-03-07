@@ -15,6 +15,7 @@
  */
 package org.ogema.impl.persistence;
 
+import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.security.AccessController;
@@ -915,7 +916,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	/*
 	 * Used by the tests only
 	 */
-	synchronized void restart() {
+	public synchronized void restart() {
 		if (activatePersistence)
 			stopStorage();
 		logger.debug("Restart DB!");
@@ -928,6 +929,21 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		resNodeByID = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
 		resIDsByType = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
 		init();
+	}
+
+	/*
+	 * Used by the tests only
+	 */
+	public void removeFiles() {
+		File dir = new File(resourceIO.dbPathName);
+		if (!dir.exists())
+			return;
+		if (resourceIO != null)
+			resourceIO.closeAll();
+		String files[] = dir.list();
+		for (String file : files) {
+			new File(dir, file).delete();
+		}
 	}
 
 	protected void setName(String name) {

@@ -15,6 +15,10 @@
  */
 package org.ogema.channels;
 
+import java.net.URL;
+
+import javax.servlet.http.HttpSession;
+
 import org.ogema.core.application.AppID;
 import org.ogema.core.application.Application;
 import org.osgi.framework.Bundle;
@@ -64,6 +68,12 @@ public class AppIdImpl implements AppID {
 
 	@Override
 	public String getVersion() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public URL getOneTimePasswordInjector(String path, HttpSession ses) {
 		// TODO Auto-generated method stub
 		return null;
 	}

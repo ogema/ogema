@@ -26,7 +26,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
@@ -42,14 +41,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.json.*;
 
-public class LoggingAppServlet extends HttpServlet {
+class LoggingAppServlet extends HttpServlet {
 
 	private static final long serialVersionUID = -623919478854332527L;
 	private final static Logger logger = LoggerFactory.getLogger(LoggingApp.class);
 	private final ResourceAccess ra;
+	private final LoggingApp app;
 
-	public LoggingAppServlet(ApplicationManager am) {
-		this.ra = am.getResourceAccess();
+	LoggingAppServlet(LoggingApp app) {
+		this.app = app;
+		this.ra = app.am.getResourceAccess();
 	}
 
 	@Override
@@ -72,6 +73,10 @@ public class LoggingAppServlet extends HttpServlet {
 		try {
 			JSONObject json = new JSONObject(request);
 			logger.debug("  JSON object: {}",json);
+			if (json.has("target")) {
+				handleActivateRequests(json, resp);
+				return;
+			}
 			String location = json.getString("resource");
 			boolean record = json.getBoolean("record");
 //			String interval = String.valueOf(json.getInt("interval"));
@@ -84,7 +89,7 @@ public class LoggingAppServlet extends HttpServlet {
 			}
 
 			Resource resource = ra.getResource(location);
-			RecordedData rd = this.getRecordedData(resource);
+			RecordedData rd = LoggingApp.getRecordedData(resource);
 			if (rd == null) {
 				response = "An error occurred. Could not change log settings.";
 				resp.getWriter().write(response);
@@ -115,28 +120,24 @@ public class LoggingAppServlet extends HttpServlet {
 		resp.getWriter().write(response);
 		resp.setStatus(status);
 	}
-
-	private RecordedData getRecordedData(Resource res) {
-		RecordedData rd = null;
-		if (res instanceof FloatResource) {
-			FloatResource fl = (FloatResource) res;
-			rd = fl.getHistoricalData();
+	
+	private void handleActivateRequests(final JSONObject json, final HttpServletResponse resp) throws IOException {
+		final String target = json.getString("target");
+		final int activated;
+		switch (target.toLowerCase()) {
+		case "logsensors":
+			activated = app.logAllSensors();
+			break;
+		case "logactors":
+			activated = app.logAllActors();
+			break;
+		default:
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown request target: " + target);
+			return;
 		}
-		else if (res instanceof IntegerResource) {
-			IntegerResource fl = (IntegerResource) res;
-			rd = fl.getHistoricalData();
-		}
-		else if (res instanceof BooleanResource) {
-			BooleanResource fl = (BooleanResource) res;
-			rd = fl.getHistoricalData();
-		}
-		else if (res instanceof TimeResource) {
-			TimeResource tr = (TimeResource) res;
-			rd = tr.getHistoricalData();
-		}
-		else
-			throw new IllegalArgumentException("Resource type not admissible: " + res.getResourceType());
-		return rd;
+		resp.setContentType("application/json");
+		resp.getWriter().write("{\"activated\":" + activated + "}");
+		resp.setStatus(HttpServletResponse.SC_OK);
 	}
 
 	@Override

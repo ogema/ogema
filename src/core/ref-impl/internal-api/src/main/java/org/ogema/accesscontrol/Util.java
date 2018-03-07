@@ -119,7 +119,9 @@ public class Util {
 		String key = null, value = null;
 		Set<Entry<String, String>> entries = map.entrySet();
 		for (Entry<String, String> e : entries) {
-			value = e.getValue() + "/";
+			value = e.getValue();
+			if (value.charAt(0) != '/')
+				value = e.getValue() + "/";
 			if (name.startsWith(value)) {
 				key = e.getKey();
 				break;

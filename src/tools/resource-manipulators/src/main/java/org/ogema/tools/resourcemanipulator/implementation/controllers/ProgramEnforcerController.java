@@ -37,9 +37,12 @@ import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.tools.resource.util.ResourceUtils;
+import org.ogema.tools.resourcemanipulator.configurations.ManipulatorConfiguration;
+import org.ogema.tools.resourcemanipulator.configurations.ProgramEnforcer;
 import org.ogema.tools.resourcemanipulator.model.Filter;
 import org.ogema.tools.resourcemanipulator.model.ProgramEnforcerModel;
 import org.ogema.tools.resourcemanipulator.model.RangeFilter;
+import org.ogema.tools.resourcemanipulator.model.ResourceManipulatorModel;
 
 /**
  * Enforces that a FloatResource always has the value configured in its program
@@ -63,11 +66,14 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 	private final AccessPriority priority;
 	private boolean requiredWriteAccessGranted;
 	private final RangeFilter rangeFilter;
+	private final ProgramEnforcerModel config;
 	private final BooleanResource deactivateIfValueMissing;
+	private volatile Long lastExecutionTime = null;
 
 	private Timer timer;
 
 	public ProgramEnforcerController(ApplicationManager applicationManager, ProgramEnforcerModel configuration) {
+		this.config = configuration;
 		this.appMan = applicationManager;
 		this.logger = applicationManager.getLogger();
 		this.target = configuration.targetResource();
@@ -155,6 +161,11 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 			target.removeAccessModeListener(this);
 			target.removeStructureListener(this);
 		}
+	}
+	
+	@Override
+	public Class<? extends ManipulatorConfiguration> getType() {
+		return ProgramEnforcer.class;
 	}
 
 	/**
@@ -328,7 +339,6 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 			if (currentValue != targetValue) {
 				resource.setValue(targetValue);
 			}
-			target.activate(false);
 		}
 		else if (resourceType == IntegerResource.class) {
 			final IntegerResource resource = (IntegerResource) target;
@@ -339,7 +349,6 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 			if (currentValue != targetValue) {
 				resource.setValue(targetValue);
 			}
-			target.activate(false);
 		}
 		else if (resourceType == TimeResource.class) {
 			final TimeResource resource = (TimeResource) target;
@@ -350,7 +359,6 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 			if (currentValue != targetValue) {
 				resource.setValue(targetValue);
 			}
-			target.activate(false);
 		}
 		else if (resourceType == FloatResource.class) {
 			final FloatResource resource = (FloatResource) target;
@@ -361,7 +369,6 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 			if (currentValue != targetValue) {
 				resource.setValue(targetValue);
 			}
-			target.activate(false);
 		}
 		else if (resourceType == StringResource.class) {
 			final StringResource resource = (StringResource) target;
@@ -370,13 +377,15 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 			if (currentValue != targetValue) {
 				resource.setValue(targetValue);
 			}
-			target.activate(false);
+			
 		}
 		else {
 			throw new UnsupportedOperationException("Cannot set the value for unsupported resource type "
 					+ resourceType.getCanonicalName()
 					+ ". You should never see this message. Please report this to the OGEMA developers.");
 		}
+		target.activate(false);
+		lastExecutionTime = appMan.getFrameworkTime();
 	}
 
 	/**
@@ -413,4 +422,20 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 		}
 		return true;
 	}
+	
+	@Override
+	public ResourceManipulatorModel getConfigurationResource() {
+		return config;
+	}
+	
+	@Override
+	public Long getLastExecutionTime() {
+		return lastExecutionTime;
+	}
+
+	@Override
+	public String toString() {
+		return "ProgramEnforcerController for target " + target.getLocation() + ", configuration " + getConfigurationResource().getName();
+	}
+	
 }

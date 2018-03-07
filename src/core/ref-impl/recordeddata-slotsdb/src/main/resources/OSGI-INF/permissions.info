@@ -1,0 +1,15 @@
+(java.util.PropertyPermission "org.ogema.recordeddata.slotsdb.*" "read")
+(java.io.FilePermission "data/slotsdb" "read,write,delete")
+
+(org.osgi.framework.PackagePermission "com.google.common.cache" "import")
+(org.osgi.framework.PackagePermission "org.ogema.core.administration" "import")
+(org.osgi.framework.PackagePermission "org.ogema.core.channelmanager.measurements" "import")
+(org.osgi.framework.PackagePermission "org.ogema.core.recordeddata" "import")
+(org.osgi.framework.PackagePermission "org.ogema.core.timeseries" "import")
+(org.osgi.framework.PackagePermission "org.ogema.recordeddata" "import")
+(org.osgi.framework.PackagePermission "org.ogema.recordeddata.slotsdb.reduction" "import")
+(org.osgi.framework.PackagePermission "org.osgi.framework" "import")
+(org.osgi.framework.PackagePermission "org.slf4j" "import")
+
+(org.osgi.framework.ServicePermission "org.ogema.core.administration.FrameworkClock" "get")
+(org.osgi.framework.ServicePermission "org.ogema.recordeddata.DataRecorder" "register")

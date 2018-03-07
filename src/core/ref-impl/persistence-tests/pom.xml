@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>ref-impl</artifactId>
+        <groupId>org.ogema.ref-impl</groupId>
+        <version>2.1.3</version>
+    </parent>
+    
+    <artifactId>persistence-tests</artifactId>
+    <name>OGEMA tests :: Persistence integration tests</name>
+
+    <packaging>bundle</packaging>
+	
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-scr-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+    	<!-- need a current version for bnd lib -->
+     	<dependency>
+    		<groupId>org.apache.felix</groupId>
+    		<artifactId>org.apache.felix.framework</artifactId>
+    		<version>5.6.10</version>
+    	</dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+            <version>6.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.scr.annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>resource-manager</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+	<!-- Test-only dependencies -->
+		<dependency>
+		    <groupId>org.ops4j.pax.tinybundles</groupId>
+		    <artifactId>tinybundles</artifactId>
+		    <version>3.0.0</version>
+		    <scope>test</scope>
+		</dependency>
+		<dependency>
+		    <groupId>biz.aQute.bnd</groupId>
+		    <artifactId>biz.aQute.bndlib</artifactId>
+		    <version>3.5.0</version>
+		    <scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.ogema.core</groupId>
+			<artifactId>models</artifactId>
+			<scope>test</scope>
+		</dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>ogema-exam-base2</artifactId>
+            <version>${project.parent.version}</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- We only declare the dependency, but do not import any packages from the bundle -->
+        <dependency>
+            <groupId>org.ogema.tests</groupId>
+            <artifactId>resourcetype-export-test</artifactId>
+            <version>${project.version}</version>
+            <optional>true</optional>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

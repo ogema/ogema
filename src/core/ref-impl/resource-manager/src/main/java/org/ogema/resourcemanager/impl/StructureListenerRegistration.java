@@ -92,14 +92,22 @@ public class StructureListenerRegistration extends InternalStructureListenerRegi
 	}
 
 	public void queueSubResourceAddedEvent(final TreeElement subresource) {
-		Resource subResource = findResource(subresource, resource);
-		queueEvent(DefaultResourceStructureEvent.createResourceAddedEvent(resource, subResource));
+		try {
+			Resource subResource = findResource(subresource, resource);
+			queueEvent(DefaultResourceStructureEvent.createResourceAddedEvent(resource, subResource));
+		} catch (SecurityException expected) {
+			appman.getLogger().debug("Callback for sub resource added denied by security: {}", expected.getMessage());
+		}
 	}
 
 	public void queueSubResourceRemovedEvent(final TreeElement subresource) {
-		Resource subResource = findResource(subresource, resource);
-		assert subResource != null;
-		queueEvent(DefaultResourceStructureEvent.createResourceRemovedEvent(resource, subResource));
+		try {
+			Resource subResource = findResource(subresource, resource);
+			assert subResource != null;
+			queueEvent(DefaultResourceStructureEvent.createResourceRemovedEvent(resource, subResource));
+		} catch (SecurityException expected) {
+			appman.getLogger().debug("Callback for sub resource removed denied by security: {}", expected.getMessage());
+		}
 	}
 
 	/** find subresource relative to source... */
@@ -128,17 +136,22 @@ public class StructureListenerRegistration extends InternalStructureListenerRegi
 		return subResource;
 	}
 
+    @Override
 	public void queueReferenceChangedEvent(final TreeElement referencingElement, final boolean added) {
 		String resourcePath = referencingElement.getPath().replace('.', '/');
-		Resource referencingResource = appman.getResourceAccess().getResource(resourcePath);
-		assert referencingResource != null : "no such resource: " + resourcePath;
-		if (referencingResource.equals(resource.getParent())) {
-			// spurious call when a virtual resource is replaced by a reference.
-			// hard to detect where it actually happens so it's filtered here.
-			return;
-		}
-		queueEvent(new DefaultResourceStructureEvent(added ? ResourceStructureEvent.EventType.REFERENCE_ADDED
-				: ResourceStructureEvent.EventType.REFERENCE_REMOVED, resource, referencingResource));
+        try {
+            Resource referencingResource = appman.getResourceAccess().getResource(resourcePath);
+            assert referencingResource != null : "no such resource: " + resourcePath;
+            if (referencingResource.equals(resource.getParent())) {
+                // spurious call when a virtual resource is replaced by a reference.
+                // hard to detect where it actually happens so it's filtered here.
+                return;
+            }
+            queueEvent(new DefaultResourceStructureEvent(added ? ResourceStructureEvent.EventType.REFERENCE_ADDED
+                    : ResourceStructureEvent.EventType.REFERENCE_REMOVED, resource, referencingResource));
+        } catch (SecurityException se) {
+            appman.getLogger().debug("Callback for reference change denied by security: {}", se.getMessage());
+        }
 	}
 
 	@Override

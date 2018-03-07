@@ -27,6 +27,7 @@ angular.module('resources',[])
     	$scope.path = "/apps/ogema/LoggingApp".toLowerCase() + "?user=" + otusr + "&pw=" + otpwd;
     	$scope.logging = {};
     	$scope.message= '';
+    	$scope.activateMsg = '';
     	$scope.loggingInterval=30;
     	$scope.loggingTypes = ['ON_VALUE_CHANGED','FIXED_INTERVAL','ON_VALUE_UPDATE'];
     	$scope.selectedType = 'ON_VALUE_CHANGED';
@@ -123,6 +124,32 @@ angular.module('resources',[])
     			//console.log($scope.resourcesSet.getResources());
     		});
     	};
+    	
+    	var removeActivateMsg = function() {
+    		setTimeout(function() {
+    			$scope.activateMsg = '';
+    			$scope.$apply();
+    		}, 5000);
+    	};
+    	
+    	$scope.logSensors = function() {
+    		var msg = {'target' : 'logSensors'};
+    		$http.post($scope.path, msg).then(function(response) {
+    			$scope.activateMsg = "Activated " + response.data.activated + " resources";
+    			removeActivateMsg();
+				$scope.getResources();
+    		});
+    	};
+    	
+    	$scope.logActors = function() {
+    		var msg = {'target' : 'logActors'};
+    		$http.post($scope.path, msg).then(function(response) {
+    			$scope.activateMsg  =  "Activated " + response.data.activated + " resources";
+    			removeActivateMsg();
+				$scope.getResources();
+    		});
+    	};
+    	
 
     	// change log settings; send HTTP POST
     	// bool: true: start logging; false: stop logging

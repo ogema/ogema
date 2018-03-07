@@ -42,6 +42,7 @@ import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.ResourceAlreadyExistsException;
 import org.ogema.core.resourcemanager.ResourceDemandListener;
 import org.ogema.core.resourcemanager.ResourceGraphException;
+import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.exam.ResourceAssertions;
 
@@ -1351,7 +1352,74 @@ public class ReferenceTest extends OsgiTestBase {
         room.delete();
         tempSens.delete();
     }
-
     
+    @Test
+    public void setReferenceOnReferenceWorks() {
+    	final TemperatureSensor sensor = resMan.createResource(newResourceName(), TemperatureSensor.class);
+    	final Room room = resMan.createResource(newResourceName(), Room.class);
+    	Assert.assertNotNull(sensor.location().room()); // -> comment out this line and it works!
+        ResourceAssertions.assertIsVirtual(sensor.location().room());
+    	final PhysicalElement someResource = resMan.createResource(newResourceName(), PhysicalElement.class);
+    	final TemperatureSensor sensorRef = someResource.addDecorator("sensor", sensor);
+    	sensorRef.location().room().setAsReference(room);
+    	ResourceAssertions.assertLocationsEqual(room, sensor.location().room());
+    	sensor.delete();
+    	room.delete();
+    	someResource.delete();
+    }
+    
+    @Test
+    public void deletingReferenceDoesNotTriggerCallbackOnLocation() throws InterruptedException {
+    	final TemperatureSensor sensor = resMan.createResource(newResourceName(), TemperatureSensor.class);
+    	final Room room = resMan.createResource(newResourceName(), Room.class);
+    	Assert.assertNotNull(sensor.location().room());
+        ResourceAssertions.assertIsVirtual(sensor.location().room());
+    	final PhysicalElement someResource = resMan.createResource(newResourceName(), PhysicalElement.class);
+    	final TemperatureSensor sensorRef = someResource.addDecorator("sensor", sensor);
+    	sensorRef.location().room().setAsReference(room);
+    	ResourceAssertions.assertLocationsEqual(room, sensor.location().room());
+        StructureTestListener stl = new StructureTestListener();
+        StructureTestListener refStructureListener = new StructureTestListener();
+        sensor.addStructureListener(stl);
+        sensorRef.addStructureListener(refStructureListener);
+        sensorRef.delete();
+        assertExists(sensor);
+        assertTrue(refStructureListener.awaitEvent(ResourceStructureEvent.EventType.RESOURCE_DELETED));
+        assertFalse("resource deleted event for location resource", stl.awaitEvent(ResourceStructureEvent.EventType.RESOURCE_DELETED));
+    	sensor.delete();
+    	room.delete();
+    	someResource.delete();
+    }
+    
+    @Test
+    public void setReferenceOnReferenceWorks2() {
+    	final TemperatureSensor sensor = resMan.createResource(newResourceName(), TemperatureSensor.class);
+    	final Room room = resMan.createResource(newResourceName(), Room.class);
+    	Assert.assertNotNull(sensor.location().room());
+    	final PhysicalElement someResource = resMan.createResource(newResourceName(), PhysicalElement.class);
+    	final TemperatureSensor sensorRef = someResource.addDecorator("sensor", sensor);
+    	sensorRef.getSubResource("room", Room.class).setAsReference(room);
+    	ResourceAssertions.assertLocationsEqual(room, sensor.getSubResource("room"));
+    	sensor.delete();
+    	room.delete();
+    	someResource.delete();
+    }
+
+    @Test
+    public void createdCallbackForReferencedResourceWorks() throws InterruptedException {
+    	final TemperatureSensor sensor = resMan.createResource(newResourceName(), TemperatureSensor.class);
+    	final StructureTestListener listener = new StructureTestListener();
+    	sensor.location().room().addStructureListener(listener);
+    	final Room room = resMan.createResource(newResourceName(), Room.class);
+    	final PhysicalElement someResource = resMan.createResource(newResourceName(), PhysicalElement.class);
+    	final TemperatureSensor sensorRef = someResource.addDecorator("sensor", sensor);
+    	sensorRef.location().room().setAsReference(room);
+        assertEquals(1, room.getReferencingNodes(true).size());
+    	Assert.assertTrue("Missing create callback",listener.awaitCreate(5, TimeUnit.SECONDS));
+    	sensor.delete();
+    	room.delete();
+    	someResource.delete();
+    }
+  
 	
 }

@@ -15,13 +15,19 @@
  */
 package org.ogema.resourcemanager.addon.test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.junit.AfterClass;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.model.Resource;
@@ -70,6 +76,21 @@ public class ResourceTypeExportTest extends OsgiAppTestBase {
 	 */
 	private final static String RESOURCE_NAME_SUB = "resTypeExpoTest3";
 	private final static String TESTBUNDLE_SYMBOLIC_NAME = "org.ogema.tests.resourcetype-export-test";
+    
+    @AfterClass
+    public static void removeOldResourceData() {
+        Path resdbpath = Paths.get("data", "persistence");
+        if (Files.exists(resdbpath)) {
+            try {
+                for (Path f: Files.newDirectoryStream(resdbpath, "res*")) {
+                    System.out.println("deleting resource file " + f);
+                    Files.delete(f);
+                }
+            } catch (IOException ex) {
+                Logger.getLogger(ResourceTypeExportTest.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
 
 	@Override
 	public Option[] frameworkBundles() {

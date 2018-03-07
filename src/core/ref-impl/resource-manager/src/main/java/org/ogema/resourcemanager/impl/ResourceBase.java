@@ -16,8 +16,6 @@
 package org.ogema.resourcemanager.impl;
 
 import java.lang.reflect.Method;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -450,40 +448,81 @@ public abstract class ResourceBase implements ConnectedResource {
             resMan.getDatabaseManager().unlockStructureRead();
         }
     }
-
-	@Override
-    public List<Resource> getDirectSubResources(boolean recursive) {
+	
+	protected <T extends Resource> List<T> getDirectSubResources(Class<T> type, final boolean recursive) {
+		if (type == Resource.class)
+			type = null; // more efficient
+		resMan.getDatabaseManager().lockStructureRead();
+        try {
+//			return getDirectSubResourcesClassical(type, recursive);
+			return getDirectSubResourcesViaTreeElements(type, recursive);
+        } finally {
+            resMan.getDatabaseManager().unlockStructureRead();
+        }
+	}
+    
+	@Deprecated
+    private <T extends Resource> List<T> getDirectSubResourcesClassical(final Class<T> type, final boolean recursive) {
         /*
          * note: in case of only direct subresources, no loops can occur in the resource graph. Hence, they do not have
          * to be taken care of.
          */
-        resMan.getDatabaseManager().lockStructureRead();
-        try {
-            List<TreeElement> children = getEl().getChildren();
-            List<Resource> result = new ArrayList<>(children.size());
-            for (TreeElement child : getEl().getChildren()) {
-                if (!validResourceName(child)) {
-                    continue;
-                }
-                if (child.isReference()) {
-                    continue;
-                }
-                Resource resource ;
+        
+        List<TreeElement> children = getEl().getChildren();
+        List<T> result = new ArrayList<>(children.size());
+        for (TreeElement child : getEl().getChildren()) {
+            if (!validResourceName(child)) {
+                continue;
+            }
+            if (child.isReference()) {
+                continue;
+            }
+            ResourceBase resource;
+            boolean typeMatches = type == null || (child.getType() != null && type.isAssignableFrom(child.getType()));
+            boolean recurse = recursive && !child.getChildren().isEmpty();
+            if (typeMatches || recurse) {
                 try {
-                	resource = resMan.getResource(path + "/" + child.getName());
+                    resource = resMan.getResource(path + "/" + child.getName());
                 } catch (InvalidResourceTypeException e) { // happens e.g. in case of missing permission to export a resource type
-                	resMan.logger.error("Subresource of {} could not be loaded",this,e);
-                	continue;
+                    resMan.logger.error("Subresource of {} could not be loaded", this, e);
+                    continue;
+                } catch (SecurityException ex) {
+                    resMan.logger.trace("no permission: {}", ex.getMessage());
+                    continue;
                 }
-                result.add(resource);
-                if (recursive) {
-                    result.addAll(resource.getDirectSubResources(true));
+                if (typeMatches) {
+                    @SuppressWarnings("unchecked")
+                    T t = (T) resource;
+                    result.add(t);
+                }
+                if (recurse) {
+                    result.addAll(resource.getDirectSubResources(type, true));
                 }
             }
-            return result;
-        } finally {
-            resMan.getDatabaseManager().unlockStructureRead();
         }
+        return result;
+    }
+    
+    @SuppressWarnings("unchecked")
+	private <T extends Resource> List<T> getDirectSubResourcesViaTreeElements(final Class<T> type, final boolean recursive) {
+        /*
+         * note: in case of only direct subresources, no loops can occur in the resource graph. Hence, they do not have
+         * to be taken care of.
+         */
+        final List<TreeElement> children = getEl().getChildren();
+        final List<Resource> result0 = new ArrayList<>(children.size());
+        final boolean secure = System.getSecurityManager() != null;
+        for (TreeElement child : children) {
+            if (child.isReference())
+                continue;
+            resMan.appendSubResources(type, result0, child, recursive, secure);
+        }
+		return (List<T>) result0;
+    }
+    
+  	@Override
+    public List<Resource> getDirectSubResources(boolean recursive) {
+        return getDirectSubResources(null, recursive);
     }
     
     /**
@@ -509,12 +548,13 @@ public abstract class ResourceBase implements ConnectedResource {
 		Objects.requireNonNull(name, "name must not be null");
         resMan.getDatabaseManager().lockStructureRead();
         try {
-            TreeElement childElement = getEl().getChild(name);
+            VirtualTreeElement childElement = getEl().getChild(name);
             if (childElement == null) {
                 return null;
             }
             assert childElement.getName().equals(name) : "name mismatch";
-            return resMan.getResource(path + "/" + name);
+            return resMan.createResourceObject(childElement, this.path + "/"  + name, false);
+//            return resMan.getResource(path + "/" + name);
         } finally {
             resMan.getDatabaseManager().unlockStructureRead();
         }
@@ -524,12 +564,13 @@ public abstract class ResourceBase implements ConnectedResource {
 		Objects.requireNonNull(name, "name must not be null");
         resMan.getDatabaseManager().lockStructureRead();
         try {
-            TreeElement childElement = getEl().getChild(name);
+            VirtualTreeElement childElement = getEl().getChild(name);
             if (childElement == null) {
                 return null;
             }
             assert childElement.getName().equals(name) : "name mismatch";
-            return resMan.getResourcePrivileged(path + "/" + name);
+            return resMan.createResourceObject(childElement, this.path + "/"  + name, true);
+//            return resMan.getResourcePrivileged(path + "/" + name);
         } finally {
             resMan.getDatabaseManager().unlockStructureRead();
         }
@@ -567,7 +608,7 @@ public abstract class ResourceBase implements ConnectedResource {
     }
     
     private void fireActiveStateChanged(boolean newState) {
-    	List<String> aliases = isReference(true) ? ((ResourceBase)getLocationResource()).computeAliases() : computeAliases();
+    	List<String> aliases = isReference(true) ? ((ResourceBase)getLocationResource()).computeAliasesForLocation() : computeAliasesForLocation();
         for (String a: aliases) {
             //FIXME: path string mangling
             for (InternalStructureListenerRegistration l: resMan.getDatabaseManager().getStructureListeners(a.substring(1))) {
@@ -676,13 +717,13 @@ public abstract class ResourceBase implements ConnectedResource {
                 }
                 ResourceBase existingResource = (ResourceBase) getSubResource(name);
                 //existingResource.notifyDelete(existingResource, false, new HashSet<>(existingResource.computeAliases()));
-				dli = existingResource.deleteInternal(null);
+                dli = existingResource.deleteInternal(null);
 			}
-
+            if (getEl().isVirtual()) {
+                create();
+            }
 			getEl().addReference(newTreeElement, name, false);
-
 			TreeElement dec = getEl().getChild(name);
-
             if (!oldReferenceListeners.isEmpty()) {
 				ElementInfo info = resMan.getDatabaseManager().getElementInfo(dec);
 				for (InternalValueChangedListenerRegistration l : oldReferenceListeners) {
@@ -1202,7 +1243,7 @@ public abstract class ResourceBase implements ConnectedResource {
     //raises structure events for newly created references
     private void notifyReference(ResourceBase parent, ResourceBase reference, String refName) {
         //FIXME loops between root and the reference are not handled correctly
-        List<String> parentAliases = parent.computeAliases();
+        List<String> parentAliases = parent.computeAliasesForLocation();
         
         /*
          * referenceChanged on the reference
@@ -1262,7 +1303,7 @@ public abstract class ResourceBase implements ConnectedResource {
             //no listener registrations can exist for new top level resources
             return;
         }
-        List<String> parentAliases = parent.computeAliases();
+        List<String> parentAliases = parent.computeAliasesForLocation();
         for (String alias: parentAliases) {
             for (Map.Entry<String, List<InternalStructureListenerRegistration>> e:
                     resMan.getDatabaseManager().getStructureListenersTree(alias).entrySet()) {
@@ -1350,6 +1391,7 @@ public abstract class ResourceBase implements ConnectedResource {
 		resMan.getDatabaseManager().lockStructureWrite();
 		try {
 			getEl();
+            
 			if (!getParent().exists()) {
 				getParent().create();
 			}
@@ -1389,7 +1431,7 @@ public abstract class ResourceBase implements ConnectedResource {
 	protected Map<String, DeletedLinkInfo> deleteInternal(Map<String, DeletedLinkInfo> danglingLinks) {
         if (danglingLinks == null){
             //first call
-            notifyDelete(this, false, new HashSet<>(computeAliases()), new HashSet<String>());
+            notifyDelete(this, false, new HashSet<>(computeAliasesForPath()), new HashSet<String>());
             danglingLinks = new HashMap<>();
         }
         if (!exists()) {
@@ -1612,8 +1654,12 @@ public abstract class ResourceBase implements ConnectedResource {
         return te.getLastModified();
 	}
 	
-	private List<String> computeAliases() {
-		return computeAliases(new HashSet<Resource>());
+	private List<String> computeAliasesForLocation() {
+		return computeAliases(new HashSet<Resource>(), true);
+	}
+    
+    private List<String> computeAliasesForPath() {
+		return computeAliases(new HashSet<Resource>(), false);
 	}
     
     /**
@@ -1621,18 +1667,17 @@ public abstract class ResourceBase implements ConnectedResource {
      * the path will contain the same resource at most twice.
      * @return list of alias paths for this resource, irrespective of access rights!
      */
-    private List<String> computeAliases(Set<Resource> visited) {
+    private List<String> computeAliases(Set<Resource> visited, boolean forLocation) {
         if (visited == null) {
             visited = new HashSet<>();
         }
-        // visited set caught only loops with top level resources 
-//        if (isTopLevel()) {
-//            if (visited.contains(this)) {
-//                return Arrays.asList("/" + getName());
-//            }
-//            visited.add(this);
-//        }
-        // FIXME too expensive? Remember only selected resources?
+        
+        if (forLocation && exists() && isReference(false)) {
+            /* XXX this fixes missing structure callbacks on references but
+            causes spurious resource_deleted callbacks (need test) */
+            return ((ResourceBase)getLocationResource()).computeAliases(visited, forLocation);
+        }
+        
         if (visited.contains(this)) {
         	return Arrays.asList("/" + getPath());
         }
@@ -1644,7 +1689,7 @@ public abstract class ResourceBase implements ConnectedResource {
         }
         for (Map.Entry<Resource, String> pre: incoming()) {
             String nameInPre = pre.getValue();
-            for (String preAlias: ((ResourceBase)pre.getKey()).computeAliases(visited)){
+            for (String preAlias: ((ResourceBase)pre.getKey()).computeAliases(visited, forLocation)){
                 rval.add(preAlias + "/" + nameInPre);
             }
         }

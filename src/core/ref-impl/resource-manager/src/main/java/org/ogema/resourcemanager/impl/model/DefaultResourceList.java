@@ -27,8 +27,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
@@ -54,18 +52,18 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	 */
 	static final String ELEMENTS = "@elements";
 
-	// must be updated when accessed, and protected by lock!
-//	protected Class<T> elementType;
-
 	public DefaultResourceList(VirtualTreeElement el, String path, ApplicationResourceManager appman) {
 		super(el, path, appman);
 		while (el.isReference()) {
 			el = (VirtualTreeElement) el.getReference();
 		}
-//		elementType = (Class<T>) el.getResourceListType();
-//		if (elementType == null && !el.isDecorator()) {
-//			elementType = (Class<T>) findElementTypeOnParent();
-//		}
+        
+        if (el.getResourceListType() == null && !el.isDecorator()) {
+            Class<? extends Resource> elementType = findElementTypeOnParent();
+            if (elementType != null) {
+                el.setResourceListType(elementType);
+            }
+        }
 	}
 
 	protected final Class<? extends Resource> findElementTypeOnParent() {
@@ -185,7 +183,6 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	@Override
 	public int size() {
 		getEl();
-//		return getElementNames().size();
 		final TreeElement el = getElementsNode(false);
 		return el == null ? 0 : el.getData().getArrayLength();
 	}
@@ -317,11 +314,10 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 		} finally {
 			getResourceDB().unlockRead();
 		}
-//		return elementType;
 	}
 
 	@Override
-	public void setElementType(final Class<? extends Resource> resType) {
+	public final void setElementType(final Class<? extends Resource> resType) {
 		Objects.requireNonNull(resType, "resource type must not be null");
         checkWritePermission();
 		getResourceDB().lockWrite();

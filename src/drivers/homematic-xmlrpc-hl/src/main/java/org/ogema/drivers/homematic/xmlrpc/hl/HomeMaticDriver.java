@@ -26,6 +26,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -153,11 +154,13 @@ public class HomeMaticDriver implements Application {
 
     public class HmConnection implements HomeMaticConnection {
 
+    	Thread initThread;
         HomeMaticService hm;
         HomeMatic client;
         HmLogicInterface baseResource;
         ServiceRegistration<HomeMaticClientCli> commandLine;
-        Timer t;
+        // FIXME better use Java time than OGEMA timer in hardware driver?
+        volatile Timer t;
         /* Chain of responsibility for handling HomeMatic devices, the first
          handler that accepts a DeviceDescription will control that device 
          (=> register more specific handlers first; not actually useful for standard
@@ -379,8 +382,7 @@ public class HomeMaticDriver implements Application {
 
         @Override
         public void resourceUnavailable(HmLogicInterface t) {
-            close(connections.get(t));
-            connections.remove(t);
+            close(connections.remove(t));
         }
 
     };
@@ -407,9 +409,12 @@ public class HomeMaticDriver implements Application {
         if (appman != null) {
             appman.getResourceAccess().removeResourceDemand(HmLogicInterface.class, configListener);
         }
-        for (HmConnection conn: connections.values()) {
-            close(conn);
-        }
+    	final Iterator<HmConnection> it = connections.values().iterator();
+    	while (it.hasNext()) {
+    		final HmConnection conn = it.next();
+    		it.remove();
+    		close(conn);
+    	}
     }
 
     protected void pollParameters(HmConnection connection) {
@@ -420,10 +425,10 @@ public class HomeMaticDriver implements Application {
         }
     }
 
-    protected void init(HmConnection connection) {
+    protected void init(final HmConnection connection) {
         try {
             String serverUrl = null;
-            HmLogicInterface config = connection.baseResource;
+            final HmLogicInterface config = connection.baseResource;
             String urlPattern = config.baseUrl().getValue();
             // FIXME double use of the baseUrl resource is somewhat risky... is it really intended that one can either specify
             // an URL (if networkInterface is not set) or a pattern for the address (if networkInterface is also set)?
@@ -483,14 +488,32 @@ public class HomeMaticDriver implements Application {
             connection.hm.setBackend(persistence);
 
             connection.hm.addDeviceListener(persistence);
-            connection.hm.init(connection.client, "ogema-"+connection.baseResource.getName());
-
-            appman.getResourceAccess().addResourceDemand(HmDevice.class, devResourceListener);
-
-            connection.t = appman.createTimer(30000, connection.installModePolling);
-
-            logger.info("HomeMatic driver configured and registered according to config {}", config.getPath());
-        } catch (IOException | XmlRpcException ex) {
+            connection.initThread = new Thread(new Runnable() {
+				
+				@Override
+				public void run() {
+					try { // blocks for ca. 20s if no connection can be established
+						connection.hm.init(connection.client, "ogema-"+connection.baseResource.getName());
+					} catch (XmlRpcException e) {
+						if (Thread.interrupted()) {
+							Thread.currentThread().interrupt();
+							return;
+						}
+						logger.error("could not start HomeMatic driver for config {}", connection.baseResource.getPath());
+			            logger.debug("Exception details:", e);
+			            return;
+					} 
+					if (Thread.interrupted()) {
+						Thread.currentThread().interrupt();
+						return;
+					}
+		            appman.getResourceAccess().addResourceDemand(HmDevice.class, devResourceListener);
+		            connection.t = appman.createTimer(30000, connection.installModePolling);
+		            logger.info("HomeMatic driver configured and registered according to config {}", config.getPath());
+				}
+			}, "homematic-xmlrpc-init");
+            connection.initThread.start();
+        } catch (IOException ex) {
             logger.error("could not start HomeMatic driver for config {}", connection.baseResource.getPath());
             logger.debug("Exception details:", ex);
             //throw new IllegalStateException(ex);
@@ -498,21 +521,33 @@ public class HomeMaticDriver implements Application {
 
     }
 
-    protected void close(HmConnection connection) {
+    protected void close(final HmConnection connection) {
         HmLogicInterface config = connection.baseResource;
         try {
             if (connection.t != null) {
                 connection.t.destroy();
             }
-            if (appman != null) {
+            if (appman != null && connections.isEmpty()) { 
                 appman.getResourceAccess().removeResourceDemand(HmDevice.class, devResourceListener);
             }
             config.installationMode().stateControl().removeValueListener(connection.installModeListener);
             config.installationMode().stateFeedback().removeValueListener(connection.installModeListener);
             if (connection.client != null) {
-                connection.hm.close();
-                connection.commandLine.unregister();
+            	// service unregistration in stop method may block(?)
+            	new Thread(new Runnable() {
+					
+					@Override
+					public void run() {
+						 if (connection.hm != null)
+							 connection.hm.close();
+						 if (connection.commandLine != null)
+							 connection.commandLine.unregister();
+					}
+				}).start();
             }
+            final Thread initThread = connection.initThread;
+            if (initThread != null && initThread.isAlive())
+            	initThread.interrupt();
             if (logger  != null)
             	logger.info("HomeMatic configuration removed: {}", config);
         } catch (Exception e) {
@@ -545,6 +580,9 @@ public class HomeMaticDriver implements Application {
         }
         try {
             DeviceDescription channelDesc = conn.client.getDeviceDescription(address);
+            if (channelDesc.isDevice()) {
+                dev.addStructureListener(new DeletionListener(address, conn.client, true, logger));
+            }
             for (DeviceHandler h : conn.handlers) {
                 if (h.accept(channelDesc)) {
                     logger.debug("handler available for {}: {}", address, h.getClass().getCanonicalName());
