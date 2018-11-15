@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.impl.security;
 
@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
@@ -50,6 +51,8 @@ import javax.servlet.http.HttpSession;
 
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.Constants;
+import org.ogema.accesscontrol.HttpConfig;
+import org.ogema.accesscontrol.HttpConfigManagement;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.SessionAuth;
 import org.ogema.accesscontrol.Util;
@@ -74,9 +77,12 @@ import org.slf4j.Logger;
  */
 public class OgemaHttpContext implements HttpContext {
 
+	private static final String SESSION_COOKIE_PROP = "org.eclipse.jetty.servlet.SesionCookie";
 	static final Boolean httpEnable;
 	// private static final boolean xservletEnable;
-
+	
+	private final String cookie;
+	
 	final AppID owner;
 
 	// LoggerFactory factory;
@@ -101,9 +107,10 @@ public class OgemaHttpContext implements HttpContext {
 
 	private final static Logger logger = org.slf4j.LoggerFactory.getLogger(OgemaHttpContext.class.getName());
 	private final AccessManager accessMngr;
-	private ApplicationRegistry appReg;
+	private final ApplicationRegistry appReg;
 
-	private PermissionManager permMan;
+	private final PermissionManager permMan;
+	private final AtomicReference<HttpConfigManagement> httpConfigRef;
 
 	// loopback addresses and host names to determine if a request comes from the loopback interface
 	private static final Set<String> loopbackAddresses = new HashSet<>();
@@ -125,7 +132,8 @@ public class OgemaHttpContext implements HttpContext {
 		}
 	}
 
-	public OgemaHttpContext(PermissionManager pm, AppID app) {
+	public OgemaHttpContext(final PermissionManager pm, final AppID app, 
+			AtomicReference<HttpConfigManagement> httpConfigRef) {
 		Objects.requireNonNull(pm);
 		Objects.requireNonNull(app);
 		this.resources = new ConcurrentHashMap<>(3);
@@ -135,6 +143,19 @@ public class OgemaHttpContext implements HttpContext {
 		this.accessMngr = pm.getAccessManager();
 		this.owner = app;
 		this.permMan = pm;
+		this.httpConfigRef = httpConfigRef;
+		this.cookie = getProperty(app, SESSION_COOKIE_PROP, "JSESSIONID");
+	}
+	
+	private static String getProperty(final AppID app, final String property, final String defaultValue) {
+		final String take1 = AccessController.doPrivileged(new PrivilegedAction<String>() {
+
+			@Override
+			public String run() {
+				return app.getBundle().getBundleContext().getProperty(property);
+			}
+		});
+		return take1 != null ? take1 : defaultValue;
 	}
 
 	public void close() {
@@ -233,7 +254,30 @@ public class OgemaHttpContext implements HttpContext {
 			if (Configuration.DEBUG)
 				logger.debug("Known Session detected.");
 		}
-
+		final HttpConfigManagement httpConfigs = httpConfigRef.get();
+		final HttpConfig httpConfig = httpConfigs == null ? null : httpConfigs.getConfig(owner.getBundle());
+		if (httpConfig != null) {
+			final String allowedOrigin = httpConfig.getAllowedOrigin(request);
+			if (allowedOrigin != null) {
+				String clientOrigin = request.getHeader("origin");
+				if (allowedOrigin.equals("*")) {
+					if (clientOrigin != null)
+						response.addHeader("Access-Control-Allow-Origin", clientOrigin);
+				} 
+				else
+					response.addHeader("Access-Control-Allow-Origin", allowedOrigin);
+				if (httpConfig.isAllowCredentials(request))
+					response.addHeader("Access-Control-Allow-Credentials", "true");
+				final String allowedHeaders = httpConfig.getAllowedHeaders(request);
+				if (allowedHeaders != null)
+					response.addHeader("Access-Control-Allow-Headers", allowedHeaders);
+			}
+			if (httpConfig.getCustomHeaders(request) != null) {
+				for (Map.Entry<String, String> h: httpConfig.getCustomHeaders(request).entrySet()) {
+					response.addHeader(h.getKey(), h.getValue());
+				}
+			}
+		}
 		/*
 		 * Satisfaction of APP-SEC 16
 		 */
@@ -281,7 +325,7 @@ public class OgemaHttpContext implements HttpContext {
 		 * Set HttpOnly and secure flags which helps mitigate the client side XSS attacks accessing the session cookie.
 		 */
 		String sessionid = httpses.getId();
-		response.addHeader("SET-COOKIE", "JSESSIONID=" + sessionid + ";HttpOnly");
+		response.addHeader("SET-COOKIE", cookie + "=" + sessionid + ";HttpOnly");
 
 		// Look for access right of the user to the app sites according this http context.
 		String usrName = sesAuth.getName();
@@ -301,15 +345,30 @@ public class OgemaHttpContext implements HttpContext {
 			return false;
 		}
 		else {
+			accessMngr.setCurrentUser(usrName);
 			if (Configuration.DEBUG)
 				logger.debug("User authorization successful.");
 			String id = httpses.getId();
 			// If a resource and not a servlet is requested
 			// the session infos are to be hashed to register an otp session tupel.
-			if (info != null) {
-				int mimeIdx = info.lastIndexOf('.');
+			String info0 = null;
+			if (currenturi != null) {
+				final Map<String,String> staticUriRedirects = httpConfig == null ? null : httpConfig.getUriRedirects();
+				if (staticUriRedirects != null) {
+					for (String k : staticUriRedirects.keySet()) { 
+						if (currenturi.startsWith(k)) {
+							info0 = staticUriRedirects.get(k);
+							break;
+						}
+					}
+				}
+			}
+			final boolean isRedirectTarget = info0 != null;
+			info0 = isRedirectTarget ? info0 : info;
+			if (info0 != null) {
+				int mimeIdx = info0.lastIndexOf('.');
 				if (mimeIdx != -1) {
-					String mime = info.substring(mimeIdx + 1);
+					String mime = info0.substring(mimeIdx + 1);
 					switch (mime) {
 					case "html":
 					case "htm":
@@ -364,12 +423,27 @@ public class OgemaHttpContext implements HttpContext {
 			if (!isNonOtpResource(key))
 				sesid = requestThreadLocale.get();
 		}
+		boolean isRedirect = false;
+		final HttpConfigManagement httpConfigs = httpConfigRef.get();
+		final Map<String,String> staticRedirects = httpConfigs == null ? null : httpConfigs.getConfig(owner.getBundle()).getRedirects();
+		if (staticRedirects != null) {
+			final URL url0 = app.getClass().getResource(name);
+			for (String k : staticRedirects.keySet()) { 
+				if (name.startsWith(k)) {  			// k ends with "/"
+					if (url0 == null)
+						name = staticRedirects.get(k);
+					isRedirect = true;
+					break;
+				}
+			}
+		}
 
 		// this should only return the bundles jar resources
 		// permissions are checked inside by OSGi FW
-		if (sesid == null)
+		if (sesid == null || (isRedirect && !name.toLowerCase().endsWith(".html") && !name.toLowerCase().equals(".htm"))) {
 			return app.getClass().getResource(name);
-
+		}
+		
 		url = owner.getOneTimePasswordInjector(name, sesid);
 		return url;
 	}
@@ -437,7 +511,7 @@ public class OgemaHttpContext implements HttpContext {
 
 			@Override
 			public Boolean run() {
-				return Boolean.getBoolean("org.ogema.non-secure.http.enable");
+				return Boolean.getBoolean(ConfigurationConstants.HTTP_ENABLE_PROP);
 			}
 		});
 		/*

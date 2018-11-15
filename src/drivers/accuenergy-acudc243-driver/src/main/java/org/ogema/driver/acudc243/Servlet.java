@@ -24,7 +24,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.joda.time.DateTime;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -103,9 +102,9 @@ public class Servlet extends HttpServlet {
 		AcuDC243Device dev = device;// driver.getDevices().get(0);
 		// float current = dev.dataResource.current.getValue();
 
-		DateTime now = DateTime.now();
-		List<SampledValue> list = dev.dataResource.current.getHistoricalData().getValues(now.minusDays(1).getMillis(),
-				now.getMillis(), 60000, ReductionMode.AVERAGE);
+		long now = System.currentTimeMillis();
+		List<SampledValue> list = dev.dataResource.current.getHistoricalData().getValues(now - 24 * 60 * 60 * 1000, now,
+				60000, ReductionMode.AVERAGE);
 		System.out.println("historical list :" + list);
 
 		try {

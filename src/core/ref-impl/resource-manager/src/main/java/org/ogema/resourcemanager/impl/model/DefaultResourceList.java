@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.resourcemanager.impl.model;
 
@@ -100,7 +100,7 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 			setElementType(elementType);
 		}
 		if (elementType == null) {
-			elementType = (Class<T>) getEl().getResourceListType();
+			elementType = (Class<T>) getElInternal().getResourceListType();
 			setElementType(elementType);
 		}
 		else {
@@ -182,7 +182,7 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 
 	@Override
 	public int size() {
-		getEl();
+		getEl(); // FIXME ?
 		final TreeElement el = getElementsNode(false);
 		return el == null ? 0 : el.getData().getArrayLength();
 	}
@@ -308,12 +308,7 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
 	@SuppressWarnings("unchecked")
 	@Override
 	public Class<T> getElementType() {
-		getResourceDB().lockRead();
-		try {
-			return (Class<T>) getEl().getResourceListType();
-		} finally {
-			getResourceDB().unlockRead();
-		}
+		return (Class<T>) getEl().getResourceListType();
 	}
 
 	@Override
@@ -326,7 +321,7 @@ public class DefaultResourceList<T extends Resource> extends ResourceBase implem
             if (oldType != null && !oldType.equals(resType)) {
                 throw new IllegalStateException("resource type already set and not equal to new type");
             }
-			getEl().setResourceListType(resType);
+			getElInternal().setResourceListType(resType);
 			if (oldType == null) {
                 try {
                     // explicit class load to create a bundle wiring to the element type class.

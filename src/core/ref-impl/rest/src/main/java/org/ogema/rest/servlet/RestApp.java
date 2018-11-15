@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.rest.servlet;
 
@@ -21,81 +21,89 @@ import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.accesscontrol.PermissionManager;
-import org.ogema.core.administration.AdministrationManager;
+import org.ogema.accesscontrol.RestAccess;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
+import org.ogema.recordeddata.DataRecorder;
 import org.osgi.service.http.HttpService;
 import org.osgi.service.http.NamespaceException;
 
-// TODO RecordedDataServlet
+/**
+ * Register REST debug GUI
+ */
 @Component(specVersion = "1.2")
 @Service(Application.class)
 public class RestApp implements Application {
 
+	private ApplicationManager appMan;
+	
 	@Reference
-	HttpService http;
-	@Reference
+	private HttpService http;
+	
+	@Reference 
 	private PermissionManager permMan;
+	
 	@Reference
-	private AdministrationManager adminMan;
-
-	private RestAccess restAcc;
-
-	protected ApplicationManager appman;
-	private boolean SECURITY_ENABLED;// "on".equalsIgnoreCase(System.getProperty("org.ogema.security", "off"));
+	private RestAccess restAccess;
+	
+	@Reference
+	private DataRecorder dataRecorder;
 	
 	@Override
 	public void start(ApplicationManager appManager) {
-		appman = appManager;
-		restAcc = new RestAccess(permMan, adminMan);
-		SECURITY_ENABLED = permMan.isSecure();
-		if (SECURITY_ENABLED && System.getSecurityManager() == null) {
-			throw new Error("org.ogema.security=on, but security manager is null!");
-		}
-		RestServlet restServlet = new RestServlet(appManager, permMan, restAcc, SECURITY_ENABLED);
+		this.appMan = appManager;
+		RestServlet restServlet = new RestServlet(permMan, restAccess);
 		try {
-			http.registerServlet(RestServlet.alias, restServlet, null, null);
-			appman.getLogger().info("REST servlet registered, security enabled: {}", SECURITY_ENABLED);
+			http.registerServlet(RestServlet.ALIAS, restServlet, null, null);
+			appManager.getLogger().info("REST servlet registered");
 		} catch (ServletException | NamespaceException ex) {
-			appman.getLogger().error("could not register servlet");
+			appManager.getLogger().error("could not register servlet", ex);
 		}
-		RestTypesServlet typesServlet  =new RestTypesServlet(appManager, permMan, restAcc, SECURITY_ENABLED);
+		RestTypesServlet typesServlet  =new RestTypesServlet(permMan, restAccess);
 		try {
-			http.registerServlet(RestTypesServlet.alias, typesServlet, null, null);
-			appman.getLogger().info("REST types servlet registered, security enabled: {}", SECURITY_ENABLED);
+			http.registerServlet(RestTypesServlet.ALIAS, typesServlet, null, null);
+			appManager.getLogger().info("REST types servlet registered");
 		} catch (ServletException | NamespaceException ex) {
-			appman.getLogger().error("could not register servlet");
+			appManager.getLogger().error("could not register servlet", ex);
 		}
-		RestPatternServlet patternServlet = new RestPatternServlet(appManager, permMan, restAcc, SECURITY_ENABLED);
+		RestPatternServlet patternServlet = new RestPatternServlet(permMan, restAccess);
 		try {
-			http.registerServlet(RestPatternServlet.alias, patternServlet, null, null);
-			appman.getLogger().info("REST pattern servlet registered, security enabled: {}", SECURITY_ENABLED);
+			http.registerServlet(RestPatternServlet.ALIAS, patternServlet, null, null);
+			appManager.getLogger().info("REST pattern servlet registered");
 		} catch (ServletException | NamespaceException ex) {
-			appman.getLogger().error("could not register servlet");
+			appManager.getLogger().error("could not register servlet", ex);
 		}
-		String url = appman.getWebAccessManager().registerWebResourcePath("/rest-gui", "rest/gui");
+		try {
+			http.registerServlet(RecordedDataServlet.ALIAS, new RecordedDataServlet(restAccess, dataRecorder), null, null);
+			appManager.getLogger().info("Recorded data servlet registered");
+		} catch (ServletException | NamespaceException ex) {
+			appManager.getLogger().error("could not register servlet", ex);
+		}
+		String url = appManager.getWebAccessManager().registerWebResourcePath("/rest-gui", "rest/gui");
 		appManager.getLogger().info("Pattern debug page registered under url {}", url);
 	}
 	
 	@Override
 	public void stop(AppStopReason reason) {
-		if (appman != null) 
+		final ApplicationManager appMan = this.appMan;
+		this.appMan = null;
+		if (appMan != null) { 
 			try {
-				appman.getWebAccessManager().unregisterWebResourcePath("/rest-gui");
-			} catch (Exception e) {/*ignore*/}
-		appman = null;
-		restAcc =null;
-		if (http != null) {
-			try {
-				http.unregister(RestServlet.alias);
-			} catch (Exception e) {/*ignore*/}
-			try {
-				http.unregister(RestTypesServlet.alias);
-			} catch (Exception e) {/*ignore*/}
-			try {
-				http.unregister(RestPatternServlet.alias);
+				appMan.getWebAccessManager().unregisterWebResourcePath("/rest-gui");
 			} catch (Exception e) {/*ignore*/}
 		}
+		try {
+			http.unregister(RestServlet.ALIAS);
+		} catch (Exception e) {/*ignore*/}
+		try {
+			http.unregister(RestTypesServlet.ALIAS);
+		} catch (Exception e) {/*ignore*/}
+		try {
+			http.unregister(RestPatternServlet.ALIAS);
+		} catch (Exception e) {/*ignore*/}
+		try {
+			http.unregister(RecordedDataServlet.ALIAS);
+		} catch (Exception e) {/*ignore*/}
 	}
 	
 }

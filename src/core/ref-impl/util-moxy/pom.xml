@@ -1,0 +1,84 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.ogema.tools</groupId>
+    <artifactId>util-moxy</artifactId>
+    <packaging>bundle</packaging>
+    
+    <parent>
+        <groupId>org.ogema.ref-impl</groupId>
+        <artifactId>ref-impl</artifactId>
+        <version>2.2.0</version>
+    </parent>
+
+    <name>OGEMA ref-impl :: util-moxy</name>
+    <description>
+        Util bundle replacement for use with moxy, the JAXB implementation
+        of the eclipse project.
+    </description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>util</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.persistence</groupId>
+            <artifactId>org.eclipse.persistence.moxy</artifactId>
+            <version>2.7.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.persistence</groupId>
+            <artifactId>org.eclipse.persistence.core</artifactId>
+            <version>2.7.3</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.xml.bind</groupId>
+            <artifactId>jaxb-api</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <DynamicImport-Package>*</DynamicImport-Package>
+                        <Import-Package>
+                            org.eclipse.persistence.jaxb,
+                            javax.xml.bind.*,
+                            com.google.common.io;version="[${guava.version.min},${guava.version.max})",
+                            org.ogema.service.webresourcemanager;resolution:=optional,*
+                            *
+                        </Import-Package>
+                        <Export-Package>
+                            org.ogema.serialization;-split-package:=merge-first,
+                            org.ogema.serialization.jaxb;-split-package:=merge-first,
+                            org.ogema.serialization.schedules;-split-package:=merge-first,
+                            org.ogema.tools.impl,
+                            org.ogema.util
+                        </Export-Package>
+                    </instructions>
+                    <!-- unpackBundle>true</unpackBundle -->
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

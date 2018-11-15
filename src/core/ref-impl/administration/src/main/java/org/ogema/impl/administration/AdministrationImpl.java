@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 /**
  * 
@@ -42,9 +42,10 @@ import org.ogema.core.administration.UserAccount;
 import org.ogema.core.application.AppID;
 import org.ogema.core.installationmanager.InstallationManagement;
 import org.ogema.core.installationmanager.SourcesManagement;
-import org.ogema.core.logging.LoggerFactory;
+//import org.ogema.core.logging.LoggerFactory;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
 import org.slf4j.Logger;
 
 /**
@@ -59,8 +60,8 @@ public class AdministrationImpl implements AdministrationManager {
 	@Reference
 	protected FrameworkClock clock;
 
-	@Reference
-	protected LoggerFactory loggerFactory;
+//	@Reference
+//	protected LoggerFactory loggerFactory;
 	
 	@Reference
 	private SourcesManagement sourcesManager;
@@ -170,11 +171,14 @@ public class AdministrationImpl implements AdministrationManager {
 	@SuppressWarnings("unchecked")
 	public List<AdminLogger> getAllLoggers() {
 		try {
-			// XXX need additional interface/service
-			Method m = loggerFactory.getClass().getMethod("getAllLoggers");
+			final ServiceReference<org.ogema.core.logging.LoggerFactory> ref = context.getServiceReference(org.ogema.core.logging.LoggerFactory.class);
+			final org.ogema.core.logging.LoggerFactory loggerFactory = context.getService(ref);
+			Method m = loggerFactory.getClass().getMethod("getAllLoggers"); // assuming we have an OgemaLoggerFactory
 			return (List<AdminLogger>) m.invoke(loggerFactory);
-		} catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ex) {
-			loggerFactory.getLogger(getClass()).error("could not retrieve loggers", ex);
+		} catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | ClassCastException  
+				| NullPointerException | IllegalStateException ex) {
+			// not actually an error, if another logger is used instead of the ogema-logger
+			logger.error("could not retrieve loggers: " + ex); 
 			return Collections.emptyList();
 		}
 	}

@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.exam.latest;
 
@@ -42,7 +42,7 @@ import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceRegistration;
 
 /**
- * Similar to {@link OsgiAppTestBase}, but uses different dependency version. 
+ * Similar to OsgiAppTestBase, but uses different dependency version. 
  * It tries to use the respectively latest available version of a dependency which is still compatible with Java 7
  */
 @RunWith(PaxExam.class)
@@ -102,18 +102,15 @@ public abstract class LatestVersionsTestBase {
 				CoreOptions.mavenBundle("org.ogema.ref-impl", "permission-admin").version(ogemaVersion).startLevel(1)
 						.start(),
 
-				CoreOptions.mavenBundle("org.ops4j.pax.exam", "pax-exam-junit4", "4.11.0").start(),
-
 				CoreOptions.mavenBundle("org.ow2.asm", "asm-all", "5.2").start(),
 
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.scr", "2.0.12").start(),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.eventadmin", "1.4.8").start(),
-//				CoreOptions.mavenBundle("org.ogema.external", "org.apache.felix.useradmin.filestore", "1.0.2").start(),
-//				CoreOptions.mavenBundle("org.ogema.external", "org.apache.felix.useradmin", "1.0.3").start(),
-				// we use knopflerfish here, and felix useradmin in exam-base1
-				CoreOptions.mavenBundle("org.osgi", "org.knopflerfish.bundle.useradmin", "4.1.1").start(),
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.configadmin", "1.8.14").start(), 
-				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.jetty", "3.1.6").start(),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.scr", "2.1.0").start(),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.eventadmin", "1.5.0").start(),
+				CoreOptions.mavenBundle("org.ogema.external", "org.apache.felix.useradmin.filestore", "1.0.2").start(),
+				CoreOptions.mavenBundle("org.ogema.external", "org.apache.felix.useradmin", "1.0.3").start(),
+				CoreOptions.mavenBundle("org.osgi", "org.osgi.service.useradmin", "1.1.0").start(),
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.configadmin", "1.9.0").start(), 
+				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.http.jetty", "3.1.6").start(), // higher jetty versions require java 8
                 CoreOptions.mavenBundle("org.eclipse.jetty", "jetty-servlets", "9.2.14.v20151106"),
 				CoreOptions.mavenBundle("javax.servlet", "javax.servlet-api", "3.1.0"),
 
@@ -129,9 +126,9 @@ public abstract class LatestVersionsTestBase {
 
 				// apache commons (for recordeddata-storage and framework-administration)-->
 				CoreOptions.mavenBundle("org.apache.commons", "commons-math3", "3.6.1"),
-				CoreOptions.mavenBundle("commons-io", "commons-io", "2.5"),
-				CoreOptions.mavenBundle("commons-codec", "commons-codec", "1.10"),
-				CoreOptions.mavenBundle("org.apache.commons", "commons-lang3", "3.6"),
+				CoreOptions.mavenBundle("commons-io", "commons-io", "2.6"),
+				CoreOptions.mavenBundle("commons-codec", "commons-codec", "1.11"),
+				CoreOptions.mavenBundle("org.apache.commons", "commons-lang3", "3.7"),
 				CoreOptions.mavenBundle("org.json", "json", "20170516"),
 				// <-- apache commons
                 

@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.accesscontrol;
 
@@ -72,7 +72,6 @@ public interface PermissionManager {
 	 * Install a set of permissions defined as default permissions for all Apps. This method is called if the
 	 * administrator requests the change of installed Default policies.
 	 * 
-	 * @param pInfos
 	 *            List of Permission where each of them can be provided with an condition as expected by the method
 	 *            org.osgi.service.condpermadmin .ConditionalPermissionUpdate.getConditionalPermissionInfos(). For the
 	 *            exact format definition of the permission info string see OSGi Service Platform Core Specification,
@@ -194,6 +193,8 @@ public interface PermissionManager {
 	 * @return The ResourceAccessRights object.
 	 */
 	public ResourceAccessRights getAccessRights(Application app, TreeElement el);
+	
+	public ResourceAccessRights getAccessRights(Application app, TreeElement el, String user);
 
 	/**
 	 * Checks the permission of the given application to delete the resource specified with its TreeElement object.

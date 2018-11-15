@@ -1,19 +1,21 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.core.rads.change;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.application.ApplicationManager;
@@ -35,6 +37,7 @@ public class PatternStructureChangeListener extends InternalStructureListenerReg
 	private final Resource target;
 	private final ApplicationManager am;
 	private boolean virtualResource;
+	private final AtomicBoolean active = new AtomicBoolean(true);
 	
 	public PatternStructureChangeListener(PatternChangeListenerRegistration patternListener, Resource resource) {
 		this.patternListener = patternListener;
@@ -65,8 +68,8 @@ public class PatternStructureChangeListener extends InternalStructureListenerReg
 
     @Override
 	public void queueActiveStateChangedEvent(final boolean active) {
-		final CompoundResourceEvent<?> e = active ? DefaultCompoundEvent.createResourceActivatedEvent(target)
-				: DefaultCompoundEvent.createResourceDeactivatedEvent(target);
+		final CompoundResourceEvent<?> e = active ? DefaultCompoundEvent.createResourceActivatedEvent(target, this.active)
+				: DefaultCompoundEvent.createResourceDeactivatedEvent(target, this.active);
 		patternListener.trigger(e);
 	}
 
@@ -76,20 +79,20 @@ public class PatternStructureChangeListener extends InternalStructureListenerReg
 			return;
 		}
         virtualResource = false;
-		patternListener.trigger(DefaultCompoundEvent.createResourceCreatedEvent(target));
+		patternListener.trigger(DefaultCompoundEvent.createResourceCreatedEvent(target, active));
 	}
 
     @Override
 	public void queueResourceDeletedEvent() {
         virtualResource = true;
-		patternListener.trigger(DefaultCompoundEvent.createResourceDeletedEvent(target));
+		patternListener.trigger(DefaultCompoundEvent.createResourceDeletedEvent(target, active));
 	}
 
     @Override
 	public void queueSubResourceAddedEvent(final TreeElement subresource) {
     	try {
     		Resource subResource = findResource(subresource, target);
-    		patternListener.trigger(DefaultCompoundEvent.createResourceAddedEvent(target, subResource));
+    		patternListener.trigger(DefaultCompoundEvent.createResourceAddedEvent(target, subResource, active));
     	} catch (SecurityException expected) {}
 	}
 
@@ -98,7 +101,7 @@ public class PatternStructureChangeListener extends InternalStructureListenerReg
     	try {
     		Resource subResource = findResource(subresource, target);
     		assert subResource != null;
-    		patternListener.trigger(DefaultCompoundEvent.createResourceRemovedEvent(target, subResource));
+    		patternListener.trigger(DefaultCompoundEvent.createResourceRemovedEvent(target, subResource, active));
     	} catch (SecurityException expected) {}
 	}
 	
@@ -113,7 +116,7 @@ public class PatternStructureChangeListener extends InternalStructureListenerReg
 			return;
 		}
 		patternListener.trigger(new DefaultCompoundEvent<>(added ? CompoundEventType.REFERENCE_ADDED
-				: CompoundEventType.REFERENCE_REMOVED, target, referencingResource, null, null, false));
+				: CompoundEventType.REFERENCE_REMOVED, target, referencingResource, null, null, false, active));
 	}
 
 	@Override
@@ -150,6 +153,16 @@ public class PatternStructureChangeListener extends InternalStructureListenerReg
 	@Override
 	public void resourceStructureChanged(ResourceStructureEvent event) {
 		throw new UnsupportedOperationException("PatternStructureChangeListener does not expect any callbacks");
+	}
+	
+	@Override
+	public void dispose() {
+		active.set(false);
+	}
+	
+	@Override
+	public boolean isActive() {
+		return active.get();
 	}
 	
 }

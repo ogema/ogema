@@ -1,0 +1,16 @@
+(org.osgi.framework.ServicePermission "org.ogema.impl.security.headers.HttpConfigService" "get,register")
+(org.osgi.framework.ServicePermission "org.ogema.accesscontrol.HttpConfigManagement" "register")
+(org.osgi.framework.PackagePermission "org.osgi.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.accesscontrol" "import")
+
+(org.osgi.framework.PackagePermission "org.slf4j" "import")
+(org.osgi.framework.PackagePermission "com.google.common.collect" "import")
+(org.osgi.framework.PackagePermission "javax.servlet.http" "import")
+
+(java.util.PropertyPermission "org.ogema.webresourcemanager.*" "read")
+
+# Require capability permissions
+(org.osgi.framework.CapabilityPermission "osgi.extender" "require")
+# Seems to be required to receive configurations from configurator service(?)
+(org.osgi.service.cm.ConfigurationPermission "?*" "target")
+

@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.rest.patternmimic;
 
@@ -23,6 +23,7 @@ import javax.xml.bind.JAXBException;
 
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
+import org.ogema.rest.servlet.Utils;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -43,7 +44,7 @@ public final class ResourcePatternWriters {
 	}
 
 	public static ResourcePatternWriter forRequest(HttpServletRequest req, ApplicationManager appMan) {
-		String accept = req.getHeader("Accept");
+		final boolean xmlOrJson = Utils.xmlOrJson(req);
 		//System.out.println("Writer for type: " + accept);
 		String recursiveStr = req.getParameter(PARAM_RECURSIVE);
 		boolean recursive = false;
@@ -55,25 +56,7 @@ public final class ResourcePatternWriters {
 		int maxHits = getNonNegativeInt(req, PARAM_MAX_HITS, Integer.MAX_VALUE);
 		int from = getNonNegativeInt(req, PARAM_FROM, 0);
 		Resource parent = selectResource(req.getPathInfo(), appMan); // may be null, for toplevel
-		if (accept == null || accept.equals("*/*")) {
-			String contentType = req.getHeader("Content-Type");
-			if (contentType != null && contentType.startsWith("application/xml")) {
-				return createXmlWriter(appMan, parent, recursive, maxHits, from);
-			}
-			else {
-				return createJsonWriter(appMan, parent, recursive, maxHits, from);
-			}
-		}
-		else if (accept.contains("application/json")) {
-			return createJsonWriter(appMan, parent, recursive, maxHits, from);
-		}
-		else if (accept.contains("application/xml")) {
-			return createXmlWriter(appMan, parent, recursive, maxHits, from);
-		}
-		else {
-			//System.out.println("no writer for " + accept);
-			return null;
-		}
+		return xmlOrJson ? createXmlWriter(appMan, parent, recursive, maxHits, from) : createJsonWriter(appMan, parent, recursive, maxHits, from);
 	}
 
 	private static ResourcePatternWriter createJsonWriter(final ApplicationManager appMan, final Resource parent, 

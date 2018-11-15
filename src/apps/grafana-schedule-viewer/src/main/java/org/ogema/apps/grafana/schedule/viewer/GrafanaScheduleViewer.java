@@ -1,49 +1,51 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.apps.grafana.schedule.viewer;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Service;
+import org.ogema.apps.grafana.schedule.viewer.SessionData.DataSupplier;
 import org.ogema.core.application.Application;
 import org.ogema.core.application.ApplicationManager;
-import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.resourcemanager.ResourceAccess;
-import org.ogema.core.resourcemanager.ResourceDemandListener;
-import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.tools.grafana.base.InfluxFake;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Component(specVersion = "1.2", immediate = true)
+@Component(specVersion = "1.2")
 @Service(Application.class)
-public class GrafanaScheduleViewer implements Application, ResourceDemandListener<Schedule> {
+public class GrafanaScheduleViewer implements Application {
 
-	protected OgemaLogger logger;
+	private final static String SESSION_ATTRIBUTE = "grafana_schedviewer_data";
+	static final Logger logger = LoggerFactory.getLogger(GrafanaScheduleViewer.class);
 	protected ApplicationManager am;
 	protected ResourceAccess ra;
 	protected List<Class<? extends Resource>> forecastScheduleTypes, programScheduleTypes, otherScheduleTypes;
 	protected InfluxFake infl;
-    @SuppressWarnings("rawtypes")
-	protected Map<String, Map> panels;
-	protected Map<String, Map<String, Class<? extends Resource>>> restrictions;
+	private DataSupplierImpl supplier;
 
 	private String webResourceBrowserPath;
 	private String servletPath;
@@ -51,18 +53,77 @@ public class GrafanaScheduleViewer implements Application, ResourceDemandListene
 	@Override
     public void start(ApplicationManager am) {
         this.am = am;
-        this.logger = am.getLogger();
         this.ra = am.getResourceAccess();
         this.forecastScheduleTypes = new ArrayList<>();
         this.programScheduleTypes = new ArrayList<>();
         this.otherScheduleTypes = new ArrayList<>();
-        this.restrictions = new LinkedHashMap<String, Map<String, Class<? extends Resource>>>();
         logger.debug("Grafana log app started", getClass().getName());
         String webResourcePackagePath = "org/ogema/apps/grafana/schedule/viewer/grafana-1.9.1";
         String appNameLowerCase = "GrafanaScheduleViewer".toLowerCase();
         webResourceBrowserPath = am.getWebAccessManager().registerWebResourcePath("", webResourcePackagePath);
+        this.supplier = new DataSupplierImpl(ra);
+        this.infl = new InfluxFake(am,Collections.<String,Map> emptyMap(), 5000) {
+        	
+			private static final long serialVersionUID = 1L;
+
+			@Override
+        	protected void onGet(HttpServletRequest req) {
+        		final HttpSession session = req.getSession();
+        		SessionData o;
+        		try {
+        			o = (SessionData) session.getAttribute(SESSION_ATTRIBUTE);
+        		} catch (ClassCastException e) {
+        			session.removeAttribute(SESSION_ATTRIBUTE);
+        			o = null;
+        		}
+        		if (o == null || ra == null) {
+        			o = new SessionData(supplier, ra);
+        			session.setAttribute(SESSION_ATTRIBUTE, o);
+        		}
+        	}
+			
+			@SuppressWarnings("rawtypes")
+			@Override
+			public Map<String, Map> getPanels(HttpServletRequest req) {
+				final HttpSession session = req.getSession();
+        		SessionData o = (SessionData) session.getAttribute(SESSION_ATTRIBUTE);
+        		if (o == null)
+        			return Collections.emptyMap();
+        		return o.getPanels();
+			}
+			
+			@Override
+			public Map<String, Map<String, Class<? extends Resource>>> getRestrictions(HttpServletRequest req) {
+				final HttpSession session = req.getSession();
+        		SessionData o = (SessionData) session.getAttribute(SESSION_ATTRIBUTE);
+        		if (o == null)
+        			return Collections.emptyMap();
+        		return o.getRestrictions();
+			}
+			
+			@Override
+			protected List<? extends Resource> getResources(Class<? extends Resource> clazz, HttpServletRequest req) {
+				final HttpSession session = req.getSession();
+        		SessionData o = (SessionData) session.getAttribute(SESSION_ATTRIBUTE);
+        		if (o == null)
+        			return Collections.emptyList();
+        		return o.getResources(clazz);
+			}
+			
+			@Override
+			protected Class getClass(String longResTypeName, HttpServletRequest req) {
+				final HttpSession session = req.getSession();
+        		SessionData o = (SessionData) session.getAttribute(SESSION_ATTRIBUTE);
+        		if (o == null)
+        			return null;
+        		return o.getClass(longResTypeName);
+			}
+        	
+        };
+        
+        
 //        webResourceBrowserPath =am.getWebAccessManager().registerWebResource("/org/ogema/apps/grafana-schedule-viewer",webResourcePackagePath);        
-        panels = new LinkedHashMap<>();
+//        panels = new LinkedHashMap<>();
         // row 1
  /*       Map<String,Class<? extends Resource>> firstRowPanels = new LinkedHashMap<String,Class<? extends Resource>>();       
          firstRowPanels.put("Programs / Definition schedules",DefinitionSchedule.class);
@@ -73,13 +134,10 @@ public class GrafanaScheduleViewer implements Application, ResourceDemandListene
          secondRowPanels.put("Forecast schedules",ForecastSchedule.class);
          panels.put("Forecast schedules", secondRowPanels); */
 
-        this.infl = new InfluxFake(am, panels, -1);
-        infl.setStrictMode(true);
-        infl.setRestrictions(restrictions);
+//        this.infl = new InfluxFake(am, panels, -1);
 
         servletPath = "/apps/ogema/" + appNameLowerCase + "/fake_influxdb/series";
         am.getWebAccessManager().registerWebResource(servletPath, infl);
-        ra.addResourceDemand(Schedule.class, this);
     }
 
 	@Override
@@ -89,75 +147,57 @@ public class GrafanaScheduleViewer implements Application, ResourceDemandListene
 			am.getWebAccessManager().unregisterWebResourcePath("");
 			am.getWebAccessManager().unregisterWebResource(servletPath);
 		}
-		if (ra != null)
-			ra.removeResourceDemand(Schedule.class, this);
 		am = null;
 		ra = null;
-		logger = null;
 		infl = null;
-		forecastScheduleTypes= null;
-		programScheduleTypes = null;
-		otherScheduleTypes = null;
-		restrictions = null;
-		panels=  null;
+		final DataSupplierImpl supplier = this.supplier;
+		this.supplier = null;
+		if (supplier != null)
+			supplier.close();
 	}
 
-	private void tryAddScheduleType(List<Class<? extends Resource>> targetList, Class<? extends Resource> parentType, String prefix, Schedule schedule) {
-        if (targetList.contains(parentType)) {
-            return;
-        }
-        Class<? extends Resource> type = schedule.getResourceType();
-        targetList.add(parentType);
-        Map<String, Class<? extends Resource>> rowPanels = new LinkedHashMap<>();
-        Map<String, Class<? extends Resource>> rowRestrictions = new LinkedHashMap<>();
-        String rowId = prefix + " " + parentType.getSimpleName();
-        rowPanels.put(rowId, type);
-        rowRestrictions.put(rowId, parentType);
-        panels.put(rowId, rowPanels);
-        restrictions.put(rowId, rowRestrictions);
-        infl.setPanels(panels);
-    }
 
-	@Override
-	public void resourceAvailable(Schedule schedule) {
-		final Class<? extends Resource> type = schedule.getResourceType();
-		logger.debug("  Callback for " + schedule.getLocation() + ", type " + type.getSimpleName());
+	private static class DataSupplierImpl implements DataSupplier {
 
-		final Class<? extends Resource> parentType;
-		try {
-			parentType = schedule.getParent().getResourceType();
-		} catch (Exception e) {
-			logger.warn("Could not determine type of schedule " + schedule.getLocation() + ". Ignoring it.");
-			return;
+		private final Object dataLock = new Object();
+    	private volatile WeakReference<GlobalData> globalData = new WeakReference<GlobalData>(null);
+    	private final ResourceAccess ra;
+    	
+    	 DataSupplierImpl(ResourceAccess ra) {
+    		 this.ra = ra;
+    	 }
+		
+		@Override
+		public GlobalData getGlobalData() {
+			final WeakReference<GlobalData> reference = this.globalData;
+			if (reference == null) // closed
+				return null;
+			GlobalData data = reference.get();
+			if (data != null)
+				return data;
+			synchronized (dataLock) {
+				data = this.globalData.get();
+				if (data != null)
+					return data;
+				data = new GlobalData(ra);
+				try { // wait for callbacks
+					Thread.sleep(200);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				} 
+				this.globalData = new WeakReference<GlobalData>(data);
+				return data;
+			}
 		}
-
-		switch (schedule.getName()) {
-		case "program":
-			tryAddScheduleType(programScheduleTypes, parentType, "Program:", schedule);
-			break;
-		case "forecast":
-			tryAddScheduleType(forecastScheduleTypes, parentType, "Forecast:", schedule);
-			break;
-		default:
-			tryAddScheduleType(otherScheduleTypes, parentType, "Other:", schedule);
-			break;
+		
+		void close() {
+			GlobalData gd = globalData.get();
+			if (gd != null) {
+				gd.close();
+			}
+			globalData = null;
 		}
-		//        if (!forecastScheduleTypes.contains(parentType)) {
-		//            forecastScheduleTypes.add(parentType);
-		//            Map<String, Class<? extends Resource>> rowPanels = new LinkedHashMap<>();
-		//            Map<String, Class<? extends Resource>> rowRestrictions = new LinkedHashMap<>();
-		//            String rowId = "Programs: " + parentType.getSimpleName();
-		//            rowPanels.put(rowId, type);
-		//            rowRestrictions.put(rowId, parentType);
-		//            panels.put(rowId, rowPanels);
-		//            restrictions.put(rowId, rowRestrictions);
-		//            infl.setPanels(panels);
-		//        }
-
+		
 	}
-
-	@Override
-	public void resourceUnavailable(Schedule schedule) {
-		// TODO
-	}
+	
 }

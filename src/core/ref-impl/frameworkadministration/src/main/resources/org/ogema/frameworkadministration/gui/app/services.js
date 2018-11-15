@@ -124,10 +124,10 @@ ngOGFrAdminApp.service('ogemaGateway', ['$http', '$q', '$rootScope', '$filter', 
                     .success(function(data) {
                      //   console.log(data);
                         deferred.resolve(data);
-                    }).error(function(status, error, result) {
+                    }).error(function(html, status, error, result) {
                       //   console.log("Error POST", status, error, result);
 
-                deferred.reject();
+                deferred.reject(status);
                 //deferred.resolve();
             });
             ;

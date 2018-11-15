@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.tools.grafana.base;
 
@@ -21,6 +21,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -39,7 +40,6 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.ogema.core.application.ApplicationManager;
-import org.ogema.core.channelmanager.measurements.LongValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.logging.OgemaLogger;
@@ -63,6 +63,9 @@ import org.ogema.model.actors.Actor;
 import org.ogema.model.prototypes.PhysicalElement;
 import org.ogema.model.sensors.Sensor;
 import org.ogema.model.sensors.TemperatureSensor;
+import org.ogema.tools.timeseries.iterator.api.MultiTimeSeriesIterator;
+import org.ogema.tools.timeseries.iterator.api.MultiTimeSeriesIteratorBuilder;
+import org.ogema.tools.timeseries.iterator.api.SampledValueDataPoint;
 
 /**
  * Instances of this class can serve as backend for a Grafana web page (http://grafana.org). <br>
@@ -110,12 +113,11 @@ public class InfluxFake extends HttpServlet {
 	 * Example: for a single panel, just one map entry (key: row name) and one list entry (resource type) is needed 
 	 * The full type name must be given, e.g. org.ogema.core.model.simple.FloatResource
 	 */
-	protected Map<String, Map> panels;
+	protected volatile Map<String, Map> panels;
 	// the field below is used for a hack to filter the resources shown by the resource type of their parent (typically applied to schedules)
 	protected Map<String, Map<String, Class<? extends Resource>>> restrictions;
 	protected boolean strictMode = false;
-	protected DataType dataType = DataType.LOG_DATA;
-	protected List<String> loggedResources;
+	protected final DataType dataType;
 
 	private static int GRAFANA_AHEAD_TIME_IN_MS = 1000 * 60 * 60; // 60min
 	private static int GRAFANA_BEFORE_TIME_IN_MS = -1 * 1000 * 60 * 5; // 05min
@@ -172,16 +174,16 @@ public class InfluxFake extends HttpServlet {
 	}
 
 	/**
-	 * 
-	 * @param panels: in general a Map<String,Map>, where the String provides a row ID, and the 
+	 * @param am
+	 * @param panels: in general a Map&lt;String,Map&gt;, where the String provides a row ID, and the 
 	 * second Map sets the columns within one row (typically, the second map has only one entry).<br>
 	 * Allowed types for the second map: <br>
 	 * <ul>
-	 *  <li> Map<String,Class<? extends SingleValueResource>>, in which case log data for all resources of the given type is plotted
-	 *  <li> Map<String,Class<? extends Actor>>, in which case log data for the relevant value subresource is plotted
-	 *  <li> Map<String,Class<? extends Sensor>>, like Actor
-	 *  <li> Map<String,SingleValueResource>>, in which case only log data of the resources provided are plotted
-	 *  <li> Map<String,Schedule>>, in which case only the schedules provided are plotted
+	 *  <li> Map&lt;String,Class&lt;? extends SingleValueResource&gt;&gt;, in which case log data for all resources of the given type is plotted
+	 *  <li> Map&lt;String,Class&lt;? extends Actor&gt;&gt;, in which case log data for the relevant value subresource is plotted
+	 *  <li> Map&lt;String,Class&lt;? extends Sensor&gt;&gt;, like Actor
+	 *  <li> Map&lt;String,SingleValueResource&gt;&gt;, in which case only log data of the resources provided are plotted
+	 *  <li> Map&lt;String,Schedule&gt;&gt;, in which case only the schedules provided are plotted
 	 * </ul>
 	 * @param updateInterval initial update intervla in ms; can be changed via UI
 	 * @param MAX_SAMPLES: maximum number of samples to display, per resource; if exceeded, the time series is downsampled
@@ -202,9 +204,8 @@ public class InfluxFake extends HttpServlet {
 		this.panels = panels;
 		this.updateInterval = updateInterval;
 		this.MAX_SAMPLES = MAX_SAMPLES;
-		this.loggedResources = new ArrayList<String>();
 		this.dataType = dataType;
-		this.restrictions = new HashMap<String, Map<String, Class<? extends Resource>>>();
+		this.restrictions = new HashMap<>(2);
 		//System.out.println("Created new InfluxFake!!!");
 		//         t= am.getResourceManagement().createResource("auxTempResourceDoNotRemove", TemperatureResource.class); //  this is currently needed in order to get access to the class loader of PhysicalUnitResources
 
@@ -221,6 +222,28 @@ public class InfluxFake extends HttpServlet {
 	 */
 	protected String getAlternativeDisplayName(Resource resource) {
 		return null;
+	}
+	
+	
+	/**
+	 * Override if required
+	 * @param req
+	 */
+	protected void onGet(HttpServletRequest req) {
+		
+	}
+	
+	/**
+	 * 
+	 * @param req
+	 * @return
+	 */
+	protected Map<String, Map> getPanels(HttpServletRequest req) {
+		return panels;
+	}
+	
+	protected List<? extends Resource> getResources(Class<? extends Resource> clazz, HttpServletRequest req) {
+		return ra.getResources(clazz);
 	}
 
 	/**
@@ -258,34 +281,29 @@ public class InfluxFake extends HttpServlet {
 		this.updateInterval = updateInterval;
 	}
 
-	public Map<String, Map> getPanels() {
-		return panels;
-	}
 
 	/**
 	 * Set panels to be displayed (keys: row names; list entries: panel names)
 	 *  note: in order for this to have any effect, it must be ensured that the HTML page is updated accordingly
+	 *  @deprecated overwrite {@link #getPanels(HttpServletRequest)} instead
 	 */
+	@Deprecated
 	public void setPanels(Map<String, Map> panels) {
 		this.panels = panels;
-	}
-
-	public List<String> getLoggedResources() {
-		return new ArrayList<String>(loggedResources); // read only
 	}
 
 	public DataType getDataType() {
 		return dataType;
 	}
 
-	public void setDataType(DataType dataType) {
-		this.dataType = dataType;
-	}
-
-	public Map<String, Map<String, Class<? extends Resource>>> getRestrictions() {
+	public Map<String, Map<String, Class<? extends Resource>>> getRestrictions(HttpServletRequest req) {
 		return restrictions;
 	}
 
+	/**
+	 * @deprecated overwrite {@link #getRestrictions(HttpServletRequest)} instead
+	 */
+	@Deprecated 
 	public void setRestrictions(Map<String, Map<String, Class<? extends Resource>>> restrictions) {
 		this.restrictions = restrictions;
 	}
@@ -294,6 +312,7 @@ public class InfluxFake extends HttpServlet {
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException { // TODO GET only changed entries and parameters (and accept a parameter 'full', to send all)
+		onGet(req);
 		Map<String, String[]> params = req.getParameterMap();
 		//System.out.println("GET request to FakeInflux" + params.toString()); // FIXME
 		JSONArray results = new JSONArray();
@@ -302,6 +321,8 @@ public class InfluxFake extends HttpServlet {
 		long endTime = 4100000000000l; // default: > 2100
 		String query = null;
 		String name = null;
+		final List<String> loggedResources = new ArrayList<>();
+
 		if (params.containsKey("q")) {
 			String[] queryAux = params.get("q");
 			query = queryAux[0];
@@ -323,7 +344,7 @@ public class InfluxFake extends HttpServlet {
 			}
 			Resource res = ra.getResource(name);
 			if (res == null) {
-				logger.debug("Resource " + name + " not available");
+				logger.debug("Resource {} not available",name);
                 results.write(resp.getWriter());
 				resp.setStatus(200); // important: do not return a server error in this case, since other Grafana graphs will collapse as well
 				return;
@@ -335,23 +356,30 @@ public class InfluxFake extends HttpServlet {
 				resp.setStatus(200); // important: do not return a server error in this case, since other Grafana graphs will collapse as well
 				return;
 			}
-			Map<Long, Double> values;
-			if (res instanceof TemperatureResource || res instanceof TemperatureSensor
-					|| (res instanceof Schedule && res.getParent() instanceof TemperatureResource))
-				values = getValues(ts, startTime, endTime, -273.15F);
-			else
-				values = getValues(ts, startTime, endTime);
-			Iterator<Entry<Long, Double>> it = values.entrySet().iterator();
+//			Map<Long, Double> values;
+//			if (res instanceof TemperatureResource || res instanceof TemperatureSensor
+//					|| (res instanceof Schedule && res.getParent() instanceof TemperatureResource))
+//				values = getValues(ts, startTime, endTime, -273.15F);
+//			else
+//				values = getValues(ts, startTime, endTime);
+//			Iterator<Entry<Long, Double>> it = values.entrySet().iterator();
+			final boolean isTemperature = (res instanceof TemperatureResource || res instanceof TemperatureSensor
+					|| (res instanceof Schedule && res.getParent() instanceof TemperatureResource));
+			final MultiTimeSeriesIterator it = getValues2(ts, startTime, endTime);
 			JSONArray pointsArray = new JSONArray();
-			int counter = 0;
 			while (it.hasNext()) {
-				Entry<Long, Double> entry = it.next();
+//				Entry<Long, Double> entry = it.next();
+				final SampledValueDataPoint entry = it.next();
 				JSONArray newPoint = new JSONArray();
-				newPoint.put(entry.getKey());
+				final SampledValue value = entry.getElement(0);
+				if (value == null || value.getQuality() == Quality.BAD)
+					continue;
+				newPoint.put(entry.getTimestamp());
 				//newPoint.put(counter);   // sequence_number; required?
-				newPoint.put(entry.getValue());
+				if (isTemperature)
+					newPoint.put(value.getValue().getFloatValue() - 273.15F);
+				newPoint.put(value.getValue().getFloatValue());
 				pointsArray.put(newPoint);
-				counter++;
 			}
 			JSONArray columnsArray = new JSONArray();
 			columnsArray.put("time");
@@ -374,7 +402,7 @@ public class InfluxFake extends HttpServlet {
 		else if (params.containsKey("resourceType")) {
 			// return a list of resources of that type
 			String type = params.get("resourceType")[0].replaceFirst("interface ", ""); // note: this needs to be the full resource type name, e.g. org.ogema.core.model.simple.FloatResource
-			Class clazz = getClass(type);
+			Class clazz = getClass(type, req);
 			if (clazz == null || !Resource.class.isAssignableFrom(clazz)) {
 				logger.warn("Got a request for resources of type " + type
 						+ ", but could not access corresponding class");
@@ -382,19 +410,18 @@ public class InfluxFake extends HttpServlet {
 				resp.setStatus(500);
 				return;
 			}
-			List<? extends Resource> ress = ra.getResources(clazz);
+			List<? extends Resource> ress = getResources(clazz, req);
 
 			Class<? extends Resource> parentClazz = null;
 			if (params.containsKey("restrictions")) {
 				String clzz = params.get("restrictions")[0];
-				parentClazz = getClass(clzz);
+				parentClazz = getClass(clzz, req);
 			}
-			loggedResources.clear();
 			JSONArray resources = new JSONArray();
 			List<InterpolationMode> modes = new ArrayList<InterpolationMode>();
 			for (Resource res : ress) {
 				InterpolationMode mode = getInterpolationMode(res, params);
-				if (mode == null)
+				if (mode == null) // FIXME for schedules?
 					continue; // resource is not logged
 				//				if (!isResourceLogged(res,params)) continue; 
 				if (parentClazz != null && (res.isTopLevel() || !res.getParent().getResourceType().equals(parentClazz)))
@@ -419,7 +446,7 @@ public class InfluxFake extends HttpServlet {
 			JSONArray resources = new JSONArray();
 			String row = params.get("row")[0];
 			String pl = params.get("panel")[0];
-			Map<String, Object> list = panels.get(row);
+			Map<String, Object> list = getPanels(req).get(row);
 			if (list == null) {
 				logger.warn("Received request for non-existent row");
                 results.write(resp.getWriter());
@@ -449,9 +476,10 @@ public class InfluxFake extends HttpServlet {
 			JSONObject pr = new JSONObject();
 			pr.put("updateInterval", updateInterval);
 			//System.out.println("  Panels " + panels.toString());
-			pr.put("panels", panels);
-			if (!restrictions.isEmpty()) {
-				pr.put("restrictions", getStringRestrictionsMap());
+			pr.put("panels", getPanels(req));
+			final Map<String, Map<String, Class<? extends Resource>>> restrictions0 = getRestrictions(req);
+			if (!restrictions0.isEmpty()) {
+				pr.put("restrictions", getStringRestrictionsMap(restrictions0));
 			}
 
 			String frameworktimeStart = getGrafanaTimeString(GrafanaBaseApp.APP_STARTTIME, GRAFANA_BEFORE_TIME_IN_MS);
@@ -468,6 +496,32 @@ public class InfluxFake extends HttpServlet {
 		resp.setStatus(200);
 	}
 
+	private static MultiTimeSeriesIterator getValues2(ReadOnlyTimeSeries ts, long startTime, long endTime) {
+		if (startTime > 1000)
+			startTime = startTime - 1000; // extend time interval by a second in each direction
+		if (endTime < Long.MAX_VALUE / 2)
+			endTime = endTime + 1000;
+		
+		final MultiTimeSeriesIteratorBuilder builder = MultiTimeSeriesIteratorBuilder.newBuilder(Collections.singletonList(ts.iterator(startTime, endTime)));
+		final boolean interpolationModeNone = ts.getInterpolationMode() == null || ts.getInterpolationMode() == InterpolationMode.NONE;
+		final SampledValue lower;
+		final SampledValue upper;
+		if (interpolationModeNone) {
+			final SampledValue previous = ts.getPreviousValue(startTime);
+			final SampledValue next = ts.getNextValue(endTime);
+			lower = previous != null ? new SampledValue(previous.getValue(), startTime, startTime == previous.getTimestamp() ? Quality.GOOD : Quality.BAD) : null;
+			upper = next != null ? new SampledValue(next.getValue(), endTime, endTime == next.getTimestamp()  ? Quality.GOOD : Quality.BAD) : null;
+		} else {
+			lower = ts.getValue(startTime);
+			upper = ts.getValue(endTime);
+		}
+		if (upper != null)
+			builder.setUpperBoundaryValues(Collections.singletonMap(0, upper));
+		if (lower != null)
+			builder.setLowerBoundaryValues(Collections.singletonMap(0, lower));
+		return builder.build();
+	}
+	
 	private Map<Long, Double> getValues(ReadOnlyTimeSeries ts, long startTime, long endTime) {
 		return getValues(ts, startTime, endTime, 0);
 	}
@@ -518,18 +572,6 @@ public class InfluxFake extends HttpServlet {
 		return vals;
 	}
 
-	private boolean isResourceLogged(Resource res, Map<String, String[]> params) {
-		ReadOnlyTimeSeries ts = getTimeseries(res, params);
-		//		System.out.println("  isResourceLogged(" + res + ") .... " +ts);
-		if (ts == null)
-			return false;
-		if ((ts instanceof RecordedData) && ((RecordedData) ts).getConfiguration() != null)
-			return true;
-		if (ts instanceof Schedule && ((Schedule) ts).exists())
-			return true;
-		return false;
-	}
-
 	/**
 	 * For schedules this returns the normal InterpolationMode, for RecordedData it translates the Logging mode 
 	 * (StorageType) into an interpolation mode, according to the method 
@@ -548,7 +590,7 @@ public class InfluxFake extends HttpServlet {
 		return null;
 	}
 
-	private InterpolationMode convertLogModeToInterpolationMode(StorageType storageType) {
+	private static InterpolationMode convertLogModeToInterpolationMode(StorageType storageType) {
 		if (storageType == null)
 			return null;
 		if (storageType == StorageType.FIXED_INTERVAL)
@@ -846,7 +888,7 @@ public class InfluxFake extends HttpServlet {
 		return defaultVal; //FIXME
 	}
 
-	private Class getClass(String longResTypeName) {
+	protected Class getClass(String longResTypeName, HttpServletRequest req) {
 		Class clazz = null;
 		try {
 			clazz = Class.forName(longResTypeName);
@@ -858,7 +900,7 @@ public class InfluxFake extends HttpServlet {
 		return clazz;
 	}
 
-	private Map<String,Map<String,String>> getStringRestrictionsMap() {
+	private static Map<String,Map<String,String>> getStringRestrictionsMap(final Map<String, Map<String, Class<? extends Resource>>> restrictions) {
 		Map<String,Map<String,String>> map = new HashMap<>();		
 		Iterator<Entry<String, Map<String,Class<? extends Resource>>>> it = restrictions.entrySet().iterator();
 		while(it.hasNext()) {

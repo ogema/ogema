@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.tools.resource.util;
 
@@ -57,6 +57,8 @@ import org.ogema.tools.timeseries.api.FloatTimeSeries;
 import org.ogema.tools.timeseries.api.MemoryTimeSeries;
 import org.ogema.tools.timeseries.implementations.FloatTreeTimeSeries;
 import org.ogema.tools.timeseries.implementations.TreeTimeSeries;
+import org.ogema.tools.timeseries.iterator.api.MultiTimeSeriesIterator;
+import org.ogema.tools.timeseries.iterator.api.MultiTimeSeriesIteratorBuilder;
 
 /**
  * Offers convenience methods for dealing with {@link ValueResource}s, such as 
@@ -242,7 +244,10 @@ public class ValueResourceUtils {
 			((IntegerResource) resource).setValue(value.getIntegerValue());
 		}
 		else if (resource instanceof BooleanResource) {
-			((BooleanResource) resource).setValue(value.getBooleanValue());
+			if (value instanceof BooleanValue)
+				((BooleanResource) resource).setValue(value.getBooleanValue());
+			else // workaround... we cannot directly retrieve a boolean value from a FloatValue
+				((BooleanResource) resource).setValue(Math.abs(value.getFloatValue()) > 0.0001); 
 		}
 		else if (resource instanceof TimeResource) {
 			((TimeResource) resource).setValue(value.getLongValue());
@@ -312,9 +317,14 @@ public class ValueResourceUtils {
 	 * Get a String representation of a {@link FloatResource} value that is suitable for human reading.
 	 * This is similar to {@link #getValue(SingleValueResource)}, but allows in addition to specify a 
 	 * maximum number of decimals.
+	 * @param resource
+	 * @param maxDecimals
+	 * 		a negative value to show all digits, or a non-negative value to specify the number of decimal
+	 * 		digits to be shown.
+	 * @return the formatted value
 	 */
 	public static String getValue(FloatResource resource, int maxDecimals) {
-		String format = "%." + maxDecimals + "f";
+		final String format = maxDecimals >= 0 ? "%." + maxDecimals + "f" : "%f";
 		if (resource instanceof TemperatureResource) {
 			return String.format(Locale.ENGLISH,format + "°C", ((TemperatureResource) resource).getCelsius());
 		}
@@ -753,6 +763,75 @@ public class ValueResourceUtils {
 		return fts.integrate(startTime, endTime);
 	}
 	
+	/**
+	 * @param timeseries
+	 * @return
+	 * 		integral, with time measured in ms
+	 */
+	public static double integrate2(ReadOnlyTimeSeries timeseries) {
+		return integrate2(timeseries.iterator(), timeseries.getInterpolationMode());
+	}
+	
+	/**
+	 * @param timeseries
+	 * @param start
+	 * @param end
+	 * @return
+	 * 		integral, with time measured in ms
+	 */
+	public static double integrate2(ReadOnlyTimeSeries timeseries, long start, long end) {
+		return integrate2(timeseries.iterator(start, end), timeseries.getInterpolationMode(), 
+					timeseries.getValue(start), timeseries.getValue(end));
+	}
+	
+	/**
+	 * @param iterator
+	 * @param mode
+	 * @return
+	 * 		integral, with time measured in ms
+	 */
+	public static double integrate2(Iterator<SampledValue> iterator, InterpolationMode mode) {
+		Objects.requireNonNull(mode);
+		final MultiTimeSeriesIterator multiI = MultiTimeSeriesIteratorBuilder.newBuilder(Collections.singletonList(iterator))
+				.setGlobalInterpolationMode(mode)
+				.doIntegrate(true)
+				.build();
+		double sum = 0;
+		while (multiI.hasNext()) {
+			final SampledValue svdp = multiI.next().getElement(0);
+			if (svdp.getQuality() == Quality.GOOD)
+				sum = svdp.getValue().getDoubleValue();
+		}
+		return sum;
+	}
+	
+	/**
+	 * 
+	 * @param iterator
+	 * @param mode
+	 * @param lowerBoundary
+	 * @param upperBoundary
+	 * @return
+	 * 		integral, with time measured in ms
+	 */
+	public static double integrate2(Iterator<SampledValue> iterator, InterpolationMode mode, 
+				SampledValue lowerBoundary, SampledValue upperBoundary) {
+		final MultiTimeSeriesIteratorBuilder builder = MultiTimeSeriesIteratorBuilder.newBuilder(Collections.singletonList(iterator))
+				.setGlobalInterpolationMode(null)
+				.doIntegrate(true);
+		if (lowerBoundary != null)
+			builder.setLowerBoundaryValues(Collections.singletonMap(0, lowerBoundary));
+		if (upperBoundary != null)
+			builder.setUpperBoundaryValues(Collections.singletonMap(0, upperBoundary));
+		final MultiTimeSeriesIterator multiI = builder.build();
+		double sum = 0;
+		while (multiI.hasNext()) {
+			final SampledValue svdp = multiI.next().getElement(0);
+			if (svdp.getQuality() == Quality.GOOD)
+				sum += svdp.getValue().getDoubleValue();
+		}
+		return sum;
+	}
 
 	/**
 	 * Returns an average value for the time series on the specified interval; depending on the interpolation mode,
@@ -1149,6 +1228,19 @@ public class ValueResourceUtils {
     			min = fval;
     	}
     	return min;
+    }
+    
+    /**
+     * Get the trimmed value of the resource, if it exists, is active, is a StringResource,
+	 * and has a non-empty value. Otherwise returns null.
+     * @param r
+     * @return
+     */
+    public static String getStringValue(final Resource r) {
+    	if (!(r instanceof StringResource) || !r.isActive())
+    		return null;
+		final String val = ((StringResource) r).getValue().trim();
+		return val.isEmpty() ? null: val;
     }
 	
 }

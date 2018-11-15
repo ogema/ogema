@@ -1,22 +1,21 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.core.rads.creation;
 
 import org.ogema.core.application.ApplicationManager;
-import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
 import org.ogema.core.rads.tools.ContainerTool;
 import org.ogema.core.rads.tools.ResourceFieldInfo;
@@ -27,7 +26,7 @@ import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.CreateMode;
 import org.ogema.core.resourcemanager.pattern.ContextSensitivePattern;
-import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 /**
  * Creates an object according to a RAD and returns an instance of the completed
@@ -40,16 +39,16 @@ import org.slf4j.LoggerFactory;
 public class RadCreator<T extends Resource, P extends ResourcePattern<T>> {
 
 	final ApplicationManager m_appMan;
-	final OgemaLogger m_logger;
+	final Logger m_logger;
 	final ResourceManagement m_resMan;
 	final RadFactory<T, P> m_factory;
 	private final Object container;
 	private final Class<P> type;
 	P m_result;
 
-	public RadCreator(ApplicationManager appMan, Class<P> type, PatternFactory<P> factory, Object container) {
+	public RadCreator(ApplicationManager appMan, Logger logger, Class<P> type, PatternFactory<P> factory, Object container) {
 		m_appMan = appMan;
-		m_logger = appMan.getLogger();
+		m_logger = logger;
 		m_resMan = appMan.getResourceManagement();
 		m_factory = new RadFactory<>(type, AccessPriority.PRIO_LOWEST, factory);
 		this.container = container;
@@ -113,7 +112,7 @@ public class RadCreator<T extends Resource, P extends ResourcePattern<T>> {
 			try {
 				ContainerTool.setContainer(pattern, container);
 			} catch (NoSuchFieldException | IllegalAccessException | RuntimeException e) {
-				LoggerFactory.getLogger(getClass()).error("Internal error: could not set pattern container: " + e);
+				m_logger.error("Internal error: could not set pattern container: " + e);
 			}
 			pattern.init();
 		}

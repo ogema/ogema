@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" xmlns:felix="http://felix.apache.org/xmlns/scr/extensions/v1.0.0" name="org.ogema.impl.security.headers.HttpConfigService" configuration-policy="require" activate="activate" configuration-pid="org.ogema.impl.security.HttpConfig" felix:configureWithInterfaces="true">
+  <implementation class="org.ogema.impl.security.headers.HttpConfigService"/>
+  <service>
+    <provide interface="org.ogema.impl.security.headers.HttpConfigService"/>
+  </service>
+  <property name="staticRedirects" type="String" value=""/>
+  <property name="staticUriRedirects" type="String" value=""/>
+  <property name="corsAllowedOrigin" type="String" value=""/>
+  <property name="corsAllowCredentials" type="Boolean" value="false"/>
+  <property name="service.factoryPid" type="String" value="org.ogema.impl.security.HttpConfig"/>
+  <property name="corsAllowHeaders" type="String" value=""/>
+</scr:component>

@@ -1,0 +1,4 @@
+* pgpkey.pgp: private key for signing OGEMA artifacts before deployment
+* revoke_pgp_cert.rev: Revocation certificate for the key
+
+For the key passphrase, see the OGEMA Wiki page https://ogema-source.net/wiki/display/O2/Maven+central+deployment

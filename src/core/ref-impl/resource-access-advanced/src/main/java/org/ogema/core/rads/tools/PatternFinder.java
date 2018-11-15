@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.core.rads.tools;
 
@@ -26,25 +26,27 @@ import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.core.resourcemanager.pattern.ContextSensitivePattern;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.CreateMode;
-import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 public class PatternFinder<P extends ResourcePattern<?>> {
 
 	private final ResourceAccess ra;
+	private final Logger logger;
 	private final PatternFactory<P> factory;
 	private final RadFactory<?, ?> radFactory;
 	private final Class<? extends Resource> resType;
 	private final Object container;
 
-	public PatternFinder(ResourceAccess ra, Class<P> clazz, PatternFactory<P> factory, AccessPriority prio) {
-		this(ra, clazz, factory, prio, null);
+	public PatternFinder(ResourceAccess ra, Logger logger, Class<P> clazz, PatternFactory<P> factory, AccessPriority prio) {
+		this(ra, logger, clazz, factory, prio, null);
 	}
 
 	@SuppressWarnings( { "unchecked", "rawtypes" })
-	public PatternFinder(ResourceAccess ra, Class<P> clazz, PatternFactory<P> factory, AccessPriority prio,
+	public PatternFinder(ResourceAccess ra, Logger logger, Class<P> clazz, PatternFactory<P> factory, AccessPriority prio,
 			Object container) {
 		assert (container == null || ContextSensitivePattern.class.isAssignableFrom(clazz)) : "Internal error in pattern management... inconsistent PatternFinder initialization.";
 		this.ra = ra;
+		this.logger = logger;
 		this.factory = factory;
 		this.radFactory = new RadFactory(clazz, prio, factory);
 		this.resType = radFactory.getDemandedModel();
@@ -79,7 +81,7 @@ public class PatternFinder<P extends ResourcePattern<?>> {
 		try {
 			return checkCompletion(pattern);
 		} catch (Exception e) {
-			LoggerFactory.getLogger(getClass()).error("Error in pattern completion check " + e);
+			logger.error("Error in pattern completion check " + e);
 			return false;
 		}
 	}
@@ -102,7 +104,7 @@ public class PatternFinder<P extends ResourcePattern<?>> {
 			try {
 				ContainerTool.setContainer((ContextSensitivePattern) pattern, container);
 			} catch (NoSuchFieldException | IllegalAccessException | RuntimeException e) {
-				LoggerFactory.getLogger(getClass()).error("Internal error: could not set pattern container: " + e);
+				logger.error("Internal error: could not set pattern container: " + e);
 			}
 //			((ResourcePatternExtended) pattern).setContainer(container);
 		}

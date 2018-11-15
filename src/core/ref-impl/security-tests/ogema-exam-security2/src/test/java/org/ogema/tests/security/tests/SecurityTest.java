@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.tests.security.tests;
 
@@ -28,6 +28,7 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.ogema.accesscontrol.ResourcePermission;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
@@ -56,19 +57,19 @@ import org.osgi.framework.InvalidSyntaxException;
 @RunWith(PaxExam.class)
 @ExamReactorStrategy(PerClass.class)
 public class SecurityTest extends SecurityTestBase {
-	
+
 	public SecurityTest() {
 		super(false);
 	}
-	
+
 	@Inject
 	private BundleContext ctx;
-	
+
 	@Test
 	public void testAppStarts() throws InvalidSyntaxException, BundleException, InterruptedException {
 		// tests before and after methods
 	}
-	
+
 	@Test(expected=SecurityException.class)
 	public void missingCreatePermissionLeadsToError() throws InvalidSyntaxException, BundleException, InterruptedException {
 		final ApplicationManager appMan = getApplicationManager();
@@ -77,7 +78,7 @@ public class SecurityTest extends SecurityTestBase {
 		Assert.assertNotNull(res);
 		res.delete();
 	}
-	
+
 	@Ignore("FIXME")
 	@Test
 	public void resourceCreatePermissionWorks0() throws InvalidSyntaxException, BundleException, InterruptedException {
@@ -90,14 +91,14 @@ public class SecurityTest extends SecurityTestBase {
 		SecurityTestUtils.addResourcePermission(ctx, "*", Thermostat.class.getName(), appMan, "READ");
 		Assert.assertNotNull(appMan.getResourceAccess().getResource(resourceName));
 	}
-	
+
 	@Test
 	public void resourceCreatePermissionWorks1() throws InvalidSyntaxException, BundleException, InterruptedException {
 		final ApplicationManager appMan = getApplicationManager();
 		SecurityTestUtils.addResourcePermission(ctx, null, Thermostat.class.getName(), appMan, "CREATE,READ");
 		Assert.assertNotNull(appMan.getResourceManagement().createResource(newResourceName(), Thermostat.class));
 	}
-	
+
 	@Test
 	public void resourceCreatePermissionWorks2() throws InvalidSyntaxException, BundleException, InterruptedException {
 		final ApplicationManager appMan = getApplicationManager();
@@ -105,7 +106,7 @@ public class SecurityTest extends SecurityTestBase {
 		SecurityTestUtils.addResourcePermission(ctx, resourceName, null, appMan, "CREATE,READ");
 		Assert.assertNotNull(appMan.getResourceManagement().createResource(resourceName, Thermostat.class));
 	}
-	
+
 	@Test
 	public void resourceCreateWorksForCustom() {
 		final ApplicationManager appMan = getApplicationManager();
@@ -113,7 +114,7 @@ public class SecurityTest extends SecurityTestBase {
 		SecurityTestUtils.addResourcePermission(ctx, null, CustomResourceType.class.getName(), appMan, "CREATE,READ");
 		Assert.assertNotNull(appMan.getResourceManagement().createResource(resourceName, CustomResourceType.class));
 	}
-	
+
 	@Test
 	public void resourceCreateWorksForCustom2() {
 		final ApplicationManager appMan = getApplicationManager();
@@ -124,7 +125,7 @@ public class SecurityTest extends SecurityTestBase {
 		list.setElementType(CustomResourceType.class);
 		Assert.assertNotNull(list.add());
 	}
-	
+
 	@Test(expected=SecurityException.class)
 	public void customResourceWithoutPermissionsFails() {
 		final ApplicationManager appMan = getApplicationManager();
@@ -132,7 +133,7 @@ public class SecurityTest extends SecurityTestBase {
 		final Resource r = appMan.getResourceManagement().createResource(resourceName, CustomResourceType.class);
 		r.delete();
 	}
-	
+
 	@Test(expected=SecurityException.class)
 	public void customResourceWithoutPermissionsFails2() {
 		final ApplicationManager appMan = getApplicationManager();
@@ -144,7 +145,7 @@ public class SecurityTest extends SecurityTestBase {
 		list.add();
 		list.delete();
 	}
-	
+
 	@Test(expected=SecurityException.class)
 	public void missingDeletePermissionLeadsToError() throws InvalidSyntaxException, BundleException, InterruptedException {
 		final ApplicationManager appMan = getApplicationManager();
@@ -153,7 +154,7 @@ public class SecurityTest extends SecurityTestBase {
 		Assert.assertNotNull(res);
 		res.delete();
 	}
-	
+
 	@Test
 	public void deletePermissionWorks() throws InvalidSyntaxException, BundleException, InterruptedException {
 		final ApplicationManager appMan = getApplicationManager();
@@ -163,7 +164,7 @@ public class SecurityTest extends SecurityTestBase {
 		Assert.assertNotNull(res);
 		res.delete();
 	}
-	
+
 	@Test(expected=SecurityException.class)
 	public void missingActivityPermissionLeadsToError() throws InvalidSyntaxException, BundleException, InterruptedException {
 		final ApplicationManager appMan = getApplicationManager();
@@ -174,7 +175,7 @@ public class SecurityTest extends SecurityTestBase {
 		res.activate(true);
 		res.delete();
 	}
-	
+
 	@Test
 	public void activationPermssionWorks() throws InvalidSyntaxException, BundleException, InterruptedException {
 		final ApplicationManager appMan = getApplicationManager();
@@ -185,7 +186,24 @@ public class SecurityTest extends SecurityTestBase {
 		res.activate(true);
 		res.delete();
 	}
-	
+
+	@Test
+	public void recursiveActivationWorksInPresenceOfForbiddenSubresource() {
+		final ApplicationManager appManager = getApplicationManager();
+		SecurityTestUtils.addResourcePermission(ctx, "*", null, appManager, "CREATE,ADDSUB,READ");
+		final String name = newResourceName();
+		final Resource top = appManager.getResourceManagement().createResource(name, Room.class);
+		final Resource sub1 = top.getSubResource("sub1", TemperatureSensor.class).create();
+		final Resource sub2 =  top.getSubResource("sub2", TemperatureSensor.class).create();
+		SecurityTestUtils.denyResourcePermission(ctx, sub2.getPath(), null, appManager, ResourcePermission.ACTIVITY);
+		SecurityTestUtils.addResourcePermission(ctx, "*", null, appManager, ResourcePermission.ACTIVITY);
+		top.activate(true);
+		Assert.assertTrue("Resource should be active",top.isActive());
+		Assert.assertTrue("Resource should be active",sub1.isActive());
+		Assert.assertFalse("Resource should be inactive", sub2.isActive());
+		getUnrestrictedAppManager().getResourceAccess().getResource(top.getPath()).delete();
+	}
+
 	@Test(expected=SecurityException.class)
 	public void denyResourcePermssionWorks() throws InvalidSyntaxException, BundleException, InterruptedException {
 		final ApplicationManager appMan = getApplicationManager();
@@ -195,7 +213,7 @@ public class SecurityTest extends SecurityTestBase {
 		final Thermostat res = appMan.getResourceManagement().createResource(resourceName, Thermostat.class);
 		res.delete();
 	}
-	
+
 	@Test
 	public void multipleApplicableResourcePermssionsWorks() throws InvalidSyntaxException, BundleException, InterruptedException {
 		final ApplicationManager appMan = getApplicationManager();
@@ -207,7 +225,7 @@ public class SecurityTest extends SecurityTestBase {
 		Assert.assertNotNull(res);
 		res.delete();
 	}
-    
+
     /* if the permission contains a path, only resources on that path are returned */
     @Test
     public void getResourcesReturnsOnlyResourcesOnPermittedPaths() {
@@ -217,30 +235,30 @@ public class SecurityTest extends SecurityTestBase {
         SensorDevice unrestrictedRes = getUnrestrictedAppManager().getResourceManagement().createResource(topname, SensorDevice.class);
         getUnrestrictedAppManager().getResourceManagement().createResource(forbiddenTopLevel, PowerSensor.class);
         getUnrestrictedAppManager().getResourceManagement().createResource(allowedTopLevel, PowerSensor.class);
-        
+
         String allowedSubRes = unrestrictedRes.addDecorator("allowed", PowerSensor.class).getLocation();
         String forbiddenSubRes = unrestrictedRes.addDecorator("forbidden", PowerSensor.class).getLocation();
         Assert.assertEquals(4, getUnrestrictedAppManager().getResourceAccess().getResources(PowerSensor.class).size());
-        
+
         SecurityTestUtils.addResourcePermission(ctx, allowedTopLevel,
                 PowerSensor.class.getName(), getApplicationManager(), "READ");
         Assert.assertEquals(1, getApplicationManager().getResourceAccess().getResources(PowerSensor.class).size());
-        
+
         SecurityTestUtils.addResourcePermission(ctx, topname,
                 SensorDevice.class.getName(), getApplicationManager(), "READ");
         getApplicationManager().getResourceAccess().getResource(topname);
         SecurityTestUtils.addResourcePermission(ctx, allowedSubRes,
                 PowerSensor.class.getName(), getApplicationManager(), "READ");
-        
+
         Assert.assertEquals(2, getApplicationManager().getResourceAccess().getResources(PowerSensor.class).size());
-        
+
         //cleanup
         unrestrictedRes.delete();
         getUnrestrictedAppManager().getResourceAccess().getResource(allowedTopLevel).delete();
         getUnrestrictedAppManager().getResourceAccess().getResource(forbiddenTopLevel).delete();
         Assert.assertEquals(0, getUnrestrictedAppManager().getResourceAccess().getResources(PowerSensor.class).size());
     }
-    
+
     /* tests resource permission with type but no path */
     @Test
     public void getResourcesReturnsAllResourcesWhenPathIsUnspecified() {
@@ -250,24 +268,24 @@ public class SecurityTest extends SecurityTestBase {
         SensorDevice unrestrictedRes = getUnrestrictedAppManager().getResourceManagement().createResource(topname, SensorDevice.class);
         getUnrestrictedAppManager().getResourceManagement().createResource(top1, PowerSensor.class);
         getUnrestrictedAppManager().getResourceManagement().createResource(top2, PowerSensor.class);
-        
+
         String sub1 = unrestrictedRes.addDecorator("sub1", PowerSensor.class).getLocation();
         String sub2 = unrestrictedRes.addDecorator("sub2", PowerSensor.class).getLocation();
         String notAPowerSensor = unrestrictedRes.addDecorator("notAPowerSensor", PhysicalElement.class).getLocation();
         Assert.assertEquals(4, getUnrestrictedAppManager().getResourceAccess().getResources(PowerSensor.class).size());
-        
+
         SecurityTestUtils.addResourcePermission(ctx, null,
                 PowerSensor.class.getName(), getApplicationManager(), "READ");
-        
+
         try {
             Resource r = getApplicationManager().getResourceAccess().getResource(notAPowerSensor);
             Assert.fail("got resource without permission: " + r);
         } catch (SecurityException se) {
             // expected exception!
         }
-        
+
         Assert.assertEquals(4, getApplicationManager().getResourceAccess().getResources(PowerSensor.class).size());
-        
+
         SecurityTestUtils.denyResourcePermission(ctx, sub2, null, getApplicationManager(), "read");
         SecurityTestUtils.printBundlePermissions(getApplicationManager().getAppID().getBundle(), System.out);
         Assert.assertEquals(3, getApplicationManager().getResourceAccess().getResources(PowerSensor.class).size());
@@ -295,13 +313,14 @@ public class SecurityTest extends SecurityTestBase {
 			appMan.getResourceManagement().createResource(newResourceName(), Thermostat.class);
 			throw new AssertionError("Resource creation succeeded despite missing permission");
 		} catch (SecurityException expected) {}
-		
+
 	}
-	
+
 	@Test
 	public void getSubresourcesWorksInPresenceOfForbiddenDecorator() {
 		final ApplicationManager appMan = getApplicationManager();
 		final String resourceName = newResourceName();
+		SecurityTestUtils.addResourcePermission(ctx, resourceName, Thermostat.class.getName(), appMan, "*");
 		SecurityTestUtils.addResourcePermission(ctx, resourceName + "/*", Thermostat.class.getName(), appMan, "*");
 		final Thermostat thermo = appMan.getResourceManagement().createResource(resourceName, Thermostat.class);
 		final Room forbidden = getUnrestrictedAppManager().getResourceManagement().createResource(newResourceName(), Room.class);
@@ -317,11 +336,12 @@ public class SecurityTest extends SecurityTestBase {
 		thermo.delete();
 		forbidden.delete();
 	}
-	
+
 	@Test
 	public void getAllElementsWorksInPresenceOfForbiddenElement() throws InvalidSyntaxException, BundleException, InterruptedException {
 		final ApplicationManager appMan = getApplicationManager();
 		final String resourceName = newResourceName();
+		SecurityTestUtils.addResourcePermission(ctx, resourceName, null, appMan, "*");
 		SecurityTestUtils.addResourcePermission(ctx, resourceName + "/*", null, appMan, "*");
 		final ResourceList<?> list = appMan.getResourceManagement().createResource(resourceName, ResourceList.class);
 		list.setElementType(Thermostat.class);
@@ -335,7 +355,7 @@ public class SecurityTest extends SecurityTestBase {
 		list.delete();
 		forbidden.delete();
 	}
-	
+
 	@Test
 	public void getResourcesWorksInPresenceOfForbiddenSubresource() {
 		final ApplicationManager appMan = getApplicationManager();
@@ -344,7 +364,7 @@ public class SecurityTest extends SecurityTestBase {
 		SecurityTestUtils.denyResourcePermission(ctx, resourceName + "/" + decorator, null, appMan, "READ");
 		SecurityTestUtils.addResourcePermission(ctx, null, TemperatureSensor.class.getName(), appMan, "READ");
 		SecurityTestUtils.addResourcePermission(ctx, null, Room.class.getName(), appMan, "READ");
-		
+
 		final Room room = getUnrestrictedAppManager().getResourceManagement().createResource(resourceName, Room.class);
 		final Thermostat denied = room.addDecorator(decorator, Thermostat.class);
 		final TemperatureSensor tempSens = denied.temperatureSensor().create();
@@ -357,7 +377,7 @@ public class SecurityTest extends SecurityTestBase {
 			room2.getSubResource(decorator);
 			Assert.fail("Resource access to forbidden path succeeded");
 		} catch (SecurityException expected) {}
-		
+
 		final List<TemperatureSensor> sensors = appMan.getResourceAccess().getResources(TemperatureSensor.class);
 		boolean found = false;
 		for (TemperatureSensor ts : sensors) {
@@ -369,7 +389,7 @@ public class SecurityTest extends SecurityTestBase {
 		Assert.assertTrue("Temperature sensor not found",found);
 		room.delete();
 	}
-	
+
 	@Test
 	public void typePermissionImpliesSubresourcePermission() {
 		final ApplicationManager appMan = getApplicationManager();
@@ -388,7 +408,7 @@ public class SecurityTest extends SecurityTestBase {
 		Assert.assertTrue("Temperature sensor not found",found);
 		room.delete();
 	}
-    
+
     @Test public void canDenyWriteFromReadWriteAvailableResource() {
         final ApplicationManager appMan = getApplicationManager();
         SecurityTestUtils.addResourcePermission(ctx, null, TemperatureSensor.class.getName(), appMan, "CREATE,READ,WRITE,DELETE,ADDSUB,ACTIVITY");
@@ -406,7 +426,7 @@ public class SecurityTest extends SecurityTestBase {
             //expected
         }
     }
-	
+
 	@Test
 	public void getResourcesDoesNotReturnSubresourcesOnDeniedResourceType() {
 		final ApplicationManager appMan = getApplicationManager();
@@ -423,14 +443,14 @@ public class SecurityTest extends SecurityTestBase {
 		room.delete();
         allowedTempSens.delete();
 	}
-    
+
     @Test
 	public void getResourcesDoesNotReturnSubresourcesOnDeniedPath() {
 		final ApplicationManager appMan = getApplicationManager();
         final String deniedPath = newResourceName();
 		SecurityTestUtils.addResourcePermission(ctx, null, TemperatureSensor.class.getName(), appMan, "READ");
 		SecurityTestUtils.denyResourcePermission(ctx, deniedPath + "/*", null, appMan, "READ");
-		
+
 		final Room room = getUnrestrictedAppManager().getResourceManagement().createResource(deniedPath, Room.class);
 		TemperatureSensor deniedTempSens = room.temperatureSensor().create(); //room is denied
         TemperatureSensor allowedTempSens =
@@ -441,7 +461,7 @@ public class SecurityTest extends SecurityTestBase {
 		room.delete();
         allowedTempSens.delete();
 	}
-    
+
     @Test
 	public void getResourcesDoesNotReturnResourcesDeniedByPath() {
 		final ApplicationManager appMan = getApplicationManager();
@@ -458,7 +478,7 @@ public class SecurityTest extends SecurityTestBase {
         allowedTempSens.delete();
         deniedTempSens.delete();
 	}
-	
+
     @Test
     public void demandListenerWorks() throws InterruptedException {
     	final ApplicationManager appMan = getApplicationManager();
@@ -474,7 +494,7 @@ public class SecurityTest extends SecurityTestBase {
 
 			@Override
 			public void resourceUnavailable(TemperatureSensor resource) {}
-        	
+
         };
         appMan.getResourceAccess().addResourceDemand(TemperatureSensor.class, listener);
         final ResourceManagement resMan = getUnrestrictedAppManager().getResourceManagement();
@@ -494,14 +514,14 @@ public class SecurityTest extends SecurityTestBase {
         sensor.delete();
         sensor2.delete();
     }
-    
+
     @Test
     public void structureListenerWorksWithNewReference() throws InterruptedException {
     	final Map<EventType, CountDownLatch> latches = new EnumMap<>(EventType.class);
     	for (EventType type : EventType.values())
     		latches.put(type, new CountDownLatch(1));
     	final ResourceStructureListener listener = new ResourceStructureListener() {
-			
+
 			@Override
 			public void resourceStructureChanged(ResourceStructureEvent event) {
 				latches.get(event.getType()).countDown();
@@ -531,14 +551,14 @@ public class SecurityTest extends SecurityTestBase {
 		sensor.delete();
 		sensor2.delete();
     }
-    
+
     @Test
     public void structureListenerWorksWithNewReference2() throws InterruptedException {
     	final Map<EventType, CountDownLatch> latches = new EnumMap<>(EventType.class);
     	for (EventType type : EventType.values())
     		latches.put(type, new CountDownLatch(1));
     	final ResourceStructureListener listener = new ResourceStructureListener() {
-			
+
 			@Override
 			public void resourceStructureChanged(ResourceStructureEvent event) {
 				latches.get(event.getType()).countDown();
@@ -562,14 +582,14 @@ public class SecurityTest extends SecurityTestBase {
 		sensor.delete();
 		room1.delete();
     }
-    
+
     @Test
     public void structureListenerWorksWithSubresource() throws InterruptedException {
     	final Map<EventType, CountDownLatch> latches = new EnumMap<>(EventType.class);
     	for (EventType type : EventType.values())
     		latches.put(type, new CountDownLatch(1));
     	final ResourceStructureListener listener = new ResourceStructureListener() {
-			
+
 			@Override
 			public void resourceStructureChanged(ResourceStructureEvent event) {
 				latches.get(event.getType()).countDown();
@@ -591,6 +611,6 @@ public class SecurityTest extends SecurityTestBase {
 		Assert.assertTrue("Callback missing", latches.get(EventType.SUBRESOURCE_ADDED).await(5, TimeUnit.SECONDS));
 		room0.delete();
     }
-    
-    
+
+
 }

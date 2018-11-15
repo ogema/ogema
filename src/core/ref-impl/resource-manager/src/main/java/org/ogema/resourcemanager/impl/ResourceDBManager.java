@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.resourcemanager.impl;
 
@@ -55,11 +55,11 @@ import org.slf4j.Logger;
 /**
  * Wraps a {@link ResourceDB} and adds listener handling for {@link ResourceDemandListener}s. The
  * {@link ApplicationResourceManager} instances must only access the ResourceDB through the ResourceDBManager.
- * 
+ *
  * @author jlapp
  */
 public class ResourceDBManager {
-	
+
 	/* app id used by this class when creating TreeElements for internal use */
 	final static String APP_ID_SYSTEM = "system";
 	final static String ELEMENTNAME_UNIQUENAMES = "@uniquenames";
@@ -70,7 +70,7 @@ public class ResourceDBManager {
 	private final AccessManager access;
 	private final DataRecorder recordedDataAccess;
     private final AtomicInteger revisionCounter = new AtomicInteger(0);
-    
+
 	final private Map<Class<? extends Resource>, List<ResourceDemandListenerRegistration>> resourceTypeListeners = new HashMap<>();
 	/**
 	 * Global lock for read- and write-operations.
@@ -80,10 +80,10 @@ public class ResourceDBManager {
 	//private final ReentrantReadWriteLock structureLock = new ReentrantReadWriteLock();
 	protected RecordedDataManager recordedDataManager;
     protected ScheduleTreeElementFactory scheduleFactory = new ScheduleTreeElementFactory();
-    
+
     //private final Collection<StructureListenerRegistration> structureListeners = new ConcurrentLinkedQueue<>();
     private final NavigableMap<String, List<InternalStructureListenerRegistration>> structureListeners = new TreeMap<>();
-    
+
 	public ResourceDBManager(ResourceDB resdb, DataRecorder recordedDataAccess, TimerScheduler scheduler,
 			AccessManager access) {
 		Objects.requireNonNull(resdb);
@@ -140,7 +140,7 @@ public class ResourceDBManager {
 			}
 		}
 	}
-    
+
     public List<InternalStructureListenerRegistration> getStructureListeners(String path) {
         synchronized(structureListeners) {
             List<InternalStructureListenerRegistration> l = structureListeners.get(path);
@@ -150,7 +150,7 @@ public class ResourceDBManager {
             return Collections.unmodifiableList(l);
         }
     }
-    
+
     public void addStructureListener(InternalStructureListenerRegistration slr) {
         String path = slr.getResource().getPath();
         synchronized (structureListeners) {
@@ -172,7 +172,7 @@ public class ResourceDBManager {
             return new TreeMap<>(structureListeners.subMap(path, end));
         }
 	}
-    
+
     public void removeStructureListener(InternalStructureListenerRegistration slr) {
         Objects.requireNonNull(slr);
         synchronized (structureListeners) {
@@ -181,14 +181,22 @@ public class ResourceDBManager {
                 logger.warn("suspicious removeStructureListener call for registration {}", slr);
                 return;
             }
-            @SuppressWarnings("unused")
-			boolean removed = l.remove(slr);
+            final Iterator<InternalStructureListenerRegistration> it = l.iterator();
+            while (it.hasNext()) {
+            	final InternalStructureListenerRegistration reg = it.next();
+            	if (reg.equals(slr)) {
+            		// it.remove(); // not supported by CopyOnWriteArrayList!
+            		reg.dispose();
+            		break;
+            	}
+            }
+            l.remove(slr);
             if (l.isEmpty()) {
                 structureListeners.remove(slr.getResource().getPath());
             }
         }
     }
-    
+
     /*
     * If a RecordedData object exists for the TreeElement return it, otherwise null.
     */
@@ -260,7 +268,7 @@ public class ResourceDBManager {
 		storedName.fireChangeEvent();
         logger.debug("stored unique name {}/{}: {}", appId, requestedName, uniqueName);
 	}
-    
+
     protected void deleteUniqueName(TreeElement el) {
         TreeElement uniqueNamesEl = resdb.getToplevelResource(ELEMENTNAME_UNIQUENAMES);
 		if (uniqueNamesEl == null) {
@@ -416,6 +424,29 @@ public class ResourceDBManager {
 	public List<Class<? extends Resource>> getAllResourceTypesInstalled() {
 		return resdb.getAllResourceTypesInstalled();
 	}
+    
+    public Collection<TreeElement> getElementsByType(Class<? extends Resource> resourceType, boolean includeSubTypes) {
+        if (resourceType == null) {
+            resourceType = Resource.class;
+        }
+        if (!includeSubTypes) {
+            return getElementsByType(resourceType);
+        }
+		final List<TreeElement> result = new ArrayList<>();
+        for (Class<?> t: resdb.getResourceTypesInstalled(resourceType)) {
+            if (resourceType.isAssignableFrom(t)) {
+                result.addAll(getElementsByType(t));
+            }
+        }
+        return result;
+	}
+    
+    private Collection<TreeElement> getElementsByType(final Class<?> resourceType) {
+        Map<String,String> dict = new HashMap<>();
+        dict.put("type", resourceType.getCanonicalName());
+        return resdb.getFilteredNodes(dict);
+	}
+
 
 	public TreeElement createResource(String name, Class<? extends Resource> type, String appId)
 			throws ResourceAlreadyExistsException, InvalidResourceTypeException {
@@ -444,8 +475,8 @@ public class ResourceDBManager {
 	public void deleteResource(TreeElement elem) {
 		// the order may be relevant here... deleting the resource, resp. the DVTE, before firing resourceUnavialble
 		// may imply it being removed from the cache before the callback has been executed.
-        resourceDeleted(elem); 
-		resdb.deleteResource(elem);   
+        resourceDeleted(elem);
+		resdb.deleteResource(elem);
         revisionCounter.incrementAndGet();
     }
 
@@ -496,7 +527,7 @@ public class ResourceDBManager {
 	public void resourceDeactivated(TreeElement el) {
 		resourceUnavailable(el, ResourceDemandListener.AccessLossReason.RESOURCE_INACTIVE);
 	}
-    
+
     public void resourceDeleted(TreeElement el) {
         resourceUnavailable(el, ResourceDemandListener.AccessLossReason.RESOURCE_DELETED);
     }
@@ -534,24 +565,24 @@ public class ResourceDBManager {
         //structureLock.readLock().lock();
         commitLock.readLock().lock();
     }
-    
+
     public void unlockStructureRead() {
         //structureLock.readLock().unlock();
         commitLock.readLock().unlock();
     }
-    
+
     public void lockStructureWrite() {
         //structureLock.writeLock().lock();
         commitLock.writeLock().lock();
     }
-    
+
     public void unlockStructureWrite() {
         //structureLock.writeLock().unlock();
         commitLock.writeLock().unlock();
     }
-    
-    // TODO The convention for obtaining these locks must be explained here. 
-    // E.g., the structure lock must always be obtained before the commit lock, if they are both acquired. Otherwise, deadlock can occur. 
+
+    // TODO The convention for obtaining these locks must be explained here.
+    // E.g., the structure lock must always be obtained before the commit lock, if they are both acquired. Otherwise, deadlock can occur.
 
 	/**
 	 * Lock for reading.
@@ -580,19 +611,25 @@ public class ResourceDBManager {
 	public void unlockWrite() {
 		commitLock.writeLock().unlock();
 	}
-    
+
+	/*
+	 * Structure read lock required
+	 */
     public int getRevision(){
         return revisionCounter.get();
     }
-    
+
+    /*
+     * Structure write lock required
+     */
     public int incrementRevision(){
         return revisionCounter.incrementAndGet();
     }
-    
+
     public ScheduleTreeElementFactory getScheduleTreeElementFactory() {
     	return scheduleFactory;
     }
-    
+
     public ScheduleTreeElement getScheduleElement(VirtualTreeElement base) {
         lockStructureRead();
         try {
@@ -602,7 +639,7 @@ public class ResourceDBManager {
             unlockStructureRead();
         }
     }
-    
+
     private VirtualTreeElement findLocationElement(VirtualTreeElement pathElement) {
         //XXX path string mangling
         String[] a = pathElement.getPath().split("/");

@@ -1,0 +1,30 @@
+Dies ist ein Widerrufszertifikat für den OpenPGP-Schlüssel:
+
+             ogema <info@ogema.org>
+ Fingerprint: E882642E14E525B6A8D07234B183988F02506BE2
+
+Ein Widerrufszertifikat ist eine Art von Notausschalter der öffentlich
+verlautbart, dass ein Schlüssel nicht mehr benutzt werden soll.  Es ist
+nicht möglich, ein einmal veröffentlichtes Widerrufszertifikat wieder
+zurückzuziehen.
+
+Benutzen Sie es, um einen Schlüssel zu widerrufen, falls der private
+Schlüssel verloren wurde oder kompromittiert ist.
+
+Um eine versehentliche Aktivierung des Widerrufszertifikats zu
+vermeiden, wurde ein Doppelpunkt direkt vor den 5 Spiegelstrichen
+unten eingefügt.  Vor dem Import dieses Widerrufszertifikats
+entfernen Sie bitte diesen Doppelpunkt mittels eines Texteditors.
+
+:-----BEGIN PGP PUBLIC KEY BLOCK-----
+Comment: This is a revocation certificate
+
+iQE2BCABCAAgFiEE6IJkLhTlJbao0HI0sYOYjwJQa+IFAlqhdisCHQAACgkQsYOY
+jwJQa+LRRggA6ys2FOUCyjbrdAOCgyA6OlSsy2U3RlUiVIOEoEdYUs8C51nenR5t
+yn8gfJwJrW0AM9gIy+K6v82kEL3KLmO3ermnIlDZynB6e3FljcHAtcd9n7rh10f5
+d667SOV3eVEk/pKDqDQKi0U3WErLUBsrtb6afqPpf7g/Ay8WBo4biL6Whvhdo3TY
+Yimh2o2gvkgTxDvDNFx2+KrllZT+PH5RbiR2AaMmN7k3WyzlJqqaCgrAaEQLj3O5
+3QDOtfZVdB7uQqMOrk19cEdwU7yJdgyLkgSfJlVaICopTksa91WrKsBwJIuqWcJ4
+POLw5azNNa/Kq+sdMroYNqDGoJIhLpSgWw==
+=D6nT
+-----END PGP PUBLIC KEY BLOCK-----

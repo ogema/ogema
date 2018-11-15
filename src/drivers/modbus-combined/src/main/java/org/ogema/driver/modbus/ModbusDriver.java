@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.driver.modbus;
 
@@ -60,16 +60,16 @@ import org.slf4j.LoggerFactory;
  * The following channel addressing modes are supported by this driver:
  * 
  * - access 16bit register(s) called Input Registers (read only) 
- *   channelAddressString format: "<DEVICE_ID>:INPUT_REGISTERS:<REGISTERNUMBER>:<COUNT>"
+ *   channelAddressString format: "&lt;DEVICE_ID&gt;:INPUT_REGISTERS:&lt;REGISTERNUMBER&gt;:&lt;COUNT&gt;"
  * 
  * - access 16bit register(s) called Holding Registers (read / write) 
- *   channelAddressString format: "<DEVICE_ID>:HOLDING_REGISTERS:<REGISTERNUMBER>:<COUNT>"
+ *   channelAddressString format: "&lt;DEVICE_ID&gt;:HOLDING_REGISTERS:&lt;REGISTERNUMBER&gt;:&lt;COUNT&gt;"
  * 
  * - access 1bit called Discrete Input (read only) 
- *   channelAddressString format: "<DEVICE_ID>:DISCRETE_INPUTS:<REGISTERNUMBER>:<COUNT>"
+ *   channelAddressString format: "&lt;DEVICE_ID&gt;:DISCRETE_INPUTS:&lt;REGISTERNUMBER&gt;:&lt;COUNT&gt;"
  * 
  * - access 1bit called Coils (read / write) 
- *   channelAddressString format: "<DEVICE_ID>:COILS:<REGISTERNUMBER>:<COUNT>"
+ *   channelAddressString format: "&lt;DEVICE_ID&gt;:COILS:&lt;REGISTERNUMBER&gt;:&lt;COUNT&gt;"
  * 
  * The parts of the addressString are:
  * 
@@ -89,14 +89,14 @@ import org.slf4j.LoggerFactory;
  * - Device Id: modbus device address (normally 0 for modbus/tcp)
  * 
  * - Registernumber : address of first addressed register (0-65535)
- * e.g. read holding register 0 -> modbus register address 400001
+ * e.g. read holding register 0 -&gt; modbus register address 400001
  * 
  * - Count : number of addressed coils/inputs/etc
- * e.g. read holding register 0 count 5 -> modbus registers 400001 - 400005
+ * e.g. read holding register 0 count 5 -&gt; modbus registers 400001 - 400005
  * 
  * - Datatype
- * all read from a channel is an int[] array. Boolean values (COILS or DISCRETE_INPUTS) are converted to in (false -> 0, true -> 1).
- * all data written to a channel must be an int[] array. Boolean values are interpreted (0 -> false, !0 -> true)
+ * all read from a channel is an int[] array. Boolean values (COILS or DISCRETE_INPUTS) are converted to in (false -&gt; 0, true -&gt; 1).
+ * all data written to a channel must be an int[] array. Boolean values are interpreted (0 -&gt; false, !0 -&gt; true)
  * 
  * 
  * @author pau

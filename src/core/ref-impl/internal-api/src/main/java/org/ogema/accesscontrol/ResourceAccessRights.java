@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.accesscontrol;
 
@@ -37,9 +37,11 @@ public class ResourceAccessRights {
 	 */
 
 	private int mask;
-	AccessControlContext acc;
-	private TreeElement resource;
-	private PermissionManager permMan;
+	final AccessControlContext acc;
+	private final TreeElement resource;
+	private final PermissionManager permMan;
+	// may be null
+	private final String user;
 
 	/**
 	 * Create a ResourceAccessRights instance which holds the actions of a ResourcePermission that is granted to an
@@ -47,14 +49,19 @@ public class ResourceAccessRights {
 	 * 
 	 */
 	public ResourceAccessRights(AccessControlContext context, TreeElement te, PermissionManager permman) {
+		this(context, te, permman, null);
+	}
+	
+	public ResourceAccessRights(AccessControlContext context, TreeElement te, PermissionManager permman, String user) {
 		this.checked = 0;
 		this.mask = 0;
 		resetAccessRights();
 		this.acc = context;
 		this.resource = te;
 		this.permMan = permman;
+		this.user = AccessManager.SYSTEM_ID.equals(user) ? null : user;
 	}
-
+	
 	/**
 	 * Check if the access rights include read permission.
 	 * 
@@ -66,11 +73,18 @@ public class ResourceAccessRights {
 		if ((checked & ResourcePermission._READ) == 0) {
 			ResourcePermission perm = new ResourcePermission(ResourcePermission.READ, resource, 0);
 			// Check read permission
-			if (permMan.handleSecurity(perm, acc))
+			if (check(perm))
 				mask |= ResourcePermission._READ;
 			checked |= ResourcePermission._READ;
 		}
 		return ((mask & ResourcePermission._READ) != 0);
+	}
+	
+	private final boolean check(final ResourcePermission perm) {
+		final boolean check1 = permMan.handleSecurity(perm, acc);
+		if (user == null || !check1)
+			return check1;
+		return permMan.handleSecurity(user, perm);
 	}
 
 	/**
@@ -84,7 +98,7 @@ public class ResourceAccessRights {
 		if ((checked & ResourcePermission._WRITE) == 0) {
 			ResourcePermission perm = new ResourcePermission(ResourcePermission.WRITE, resource, 0);
 			// Check read permission
-			if (permMan.handleSecurity(perm, acc))
+			if (check(perm))
 				mask |= ResourcePermission._WRITE;
 			checked |= ResourcePermission._WRITE;
 		}
@@ -102,7 +116,7 @@ public class ResourceAccessRights {
 		if ((checked & ResourcePermission._DELETE) == 0) {
 			ResourcePermission perm = new ResourcePermission(ResourcePermission.DELETE, resource, 0);
 			// Check read permission
-			if (permMan.handleSecurity(perm, acc))
+			if (check(perm))
 				mask |= ResourcePermission._DELETE;
 			checked |= ResourcePermission._DELETE;
 		}
@@ -120,7 +134,7 @@ public class ResourceAccessRights {
 		if ((checked & ResourcePermission._ADDSUB) == 0) {
 			ResourcePermission perm = new ResourcePermission(ResourcePermission.ADDSUB, resource, 0);
 			// Check read permission
-			if (permMan.handleSecurity(perm, acc))
+			if (check(perm))
 				mask |= ResourcePermission._ADDSUB;
 			checked |= ResourcePermission._ADDSUB;
 		}
@@ -138,7 +152,7 @@ public class ResourceAccessRights {
 		if ((checked & ResourcePermission._ACTIVITY) == 0) {
 			ResourcePermission perm = new ResourcePermission(ResourcePermission.ACTIVITY, resource, 0);
 			// Check read permission
-			if (permMan.handleSecurity(perm, acc))
+			if (check(perm))
 				mask |= ResourcePermission._ACTIVITY;
 			checked |= ResourcePermission._ACTIVITY;
 		}
@@ -156,7 +170,7 @@ public class ResourceAccessRights {
 		if ((checked & ResourcePermission._CREATE) == 0) {
 			ResourcePermission perm = new ResourcePermission(ResourcePermission.CREATE, resource, 0);
 			// Check read permission
-			if (permMan.handleSecurity(perm, acc))
+			if (check(perm))
 				mask |= ResourcePermission._CREATE;
 			checked |= ResourcePermission._CREATE;
 		}

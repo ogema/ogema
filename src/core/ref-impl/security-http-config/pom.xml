@@ -1,0 +1,79 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<artifactId>security-http-config</artifactId>
+	<packaging>bundle</packaging>
+
+	<name>OGEMA ref-impl :: security http config</name>
+	<url>http://www.ogema-source.net</url>
+
+	<parent>
+		<groupId>org.ogema.ref-impl</groupId>
+		<artifactId>ref-impl</artifactId>
+		<version>2.2.0</version>
+	</parent>
+
+	<profiles>
+		<profile>
+			<id>noLogging</id>
+			<activation>
+				<property>
+					<name>noLogging</name>
+					<value>true</value>
+				</property>
+			</activation>
+			<properties>
+				<suppressLogging>=true</suppressLogging>
+			</properties>
+		</profile>
+	</profiles>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+				<extensions>true</extensions>
+				<configuration>
+					<instructions>
+						<Import-Package>
+							com.google.common.collect;resolution:=optional;version="[${guava.version.min},${guava.version.max})",
+							*
+						</Import-Package>
+						<!-- the xml for the HttpConfigService requires an extra attribute so we can use interface config types with Felix SCR,
+							 hence it is configured directly via xml and not by annotations (requires a relatively recent version of SCR, but 
+							 since this is an optional configuration option it should be fine; works at least with SCR >= 2.0.12)  -->
+						<Include-Resource>
+							{maven-resources},
+							OSGI-INF/org.ogema.impl.security.headers.HttpConfigService.xml=services/org.ogema.impl.security.headers.HttpConfigService.xml
+						</Include-Resource>
+						<Service-Component>OSGI-INF/org.ogema.impl.security.headers.HttpConfigService.xml</Service-Component>
+					</instructions>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+	<dependencies>
+		<dependency>
+			<groupId>org.ogema.core</groupId>
+			<artifactId>api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.compendium</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.ogema.ref-impl</groupId>
+			<artifactId>internal-api</artifactId>
+		</dependency>
+		<dependency>
+		 	<groupId>com.google.guava</groupId>
+		 	<artifactId>guava</artifactId>
+		</dependency>
+	</dependencies>
+</project>

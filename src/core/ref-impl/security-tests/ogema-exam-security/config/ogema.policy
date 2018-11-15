@@ -17,7 +17,9 @@ allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.os
 #allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.osgi.framework.PackagePermission "org.ogema.tools.*" "import") } "probe-import-ogema-tools"
 #allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.ogema.accesscontrol.OgemaFilePermission "./target/-" "read,write") } "probe-target-fileio"
 # probe allowed resources:
-allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.ogema.accesscontrol.ResourcePermission "path=ExamProbe*,type=org.ogema.model.locations.Room" "read,write,addsub,create,activity,delete")} "probe-resource-permissions"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.ogema.accesscontrol.ResourcePermission "path=ExamProbe,type=org.ogema.model.locations.Room" "read,write,addsub,create,activity,delete")} "probe-resource-permissions"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.ogema.accesscontrol.ResourcePermission "path=ExamProbe/*,type=org.ogema.model.locations.Room" "read,write,addsub,create,activity,delete")} "probe-resource-permissions2"
+allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.ogema.accesscontrol.ResourcePermission "path=ExamProbe2,type=org.ogema.model.locations.Room" "read,write,addsub,create,activity,delete")} "probe-resource-permissions3"
 allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.ogema.accesscontrol.ResourcePermission "path=Switch/statecontrol" "read,write,addsub,create,activity,delete")} "permSEC2_deny"
 allow { [org.osgi.service.condpermadmin.BundleLocationCondition "local"] (org.ogema.accesscontrol.ResourcePermission "path=anyOtherBoolean" "read")} "permSEC2_allow"
 #

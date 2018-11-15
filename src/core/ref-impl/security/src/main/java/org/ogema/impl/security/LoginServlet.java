@@ -1,23 +1,27 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.impl.security;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URL;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Map;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -33,6 +37,8 @@ import org.osgi.service.useradmin.User;
 import org.osgi.service.useradmin.UserAdmin;
 import org.slf4j.Logger;
 
+// would be preferable to create a separate component for this 
+// and leverage its own configuration class...
 public class LoginServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 1l;
@@ -41,21 +47,71 @@ public class LoginServlet extends HttpServlet {
 	protected static final String LOGIN_SERVLET_PATH = "/ogema/login";
 	protected static final String OLDREQ_ATTR_NAME = "requestBeforeLogin";
 
-	private static final String LOGIN_FAILED_MSG = "Login failed: Wrong Username/Password";
+	private static final String LOGIN_FAILED_MSG = "Login failed: Username and/or Password wrong";
 	private static final String MAX_LOGIN_TRIES_EXCEEDED_MSG = "Max number of tries for login exceeded."
 			+ " Login is blocked for %s.";
+	
+	private volatile String ICON;
+	private volatile String ICON_TYPE;
+	private volatile String STYLE;
 
-	private Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
-	private PermissionManager permissionManager;
-	private UserAdmin ua;
+	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+	private final PermissionManager permissionManager;
+	private final UserAdmin ua;
 
 	// used to prevent brute force attacks by blocking IPs if more than a predefined number of logins
 	// failed. 
-	private LoginFailureInspector failureInspector = new LoginFailureInspector();
+	private final LoginFailureInspector failureInspector = new LoginFailureInspector();
 
-	public LoginServlet(PermissionManager permissionManager, UserAdmin ua) {
+	public LoginServlet(PermissionManager permissionManager, UserAdmin ua, Map<String, Object> config) {
 		this.permissionManager = permissionManager;
 		this.ua = ua;
+		configUpdate(config);
+	}
+	
+	final void configUpdate(final Map<String, Object> config) {
+		// we may need to read system properties, and who knows what else is on the call stack...
+		AccessController.doPrivileged(new PrivilegedAction<Void>() {
+
+			@Override
+			public Void run() {
+				Object iconObj = config.get(ConfigurationConstants.ICON_CONFIG);
+				final String icon = iconObj instanceof String ? (String) iconObj
+						: System.getProperty(ConfigurationConstants.DEFAULT_ICON_PROPERTY, "ogema.svg");
+				URL test = LoginServlet.class.getResource("/web/" + icon);
+				if (test == null)
+					ICON = "/web/ogema.svg";
+				else
+					ICON = "/web/" + icon;
+				final String[] components = ICON.split("\\.");
+				final String type;
+				if (components.length > 1) {
+					final String ending = components[components.length-1];
+					switch (ending.toLowerCase()) {
+					case "svg":
+						type = "svg+xml";
+						break;
+					case "jpg":
+					case "jpeg":
+						type = "jpeg";
+						break;
+					default:
+						type = ending.toLowerCase();
+					}
+				} else
+					type = "png"; // XXX
+				ICON_TYPE = type;
+				Object styleObj = config.get(ConfigurationConstants.STYLE_CONFIG);
+				final String style;
+				if (styleObj instanceof String)
+					style = (String) styleObj;
+				else {
+					style = System.getProperty(ConfigurationConstants.DEFAULT_STYLE_PROPERTY, "primary");
+				}
+				STYLE = style;
+				return null;
+			}
+		});
 	}
 
 	@Override
@@ -66,13 +122,28 @@ public class LoginServlet extends HttpServlet {
 			resp.sendRedirect("/ogema/index.html");
 			return;
 		}
-
+		final String style = req.getParameter("style");
+		if (style != null) {
+			resp.setCharacterEncoding("UTF-8");
+			resp.setContentType("text/plain");
+			resp.getWriter().write(STYLE);
+			resp.setStatus(HttpServletResponse.SC_OK);
+			return;
+		}
+		final URL resource;
+		final String icon = req.getParameter("icon");
+		if (icon != null) {
+			resource = getClass().getResource(ICON);
+			resp.setContentType("image/" + ICON_TYPE);
+		} else {
+			resource = getClass().getResource(LOGIN_PATH);
+		}
 		InputStream is;
 		OutputStream bout;
 		int len = 0;
 		byte[] buf = new byte[512];
 		try {
-			is = getClass().getResource(LOGIN_PATH).openStream();
+			is = resource.openStream();
 			bout = resp.getOutputStream();
 			do {
 				len = is.read(buf);
@@ -86,6 +157,7 @@ public class LoginServlet extends HttpServlet {
 			//			resp.flushBuffer();
 		} catch (IOException e1) {
 			e1.printStackTrace();
+			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -115,21 +187,10 @@ public class LoginServlet extends HttpServlet {
 			return;
 		}
 
-		logger.info(req.toString());
-		String usr = req.getParameter("usr");
-		String pwd = req.getParameter("pwd");
-		if (Configuration.DEBUG) {
-			logger.info("Login request for user: " + usr);
-		}
-		if (usr == null || usr.isEmpty() || pwd == null || pwd.isEmpty()) {
-			logger.info("Invalid user or password");
-			resp.getWriter().write(LOGIN_FAILED_MSG);
-			resp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-			return;
-		}
+//		logger.info(req.toString()); // do not log sensitive info like pw
 		// Check if the user authentication is valid
-		boolean auth = permissionManager.getAccessManager().authenticate(usr, pwd, true);
-		if (auth) {
+		final String usr = permissionManager.getAccessManager().authenticate(req, true);
+		if (usr != null) {
 			User user = (User) ua.getRole(usr);
 			Authorization author = ua.getAuthorization(user);
 			HttpSession session = req.getSession();
@@ -144,8 +205,11 @@ public class LoginServlet extends HttpServlet {
 			req.getSession(false).invalidate();
 			session = req.getSession(true);
 			session.setAttribute(Constants.AUTH_ATTRIBUTE_NAME, sauth);
-			session.setAttribute(Constants.USER_CREDENTIAL, pwd);
-
+			// only applicable in case of pw-base access
+			final String pwd = req.getParameter(Constants.OTPNAME);
+			if (pwd != null)
+				session.setAttribute(Constants.USER_CREDENTIAL, pwd);
+			logger.info("User log in: {}", usr);
 			/*
 			 * Handle Request which is received before login was sent. This request is responded with the login page,
 			 * therefore the login request is responded with the stalled request received before.
@@ -165,6 +229,7 @@ public class LoginServlet extends HttpServlet {
 			else {
 				resp.getWriter().write(LOGIN_FAILED_MSG);
 			}
+			logger.info("Failed log-in attempt: {}", remoteAddress);
 		}
 		resp.setContentType("text/html");
 		resp.flushBuffer();

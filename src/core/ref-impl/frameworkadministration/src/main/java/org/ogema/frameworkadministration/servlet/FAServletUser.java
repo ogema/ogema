@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.frameworkadministration.servlet;
 
@@ -22,8 +22,10 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.ogema.frameworkadministration.FrameworkAdministration;
 import org.ogema.frameworkadministration.controller.UserController;
 import org.ogema.frameworkadministration.utils.Utils;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -152,15 +154,20 @@ public class FAServletUser extends HttpServlet {
 		case "/changePassword": {
 
 			String jsonMessage = Utils.readJsonFromRequest(req);
-			boolean success = UserController.getInstance().changePassword(jsonMessage);
-			if (success) {
-				String message = Utils.createMessage("OK", "password for user changed");
-				resp.getWriter().write(message);
-				resp.setStatus(200);
-			}
-			else {
-				String message = Utils.createMessage("ERROR", "could not change password for user");
-				resp.getWriter().write(message);
+			try {
+				boolean success = UserController.getInstance().changePassword(jsonMessage); // throws exception... boolean value nonsense
+				if (success) {
+					String message = Utils.createMessage("OK", "password for user changed");
+					resp.getWriter().write(message);
+					resp.setStatus(200);
+				}
+				else {
+					String message = Utils.createMessage("ERROR", "could not change password for user");
+					resp.getWriter().write(message);
+				}
+			} catch (SecurityException e) {
+				LoggerFactory.getLogger(FrameworkAdministration.class).info("Failed password reset attempt: {}", e.getMessage());
+				resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid user/password");
 			}
 			break;
 		}

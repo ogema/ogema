@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.tests.security.testbase.servlet;
 
@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.http.Header;
@@ -42,7 +43,7 @@ import org.junit.Assert;
  * <ul>
  * 	<li>Step 1: create an instance; this will automatically create a natural user with all permissions
  *  <li>Step 2: call {@link #login()}; the login will be done for the associated natural user
- *  <li>Step 3: call {@link #init(URI)}; pass the url of a registered web resource -> the client will 
+ *  <li>Step 3: call {@link #init(URI)}; pass the url of a registered web resource -&gt; the client will 
  *  	inherit the app id of the app the web resource belongs to, using the one-time-password mechanism
  *  <li>Step 4: use {@link #sendGet(URI)} to access any web resources and servlets registered 
  *  	by apps via their {@link WebAccessManager}
@@ -61,8 +62,13 @@ public class TestClient implements AutoCloseable {
 	private volatile String[] userPw; // OTP
 
 	public TestClient(ApplicationManager appMan) throws InterruptedException {
+		this(appMan, true);
+	}
+	
+	public TestClient(ApplicationManager appMan, boolean privileged) throws InterruptedException {
 		this.admin = appMan.getAdministrationManager();
-		this.user = SecurityTestUtils.createPrivilegedNaturalUser("testclient" + userCnt.getAndIncrement(), appMan);
+		this.user = privileged ? SecurityTestUtils.createPrivilegedNaturalUser("testclient" + userCnt.getAndIncrement(), appMan) :
+				SecurityTestUtils.createUser("testclient" + userCnt.getAndIncrement(), appMan, true, false);
 	}
 	
 	/**
@@ -91,6 +97,24 @@ public class TestClient implements AutoCloseable {
 	 * @throws IllegalStateException if the client is not logged in (see {@link #login()}.
 	 */
 	public HttpResponse sendGetInternal(final URI url) throws ClientProtocolException, IOException, URISyntaxException {
+		final Request get = Request.Get(appendAppAuthentication(url));
+		get.setHeaders();
+		if (cookies != null) {
+			for (Header cookie: cookies)
+				get.addHeader(cookie);
+		}
+		return get.execute().returnResponse();
+	}
+	
+	public HttpResponse sendRESTRequest(String resource, final int httpPort) throws URISyntaxException, ClientProtocolException, IOException {
+		if (!resource.isEmpty() && resource.charAt(0) == '/')
+			resource = resource.substring(1);
+		final URI url = new URIBuilder()
+				.setScheme("http")
+				.setPort(httpPort)
+				.setHost("localhost")
+				.setPath("rest/resources/" + resource)
+				.build();
 		final Request get = Request.Get(appendAppAuthentication(url));
 		get.setHeaders();
 		if (cookies != null) {
@@ -139,7 +163,7 @@ public class TestClient implements AutoCloseable {
 	 */
 	public void login() throws ClientProtocolException, IOException {
 		final Request login = Request.Post(SecurityTestBase.BASE_URL + loginServlet)
-			.body(new StringEntity("usr="+user.getName() + "&pwd="+user.getName(), "UTF-8"))
+			.body(new StringEntity("user="+user.getName() + "&pw="+user.getName(), "UTF-8"))
 			.addHeader("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
 		final HttpResponse response = login.execute().returnResponse(); 
 		Assert.assertEquals("Login failed", 2, response.getStatusLine().getStatusCode() / 100);
@@ -160,6 +184,10 @@ public class TestClient implements AutoCloseable {
 		final HttpResponse response = sendGetInternal(new URI(SecurityTestBase.BASE_URL + SecurityTestBase.LOGOUT_SERVLET));
 		if (response.getStatusLine().getStatusCode()/100 != 2)
 			throw new RuntimeException("Logout failed: " + EntityUtils.toString(response.getEntity()));
+	}
+	
+	public UserAccount getUser() {
+		return user;
 	}
 	
 	// we assume here an input string of the form TestWebresource.WEB_RESOURCE

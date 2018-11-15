@@ -1,25 +1,31 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.application.manager.impl;
 
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Service;
@@ -36,15 +42,21 @@ import org.slf4j.LoggerFactory;
  * 
  * @author jlapp
  */
-@Component(immediate = true)
+@Component(
+		immediate = true,
+		configurationPid=SimulationClock.SERVICE_PID
+)
 @Service(FrameworkClock.class)
 public class SimulationClock implements FrameworkClock {
 
-	private final static String SERVICE_PID = "org.ogema.application.manager.impl.SimulationClock";
+	final static String SERVICE_PID = "org.ogema.application.manager.impl.SimulationClock";
 	private volatile BundleContext ctx;
 	protected volatile long startTimeSystem;
 	protected volatile long startTimeFramework;
 	protected volatile float simulationFactor = 1.0f;
+	// required to check whether config properties changed
+	private Object startTimeFrameworkProp;
+	private Object startTimeSystemProp;
 	protected java.beans.PropertyChangeSupport propertyListeners;
     protected ConcurrentLinkedQueue<ClockChangeListener> listeners = new ConcurrentLinkedQueue<>();
     
@@ -82,7 +94,7 @@ public class SimulationClock implements FrameworkClock {
 	 */
 	public static final String SIMULATION_FACTOR = "org.ogema.defaultclock.speedfactor";
 
-	protected void activate(ComponentContext ctx, Map<String, ?> config) {
+	protected synchronized void activate(ComponentContext ctx, Map<String, Object> config) {
 		this.ctx = ctx.getBundleContext();
 		boolean disabledInProperties = Boolean.getBoolean(DISABLE);
 		boolean disabledInConfig = Boolean.valueOf(String.valueOf(config.get(DISABLE)));
@@ -93,28 +105,48 @@ public class SimulationClock implements FrameworkClock {
 			throw new ComponentException("disabled by component configuration.");
 		}
 		startTimeSystem = System.currentTimeMillis();
-		final long time;
-		if (config.containsKey("startTimeSystem") && config.containsKey("startTimeFramework") && config.containsKey("simulationFactor")) {
-			final long lastStartTimeSystem = (Long) config.get("startTimeSystem");
-			final long lastStartTimeFramework = (Long) config.get("startTimeFramework");
-			simulationFactor = (Float) config.get("simulationFactor");
-			time = (long) ((startTimeSystem - lastStartTimeSystem) * simulationFactor + lastStartTimeFramework);
+		this.simulationFactor = getSimFactor(config);
+		this.startTimeFrameworkProp = config.get("startTimeFramework");
+		this.startTimeSystemProp = config.get("startTimeSystem");
+		final Long startTimeFramework0 = getStartTimeFramework(config, startTimeSystem, simulationFactor);
+		if (startTimeFramework0 != null) {
+			this.startTimeFramework = startTimeFramework0;
 		}
 		else {  // or from system property, or use default: system time
-			time = Long.getLong(TIMESTAMP, startTimeSystem);
-			String aux = System.getProperty(SIMULATION_FACTOR);
-			if (aux != null) {
-				try {
-					simulationFactor = Float.parseFloat(aux);
-				} catch (NumberFormatException e) { /* ignore */ }
+			startTimeFramework = Long.getLong(TIMESTAMP, startTimeSystem);
+			// if only the sim factor is set via config admin we need to persist the start times for the next framework start
+			if (simulationFactor != 1.0F) {
+				persistTimeConfig();
 			}
 		}
-		startTimeFramework = time;
+		if (startTimeFramework != startTimeSystem)
+			LoggerFactory.getLogger(SimulationClock.class).info("Starting framework at simulated time {}", new java.util.Date(startTimeFramework));
+		if (simulationFactor != 1.0F) 			
+			LoggerFactory.getLogger(SimulationClock.class).info("Starting framework with simulation factor {}", simulationFactor);
 	}
 	
 	@org.apache.felix.scr.annotations.Modified
-	protected void modified(ComponentContext ctx, Map<String, ?> config) {
-		// only here to avoid component restarts when we update the configuration properties
+	protected synchronized void modified(ComponentContext ctx, Map<String, Object> config) {
+		// avoid component restarts when we update the configuration properties... need to check if props changed
+		final float simFactor = getSimFactor(config);
+		final double diff = Math.abs(simFactor - this.simulationFactor);
+		final double sum = simFactor + this.simulationFactor;
+		boolean changed = diff > sum / 100000;
+		if (!changed && (!Objects.equals(config.get("startTimeSystem"), startTimeSystemProp) ||
+					!Objects.equals(config.get("startTimeFramework"), startTimeFrameworkProp))) {
+			changed = true;
+		}
+		if (changed) {
+			final Long frameworkStart0 = getStartTimeFramework(config, startTimeSystem, simFactor);
+			final long frameworkStart = frameworkStart0 != null ? frameworkStart0 : getExecutionTime();
+			final Object systemTime0 = frameworkStart0 != null ? config.get("systemTime") : null;
+			final long systemTime = systemTime0 instanceof Long ? (Long) systemTime0 : System.currentTimeMillis();
+			this.startTimeSystemProp = config.get("startTimeSystem");
+			this.startTimeFrameworkProp = config.get("startTimeFramework");
+			LoggerFactory.getLogger(SimulationClock.class).info("Framework clock properties changed: start time: {}, simulation factor {}", 
+					new java.util.Date(frameworkStart), simFactor);
+			setSimulationTimeAndFactorInternal(frameworkStart, simFactor, systemTime, false);
+		}
 	}
 
 	// note: this is only executed on a proper shutdown
@@ -124,6 +156,7 @@ public class SimulationClock implements FrameworkClock {
 	
 	// persistence is only used if simulation clock deviates from system clock, i.e. if simulation factor 
 	// or timestamp have been set via the admin interface
+	// requires sync on this
 	private void persistTimeConfig() {
 		ServiceReference<ConfigurationAdmin> sr = null;
 		try {
@@ -144,8 +177,12 @@ public class SimulationClock implements FrameworkClock {
 			props.put("startTimeFramework", startTimeFramework);
 			props.put("simulationFactor", simulationFactor);
 			cfg.update(props);
-		} catch (IOException e) {
+			this.startTimeFrameworkProp = Long.valueOf(startTimeFramework);
+			this.startTimeSystemProp = Long.valueOf(startTimeSystem);
+		} catch (IOException e) { // TODO
 			e.printStackTrace();
+		} finally {
+			ctx.ungetService(sr);
 		}
 	}
 
@@ -166,27 +203,28 @@ public class SimulationClock implements FrameworkClock {
 	}
 	
 	@Override
-	public synchronized boolean setSimulationTimeAndFactor(long timestamp, float factor) {
+	public boolean setSimulationTimeAndFactor(long timestamp, float factor) {
+		return setSimulationTimeAndFactorInternal(timestamp, factor, null, true);
+	}
+	
+	private synchronized boolean setSimulationTimeAndFactorInternal(long timestamp, float factor, 
+			Long systemTime, boolean doPersist) {
 		final float oldFactor = this.simulationFactor;
 		final long oldT = getExecutionTime();
-		final boolean result = setSimulationTimeInternal(timestamp) | setSimulationFactorInternal(factor);
+		final boolean result = setSimulationTimeInternal(timestamp, systemTime) | setSimulationFactorInternal(factor);
 		if (propertyListeners != null) {
             propertyListeners.firePropertyChange(EXECUTION_TIME_CHANGED_PROPERTY, oldT, timestamp);
             propertyListeners.firePropertyChange(SIMULATION_FACTOR_CHANGED_PROPERTY, oldFactor, simulationFactor);
         }
-        if (!listeners.isEmpty()) {
-            ClockEvent e = new ClockEvent(simulationFactor);
-            for (ClockChangeListener l: listeners) {
-                l.clockChanged(e);
-            }
-        }
-	    persistTimeConfig();
+		dispatchClockChangedEvent(new ClockEvent(simulationFactor));
+        if (doPersist)
+        	persistTimeConfig();
 		return result;
 	}
 	
-	private boolean setSimulationTimeInternal(final long timestamp) {
+	private boolean setSimulationTimeInternal(final long timestamp, Long systemTime) {
 		this.startTimeFramework = timestamp;
-		this.startTimeSystem = System.currentTimeMillis();
+		this.startTimeSystem = systemTime != null ? systemTime : System.currentTimeMillis();
 		return true;
 	}
 	
@@ -203,34 +241,24 @@ public class SimulationClock implements FrameworkClock {
 	@Override
 	public synchronized boolean setSimulationTime(long timestamp) {
 		final long oldTimestamp = getExecutionTime();
-		final boolean result  = setSimulationTimeInternal(timestamp);
+		final boolean result  = setSimulationTimeInternal(timestamp, null);
         if (propertyListeners != null) {
             propertyListeners.firePropertyChange(EXECUTION_TIME_CHANGED_PROPERTY, oldTimestamp, timestamp);
         }
-        if (!listeners.isEmpty()) {
-            ClockEvent e = new ClockEvent(simulationFactor);
-            for (ClockChangeListener l: listeners) {
-                l.clockChanged(e);
-            }
-        }
+        dispatchClockChangedEvent(new ClockEvent(simulationFactor));
         persistTimeConfig();
 		return result;
 	}
 
 	@Override
     @SuppressWarnings("deprecation")
-	public synchronized boolean setSimulationFactor(float simulationFactor) {
+	public synchronized boolean setSimulationFactor(final float simulationFactor) {
 		float oldFactor = this.simulationFactor;
 		final boolean result = setSimulationFactorInternal(simulationFactor);
         if (propertyListeners != null) {
             propertyListeners.firePropertyChange(SIMULATION_FACTOR_CHANGED_PROPERTY, oldFactor, simulationFactor);
         }
-        if (!listeners.isEmpty()) {
-            ClockEvent e = new ClockEvent(simulationFactor);
-            for (ClockChangeListener l: listeners) {
-                l.clockChanged(e);
-            }
-        }
+        dispatchClockChangedEvent(new ClockEvent(simulationFactor));
         persistTimeConfig();
 		return result;
 	}
@@ -260,6 +288,102 @@ public class SimulationClock implements FrameworkClock {
     @Override
     public void removeClockChangeListener(ClockChangeListener l) {
         listeners.remove(l);
+    }
+    
+    private void dispatchClockChangedEvent(final ClockChangedEvent e) {
+    	if (listeners.isEmpty())
+    		return;
+		final ExecutorService exec = Executors.newSingleThreadExecutor(new ThreadFactory() {
+			
+			@Override
+			public Thread newThread(Runnable r) {
+				return new Thread(r, "clock-listener-dispatch");
+			}
+		});
+		try {
+			for (ClockChangeListener l: listeners) {
+				exec.submit(new ClockListenerCallback(l, e));
+			}
+		} finally {
+			try {
+				AccessController.doPrivileged(new PrivilegedAction<Void>() {
+	
+					@Override
+					public Void run() {
+						exec.shutdown();
+						return null;
+					}
+					
+				});
+			} catch (SecurityException ee) {
+				ee.printStackTrace();
+			}
+		}
+    }
+    
+    private static class ClockListenerCallback implements Runnable {
+    	
+    	private final ClockChangeListener listener;
+    	private final ClockChangedEvent event;
+    	
+    	public ClockListenerCallback(ClockChangeListener listener, ClockChangedEvent event) {
+    		this.listener = listener;
+    		this.event = event;
+		}
+    	
+    	@Override
+    	public void run() {
+    		listener.clockChanged(event);
+    	}
+    	
+    }
+    
+    
+    private static float getSimFactor(final Map<String, Object> config) {
+    	float simulationFactor = 1.0F;
+    	if (config.containsKey("simulationFactor")) {
+			final Object factor = config.get("simulationFactor");
+			if (factor instanceof Float)
+				simulationFactor = (Float) factor;
+			else if (factor instanceof Long)
+				simulationFactor = ((Long) factor).floatValue();
+			else {
+				try {
+					simulationFactor = Float.parseFloat((String) config.get("simulationFactor"));
+				} catch (ClassCastException | NumberFormatException e) {
+					LoggerFactory.getLogger(SimulationClock.class).error("Simulation factor must be of type Float, got {}", factor,e);
+				}
+			}
+		}
+		else {
+			String aux = System.getProperty(SIMULATION_FACTOR);
+			if (aux != null) {
+				try {
+					simulationFactor = Float.parseFloat(aux);
+				} catch (NumberFormatException e) { 
+					LoggerFactory.getLogger(SimulationClock.class).error("Simulation factor must be of type Float, got {}", aux);
+				}
+			}
+		}
+    	return simulationFactor;
+    }
+    
+    private static Long getStartTimeFramework(final Map<String, Object> config, final long startTimeSystem, final float simulationFactor) {
+    	if (!config.containsKey("startTimeFramework") || !(config.get("startTimeFramework") instanceof Long))
+    		return null;
+    	if (!config.containsKey("startTimeSystem"))
+    		return (Long) config.get("startTimeFramework");
+		try {
+			final Object startSystem0 = config.get("startTimeSystem");
+			final Object startFramework0 = config.get("startTimeFramework");
+			final long lastStartTimeSystem = startSystem0 instanceof Long ? (Long) startSystem0 : Long.parseLong((String) config.get("startTimeSystem"));
+			final long lastStartTimeFramework = startFramework0 instanceof Long ? (Long) startFramework0 : Long.parseLong((String) config.get("startTimeFramework"));
+			return (long) ((startTimeSystem - lastStartTimeSystem) * simulationFactor + lastStartTimeFramework);
+		} catch (ClassCastException | NumberFormatException e) {
+			LoggerFactory.getLogger(SimulationClock.class).error("Simulation start times must be of type Long, got {}, {}", 
+					config.get("startTimeSystem"), config.get("startTimeFramework"));
+			return null;
+		}
     }
 
 }

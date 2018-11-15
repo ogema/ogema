@@ -1,21 +1,25 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.accesscontrol;
 
+import java.security.Permission;
+import java.util.Collection;
 import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
 
 import org.ogema.core.application.AppID;
 import org.ogema.core.security.AppPermission;
@@ -23,7 +27,7 @@ import org.osgi.service.useradmin.Group;
 import org.osgi.service.useradmin.Role;
 import org.osgi.service.useradmin.User;
 
-public interface AccessManager {
+public interface AccessManager extends Authenticator {
 
 	/**
 	 * An user is created and and added to the user management. The user could represent an App on any machine or a
@@ -66,7 +70,7 @@ public interface AccessManager {
 	/**
 	 * Get the role object with the specified name from the user administration.
 	 * 
-	 * @param userName
+	 * @param name
 	 *            Name of the role
 	 * @return The reference to the role object registered with the given name. null if no such role name is known by
 	 *         the user management.
@@ -82,6 +86,27 @@ public interface AccessManager {
 	public List<String> getAllUsers();
 
 	/**
+	 * Add a permission for the specific user. Note: to remove permissions use 
+	 * ConditionalPermissionAdmin.
+	 * @param user
+	 * @param permission
+	 * @return if the update was successful
+	 * @throws IllegalStateException 
+	 *            if user does not exist
+	 */
+	public boolean addPermission(String user, Permission permission);
+	/**
+	 * Add a set of permissions for the specific user. Note: to remove permissions use 
+	 * ConditionalPermissionAdmin.
+	 * @param user
+	 * @param permissions
+	 * @return if the update was successful
+	 * @throws IllegalStateException 
+	 *            if user does not exist
+	 */
+	public boolean addPermissions(String user, List<Permission> permissions);
+	
+	/**
 	 * Extend the authorization of the given user by the rights to access the web resources of the app specified by its
 	 * AppPreperties.
 	 * 
@@ -89,6 +114,8 @@ public interface AccessManager {
 	 *            Name of the user it's rights are extended.
 	 * @param props
 	 *            A set of properties related to the application that should be granted to access to.
+	 * @throws IllegalStateException 
+	 *            if user does not exist
 	 * 
 	 */
 	public void addPermission(String user, AppPermissionFilter props);
@@ -102,6 +129,8 @@ public interface AccessManager {
 	 * @param props
 	 *            A list of AppPermissionFilter where each of them contains a set of properties related to an
 	 *            application that should be granted to access to.
+	 * @throws IllegalStateException 
+	 *            if user does not exist
 	 * 
 	 */
 	public void addPermission(String user, List<AppPermissionFilter> props);
@@ -113,6 +142,8 @@ public interface AccessManager {
 	 *            Name of the user it's access rights are changed.
 	 * @param properties
 	 *            The applications properties it's resources will be no longer accessible for the user.
+	 * @throws IllegalStateException 
+	 *            if user does not exist
 	 */
 	public void removePermission(String user, AppPermissionFilter properties);
 
@@ -188,6 +219,32 @@ public interface AccessManager {
 	 * @return true if the user authentication succeeds false otherwise.
 	 */
 	public boolean authenticate(String remoteUser, String remotePasswd, boolean isNatural);
+	
+	/**
+	 * Check the user name/pw and/or available {@link Authenticator} services whether
+	 * the request can be associated to a user.
+	 * @param req
+	 * @return
+	 * 		the user id or null, if the request could not be authenticated.
+	 */
+	public String authenticate(HttpServletRequest req);
+	
+	/**
+	 * Like {@link #authenticate(HttpServletRequest)}, but authenticate only natural users
+	 * (if natrualUser is true) or machine users (if natural user is false).
+	 * @param req
+	 * @param naturalUser
+	 * @return
+	 */
+	public String authenticate(HttpServletRequest req, boolean naturalUser);
+	
+	/**
+	 * Get the natural user associated with a servlet request, or null if no user 
+	 * is logged in.
+	 * @param req
+	 * @return
+	 */
+	public String getLoggedInUser(HttpServletRequest req);
 
 	/**
 	 * Log out a previously successfully authenticated user.
@@ -226,6 +283,64 @@ public interface AccessManager {
 	 * @return true if the user is permitted to access the resource specified with the role name, false otherwise.
 	 */
 	// public boolean checkPermission(String userName, String roleName);
+	
+	/**
+	* Get the admissible authenticator ids.
+	* @param user
+	* @return
+	*     Either null, meaning all authenticators are allowed, or the collection of admissible
+	*     authenticator ids. If the authenticators have not been set explicitly, null is returned.
+	*/
+	public Collection<String> getSupportedAuthenticators(String user);
+
+	/**
+	* Add an admissible authenticator id. This is a void operation if currently all authenticators are allowed
+	* for the user/group (the default).
+	* @param user a user or group id
+	* @param authenticatorId
+	*/
+	public void addSupportedAuthenticator(String user, String authenticatorId);
+
+	/**
+	* Disable a specific authenticator for the user/group.
+	* @param user a user or group id
+	* @param authenticatorId
+	*/
+	public void removeSupportedAuthenticator(String user, String authenticatorId);
+
+	/**
+	* @param user a user or group id
+	* @param authenticatorIds
+	*     Pass null to allow all authenticators (default), or a collection to specify which authenticators are allowed.
+	*/
+	public void setSupportedAuthenticators(String user, Collection<String> authenticatorIds);	 
+	
+	/**
+	* Get the admissible authenticator ids. This setting is applicable to all users; get the authenticators for
+	* specific users via {@link #getSupportedAuthenticators(String)}.
+	* @return
+	*     Either null, meaning all authenticators are allowed, or the collection of admissible
+	*     authenticator ids. If the authenticators have not been set explicitly, null is returned.
+	*/
+	public Collection<String> getSupportedAuthenticators();
+
+	/**
+	* Add an admissible authenticator id for all users. This is a void operation if currently all authenticators are allowed (the default).
+	* @param authenticatorId
+	*/
+	public void addSupportedAuthenticator(String authenticatorId);
+
+	/**
+	* Disable a specific authenticator for all users.
+	* @param authenticatorId
+	*/
+	public void removeSupportedAuthenticator(String authenticatorId);
+
+	/**
+	* @param authenticatorIds
+	*     Pass null to allow all authenticators (default), or a collection to specify which authenticators are allowed.
+	*/
+	public void setSupportedAuthenticators(Collection<String> authenticatorIds);	 
 
 	/**
 	 * Get the UserRightsProxy object linked to the given user.
@@ -296,14 +411,6 @@ public interface AccessManager {
 	 * @return true, if the user is not permitted to access any app or false, otherwise.
 	 */
 	public boolean isNoAppPermitted(String user);
-
-	/**
-	 * Gets if the user has access to the web interfaces of any app.
-	 *
-	 * @param user
-	 *            the user name.
-	 * @return true, if the user is not permitted to access any app or false, otherwise.
-	 */
 
 	final public static String OWNER_NAME = "fadmin";
 	final public static String SYSTEM_ID = "system";

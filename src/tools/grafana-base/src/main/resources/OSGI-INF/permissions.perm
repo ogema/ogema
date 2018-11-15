@@ -1,10 +1,11 @@
 (org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
 (org.osgi.framework.PackagePermission "javax.servlet" "import")
-(org.osgi.framework.PackagePermission "javax.servlet.*" "import")
+(org.osgi.framework.PackagePermission "javax.servlet.http" "import")
 (org.osgi.framework.PackagePermission "org.json" "import")
-(org.osgi.framework.PackagePermission "org.json.*" "import")
 (org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
 (org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.tools.timeseries.iterator.api" "import")
+
 
 (org.osgi.framework.PackagePermission "org.ogema.tools.grafana.base" "exportonly")
 (org.osgi.framework.PackagePermission "org.ogema.tools.grafana.base.*" "exportonly")

@@ -3,6 +3,7 @@ angular.module('switch',[])
     var switches = {};
     var multiSwitches  = {};
     var thermostats = {};
+    var timeout = null;
     return {
       getSwitchesLocation: function() {
         return Object.keys(switches);
@@ -88,17 +89,13 @@ angular.module('switch',[])
 
 		$scope.toggleSwitch = function(item) {
 			var msg = {'swtch' : item};
-			$http.post(path + "?user=" + otusr + "&pw=" + otpwd, msg).then(function(response) {
-				$scope.getSwitches();
-			});
+			$http.post(path + "?user=" + otusr + "&pw=" + otpwd, msg).then($scope.getSwitchesWithUpdate);
 
 		}
 
 		$scope.toggleMSwitch = function(item, value) {
 			var msg = {'mswtch' : item, 'value' : value};
-			$http.post(path + "?user=" + otusr + "&pw=" + otpwd, msg).then(function(response) {
-				$scope.getSwitches();
-			});
+			$http.post(path + "?user=" + otusr + "&pw=" + otpwd, msg).then($scope.getSwitchesWithUpdate);
 		}
 
 		$scope.getMName = function(item) {
@@ -121,9 +118,7 @@ angular.module('switch',[])
 
 		$scope.toggleTSwitch = function(item, value) {
 			var msg = {'thermo' : item, 'value' : value};
-			$http.post(path + "?user=" + otusr + "&pw=" + otpwd, msg).then(function(response) {
-				$scope.getSwitches();
-			});
+			$http.post(path + "?user=" + otusr + "&pw=" + otpwd, msg).then($scope.getSwitchesWithUpdate);
 		};
 
 		$scope.getTName = function(item) {
@@ -181,7 +176,7 @@ angular.module('switch',[])
     	// send HTTP GET
     	$scope.getSwitches = function() {
     		//console.log('Sending get request...');
-    		$http.get(path + "?user=" + otusr + "&pw=" + otpwd).then(function(response) {
+    		return $http.get(path + "?user=" + otusr + "&pw=" + otpwd).then(function(response) {
     			$scope.switchesSet.setSwitches(response.data.switches);
     			$scope.switchesSet.setMSwitches(response.data.multiswitches);
     			$scope.switchesSet.setTSwitches(response.data.thermostats);
@@ -194,20 +189,34 @@ angular.module('switch',[])
     			});
     			Object.keys(response.data.thermostats).forEach(function (path) {
     				try {
-    					console.log("Trying to calculate setpoint for ",response.data.thermostats[path]);
+    					//console.log("Trying to calculate setpoint for ",response.data.thermostats[path]);
     					$scope.Tvalue[path] = getInverseSetpoint(response.data.thermostats[path].crStp);
-    					console.log("Value,Setpoint",response.data.thermostats[path].crStp,$scope.Tvalue[path]);
+    					//console.log("Value,Setpoint",response.data.thermostats[path].crStp,$scope.Tvalue[path]);
     				} catch  (e) {
     				    console.log("Exception",e);
     				}
     			});
-    			console.log('Switches:',$scope.switchesSet.getSwitches());
+    			//console.log('Switches:',$scope.switchesSet.getSwitches());
     		});
     	};
 
+    	$scope.getSwitchesWithUpdate = function(timeout) {
+    		var tm = $scope.timeout;
+    		if (tm !== null) {
+    			window.clearTimeout(tm);
+    		}
+    		if (!timeout || timeout < 1000)
+    			timeout = 1000;
+    		$scope.timeout = setTimeout(function() {
+    			var newTimeout = 3 * timeout;
+    			if (newTimeout > 30000)
+    				newTimeout = 30000;
+    			$scope.getSwitches().then(response => $scope.getSwitchesWithUpdate(newTimeout));
+    		}, timeout);
+    	}
 
     	$scope.init = function() {
-    		$scope.getSwitches();
+    		$scope.getSwitches().then(respnse => $scope.getSwitchesWithUpdate(5000));
     	};
 
  //*************** init on startup ******************

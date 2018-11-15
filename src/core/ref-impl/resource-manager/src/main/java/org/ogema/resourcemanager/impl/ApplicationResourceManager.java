@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.resourcemanager.impl;
 
@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.AdminPermission;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.ResourceAccessRights;
@@ -263,7 +264,9 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		@SuppressWarnings("unchecked")
 		Class<? extends FloatResource> realResourceType = (Class<? extends FloatResource>) ResourceBase
 				.getOptionalElementTypeOfType(parent.getType(), el.getName());
-		if (!FloatResource.class.isAssignableFrom(realResourceType)) {
+		// null should not occur, but has been seen in rare occasions after manipulating the resource tree
+		// maybe after modifying the type definition?
+		if (realResourceType == null || !FloatResource.class.isAssignableFrom(realResourceType)) {
 			return FloatResource.class;
 		}
 		return realResourceType;
@@ -271,6 +274,10 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 
 	protected ResourceAccessRights getAccessRights(TreeElement el) {
 		TreeElement location = getLocationElement(el);
+		final String user = permissionManager.getAccessManager().getCurrentUser();
+		// do not cache access rights if a user is in the call stack
+		if (!AccessManager.SYSTEM_ID.equals(user))  
+			return permissionManager.getAccessRights(app, el, user);
 		ResourceAccessRights r = accessRights.getIfPresent(location.getPath()); //XXX use cache loader
 		if (r == null) {
 			r = permissionManager.getAccessRights(app, location);
@@ -294,10 +301,14 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		if (names.length == 1) {
 			return null;
 		}
-		VirtualTreeElement el = dbMan.getToplevelResource(names[1]);
-		for (int i = 2; i < names.length && el != null; i++) {
-			el = el.getChild(names[i]);
+        int level = 1;
+		VirtualTreeElement el = dbMan.getToplevelResource(names[level]);
+		for (level = 2; level < names.length && el != null; level++) {
+			el = el.getChild(names[level]);
 		}
+        if (el == null && !ResourceBase.validResourceName(names[level-1])) {
+            throw new NoSuchResourceException("Path " + path + " contains illegal name '" + names[level-1] + "'");
+        }
 		return el;
 	}
     
@@ -321,6 +332,8 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 
 	protected <T extends Resource> T findResource(final TreeElement el) {
         Objects.requireNonNull(el);
+        if (el instanceof VirtualTreeElement)
+        	return createResourceObject((VirtualTreeElement) el, "/" + el.getPath(),  false);
 		Deque<String> nameStack = new ArrayDeque<>();
 		for (TreeElement p = el; p != null; p = p.getParent()) {
 			nameStack.push(p.getName());
@@ -477,7 +490,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		dbMan.lockStructureRead();
 		try {
 //			return getResourcesClassic(resourceType);
-			return getResourcesViaTreeElements(resourceType);
+			return getResourcesWithFilter(resourceType);
 		} finally {
 			dbMan.unlockStructureRead();
 		}
@@ -508,6 +521,18 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		}
 		return result;
 	}
+    
+    @SuppressWarnings("unchecked")
+	private <T extends Resource> List<T> getResourcesWithFilter(final Class<T> resourceType) {
+		final List<T> result = new ArrayList<>();
+        final boolean secure = System.getSecurityManager() != null;
+        for (TreeElement e: dbMan.getElementsByType(resourceType, true)) {
+            if ((!secure || isReadPermitted(e)) && ResourceBase.validResourceName(e)) {
+                result.add((T) createResourceObject((VirtualTreeElement) e, "/" + e.getPath(), true));
+            }
+        }
+		return result;
+	}    
 	
 	@SuppressWarnings("unchecked")
 	private <T extends Resource> List<T> getResourcesViaTreeElements(final Class<T> resourceType) {
@@ -519,12 +544,12 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		}
 		return (List<T>) result0;		
 	}
-	
+    
 	void appendSubResources(final Class<? extends Resource> resourceType, final List<Resource> result, final TreeElement base, 
 			final boolean recursive, final boolean secure) {
 		if (!ResourceBase.validResourceName(base.getName()))
 			return;
-		if ((resourceType == null || resourceType.isAssignableFrom(base.getType()))	&& (!secure || permissionManager.getAccessRights(app, base).isReadPermitted())) {
+		if ((resourceType == null || resourceType.isAssignableFrom(base.getType()))	&& (!secure || isReadPermitted(base))) {
 			try {
 //				final Resource r = findResource("/" + base.getPath());
 				result.add(createResourceObject(((DefaultVirtualResourceDB) dbMan.resdb).getElement(base), "/" + base.getPath(), false));
@@ -541,6 +566,10 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 		}
 	}
 	
+	private final boolean isReadPermitted(final TreeElement element) {
+		return permissionManager.getAccessRights(app, element, permissionManager.getAccessManager().getCurrentUser()).isReadPermitted();
+	}
+	
 	/*
 	 * @Security: This method ensures that only resources are returned, their proxy objects already equipped with the
 	 * resource access rights.
@@ -553,10 +582,8 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 			if (!ResourceBase.validResourceName(top.getName())) {
 				continue;
 			}
-			ResourceAccessRights access = permissionManager.getAccessRights(app, top);
-			if (!access.isReadPermitted()) {
+			if (!isReadPermitted(top))
 				continue;
-			}
 			if (resourceType == null || (type != null && resourceType.isAssignableFrom(type))) {
                 @SuppressWarnings("unchecked")
                 T resource = (T) getResource("/" + top.getName());

@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.frameworkadministration.controller;
 
@@ -241,7 +241,7 @@ public class UserController {
 	 * possible to add or remove a permission even if the application has no webresources.
 	 * 
 	 * @param jsonMessage
-	 *            message in json format. See {@see org.ogema.frameworkadministration.json.UserJsonAppIdList} for
+	 *            message in json format. See {@link org.ogema.frameworkadministration.json.UserJsonAppIdList} for
 	 *            message format.
 	 * @return true on success, otherwise false
 	 */
@@ -319,7 +319,7 @@ public class UserController {
 	 * @param user
 	 *            the name of the user as string
 	 * @return A list in json format of all natural apps. See
-	 *         {@see org.ogema.frameworkadministration.json.UserJsonAppIdList} for message format. Returns an error
+	 *         {@link org.ogema.frameworkadministration.json.UserJsonAppIdList} for message format. Returns an error
 	 *         message if user is not a natural user
 	 */
 	public String getAppsNaturalUser(String user) {
@@ -412,7 +412,7 @@ public class UserController {
 	 * @param user
 	 *            the name of the user as string
 	 * @return A list in json format of all resource policies. See
-	 *         {@see org.ogema.frameworkadministration.json.UserJsonResourcePolicyList} for message format. Returns an
+	 *         {@link org.ogema.frameworkadministration.json.UserJsonResourcePolicyList} for message format. Returns an
 	 *         error message if the user is not a machine user except administrators.
 	 */
 	public String getPoliciesMachineUser(String user) {
@@ -507,7 +507,7 @@ public class UserController {
 	 * 
 	 * @param jsonMessage
 	 *            Resource Policies for an user in json format. See
-	 *            {@see org.ogema.frameworkadministration.json.UserJsonResourcePolicyList} for message format.
+	 *            {@link org.ogema.frameworkadministration.json.UserJsonResourcePolicyList} for message format.
 	 * @return true on success, otherwise false
 	 */
 	public boolean setPoliciesMachineUser(String jsonMessage) {
@@ -807,7 +807,7 @@ public class UserController {
 	 * Delete an user defined in the json message.
 	 * 
 	 * @param jsonMessage
-	 *            See {@see org.ogema.frameworkadministration.json.post.UserJsonDeleteUser}
+	 *            See {@link org.ogema.frameworkadministration.json.post.UserJsonDeleteUser}
 	 * @return true on success, otherwise false
 	 * @throws IOException
 	 */
@@ -831,7 +831,7 @@ public class UserController {
 	 * Create an user defined in the json message.
 	 * 
 	 * @param jsonMessage
-	 *            See {@see org.ogema.frameworkadministration.json.post.UserJsonCreateUser}
+	 *            See {@link org.ogema.frameworkadministration.json.post.UserJsonCreateUser}
 	 * @return true on success, otherwise false
 	 * @throws IOException
 	 */
@@ -857,7 +857,7 @@ public class UserController {
 	 * Changes the password for an user defined in the json message.
 	 * 
 	 * @param jsonMessage
-	 *            see {@see org.ogema.frameworkadministration.json.post.UserJsonChangePassword}
+	 *            see {@link org.ogema.frameworkadministration.json.post.UserJsonChangePassword}
 	 * @return true on success, otherwise false
 	 * @throws IOException
 	 */
@@ -869,8 +869,12 @@ public class UserController {
 		String pwd = userPwd.getPwd();
 		String oldpwd = userPwd.getoldpwd();
 
-		// FIXME the old password should be a part of the jsonMessage
-		accessManager.setNewPassword(user, oldpwd, pwd);
+		// FIXME the old password should be a part of the jsonMessage -> throws exception if pw is wrong
+		accessManager.setNewPassword(user, oldpwd, pwd); // FIXME in some implementations this throws an exception
+		// in others it simply returns if the old pw does not match -> we throw an exception if the pw has not been changed 
+		// to get a uniform response on the user page.
+		if (!accessManager.authenticate(user, pwd, accessManager.isNatural(user)))
+			throw new SecurityException("Wrong old password.");
 		return true;
 	}
 
@@ -879,7 +883,7 @@ public class UserController {
 	 * process. Differs between machine user, natural user and administrator.
 	 * 
 	 * @param jsonMessage
-	 *            {@see org.ogema.frameworkadministration.json.post.UserJsonCopyUser}
+	 *            {@link org.ogema.frameworkadministration.json.post.UserJsonCopyUser}
 	 * @return true on success, otherwise false
 	 * @throws IOException
 	 */
@@ -961,7 +965,7 @@ public class UserController {
 
 	/**
 	 * Generates a list of all user in a json format. See
-	 * {@see org.ogema.frameworkadministration.json.get.UserJsonGetList} for message format.
+	 * {@link org.ogema.frameworkadministration.json.get.UserJsonGetList} for message format.
 	 * 
 	 * @return a list of all users in json.
 	 */
@@ -990,7 +994,7 @@ public class UserController {
 
 	/**
 	 * Generates a list of userinformation for a user. The information includes the name, role, isAdmin and extra
-	 * credentials. See {@see org.ogema.frameworkadministration.json.get.UserInformationJsonGet} for message format.
+	 * credentials. See {@link org.ogema.frameworkadministration.json.get.UserInformationJsonGet} for message format.
 	 * 
 	 * @param name
 	 *            the name of the user as string

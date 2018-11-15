@@ -1,20 +1,21 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.drivers.homematic.xmlrpc.hl.channels;
 
+import java.io.IOException;
 import org.ogema.drivers.homematic.xmlrpc.hl.api.AbstractDeviceHandler;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,7 @@ public class MaintenanceChannel extends AbstractDeviceHandler {
         OPERATING_VOLTAGE,
         RSSI_DEVICE,
         RSSI_PEER,
+        UNREACH
 
     }
 
@@ -57,10 +59,12 @@ public class MaintenanceChannel extends AbstractDeviceHandler {
 
         final HmMaintenance mnt;
         final String address;
+        final HmDevice parent;
 
-        public MaintenanceEventListener(HmMaintenance mnt, String address) {
+        public MaintenanceEventListener(HmDevice parent, HmMaintenance mnt, String address) {
             this.mnt = mnt;
             this.address = address;
+            this.parent = parent;
         }
 
         @Override
@@ -96,6 +100,8 @@ public class MaintenanceChannel extends AbstractDeviceHandler {
                         mnt.battery().activate(false);
                     }
                     mnt.battery().internalVoltage().reading().setValue(e.getValueFloat());
+                } else if (PARAMS.UNREACH.name().equals(e.getValueKey())) {
+                    mnt.communicationStatus().communicationDisturbed().setValue(e.getValueBoolean());
                 }
             }
         }
@@ -120,7 +126,16 @@ public class MaintenanceChannel extends AbstractDeviceHandler {
         // create the battery field as it will be probably be linked into higher level models
         mnt.batteryLow().create();
         mnt.activate(true);
-        conn.addEventListener(new MaintenanceEventListener(mnt, desc.getAddress()));
+        
+        mnt.communicationStatus().communicationDisturbed().create();
+        try {
+            mnt.communicationStatus().communicationDisturbed().setValue(conn.<Boolean>getValue(desc.getAddress(), PARAMS.UNREACH.name()));
+        } catch (IOException ioex) {
+            logger.warn("could not read UNREACH state of device {}: {}", desc.getAddress(), ioex.getMessage());
+        }
+        mnt.communicationStatus().activate(true);
+        
+        conn.addEventListener(new MaintenanceEventListener(parent, mnt, desc.getAddress()));
     }
-
+    
 }

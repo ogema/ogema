@@ -2,30 +2,30 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.ogema</groupId>
 	<artifactId>ogema</artifactId>
-	<version>2.1.3</version>
+	<version>2.2.0</version>
 	<packaging>pom</packaging>
 	<name>OGEMA</name>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven-source-plugin.version>3.0.1</maven-source-plugin.version>
-		<maven-javadoc-plugin.version>2.10.4</maven-javadoc-plugin.version>
+		<maven-javadoc-plugin.version>3.0.1</maven-javadoc-plugin.version>
 		<!-- max versions exclusive -->
 		<guava.version.min>19.0</guava.version.min>
-		<guava.version.max>24.0</guava.version.max>
+		<guava.version.max>28.0</guava.version.max>
 		<felix.service.command.version.min>0.0.0</felix.service.command.version.min>
 		<felix.service.command.version.max>2.0.0</felix.service.command.version.max>
 		<lang3.version.min>3.4</lang3.version.min>
 		<lang3.version.max>4.0</lang3.version.max>
 		<org.json.version.min>20160212</org.json.version.min>
-		<org.json.version.max>20170518</org.json.version.max>
+		<org.json.version.max>20180814</org.json.version.max>
 	</properties>
 
 	<scm>
-		<connection>scm:git:ssh://nat6.bouncezone.de/ogema</connection>
-		<developerConnection>scm:git:ssh://git@nat6.bouncezone.de/ogema</developerConnection>
-		<url>scm:git:ssh://nat6.bouncezone.de/ogema</url>
-	  <tag>ogema-2.1.3</tag>
+		<connection>scm:ssh:git@github.com:ogema/ogema.git</connection>
+		<developerConnection>scm:git:ssh:git@github.com:ogema/ogema.git</developerConnection>
+		<url>scm:ssh:git@github.com:ogema/ogema.git</url>
+	  <tag>ogema-2.2.0</tag>
   </scm>
 
 	<repositories>
@@ -95,70 +95,78 @@
 				<groupId>org.osgi</groupId>
 				<artifactId>org.osgi.core</artifactId>
 				<version>5.0.0</version>
+                <scope>compile</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.osgi</groupId>
 				<artifactId>org.osgi.compendium</artifactId>
 				<version>5.0.0</version>
+                <scope>compile</scope>
 			</dependency>
 
 			<!-- OGEMA API -->
 			<dependency>
 				<groupId>org.ogema.core</groupId>
 				<artifactId>api</artifactId>
-				<version>2.1.3</version>
+				<version>2.2.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.ogema.core</groupId>
 				<artifactId>models</artifactId>
-				<version>2.1.3</version>
+				<version>2.2.0</version>
 			</dependency>
 
 			<!-- OGEMA Reference Implementation -->
 			<dependency>
 				<groupId>org.ogema.ref-impl</groupId>
 				<artifactId>internal-api</artifactId>
-				<version>2.1.3</version>
+				<version>2.2.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.ogema.ref-impl</groupId>
 				<artifactId>persistence</artifactId>
-				<version>2.1.3</version>
+				<version>2.2.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.ogema.ref-impl</groupId>
 				<artifactId>util</artifactId>
-				<version>2.1.3</version>
+				<version>2.2.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.ogema.ref-impl</groupId>
 				<artifactId>ogema-exam-base</artifactId>
-				<version>2.1.3</version>
+				<version>2.2.0</version>
 			</dependency>
 
 			<!-- OGEMA Tools and Services -->
 			<dependency>
 				<groupId>org.ogema.tools</groupId>
 				<artifactId>memory-timeseries</artifactId>
-				<version>2.1.3</version>
+				<version>2.2.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.ogema.tools</groupId>
 				<artifactId>resource-manipulators</artifactId>
-				<version>2.1.3</version>
+				<version>2.2.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.ogema.tools</groupId>
 				<artifactId>resource-utils</artifactId>
-				<version>2.1.3</version>
+				<version>2.2.0</version>
 			</dependency>
 
 			<!-- Others -->
 		<dependency>
 			<groupId>org.apache.felix</groupId>
 			<artifactId>org.apache.felix.framework</artifactId>
-			<version>5.4.0</version>
-		</dependency>			<dependency>
+			<version>5.6.10</version>
+		</dependency>
+        <dependency>
+			<groupId>org.apache.felix</groupId>
+			<artifactId>org.apache.felix.framework.security</artifactId>
+			<version>2.6.0</version>
+		</dependency>
+        <dependency>
 				<groupId>javax.servlet</groupId>
 				<artifactId>servlet-api</artifactId>
 				<version>2.4</version>
@@ -196,9 +204,9 @@
  		<module>apps</module>
 		<module>archetypes</module>
 		<module>core</module>
+		<module>tools</module>
 		<module>drivers</module>
 		<module>testapps</module>
-		<module>tools</module>
 		<module>external/org.apache.felix.useradmin.filestore</module>
 		<module>external/org.apache.felix.useradmin</module>
 
@@ -236,7 +244,7 @@
 				<plugin>
 					<groupId>org.apache.felix</groupId>
 					<artifactId>maven-scr-plugin</artifactId>
-					<version>1.24.0</version>
+					<version>1.26.0</version>
 					<configuration>
 						<outputDirectory>${project.build.outputDirectory}</outputDirectory>
 					</configuration>
@@ -254,7 +262,7 @@
 					<groupId>org.apache.felix</groupId>
 					<artifactId>maven-bundle-plugin</artifactId>
 					<extensions>true</extensions>
-					<version>3.3.0</version>
+					<version>4.0.0</version>
 					<executions>
 						<execution>
 							<id>bundle-manifest</id>
@@ -407,7 +415,7 @@
                             <keyword>License</keyword>
                         </keywords>
 						<properties>
-							<year>2017</year>
+							<year>2018</year>
 							<email>info@ogema.org</email>
 						</properties>
 						<!-- Encoding is actually unused, see http://code.google.com/p/license-maven-plugin/issues/detail?id=115 
@@ -663,5 +671,68 @@
 				</plugins>
 			</build>
 		</profile>
+        <profile>
+            <id>java7</id><!-- java versions < 9 -->
+            <activation>
+                <!--
+                note: not using <jdk> due to a bug in our ancient ci server
+                    <jdk>[1.7,1.9)</jdk>
+                -->
+                <file>
+                    <missing>${java.home}/jmods</missing>
+                </file>
+            </activation>
+            <properties>
+                <surefire-args>
+                    -ea
+                </surefire-args>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <argLine>
+                                ${surefire-args}
+                            </argLine>
+                            <trimStackTrace>false</trimStackTrace>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>java9</id><!-- java versions 9 and greater -->
+            <activation>
+                <!-- 
+                note: not using <jdk> due to a bug in our ancient ci server
+                    <jdk>[9,)</jdk>
+                -->
+                <file>
+                    <exists>${java.home}/jmods</exists>
+                </file>
+            </activation>
+            <properties>
+                <surefire-args>
+                    -ea
+                    --illegal-access=warn
+                    --add-opens=java.base/jdk.internal.loader=ALL-UNNAMED
+                    --add-modules java.xml.bind,java.xml.ws.annotation
+                </surefire-args>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <argLine>
+                                ${surefire-args}
+                            </argLine>
+                            <trimStackTrace>false</trimStackTrace>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
 	</profiles>
 </project>

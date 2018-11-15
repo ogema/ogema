@@ -1,27 +1,31 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.tools.resource.util;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
+import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
-import org.ogema.core.model.simple.StringResource;
+import org.ogema.core.model.ResourceList;
 import org.ogema.core.resourcemanager.ResourceAccess;
+import org.ogema.core.resourcemanager.ResourceOperationException;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.model.locations.Room;
 import org.ogema.model.prototypes.PhysicalElement;
@@ -102,6 +106,16 @@ public class ResourceUtils {
 		return sb.toString();
 	}
 	
+	public static boolean isValidResourceName(final String name) {
+		if (name == null || name.isEmpty() || !Character.isJavaIdentifierStart(name.charAt(0)))
+			return false;
+		for (char c : name.toCharArray()) {
+			if (!Character.isJavaIdentifierPart(c))
+				return false;
+		}
+		return true;
+	}
+	
 	/**
 	 * @param pathName
 	 * @return Returns if a Resource has a valid ResourcePath. 
@@ -132,31 +146,86 @@ public class ResourceUtils {
 			return false;
 		return true;
 	}
+	
+	/**
+	 * Get an unused toplevel resource name.
+	 * @param resAcc
+	 * @param prefix
+	 * 		a resource name prefix, such as "myRes"
+	 * @return
+	 * 		a resource name that is not in use yet, such as "myRes" or "myRes_4"
+	 * @throws IllegalArgumentException if prefix is not a valid resource name
+	 * @throws SecurityException if the caller does not have permission to access any of the tested resource names
+	 * @throws NullPointerException if any of the arguments is null
+	 */
+	public static String getAvailableResourceName(final ResourceAccess resAcc, final String prefix) {
+		Objects.requireNonNull(resAcc);
+		Objects.requireNonNull(prefix);
+		if (!isValidResourceName(prefix))
+			throw new IllegalArgumentException("Not a valid resource name: " + prefix);
+		String candidate = prefix;
+		Resource r = resAcc.getResource(candidate);
+		int cnt = 1;
+		while (r != null) {
+			candidate = prefix + "_" + cnt++;
+			r = resAcc.getResource(candidate);
+		}
+		return candidate;
+	}
+	
+	/**
+	 * Get an unused subresource name.
+	 * @param parent
+	 * @param prefix
+	 * 		a resource name prefix, such as "myRes"
+	 * @return
+	 * 		a resource name for a subresource that is not in use yet, such as "myRes" or "myRes_4"
+	 * @throws IllegalArgumentException if prefix is not a valid resource name
+	 * @throws SecurityException if the caller does not have permission to access any of the tested resource names
+	 * @throws NullPointerException if any of the arguments is null
+	 */
+	public static String getAvailableResourceName(final Resource parent, final String prefix) {
+		Objects.requireNonNull(parent);
+		Objects.requireNonNull(prefix);
+		if (!isValidResourceName(prefix))
+			throw new IllegalArgumentException("Not a valid resource name: " + prefix);
+		String candidate = prefix;
+		Resource r = parent.getSubResource(candidate);
+		int cnt = 1;
+		while (r != null) {
+			candidate = prefix + "_" + cnt++;
+			r = parent.getSubResource(candidate);
+		}
+		return candidate;
+	}
+	
 
 	/**
 	 * Check if the given resource has a <code>name</code> subresource, and return its value, 
-	 * if present. Otherwise, the resource path is returned.
+	 * if present. Otherwise, the resource path (location) is returned.
 	 * @param resource
 	 */
 	public static String getHumanReadableName(Resource resource) {
-		Resource name = resource.getSubResource("name");
-		if ((name != null) && (name instanceof StringResource)) {
-			String val = ((StringResource) (name)).getValue();
-			if (name.isActive() && (!val.trim().isEmpty()))
-				return val;
-		}
-		return resource.getLocation();
+		final String name = getNameResourceValue(resource);
+		return name != null ? name : resource.getLocation();	
 	}
 	
 	/**Like getHumanReadableName, but just return Resource.getName when no other name is specified*/
 	public static String getHumanReadableShortName(Resource resource) {
-		Resource name = resource.getSubResource("name");
-		if ((name != null) && (name instanceof StringResource)) {
-			String val = ((StringResource) (name)).getValue();
-			if (name.isActive() && (!val.trim().isEmpty()))
-				return val;
-		}
-		return resource.getName();		
+		final String name = getNameResourceValue(resource);
+		return name != null ? name : resource.getName();		
+	}
+	
+	/**
+	 * Get the trimmed value of the "name" subresource, if it exists, is active, is a StringResource,
+	 * and has a non-empty value. Otherwise returns null.
+	 * @param resource
+	 * @return
+	 */
+	public static String getNameResourceValue(Resource resource) {
+		if (resource == null)
+			return null;
+		return ValueResourceUtils.getStringValue(resource.getSubResource("name"));
 	}
 	
 	/** 
@@ -206,6 +275,172 @@ public class ResourceUtils {
 		}
 		return null;
 	}
+	
+	/**
+	 * Get the first matching context resource of the specified type. See {@link #getContextResources(Resource, Class, boolean)}.
+	 * @param target
+	 * @param targetType
+	 * @return
+	 * 		A matching context resource, or null if none was found.
+	 * @throws NullPointerException if targetType is null
+	 */
+	public static <R extends Resource> R getFirstContextResource(final Resource target, final Class<R> targetType) {
+		return getFirstContextResource(target, targetType, null, null);
+	}
+	
+	/**
+	 * Get the first matching context resource of the specified type. See {@link #getContextResources(Resource, Class, boolean)}.
+	 * @param target
+	 * @param targetType
+	 * @param typePattern
+	 * 		restrict to resources whose type matches the pattern; may be null
+	 * @param namePattern
+	 * 		restrict to resources whose name matches the pattern; may be null
+	 * @return
+	 * 		A matching context resource, or null if none was found.
+	 * @throws NullPointerException if targetType is null
+	 */
+	public static <R extends Resource> R getFirstContextResource(final Resource target, final Class<R> targetType, final Pattern typePattern, final Pattern namePattern) {
+		final List<R> resources = getContextResources(target, targetType, false, typePattern, namePattern);
+		return !resources.isEmpty() ? resources.get(0) : null;
+	}
+	
+	/**
+	 * Get all context resource of the specified type. The following conditions define 'context resources':
+	 * <ul>
+	 *    <li>subresources of this resource of the specified type
+	 *    <li>subresources of some parent resource of the specified type
+	 *    <li>subresources of some resource that references this resource (respectively, subresource of a parent of the referencing node), of the specified type
+	 * </ul>
+	 * If the inclusive parameter is false, then the first matches to one of the three conditions above are returned. If inclusive is true,
+	 * then the matches for all conditions are returned.<br>
+	 * 
+	 * Note that this method may be quite expensive, depending on the complexity of the resource tree of the passed resource and its
+	 * referencing nodes.
+	 * 
+	 * @param target
+	 * @param targetType
+	 * @param inclusive
+	 * 		if true, the search will continue even when the first matches have been found, otherwise it breaks
+	 * @return
+	 * 		never null
+	 * @throws NullPointerException if targetType is null
+	 */
+	public static <R extends Resource> List<R> getContextResources(final Resource target, final Class<R> targetType, final boolean inclusive) {
+		return getContextResources(target, targetType, inclusive, null, null);
+	}
+	
+	/**
+	 * Get all context resource of the specified type. The following conditions define 'context resources':
+	 * <ul>
+	 *    <li>subresources of this resource of the specified type
+	 *    <li>subresources of some parent resource of the specified type
+	 *    <li>subresources of some resource that references this resource (respectively, subresource of a parent of the referencing node), of the specified type
+	 * </ul>
+	 * If the inclusive parameter is false, then the first matches to one of the three conditions above are returned. If inclusive is true,
+	 * then the matches for all conditions are returned.<br>
+	 * 
+	 * Note that this method may be quite expensive, depending on the complexity of the resource tree of the passed resource and its
+	 * referencing nodes.
+	 * 
+	 * @param target
+	 * @param targetType
+	 * @param inclusive
+	 * 		if true, the search will continue even when the first matches have been found, otherwise it breaks
+	 * @param typePattern
+	 * 		restrict to resources whose type matches the pattern; may be null
+	 * @param namePattern
+	 * 		restrict to resources whose name matches the pattern; may be null
+	 * @return
+	 * 		never null
+	 * @throws NullPointerException if targetType is null
+	 */
+	public static <R extends Resource> List<R> getContextResources(final Resource target, final Class<R> targetType, final boolean inclusive, final Pattern typePattern, final Pattern namePattern) {
+		Objects.requireNonNull(targetType);
+		if (target == null)
+			return Collections.emptyList();
+		return getContextResources(target, targetType, inclusive, true, typePattern, namePattern);
+	}
+	
+	// FIXME if inclusive is false, we can traverse the subresources non-recursively
+	@SuppressWarnings("unchecked")
+	private static <R extends Resource> List<R> getContextResources(final Resource target, final Class<R> targetType, final boolean inclusive, final boolean recursive, 
+			final Pattern typePattern, final Pattern namePattern) {
+		final List<R> result = new ArrayList<>();
+		if (inclusive) {
+			final Resource top = getHighestAccessibleParent(target);
+			if (typePattern == null && namePattern == null)
+				result.addAll(top.getSubResources(targetType, true));
+			else {
+				for (R r : top.getSubResources(targetType, true)) {
+					boolean matches = true;
+					if (typePattern != null) {
+						matches = typePattern.matcher(r.getResourceType().getName()).find();
+					}
+					if (matches && namePattern != null) {
+						matches = namePattern.matcher(r.getName()).find();
+					}
+					if (matches)
+						result.add(r);
+				}
+			}
+			if (targetType.isAssignableFrom(top.getResourceType())) {
+				boolean matches = true;
+				if (typePattern != null)
+					matches = typePattern.matcher(top.getResourceType().getName()).find();
+				if (matches && namePattern != null)
+					matches = namePattern.matcher(top.getName()).find();
+				if (matches)
+					result.add((R) top);
+			}
+		}
+		else {
+			try {
+				for (Resource r= target; r != null; r = r.getParent()) {
+					final List<R> contextResources = r.getSubResources(targetType, true);
+					if (!contextResources.isEmpty()) {
+						if (typePattern == null && namePattern == null) {
+							return contextResources;
+						}
+						else {
+							for (R c : contextResources) {
+								boolean matches = true;
+								if (typePattern != null) {
+									matches = typePattern.matcher(c.getResourceType().getName()).find();
+								}
+								if (matches && namePattern != null) {
+									matches = namePattern.matcher(c.getName()).find();
+								}
+								if (matches)
+									result.add(c);
+							}
+							if (!result.isEmpty())
+								return result;
+						}
+					}
+					if (targetType.isAssignableFrom(r.getResourceType())) {
+						boolean matches = true;
+						if (typePattern != null) {
+							matches = typePattern.matcher(r.getResourceType().getName()).find();
+						}
+						if (matches && namePattern != null) {
+							matches = namePattern.matcher(r.getName()).find();
+						}
+						if (matches) {
+							return Collections.singletonList((R) r);
+						}
+					}
+
+				}
+			} catch (SecurityException expected) { /* maybe we do not have the permission to access some parent */ }
+		}
+		if (recursive) {
+			for (Resource ref : target.getReferencingNodes(true)) {
+				result.addAll(getContextResources(ref, targetType, inclusive, false, typePattern, namePattern));
+			}
+		}
+		return result;
+	}
 
 	/** 
 	 * Find room in resource itself or in super resource. Use the resource location to step
@@ -219,6 +454,31 @@ public class ResourceUtils {
 	 */
 	public static Room getDeviceLocationRoom(Resource res) {
 		return getDeviceRoom(res.getLocationResource());
+	}
+	
+	
+	/**
+	 * @param r
+	 * @return
+	 * 		returns the toplevel-resource above r, if all resources in the tree between r and the
+	 * 		top-level resource are accessible, or the highest resource in the tree up from r that 
+	 * 		the caller can access (resource read permission).
+	 */
+	public static Resource getHighestAccessibleParent(final Resource r) {
+		if (r == null)
+			return null;
+		Resource parent = r;
+		while (true) {
+			try {
+				final Resource p = parent.getParent();
+				if (p == null)
+					break;
+				parent = p;
+			} catch (SecurityException expected) {
+				break;
+			}
+		}
+		return parent;
 	}
 	
 	/** 
@@ -305,6 +565,66 @@ public class ResourceUtils {
 			parent = parent.getParent();
 		}
 		return (R) parent;
+	}
+
+	/**
+	 * Copy the source resource to target, including all subresources, with default settings 
+	 * (schedule values are copied, the active state is copied, logging is not activated for the
+	 * new resources)
+	 * @param source
+	 * @param target
+	 * 		may be virtual
+	 * @param ra
+	 * @throws ResourceOperationException if something goes wrong...
+	 * @throws SecurityException if the caller does not have the read permission for any
+	 * of the input resources, or the write permission for any of the target resources
+	 * @throws NullPointerException if any of source, target or ra is null
+	 */
+	public static void copy(Resource source, Resource target, ResourceAccess ra) {
+		new CopyHelper(null, source, target, ra).commit();
+	}
+	
+	/**
+	 * Copy the source resource to target, including all subresources.
+	 * @param source
+	 * @param target
+	 * 		may be virtual
+	 * @param ra
+	 * @param config
+	 * @throws ResourceOperationException if something goes wrong...
+	 * @throws SecurityException if the caller does not have the read permission for any
+	 * of the input resources, or the write permission for any of the target resources
+	 * @throws NullPointerException if any of source, target or ra is null
+	 */
+	public static void copy(Resource source, Resource target, ResourceAccess ra, ResourceCopyConfiguration config) {
+		new CopyHelper(config, source, target, ra).commit();
+	}
+	
+	/**
+	 * Get a resource list of the specified element type at the given path, creating it if does not exist yet.
+	 * @param appMan
+	 * @param path
+	 * @param elementType
+	 * @return
+	 * @throws ClassCastException if a resource at the given path exists but is not of type ResourceList, or the element type does not match
+	 * @throws SecurityException if the resource exists and the caller does not have the read permission, or the 
+	 * 		resource does not exist and the caller does not have the write permission
+	 * @throws NullPointerException if any of the passed arguments is null
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T extends Resource> ResourceList<T> getOrCreateResourceList(ApplicationManager appMan, String path, Class<T> elementType) {
+		Objects.requireNonNull(appMan);
+		Objects.requireNonNull(path);
+		Objects.requireNonNull(elementType);
+		ResourceList<T> list = appMan.getResourceAccess().getResource(path);
+		if (list == null)
+			list = appMan.getResourceManagement().createResource(path, ResourceList.class);
+		Class<? extends Resource> type = list.getElementType();
+		if (type == null)
+			list.setElementType(elementType);
+		else if (type != elementType)
+			throw new ClassCastException("Resource list exists with different element type " + type + " instead of " + elementType);
+		return list;
 	}
 	
 }

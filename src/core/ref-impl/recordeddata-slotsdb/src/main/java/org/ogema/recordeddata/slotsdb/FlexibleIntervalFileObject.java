@@ -1,24 +1,27 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.recordeddata.slotsdb;
 
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,7 +67,7 @@ public class FlexibleIntervalFileObject extends FileObject {
 			dos.writeByte(flag);
 			lastTimestamp = timestamp;
 		}
-		
+
 	}
 
 	@Override
@@ -88,7 +91,9 @@ public class FlexibleIntervalFileObject extends FileObject {
 				ByteBuffer bb = ByteBuffer.wrap(b);
 				// set position to last entries timestamp (Long, Double and Byte size in bits
 				// so divide through Byte.SIZE to get size in bytes)
-				bb.position((dataSetCount - 1) * getDataSetSize());
+				// casting is a hack to avoid incompatibility when building this on Java 9 and run on Java 8
+				// ByteBuffer#position used to return a Buffer in Jdk8, but from Java 9 on returns a ByteBuffer
+				((Buffer) bb).position((dataSetCount - 1) * getDataSetSize());
 				long l = bb.getLong();
 				return l;
 			} catch (IOException e) {
@@ -115,7 +120,9 @@ public class FlexibleIntervalFileObject extends FileObject {
 		byte[] b = new byte[(int) (dataFile.length() - headerend)];
 		dis.read(b, 0, b.length);
 		ByteBuffer bb = ByteBuffer.wrap(b);
-		bb.rewind();
+		// casting is a hack to avoid incompatibility when building this on Java 9 and run on Java 8
+		// ByteBuffer#rewind used to return a Buffer in Jdk8, but from Java 9 on returns a ByteBuffer
+		((Buffer) bb).rewind();
 
 		for (int i = 0; i < getDataSetCountInternal(); i++) {
 			long timestamp = bb.getLong();
@@ -123,7 +130,7 @@ public class FlexibleIntervalFileObject extends FileObject {
 			Quality s = Quality.getQuality(bb.get());
 			if (!Double.isNaN(d)) {
 				if (timestamp >= start && timestamp <= end) {
-					toReturn.add(new SampledValue(new DoubleValue(d), timestamp, s));
+					toReturn.add(new SampledValue(DoubleValues.of(d), timestamp, s));
 				}
 
 			}
@@ -144,11 +151,15 @@ public class FlexibleIntervalFileObject extends FileObject {
 
 		long startpos = headerend;
 
+        //System.out.println("direct BB");
+        /*
 		fis.getChannel().position(startpos);
 		byte[] b = new byte[(int) (dataFile.length() - headerend)];
 		dis.read(b, 0, b.length);
 		ByteBuffer bb = ByteBuffer.wrap(b);
-		bb.rewind();
+		((Buffer) bb).rewind();
+        */
+        MappedByteBuffer bb = fis.getChannel().map(FileChannel.MapMode.READ_ONLY, startpos, dataFile.length() - headerend);
 		int countOfDataSets = (int) ((dataFile.length() - headerend) / getDataSetSize());
 		for (int i = 0; i < countOfDataSets; i++) {
 			long timestamp = bb.getLong();
@@ -156,10 +167,9 @@ public class FlexibleIntervalFileObject extends FileObject {
 			Quality s = Quality.getQuality(bb.get());
 
 			if (!Double.isNaN(d)) {
-				toReturn.add(new SampledValue(new DoubleValue(d), timestamp, s));
+				toReturn.add(new SampledValue(DoubleValues.of(d), timestamp, s));
 			}
 		}
-
 		return toReturn;
 	}
 
@@ -176,7 +186,7 @@ public class FlexibleIntervalFileObject extends FileObject {
 		byte[] b = new byte[(int) (dataFile.length() - headerend)];
 		dis.read(b, 0, b.length);
 		ByteBuffer bb = ByteBuffer.wrap(b);
-		bb.rewind();
+		((Buffer) bb).rewind();
 		int countOfDataSets = (int) ((dataFile.length() - headerend) / 17);
 		for (int i = 0; i < countOfDataSets; i++) {
 			long timestamp2 = bb.getLong();
@@ -186,7 +196,7 @@ public class FlexibleIntervalFileObject extends FileObject {
 				return null;
 			}
 			if (!Double.isNaN(d) && timestamp == timestamp2) {
-				return new SampledValue(new DoubleValue(d), timestamp2, s);
+				return new SampledValue(DoubleValues.of(d), timestamp2, s);
 			}
 		}
 		return null;
@@ -209,19 +219,19 @@ public class FlexibleIntervalFileObject extends FileObject {
 		byte[] b = new byte[(int) (dataFile.length() - headerend)];
 		dis.read(b, 0, b.length);
 		ByteBuffer bb = ByteBuffer.wrap(b);
-		bb.rewind();
+		((Buffer) bb).rewind();
 		int countOfDataSets = (int) ((dataFile.length() - headerend) / getDataSetSize());
 		for (int i = 0; i < countOfDataSets; i++) {
 			long timestamp2 = bb.getLong();
 			double d = bb.getDouble();
 			Quality s = Quality.getQuality(bb.get());
 			if (!Double.isNaN(d) && timestamp <= timestamp2) {
-				return new SampledValue(new DoubleValue(d), timestamp2, s);
+				return new SampledValue(DoubleValues.of(d), timestamp2, s);
 			}
 		}
 		return null;
 	}
-	
+
 	@Override
 	public SampledValue readPreviousValue(long timestamp) throws IOException {
 		if (!canRead) {
@@ -233,7 +243,7 @@ public class FlexibleIntervalFileObject extends FileObject {
 		byte[] b = new byte[(int) (dataFile.length() - headerend)];
 		dis.read(b, 0, b.length);
 		ByteBuffer bb = ByteBuffer.wrap(b);
-		bb.rewind();
+		((Buffer) bb).rewind();
 		int countOfDataSets = (int) ((dataFile.length() - headerend) / getDataSetSize());
 		long tcand = Long.MIN_VALUE;
 		double dcand = Double.NaN;
@@ -246,13 +256,13 @@ public class FlexibleIntervalFileObject extends FileObject {
 				tcand = timestamp2;
 				dcand = d;
 				qcand = s;
-//				candidate = new SampledValue(new DoubleValue(d), timestamp2, s);
+//				candidate = new SampledValue(DoubleValues.of(d), timestamp2, s);
 			}
-			else if (timestamp < timestamp2) 
+			else if (timestamp < timestamp2)
 				break;
 		}
 		if (!Double.isNaN(dcand))
-			return new SampledValue(new DoubleValue(dcand), tcand, qcand);
+			return new SampledValue(DoubleValues.of(dcand), tcand, qcand);
 		return null;
 	}
 
@@ -260,7 +270,7 @@ public class FlexibleIntervalFileObject extends FileObject {
 	protected int getDataSetCountInternal() {
 		return (int) ((dataFile.length() - headerend) / getDataSetSize());
 	}
-	
+
 	@Override
 	protected int getDataSetCountInternal(long start, long end) throws IOException {
 		long fileEnd = getTimestampForLatestValueInternal();
@@ -276,7 +286,7 @@ public class FlexibleIntervalFileObject extends FileObject {
 		byte[] b = new byte[(int) (dataFile.length() - headerend)];
 		dis.read(b, 0, b.length);
 		ByteBuffer bb = ByteBuffer.wrap(b);
-		bb.rewind();
+		((Buffer) bb).rewind();
 		int cnt = 0;
 		int countOfDataSets = getDataSetCountInternal();
 		for (int i = 0; i < countOfDataSets; i++) {
@@ -291,7 +301,7 @@ public class FlexibleIntervalFileObject extends FileObject {
 		}
 		return cnt;
 	}
-	
+
 	private final static int getDataSetSize() {
 		return (Long.SIZE + Double.SIZE + Byte.SIZE) / Byte.SIZE;
 	}

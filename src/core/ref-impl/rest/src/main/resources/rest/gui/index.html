@@ -1,18 +1,18 @@
 <!--
 
-    This file is part of OGEMA.
+    Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
 
-    OGEMA is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License version 3
-    as published by the Free Software Foundation.
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
 
-    OGEMA is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-    GNU General Public License for more details.
+        http://www.apache.org/licenses/LICENSE-2.0
 
-    You should have received a copy of the GNU General Public License
-    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
 
 -->
 <!DOCTYPE html>
@@ -98,15 +98,18 @@
 	    		});
 	    		document.getElementById('depthField').value = values[0];
 	    		document.getElementById('optionReferences').checked = values[1];
-	    		document.getElementById('optionSchedules').checked = values[2];   		
-	    		if (usr != null) 
-	    			document.getElementById('userField').value = usr;	
-	    		else
-	    			document.getElementById('userField').value = '';	
-	    		if (pw != null) 
-	    			document.getElementById('pwField').value = pw;	
-	    		else
-	    			document.getElementById('pwField').value = '';	
+	    		document.getElementById('optionSchedules').checked = values[2];
+	    		var basicAuth = document.getElementById('basicAuth').checked;
+	    		if (!basicAuth) {	
+	    			if (usr != null) 
+	    				document.getElementById('userField').value = usr;	
+	    			else
+	    				document.getElementById('userField').value = '';	
+	    			if (pw != null) 
+	    				document.getElementById('pwField').value = pw;	
+	    			else
+	    				document.getElementById('pwField').value = '';	
+	    		}
 	    	}
 	    	function getOption(idx,depth) {
 	    		switch (idx) {
@@ -137,8 +140,9 @@
 	        	   depth = parseInt(depthStr); 	  
 	        	} 
 	        	document.getElementById('depthField').value = depth;  // relevant if user enters invalid string
-	        	var user = document.getElementById('userField').value;
-	        	var pw = document.getElementById('pwField').value;
+	        	var basicAuth = document.getElementById('basicAuth').checked;
+	        	var user = !basicAuth ? document.getElementById('userField').value : null;
+	        	var pw = !basicAuth ? document.getElementById('pwField').value : null;
 	        	var bool = [false,false,false];
 	        	bool[0] = (depth > 0);
 	        	bool[1] = document.getElementById('optionReferences').checked;
@@ -173,12 +177,32 @@
 	        	else 
 	        		return path += "?";
 	        }
+	        function getBase64EncodedCredentials() {
+	        	var user = document.getElementById('userField').value;
+	        	var pw = document.getElementById('pwField').value;
+	        	// https://stackoverflow.com/questions/246801/how-can-you-encode-a-string-to-base64-in-javascript
+	        	return "Basic " + btoa(encodeURIComponent(user + ":" + pw).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+        			return String.fromCharCode('0x' + p1);
+   				}));
+	        }
+	        function setAuthHeader() {
+	        	var container = document.getElementById("authContainer");
+	        	var active = document.getElementById("basicAuth").checked;
+	        	if (!active) {
+	        		container.style.display = "none";
+	        		return;
+	        	}
+	        	var auth = container.querySelector("#auth");
+	        	auth.innerText = getBase64EncodedCredentials();
+	        	container.style.display = "block";
+	        }
 	        function setOptionsString() {
 	        	try {
 	        		document.topform.resourceField.value = getOptionsString();
 	        	} catch (e) {
 	        		console.error(e);
 	        	}
+	        	setAuthHeader();
 	        }
 			function send(requestType, resource, body) {
 		        var request = new XMLHttpRequest();
@@ -194,6 +218,9 @@
 		      	    request.setRequestHeader("Accept", "application/xml");
 		        }
 				request.setRequestHeader("Content-type",cntType);
+				var basicAuth = document.getElementById('basicAuth').checked;
+				if (basicAuth)
+					request.setRequestHeader("Authorization", getBase64EncodedCredentials());
 		        request.onreadystatechange = function()
 		        {
 		            if(request.readyState == 4)
@@ -285,6 +312,14 @@
                                            onchange="setOptionFields()"
                                            onkeydown="if (event.keyCode === 13) { sendRESTrequest('GET'); return false; }" value="?user=rest&pw=rest">
 		            <p>
+		            	<div id="authContainer" style="display:none;">
+		            		<h4>Headers:</h4>
+		            		<ul>
+		            			<li><span>Authorization: </span><span id="auth"></span></li>
+		            		</ul>
+		            	</div>
+		            </p>
+		            <p>
 		            	<h4>Options:</h4>
 		            	<ul>
 		            		<li>User: <input id="userField" type="text" size="15" onchange="setOptionsString()" value="rest"/></li>
@@ -295,8 +330,9 @@
 		            		<li>Format 	<select name="formatSelector">
 						            		<option selected="selected">XML</option>
 						            		<option>JSON</option>
-						            	</select>
-						    </li>
+						            	</select></li>
+						    <li>Use basic authentication <input type="checkbox" id="basicAuth" onchange="setOptionsString()" /></li>
+						    
 		            	</ul>
 		            	
 		            <br />

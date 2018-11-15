@@ -1,20 +1,22 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.impl.persistence;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
@@ -36,7 +38,7 @@ public class TreeElementImpl implements TreeElement {
 	/*
 	 * List of children which are defined as non-optional in the type definition or added as optional or decorator.
 	 */
-	public ConcurrentHashMap<String, TreeElementImpl> requireds;
+	private volatile ConcurrentHashMap<String, TreeElementImpl> requireds;
 	/*
 	 * List of all children which are part of the type definition.
 	 */
@@ -89,7 +91,7 @@ public class TreeElementImpl implements TreeElement {
 
 	public TreeElementImpl(ResourceDBImpl db) {
 		this.db = db;
-		requireds = new ConcurrentHashMap<>();
+//		requireds = new ConcurrentHashMap<>(4, 0.75F, 4);
 		typeKey = DBConstants.TYPE_KEY_INVALID;
 	}
 
@@ -291,7 +293,7 @@ public class TreeElementImpl implements TreeElement {
 		if (checkRefLoop(refimpl))
 			throw new UnsupportedOperationException();
 		// check if a child with this name already exists.
-		if (requireds.containsKey(refName))
+		if (requiredsContainsKey(refName))
 			throw new ResourceAlreadyExistsException(refName);
 
 		/*
@@ -366,7 +368,7 @@ public class TreeElementImpl implements TreeElement {
 		// db.createTree(result);
 		db.registerRes(result);
 
-		requireds.put(result.name, result);
+		getOrCreateRequireds(true).put(result.name, result);
 		if (db.activatePersistence)
 			db.persistence.store(id, PersistencePolicy.ChangeInfo.NEW_SUBRESOURCE);
 		return result;
@@ -395,7 +397,7 @@ public class TreeElementImpl implements TreeElement {
 		 * add child to node check if a child with this name already added.
 		 */
 		TreeElementImpl node = this;
-		if (node.requireds.containsKey(chName))
+		if (node.requiredsContainsKey(chName))
 			throw new ResourceAlreadyExistsException(chName);
 		/*
 		 * If a child to be added to a ResourceList some exceptions are to be considered
@@ -484,7 +486,7 @@ public class TreeElementImpl implements TreeElement {
 
 		db.registerRes(result);
 
-		node.requireds.put(result.name, result);
+		node.getOrCreateRequireds(true).put(result.name, result);
 		if (db.activatePersistence)
 			db.persistence.store(id, PersistencePolicy.ChangeInfo.NEW_SUBRESOURCE);
 		return result;
@@ -541,7 +543,7 @@ public class TreeElementImpl implements TreeElement {
 		db.createTree(result);
 		db.registerRes(result);
 
-		this.requireds.put(result.name, result);
+		this.getOrCreateRequireds(true).put(result.name, result);
 		if (db.activatePersistence)
 			db.persistence.store(id, PersistencePolicy.ChangeInfo.NEW_SUBRESOURCE);
 		return result;
@@ -582,7 +584,7 @@ public class TreeElementImpl implements TreeElement {
 		result.resID = id;
 		db.registerRes(result);
 
-		requireds.put(result.name, result);
+		this.getOrCreateRequireds(true).put(result.name, result);
 		if (db.activatePersistence)
 			db.persistence.store(id, PersistencePolicy.ChangeInfo.NEW_SUBRESOURCE);
 		return result;
@@ -629,8 +631,7 @@ public class TreeElementImpl implements TreeElement {
 		TreeElementImpl node = this;
 		if (reference)
 			return refered.getChildren();
-		Vector<TreeElement> v = new Vector<TreeElement>(node.requireds.values());
-		return v;
+		return new ArrayList<TreeElement>(node.getOrCreateRequireds(false).values());
 	}
 
 	@Override
@@ -643,7 +644,7 @@ public class TreeElementImpl implements TreeElement {
 		if (reference)
 			node = (TreeElementImpl) refered.getChild(name);
 		else
-			node = node.requireds.get(name);
+			node = node.getRequired(name);
 		return node;
 	}
 
@@ -836,7 +837,7 @@ public class TreeElementImpl implements TreeElement {
 	}
 
 	public TreeElementImpl initChild(String chName, Class<?> clazz) {
-		TreeElementImpl elem = requireds.get(chName);
+		TreeElementImpl elem = getRequired(chName);
 		if (elem == null) {
 			// Hash sub resource as child owned by the model definition
 			TreeElementImpl e = new TreeElementImpl(db);
@@ -891,4 +892,40 @@ public class TreeElementImpl implements TreeElement {
 		else
 			return elem;
 	}
+	
+	boolean requiredsContainsKey(final String key) {
+		final ConcurrentHashMap<String, TreeElementImpl> map = this.requireds;
+		return map != null && map.containsKey(key);
+	}
+	
+	TreeElementImpl getRequired(final String key) {
+		final ConcurrentHashMap<String, TreeElementImpl> map = this.requireds;
+		if (map == null)
+			return null;
+		return map.get(key);
+	}
+	
+	Map<String, TreeElementImpl> getOrCreateRequireds(boolean doCreate) {
+		ConcurrentHashMap<String, TreeElementImpl> map = this.requireds;
+		if (!doCreate)
+			return map != null ? map : Collections.<String, TreeElementImpl> emptyMap();
+		if (map == null) {
+			synchronized (this) { // double checking pattern to avoid synchronization in the generic case
+				map = this.requireds;
+				if (map == null) {
+					map = new ConcurrentHashMap<>(4, 0.75F, 4);
+					this.requireds = map;
+				}
+			}
+		}
+		return map;
+	}
+	
+	TreeElementImpl removeRequired(String name) {
+		ConcurrentHashMap<String, TreeElementImpl> map = this.requireds;
+		if (map == null)
+			return null;
+		return map.remove(name);
+	}
+	
 }

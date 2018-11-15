@@ -1,23 +1,24 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.recordeddata.slotsdb;
 
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -112,7 +113,7 @@ public class ConstantIntervalFileObject extends FileObject {
 
 	/**
 	 * calculates the position in a file for a certain timestamp
-	 * 
+	 *
 	 * @param timestamp
 	 * @return position
 	 */
@@ -166,7 +167,7 @@ public class ConstantIntervalFileObject extends FileObject {
 				Double toReturn = dis.readDouble();
 				if (!Double.isNaN(toReturn)) {
 
-					return new SampledValue(new DoubleValue(toReturn), timestamp, Quality.getQuality(dis.readByte()));
+					return new SampledValue(DoubleValues.of(toReturn), timestamp, Quality.getQuality(dis.readByte()));
 				}
 			}
 		}
@@ -175,10 +176,10 @@ public class ConstantIntervalFileObject extends FileObject {
 
 	/**
 	 * Returns a List of Value Objects containing the measured Values between provided start and end timestamp
-	 * 
+	 *
 	 * @param start
 	 * @param end
-	 * @return 
+	 * @return
 	 * @throws IOException
 	 */
 	@Override
@@ -212,14 +213,16 @@ public class ConstantIntervalFileObject extends FileObject {
 			byte[] b = new byte[(int) (endPos - startPos) + 9];
 			dis.read(b, 0, b.length);
 			ByteBuffer bb = ByteBuffer.wrap(b);
-			bb.rewind();
+			// casting is a hack to avoid incompatibility when building this on Java >=9 and run on Java <=8
+			// ByteBuffer#rewind used to return a Buffer in Jdk8, but from Java 9 on returns a ByteBuffer
+			((Buffer) bb).rewind();
 
 			for (int i = 0; i <= (endPos - startPos) / 9; i++) {
 				double d = bb.getDouble();
 				Quality s = Quality.getQuality(bb.get());
 				if (!Double.isNaN(d)) {
 					if (timestampcounter <= end) {
-						toReturn.add(new SampledValue(new DoubleValue(d), timestampcounter, s));
+						toReturn.add(new SampledValue(DoubleValues.of(d), timestampcounter, s));
 					}
 				}
 				timestampcounter += storagePeriod;
@@ -253,21 +256,21 @@ public class ConstantIntervalFileObject extends FileObject {
 				fis.getChannel().position(getBytePosition(timestamp));
 				Double toReturn = dis.readDouble();
 				if (!Double.isNaN(toReturn)) {
-					return new SampledValue(new DoubleValue(toReturn), timestamp, Quality.getQuality(dis.readByte()));
+					return new SampledValue(DoubleValues.of(toReturn), timestamp, Quality.getQuality(dis.readByte()));
 				}
 				timestamp += storagePeriod;
 			}
 		}
 		return null;
 	}
-	
+
 	@Override
 	public SampledValue readPreviousValue(long timestamp) throws IOException {
 		// Calculate next Value, round Timestamp to next Value
 		timestamp = timestamp + (storagePeriod - ((timestamp - startTimeStamp) % storagePeriod)); // what if storagePeriod changes?
 		long startPos = getBytePosition(startTimeStamp);
 		long endPos = getBytePosition(timestamp);
-		
+
 		for (int i = 0; i <= (endPos - startPos) / 9; i++) {
 			if (timestamp >= startTimeStamp && timestamp <= getTimestampForLatestValueInternal()) {
 				if (!canRead) {
@@ -276,19 +279,19 @@ public class ConstantIntervalFileObject extends FileObject {
 				fis.getChannel().position(getBytePosition(timestamp));
 				Double toReturn = dis.readDouble();
 				if (!Double.isNaN(toReturn)) {
-					return new SampledValue(new DoubleValue(toReturn), timestamp, Quality.getQuality(dis.readByte()));
+					return new SampledValue(DoubleValues.of(toReturn), timestamp, Quality.getQuality(dis.readByte()));
 				}
 				timestamp -= storagePeriod;
 			}
 		}
 		return null;
 	}
-	
+
     @Override
     public int getDataSetCount() {
     	return (int) ((length - 16) / 9);
     }
-    
+
 	@Override
 	public int getDataSetCount(long start, long end) {
 		long fileEnd = getTimestampForLatestValueInternal();
@@ -300,29 +303,29 @@ public class ConstantIntervalFileObject extends FileObject {
 		long endPos = length;
 		if (start > startTimeStamp)
 			startPos = getBytePosition(start);
-		if (end < fileEnd) 
+		if (end < fileEnd)
 			endPos = getBytePosition(end);
     	return (int) (endPos - startPos)/ 9;
-    	
+
     }
-	
+
 	/*
 	 * Methods not required; internal methods not requiring file access
 	 */
-	
+
 	@Override
 	protected int getDataSetCountInternal() {
 		return getDataSetCount();
 	}
-	
+
 	@Override
 	protected int getDataSetCountInternal(long start, long end) throws IOException {
 		return getDataSetCount();
 	}
-	
+
 	@Override
 	protected long getTimestampForLatestValueInternal() {
 		return getTimestampForLatestValue();
 	}
-	
+
 }

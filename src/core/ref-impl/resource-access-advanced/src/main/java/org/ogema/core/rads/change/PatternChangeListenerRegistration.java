@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.core.rads.change;
 
@@ -31,19 +31,22 @@ import org.ogema.core.resourcemanager.CompoundResourceEvent;
 import org.ogema.core.resourcemanager.pattern.PatternChangeListener;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.resourcetree.listeners.ResourceLock;
+import org.slf4j.Logger;
 
 public class PatternChangeListenerRegistration implements RegisteredPatternChangeListener {
 	
 	private final ResourcePattern<?> pattern;
 	private final ApplicationManager am;
+	private final Logger logger;
 	private final PatternChangeListener<?> patternListener;
 	private final List<PatternStructureChangeListener> structureListeners;
 	private final List<PatternValueChangeListener> valueListeners;
 	
-	public PatternChangeListenerRegistration(ResourcePattern<?> pattern, ApplicationManager am, 
+	public PatternChangeListenerRegistration(ResourcePattern<?> pattern, ApplicationManager am, Logger logger,
 			PatternChangeListener<?> patternListener, final Class<? extends ResourcePattern<?>> patternType) {
 		this.pattern = pattern;
 		this.am = am;
+		this.logger = logger;
 		this.patternListener = patternListener;
 		this.structureListeners = AccessController.doPrivileged(new PrivilegedAction<List<PatternStructureChangeListener>>() {
 
@@ -89,7 +92,7 @@ public class PatternChangeListenerRegistration implements RegisteredPatternChang
 					target.addStructureListener(structureListener);
 				}
 			} catch (IllegalAccessException | IllegalArgumentException | SecurityException e) {
-				am.getLogger().error("Error initializing pattern change listeners: ",e);
+				logger.error("Error initializing pattern change listeners: ",e);
 			}
 		}
 		return list;
@@ -111,7 +114,7 @@ public class PatternChangeListenerRegistration implements RegisteredPatternChang
 					target.addValueListener(valueListener);
 				}
 			} catch (IllegalAccessException | IllegalArgumentException | SecurityException e) {
-				am.getLogger().error("Error initializing pattern change listeners: ",e);
+				logger.error("Error initializing pattern change listeners: ",e);
 			}
 		}
 		return list;
@@ -135,7 +138,7 @@ public class PatternChangeListenerRegistration implements RegisteredPatternChang
 	private final List<CompoundResourceEvent<?>> events = new ArrayList<>();
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	void trigger(CompoundResourceEvent event) {
+	void trigger(final CompoundResourceEvent event) {
 		// System.out.println("   trigger called for " + event.getSource());
 		synchronized(this) {
 			events.add(event);
@@ -146,6 +149,8 @@ public class PatternChangeListenerRegistration implements RegisteredPatternChang
 
 			@Override
 			public Boolean call() throws Exception {
+				if (!event.isActive())
+					return false;
 				List<CompoundResourceEvent<?>> eventsLocal;
                 lockRead(); // ensures that no further events are added in the meantime
 				try {

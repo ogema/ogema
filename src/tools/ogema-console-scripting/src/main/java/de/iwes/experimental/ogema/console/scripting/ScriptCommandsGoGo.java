@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package de.iwes.experimental.ogema.console.scripting;
 
@@ -23,9 +23,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.script.Bindings;
@@ -39,18 +42,22 @@ import org.apache.felix.scr.annotations.Properties;
 import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
+import org.apache.felix.scr.annotations.ReferencePolicy;
+import org.apache.felix.scr.annotations.ReferencePolicyOption;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.felix.service.command.Descriptor;
+import org.apache.felix.service.command.Parameter;
 import org.ogema.core.application.Application;
-import org.ogema.core.application.Application.AppStopReason;
 import org.ogema.core.application.ApplicationManager;
+import org.osgi.framework.Constants;
+import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Starts a Groovy script engine that is accessible via the equinox OSGi console. Type {@code 'help'} on the OSGi
- * console for a list off new commands, generally command added by this component start with {@code 'ogs'}. <br/>
+ * console for a list off new commands, generally command added by this component start with {@code 'ogs'}. <br>
  * The following bindings are available inside the script engine:
  * <dl>
  * <dt>bundle</dt>
@@ -68,8 +75,15 @@ import org.slf4j.LoggerFactory;
 @Component(specVersion = "1.2", immediate = true, enabled = true)
 @Service(Application.class)
 @Properties({ @Property(name = "osgi.command.scope", value = "ogs"),
-		@Property(name = "osgi.command.function", value = { "ogs", "run", "console", "init", "env" }) })
-@Reference(cardinality = ReferenceCardinality.OPTIONAL_MULTIPLE, referenceInterface = ScriptEngineFactory.class, bind = "addFactory", unbind = "removeFactory")
+		@Property(name = "osgi.command.function", value = { "ogs", "run", "console", "init", "env", "listEngines" }) })
+@Reference(
+	cardinality = ReferenceCardinality.OPTIONAL_MULTIPLE,
+	policy=ReferencePolicy.DYNAMIC,
+	policyOption=ReferencePolicyOption.GREEDY,
+	referenceInterface = ScriptEngineFactory.class, 
+	bind = "addFactory", 
+	unbind = "removeFactory"
+)
 public class ScriptCommandsGoGo implements Application {
 
 	@Reference
@@ -80,9 +94,13 @@ public class ScriptCommandsGoGo implements Application {
 	protected boolean echo = false;
 	protected final List<String> history = new ArrayList<>();
 	protected ComponentContext ctx;
+	/**
+	 * Map engine factory -&gt; service ranking
+	 */
+	// synchronized on this
+    protected final Map<ScriptEngineFactory, Integer> addedFactories = new HashMap<ScriptEngineFactory, Integer>();
+    private List<ServiceReference<ScriptEngineFactory>> pendingFactories;
     
-    protected final List<ScriptEngineFactory> addedFactories = new ArrayList<>();
-
 	protected ApplicationManager appMan;
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -136,9 +154,12 @@ public class ScriptCommandsGoGo implements Application {
         return null;
 	}
 
+	// TODO handle case that multiple engines for the same language exist
 	@Descriptor("initialize a new script engine (e.g. 'javascript' or 'Groovy')")
 	public void init(String engineName) {
-		initEngine(engineName);
+		synchronized (this) {
+			initEngine(engineName);
+		}
 	}
 
 	@Descriptor("display Groovy console window")
@@ -146,6 +167,24 @@ public class ScriptCommandsGoGo implements Application {
 		Console c = new Console(getClass().getClassLoader(),
 				new Binding(engine.getBindings(ScriptContext.ENGINE_SCOPE)));
 		c.run();
+	}
+	
+	@Descriptor("List available script engines")
+	public Collection<String> listEngines(
+			@Parameter(names= {"-f", "--fullname"}, absentValue="false", presentValue="true")
+			@Descriptor("Print the full engine name instead of the corresponding language?")
+			final boolean fullName
+			) {
+		final List<String> languages = new ArrayList<>();
+		synchronized (this) {
+			for (ScriptEngineFactory f : addedFactories.keySet()) {
+				languages.add(fullName ? f.toString() : f.getLanguageName());
+			}
+			for (ScriptEngineFactory f : manager.getEngineFactories()) {
+				languages.add(fullName ? f.toString() : f.getLanguageName());
+			}
+		}
+		return languages;
 	}
 
 	public void env() {
@@ -162,7 +201,7 @@ public class ScriptCommandsGoGo implements Application {
 		for (Map.Entry<String, Object> entry : b.entrySet()) {
 			String string = entry.getKey();
 			Object object = entry.getValue();
-			System.out.printf("%s = [%s]: %s%n", string, object.getClass().getSimpleName(), object);
+			System.out.printf("%s = [%s]: %s%n", string, object == null ? "null" : object.getClass().getSimpleName(), object);
 		}
 	}
 
@@ -175,37 +214,218 @@ public class ScriptCommandsGoGo implements Application {
             return se;
 		}
 	}
+	
+	private void addFactoryInternal(ScriptEngineFactory fac, int rank) {
+		 logger.debug("adding factory for {}", fac.getLanguageName());
+		 synchronized (this) {
+	        for (String mimeType : fac.getMimeTypes()) {
+	        	boolean ok = true;
+	        	for (Map.Entry<ScriptEngineFactory, Integer> existing: addedFactories.entrySet()) {
+	        		if (existing.getKey().getMimeTypes().contains(mimeType) && existing.getValue() > rank) {
+	        			ok = false;
+	        			break;
+	        		}
+	        	}
+	        	if (ok)
+	            	manager.registerEngineMimeType(mimeType, fac);
+	        }
+	        {
+	        	final String lang = fac.getLanguageName();
+	        	boolean ok = true;
+	        	for (Map.Entry<ScriptEngineFactory, Integer> existing: addedFactories.entrySet()) {
+	        		if (lang.equals(existing.getKey().getLanguageName()) && existing.getValue() > rank) {
+	        			ok = false;
+	        			break;
+	        		}
+	        	}
+	        	if (ok)
+	        		manager.registerEngineName(lang, fac);
+	        }
+	        for (String ext : fac.getExtensions()) {
+	        	boolean ok = true;
+	        	for (Map.Entry<ScriptEngineFactory, Integer> existing: addedFactories.entrySet()) {
+	        		if (existing.getKey().getExtensions().contains(ext) && existing.getValue() > rank) {
+	        			ok = false;
+	        			break;
+	        		}
+	        	}
+	        	if (ok)
+	        		manager.registerEngineExtension(ext, fac);
+	        }
+	        addedFactories.put(fac, rank);
+		}
+	}
     
-    protected void addFactory(ScriptEngineFactory fac) {
-        logger.debug("adding factory for {}", fac.getLanguageName());
-        for (String mimeType : fac.getMimeTypes()) {
-            manager.registerEngineMimeType(mimeType, fac);
-        }
-        manager.registerEngineName(fac.getLanguageName(), fac);
-        for (String ext : fac.getExtensions()) {
-            manager.registerEngineExtension(ext, fac);
-        }
-        addedFactories.add(fac);
+    protected void addFactory(ServiceReference<ScriptEngineFactory> facRef) {
+    	final ComponentContext ctx;
+    	synchronized (this) {
+    		ctx = this.ctx;
+    		if (ctx == null) {
+    			if (pendingFactories == null)
+    				pendingFactories = new ArrayList<>(4);
+    			pendingFactories.add(facRef);
+    			return;
+    		}
+		}
+    	final ScriptEngineFactory fac = ctx.getBundleContext().getService(facRef);
+    	if (fac == null)
+    		return;
+    	Object rankProp = facRef.getProperty(Constants.SERVICE_RANKING);
+        final int rank = rankProp instanceof Integer ? ((Integer) rankProp).intValue() : 0;
+        addFactoryInternal(fac, rank);
     }
     
-    protected void removeFactory(ScriptEngineFactory fac) {
-        addedFactories.remove(fac);
+    protected void removeFactory(ServiceReference<ScriptEngineFactory> facRef) {
+    	final ComponentContext ctx = this.ctx;
+    	if (ctx == null)
+    		return;
+   		final ScriptEngineFactory fac = ctx.getBundleContext().getService(facRef);
+    	try {
+    		synchronized (this) {
+	    		if (addedFactories.remove(fac) != null)
+	    			ctx.getBundleContext().ungetService(facRef);
+	    		if (manager == null)
+	    			return;
+	    		AccessController.doPrivileged(new PrivilegedAction<Void>() {
+	
+					@Override
+					public Void run() {
+						for (String mimeType : fac.getMimeTypes()) {
+							try {
+				    			if (unregisterMime(mimeType, fac)) {
+				    				registerNewMime(mimeType);
+				    			}
+							} catch (Exception e) {
+								logger.warn("Error removing script engine by mime type {}",fac,e);
+							}
+			    	    }
+						for (String extension: fac.getExtensions()) {
+							try {
+				    			if (unregisterExtension(extension, fac)) {
+				    				registerNewExtension(extension);
+				    			}
+							} catch (Exception e) {
+								logger.warn("Error removing script engine by extension {}",fac,e);
+							}
+						}
+						/*
+						for (String name: fac.getNames()) {
+							try {
+				    			if (unregisterName(name, fac)) {
+				    				registerNewName(name);
+				    			}
+							} catch (Exception e) {
+								logger.warn("Error removing script engine by name {}",fac,e);
+							}
+						}
+						*/
+						final String name = fac.getLanguageName();
+						try {
+			    			if (unregisterName(name, fac)) {
+			    				registerNewName(name);
+			    			}
+						} catch (Exception e) {
+							logger.warn("Error removing script engine by name {}",fac,e);
+						}
+						return null;
+					}
+				});
+    		}
+    	} finally {
+    		ctx.getBundleContext().ungetService(facRef);
+    	}
+    }
+    
+    // requires external sync on this
+    private void registerNewMime(final String mime) {
+		ScriptEngineFactory next = null;
+		int rank = Integer.MIN_VALUE;
+		for (Map.Entry<ScriptEngineFactory, Integer> entry : addedFactories.entrySet()) {
+			if (entry.getKey().getMimeTypes().contains(mime) && entry.getValue() >= rank) {
+				rank = entry.getValue();
+				next = entry.getKey();
+			}
+		}
+		if (next != null) {
+			manager.registerEngineMimeType(mime, next);
+		}
+    }
+    
+ // requires external sync on this
+    private void registerNewExtension(final String extension) {
+		ScriptEngineFactory next = null;
+		int rank = Integer.MIN_VALUE;
+		for (Map.Entry<ScriptEngineFactory, Integer> entry : addedFactories.entrySet()) {
+			if (entry.getKey().getExtensions().contains(extension) && entry.getValue() >= rank) {
+				rank = entry.getValue();
+				next = entry.getKey();
+			}
+		}
+		if (next != null) {
+			manager.registerEngineExtension(extension, next);
+		}
+    }
+    
+ // requires external sync on this
+    private void registerNewName(final String name) {
+		ScriptEngineFactory next = null;
+		int rank = Integer.MIN_VALUE;
+		for (Map.Entry<ScriptEngineFactory, Integer> entry : addedFactories.entrySet()) {
+			if (entry.getKey().getNames().contains(name) && entry.getValue() >= rank) {
+				rank = entry.getValue();
+				next = entry.getKey();
+			}
+		}
+		if (next != null) {
+			manager.registerEngineName(name, next);
+		}
+    }
+    
+    // must be called in privileged block
+    private final boolean unregisterMime(final String mime, final ScriptEngineFactory fac) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+    	return unregister(mime, fac, "mimeTypeAssociations");
+    }
+    
+    private final boolean unregisterExtension(final String extension, final ScriptEngineFactory fac) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+    	return unregister(extension, fac, "extensionAssociations");
+    }
+    
+    private final boolean unregisterName(final String name, final ScriptEngineFactory fac) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+    	return unregister(name, fac, "nameAssociations");
+    }
+    
+    // requires external sync on this
+    private final boolean unregister(final String id, final ScriptEngineFactory fac, final String fieldName) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+    	final Field f = ScriptEngineManager.class.getDeclaredField(fieldName);
+    	f.setAccessible(true);
+    	final Map<String, ScriptEngineFactory> map = (Map<String, ScriptEngineFactory>) f.get(manager);
+    	// the maps in the manager class are protected by sync on this
+   		if (map.get(id) != fac)
+   			return false;
+		map.remove(id);
+   		return true;
     }
 
 	protected synchronized void activate(ComponentContext ctx, Map<String, Object> config) {
 		this.ctx = ctx;
+		if (pendingFactories != null) {
+			for (ServiceReference<ScriptEngineFactory> facRef : pendingFactories) {
+				addFactory(facRef);
+			}
+			pendingFactories = null;
+		}
         try {
             @SuppressWarnings("unchecked")
             Class<ScriptEngineFactory> c = (Class<ScriptEngineFactory>) Class.forName("org.codehaus.groovy.jsr223.GroovyScriptEngineFactory");
             ScriptEngineFactory f = c.newInstance();
-            addFactory(f);
+            addFactoryInternal(f, 0);
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
             logger.debug("Groovy not available ({})", e.getMessage());
         }
         for (ScriptEngineFactory sef: manager.getEngineFactories()) {
             logger.debug("engine discovered: '{}', {}, {}", sef.getEngineName(), sef.getLanguageName(), sef.getExtensions());
         }
-        for (ScriptEngineFactory sef: addedFactories) {
+        for (ScriptEngineFactory sef: addedFactories.keySet()) {
             logger.debug("engine added: '{}', {}, {}", sef.getEngineName(), sef.getLanguageName(), sef.getExtensions());
         }
         if (manager.getEngineByName("Groovy") != null) {
@@ -216,6 +436,7 @@ public class ScriptCommandsGoGo implements Application {
         logger.debug("initialized {} engine", engine.getFactory().getLanguageName());
 	}
 
+	// requires external sync on this
 	protected void initEngine(String scriptname) {
 		engine = getEnginePrivileged(scriptname);
 		if (engine == null) {
@@ -224,6 +445,9 @@ public class ScriptCommandsGoGo implements Application {
 		}
 		engine.put("ctx", ctx.getBundleContext());
 		engine.put("bundle", ctx.getBundleContext().getBundle());
+        if (appMan != null) {
+            engine.put("manager", appMan);
+        }
 
 		for (String ext : engine.getFactory().getExtensions()) {
 			String name = "/initscripts/" + scriptname + "." + ext;
@@ -260,7 +484,8 @@ public class ScriptCommandsGoGo implements Application {
 
             @Override
             public ScriptEngine run() {
-                return manager.getEngineByName(engineName);
+                ScriptEngine take1 = manager.getEngineByName(engineName);
+                return take1 != null ? take1 : manager.getEngineByExtension(engineName);
             }
         });
     }

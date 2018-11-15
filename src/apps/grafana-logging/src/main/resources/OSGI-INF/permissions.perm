@@ -7,7 +7,7 @@
 
 (org.osgi.framework.PackagePermission "javax.servlet" "import")
 (org.osgi.framework.PackagePermission "javax.servlet.*" "import")
+(org.osgi.framework.PackagePermission "org.slf4j" "import")
 
 (org.ogema.accesscontrol.ResourcePermission "path=*" "read")
 
-#(java.lang.RuntimePermission "getClassLoader")

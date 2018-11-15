@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.ogema</groupId>
 		<artifactId>ogema</artifactId>
-		<version>2.1.3</version>
+		<version>2.2.0</version>
 	</parent>
 
 	<groupId>org.ogema.tests</groupId>
@@ -20,7 +20,6 @@
 		<module>access-provider</module>
 		<module>access-provider-restricted</module>
 		<module>activation-hell</module>
-		<module>arduino-uno</module>
 		<module>channel-manager-security-test-app</module>
 		<module>custom-type-provider</module>
 		<module>fill-schedule</module>

@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.impl.security;
 
@@ -20,6 +20,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
@@ -27,6 +28,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
+import org.ogema.accesscontrol.HttpConfigManagement;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.SessionAuth;
 import org.ogema.core.application.AppID;
@@ -52,17 +54,21 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
     final Logger logger = LoggerFactory.getLogger(getClass());
     final RestHttpContext restContext;
     final M2MLogin m2mLogin;
+    private final LoginServlet loginServlet;
+    private final AtomicReference<HttpConfigManagement> headerManagement;
 
-    public ApplicationWebAccessFactory(PermissionManager pm, HttpService http, UserAdmin userAdmin) {
+    public ApplicationWebAccessFactory(PermissionManager pm, HttpService http, UserAdmin userAdmin, 
+    		AtomicReference<HttpConfigManagement> headerManagement, Map<String, Object> config) {
 		this.http = http;
         this.pm = pm;
+        this.headerManagement = headerManagement; 
 
 		this.restContext = new RestHttpContext();
 		//new RestAccess(permMan, admin);
 		this.m2mLogin = new M2MLogin(pm, userAdmin);
+		this.loginServlet = new LoginServlet(pm, userAdmin, config);
 		try {
 			this.http.registerResources("/login", "/web", null);
-			LoginServlet loginServlet = new LoginServlet(pm, userAdmin);
 			this.http.registerServlet(LoginServlet.LOGIN_SERVLET_PATH, loginServlet, null, null);
 			this.http.registerServlet("/m2mLogin", this.m2mLogin, null, restContext);
 		} catch (NamespaceException | ServletException e) {
@@ -77,6 +83,10 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
 			logger.error("filter registration failed", e);
 		}
 	}
+    
+    void configChanged(Map<String, Object> config) {
+    	loginServlet.configUpdate(config);
+    }
 
     /*
      * Other registrations are removed by the ApplicationTracker -> we need to keep a reference to the HttpService for this
@@ -113,7 +123,7 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
         if (appWAMs.containsKey(app)){
             return appWAMs.get(app);
         }
-        ApplicationWebAccessManager aw = new ApplicationWebAccessManager(app, this);
+        ApplicationWebAccessManager aw = new ApplicationWebAccessManager(app, this, headerManagement);
         appWAMs.put(app, aw);
         return aw;
     }

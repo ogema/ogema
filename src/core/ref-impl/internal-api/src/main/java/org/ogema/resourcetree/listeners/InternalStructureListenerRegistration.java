@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.resourcetree.listeners;
 
@@ -22,6 +22,8 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.resourcetree.TreeElement;
 
 public abstract class InternalStructureListenerRegistration implements RegisteredStructureListener {
+	
+	private volatile boolean active = true;
 	
 	public abstract boolean isVirtualRegistration();
 	
@@ -50,8 +52,8 @@ public abstract class InternalStructureListenerRegistration implements Registere
 	public final boolean equals(Object obj) {
 		if (obj == this)
 			return true;
-		if (obj == null || !InternalStructureListenerRegistration.class.isAssignableFrom(obj.getClass()))
-				return false;
+		if (!(obj instanceof InternalStructureListenerRegistration))
+			return false;
 		final InternalStructureListenerRegistration other = (InternalStructureListenerRegistration) obj;
 		if (!Objects.equals(this.getResource(), other.getResource())) {
 			return false;
@@ -60,6 +62,14 @@ public abstract class InternalStructureListenerRegistration implements Registere
 			return false;
 		}
 		return Objects.equals(this.getApplicationManager(), other.getApplicationManager());
+	}
+	
+	public boolean isActive() {
+		return active;
+	}
+	
+	public void dispose() {
+		this.active = false;
 	}
 
 }

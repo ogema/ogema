@@ -1,18 +1,18 @@
 <!--
 
-    This file is part of OGEMA.
+    Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
 
-    OGEMA is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License version 3
-    as published by the Free Software Foundation.
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
 
-    OGEMA is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-    GNU General Public License for more details.
+        http://www.apache.org/licenses/LICENSE-2.0
 
-    You should have received a copy of the GNU General Public License
-    along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
 
 -->
 <!DOCTYPE html>
@@ -70,28 +70,28 @@
 
                 <p>Welcome to</p>
                 <p>
-                    <img id="logo" src="/login/ogema.svg" />
+                    <img id="logo" src="/ogema/login?icon" />
                 </p>
                 <form id="loginform" action="" method="POST">
-                    <div class="panel panel-primary">
+                    <div class="panel panel-default">
                         <div class="panel-heading">Login</div>
                         <div id="login_failed_div" style="display: none; padding-top: 10px; text-align: center; color: red;">Login failed: Username and/or Password wrong</div>
                         <div class="panel-body">
                             <div class="form-group">
                                 <div class="col-md-12">
-                                    <input id="user" type="text" name="usr" class="form-control"
+                                    <input id="user" type="text" name="user" class="form-control"
                                            placeholder="Your Username?" autofocus>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <div class="col-md-12">
-                                    <input id="password" type="password" name="pwd"
+                                    <input id="password" type="password" name="pw"
                                            class="form-control" placeholder="Your Password?">
                                 </div>
                             </div>
                             <div class="form-group">
                                 <div class="col-md-12">
-                                    <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+                                    <button class="btn btn-lg btn-default btn-block" id="login-btn" type="submit">Sign in</button>
                                 </div>
                             </div>
                         </div>
@@ -100,5 +100,21 @@
                 </form>
             </div>
         </div>
+         <script type="text/javascript">
+            var lastStyle = "default";
+         	var setStyle = function(style) {
+         		if (typeof style === "undefined")
+         			return;
+         		style = style.toLowerCase();
+         		var el = $("#loginform>.panel");
+         		el.removeClass("panel-" + lastStyle);
+         		el.addClass("panel-" + style);
+         		el = $("#login-btn");
+         		el.removeClass("btn-" + lastStyle);
+         		el.addClass("btn-" + style);
+         		lastStyle = style;
+         	}
+         	$.get("/ogema/login?style", setStyle);
+         </script>
     </body>
 </html>

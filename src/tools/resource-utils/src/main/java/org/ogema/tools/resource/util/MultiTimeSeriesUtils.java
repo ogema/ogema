@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.tools.resource.util;
 
@@ -30,20 +30,60 @@ import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 import org.ogema.tools.timeseries.api.FloatTimeSeries;
 import org.ogema.tools.timeseries.implementations.FloatTreeTimeSeries;
 import org.ogema.tools.timeseries.iterator.api.DataPoint;
+import org.ogema.tools.timeseries.iterator.api.IteratorTimeSeries;
 import org.ogema.tools.timeseries.iterator.api.MultiTimeSeriesBuilder;
 import org.ogema.tools.timeseries.iterator.api.SampledValueDataPoint;
+import org.ogema.tools.timeseries.iterator.api.IteratorTimeSeries.IteratorSupplier;
 import org.ogema.tools.timeseries.iterator.api.MultiTimeSeriesIterator;
+import org.ogema.tools.timeseries.iterator.api.MultiTimeSeriesIteratorBuilder;
+import org.ogema.tools.timeseries.iterator.api.ReductionIterator;
+import org.ogema.tools.timeseries.iterator.api.ReductionIteratorBuilder;
 import org.ogema.tools.timeseries.iterator.impl.TimeSeriesMultiIteratorImpl;
+
+import com.google.common.base.Function;
 
 /**
  * Provides methods that take a collection of time series as arguments (whose value types
  * must be convertible to float), such as calculating the schedule of average values, the sum, etc. 
  */
-// Like MultiTimeSeriesUtils, except that methods are implemented using the MultiIterator.
+// TODO clean up
+// TODO pure iterator sum, etc
 public class MultiTimeSeriesUtils {
 	
 	// use static methods to access this
 	private MultiTimeSeriesUtils() {}
+	
+	private static final Function<Collection<SampledValue>, SampledValue> AVERAGE = new Function<Collection<SampledValue>, SampledValue>() {
+
+		@Override
+		public SampledValue apply(Collection<SampledValue> input) {
+			float v = 0f;
+			int cnt = 0;
+			for (SampledValue sv: input) {
+				if (sv != null && sv.getQuality() == Quality.GOOD) {
+					v += sv.getValue().getFloatValue();
+					cnt++;
+				}
+			}
+			return new SampledValue(new FloatValue(v/cnt), input.iterator().next().getTimestamp(), cnt > 0 ? Quality.GOOD : Quality.BAD);
+		}
+	};
+	
+	private static final Function<Collection<SampledValue>, SampledValue> SUM = new Function<Collection<SampledValue>, SampledValue>() {
+
+		@Override
+		public SampledValue apply(Collection<SampledValue> input) {
+			float v = 0f;
+			boolean qualityGood = false;
+			for (SampledValue sv: input) {
+				if (sv != null && sv.getQuality() == Quality.GOOD) {
+					v += sv.getValue().getFloatValue();
+					qualityGood  = true;
+				}
+			}
+			return new SampledValue(new FloatValue(v), input.iterator().next().getTimestamp(), qualityGood ? Quality.GOOD : Quality.BAD);
+		}
+	};
 	
 	/**
 	 * Get the time series of average values of the provided time series arguments. This method uses a set of
@@ -64,6 +104,18 @@ public class MultiTimeSeriesUtils {
 	 */
 	public static FloatTimeSeries getAverageTimeSeries(List<ReadOnlyTimeSeries> schedules, long startTime, long endTime) {
 		return genericTimeSeriesSum(schedules, startTime, endTime, false, true, null, false);
+	}
+	
+	/**
+	 * Similar to {@link #getAverageTimeSeries(List, long, long)}, but here the data points are evaluated when needed
+	 * and not copied at construction time.
+	 * @param schedules
+	 * @param startTime
+	 * @param endTime
+	 * @return
+	 */
+	public static ReadOnlyTimeSeries getAverageTimeSeriesLazy(List<ReadOnlyTimeSeries> schedules, long startTime, long endTime) {
+		return genericTimeSeriesSumLazy(schedules, startTime, endTime, false, true, null, false);
 	}
 	
 	/**
@@ -97,6 +149,24 @@ public class MultiTimeSeriesUtils {
 	}
 	
 	/**
+	 * Similar to {@link #getAverageTimeSeries(List, long, long, boolean, InterpolationMode, boolean)}, 
+	 * but here the data points are evaluated when needed
+	 * and not copied at construction time.
+	 * @param schedules
+	 * @param startTime
+	 * @param endTime
+	 * @param ignoreGaps
+	 * @param mode
+	 * @param addStartEndValues
+	 * @return
+	 */
+	 
+	public static ReadOnlyTimeSeries getAverageTimeSeriesLazy(List<ReadOnlyTimeSeries> schedules, long startTime, long endTime, 
+				boolean ignoreGaps, InterpolationMode mode, boolean addStartEndValues) {
+		return genericTimeSeriesSumLazy(schedules, startTime, endTime, ignoreGaps, true, mode, addStartEndValues);
+	}
+	
+	/**
 	 * Add up a collection of time series. This method uses a set of
 	 * default parameters, which can be set explicitly in 
 	 * {@link #add(List, long, long, boolean, InterpolationMode, boolean)}.
@@ -115,6 +185,18 @@ public class MultiTimeSeriesUtils {
 	 */
 	public static FloatTimeSeries add(List<ReadOnlyTimeSeries> schedules, long startTime, long endTime) {
 		return genericTimeSeriesSum(schedules, startTime, endTime, false, false, null, false);
+	}
+	
+	/**
+	 * Similar to {@link #add(List, long, long)}, but here the data points are evaluated when needed
+	 * and not copied at construction time.
+	 * @param schedules
+	 * @param startTime
+	 * @param endTime
+	 * @return
+	 */
+	public static ReadOnlyTimeSeries addLazy(List<ReadOnlyTimeSeries> schedules, long startTime, long endTime) {
+		return genericTimeSeriesSumLazy(schedules, startTime, endTime, false, false, null, false);
 	}
 	 
 	/**
@@ -148,7 +230,92 @@ public class MultiTimeSeriesUtils {
 				boolean ignoreGaps, InterpolationMode mode, boolean generateNanForStartEndGaps) {
 		return genericTimeSeriesSum(schedules, startTime, endTime, ignoreGaps, false, mode, generateNanForStartEndGaps);
 	}
+	
+	/**
+	 * Similar to {@link #addLazy(List, long, long, boolean, InterpolationMode, boolean)},
+	 * but here the data points are evaluated when needed and not copied at construction time.
+	 * @param schedules
+	 * @param startTime
+	 * @param endTime
+	 * @param ignoreGaps
+	 * @param mode
+	 * @param addStartEndValues
+	 * @return
+	 */
+	public static ReadOnlyTimeSeries addLazy(List<? extends ReadOnlyTimeSeries> schedules, long startTime, long endTime, 
+			boolean ignoreGaps, InterpolationMode mode, boolean addStartEndValues) {
+		return genericTimeSeriesSumLazy(schedules, startTime, endTime, ignoreGaps, false, mode, addStartEndValues);
+	}
 
+	private static ReadOnlyTimeSeries genericTimeSeriesSumLazy(final List<? extends ReadOnlyTimeSeries> schedules, 
+			final long startTime, final long endTime, final boolean ignoreGaps, final boolean doAverage, final InterpolationMode forcedMode,
+			final boolean addStartEndValues) throws IllegalArgumentException {
+		if ( startTime > endTime)
+			throw new IllegalArgumentException("start time &gt; endTime: " + startTime + ", " + endTime);
+		if (schedules.isEmpty())
+			return new FloatTreeTimeSeries();
+		InterpolationMode targetMode = forcedMode; 
+		boolean allModesEqual = true;
+		if (targetMode == null) {
+			for (ReadOnlyTimeSeries schedule : schedules) {
+				InterpolationMode mode = schedule.getInterpolationMode();
+				if (targetMode != null && mode != targetMode)
+					allModesEqual = false;
+				switch (mode) {
+				case NONE:
+					if (targetMode != null && targetMode != InterpolationMode.NONE)
+						throw new IllegalArgumentException("Schedules collection contains both time series with InterpolationMode NONE and others");
+					targetMode = InterpolationMode.NONE;
+					break;
+				case NEAREST:
+					throw new UnsupportedOperationException("InterpolationMode NEAREST not implemented yet");
+				case STEPS:
+				case LINEAR:
+					if (targetMode == InterpolationMode.NONE) 
+						throw new IllegalArgumentException("Schedules collection contains both time series with InterpolationMode NONE and others");
+					if (targetMode != InterpolationMode.LINEAR)
+						targetMode = mode;
+				}
+			}
+		}
+		final InterpolationMode forcedMode1 = forcedMode;
+		final IteratorSupplier supplier = new IteratorSupplier() {
+			
+			@Override
+			public Iterator<SampledValue> get(long startTime, long endTime) {
+				final List<InterpolationMode> modes = (forcedMode != null ? null : new ArrayList<InterpolationMode>());
+				final Map<Integer,SampledValue> lowerBoundary = getBoundaryPoints(schedules, startTime, forcedMode);
+				final Map<Integer,SampledValue> upperBoundary = getBoundaryPoints(schedules, endTime, forcedMode);
+				final List<Iterator<SampledValue>> iterators = new ArrayList<>(schedules.size());
+				for (ReadOnlyTimeSeries r : schedules) { 
+					iterators.add(r.iterator(startTime, endTime));
+					if (modes != null) {
+						InterpolationMode m = r.getInterpolationMode();
+						if (m == null || m == InterpolationMode.NONE)
+							m = InterpolationMode.LINEAR;
+						modes.add(m);
+					}
+				}
+				final MultiTimeSeriesIteratorBuilder iteratorBuilder = MultiTimeSeriesIteratorBuilder.newBuilder(iterators);
+				if (addStartEndValues) {
+					iteratorBuilder
+						.setLowerBoundaryValues(lowerBoundary)
+						.setUpperBoundaryValues(upperBoundary);
+				}
+				if (forcedMode != null)
+					iteratorBuilder.setGlobalInterpolationMode(forcedMode);
+				else
+					iteratorBuilder.setIndividualInterpolationModes(modes);
+				final ReductionIterator redIt = ReductionIteratorBuilder.newBuilder(iteratorBuilder.build(), doAverage ? AVERAGE : SUM)
+					.setIgnoreGaps(ignoreGaps)
+					.setGlobalMode(forcedMode1)
+					.build();
+				return redIt;
+			}
+		};
+		return new IteratorTimeSeries(supplier, targetMode);
+	}
+	
 	private static FloatTimeSeries genericTimeSeriesSum(List<? extends ReadOnlyTimeSeries> schedules, 
 				long startTime, long endTime, boolean ignoreGaps, boolean doAverage, InterpolationMode forcedMode,
 				boolean generateNaNForStartEndGaps) throws IllegalArgumentException {

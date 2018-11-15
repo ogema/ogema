@@ -1,27 +1,30 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.rest.servlet;
 
 import java.io.IOException;
+import java.util.Objects;
+
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.ogema.accesscontrol.PermissionManager;
+import org.ogema.accesscontrol.RestAccess;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.schedule.Schedule;
@@ -34,15 +37,18 @@ import org.ogema.rest.servlet.ResourceWriters.ResourceWriter;
  * 
  * @author jlapp
  */
-//@Component(specVersion = "1.2")
-//@Service(Application.class)
-public class RestServlet extends HttpServlet  {
+/*
+ * The whiteboard registration would be preferable, but in this case the servlet does not share 
+ * sessions with other OGEMA servlets, and the security concept fails.
+ */
+//@Component
+//@Service(Servlet.class)
+//@Property(name = HttpWhiteboardConstants.HTTP_WHITEBOARD_SERVLET_PATTERN, value = RestServlet.ALIAS)
+class RestServlet extends HttpServlet  {
 
 	private static final long serialVersionUID = 1L;
 
-	final static String alias = "/rest/resources";
-
-	final boolean SECURITY_ENABLED;// "on".equalsIgnoreCase(System.getProperty("org.ogema.security", "off"));
+	final static String ALIAS = "/rest/resources";
 
 	/**
 	 * URL parameter defining the maximum depth of the resource tree in the response, default is 0, i.e. transfer only
@@ -63,58 +69,23 @@ public class RestServlet extends HttpServlet  {
 	public static final String PARAM_REFERENCES = "references";
 	static final boolean DEFAULT_REFERENCES = false;
 
-//	@Reference
-//	HttpService http;
-//	@Reference
 	private final PermissionManager permMan;
-//	@Reference
-//	private final AdministrationManager adminMan;
-
 	private final RestAccess restAcc;
-
-	protected final ApplicationManager appman;
-
-//	protected void activate(Map<String, ?> config) {
-//		restAcc = new RestAccess(permMan, adminMan);
-//		SECURITY_ENABLED = permMan.isSecure();
-//	}
-//
-//	protected void deactivate(Map<String, ?> config) {
-//
-//	}
 	
-	public RestServlet(ApplicationManager am, PermissionManager permMan, RestAccess restAcc, boolean SECURITY_ENABLED) {
-		this.restAcc = restAcc;
-		this.SECURITY_ENABLED = SECURITY_ENABLED;
-		this.appman = am;
-//		this.adminMan = am.getAdministrationManager();
-		this.permMan = permMan;
-//		if (SECURITY_ENABLED && System.getSecurityManager() == null) {
-//			throw new Error("org.ogema.security=on, but security manager is null!");
-//		}
-//		try {
-//			http.registerServlet(alias, this, null, null);
-//			appman.getLogger().info("REST servlet registered, security enabled: {}", SECURITY_ENABLED);
-//		} catch (ServletException | NamespaceException ex) {
-//			appman.getLogger().error("could not register servlet");
-//		}
-//
-//		String url = appman.getWebAccessManager().registerWebResourcePath("/rest-gui", "rest/gui");
+	RestServlet(PermissionManager permMan, RestAccess restAcc) {
+		this.permMan = Objects.requireNonNull(permMan);
+		this.restAcc = Objects.requireNonNull(restAcc);
 	}
-
-//	@Override
-//	public void stop(AppStopReason reason) {
-//		http.unregister(alias);
-//		appman.getWebAccessManager().unregisterWebResourcePath("/rest-gui");
-//	}
+	
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		if (!restAcc.setAccessContext(req, resp, SECURITY_ENABLED)) {
+		final ApplicationManager appman = restAcc.authenticate(req, resp);
+		if (appman == null) {
 			return;
 		}
 		resp.setCharacterEncoding("UTF-8");
-		final SerializationManager sman = getSerializationManager(req, resp);
+		final SerializationManager sman = getSerializationManager(req, resp, appman);
 		if (sman == null) {
 			return;
 		}
@@ -133,7 +104,7 @@ public class RestServlet extends HttpServlet  {
 
 		ResourceRequestInfo r;
 		try {
-			r = selectResource(req.getPathInfo());
+			r = selectResource(req.getPathInfo(), appman);
 			if (r == null) {
 				resp.sendError(HttpServletResponse.SC_NOT_FOUND);
 			}
@@ -156,16 +127,17 @@ public class RestServlet extends HttpServlet  {
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		try {
-			if (!restAcc.setAccessContext(req, resp, SECURITY_ENABLED)) {
+			final ApplicationManager appman = restAcc.authenticate(req, resp);
+			if (appman == null) {
 				return;
 			}
 			resp.setCharacterEncoding("UTF-8");
-			ResourceRequestInfo r = selectResource(req.getPathInfo());
+			ResourceRequestInfo r = selectResource(req.getPathInfo(), appman);
 			if (r == null) {
 				resp.sendError(HttpServletResponse.SC_NOT_FOUND);
 				return;
 			}
-			SerializationManager sman = getSerializationManager(req, resp);
+			SerializationManager sman = getSerializationManager(req, resp, appman);
 			ResourceReader reader = ResourceReaders.forRequest(req, sman, resp);
 			ResourceWriter w = ResourceWriters.forRequest(req, sman, resp);
 			if (resp.isCommitted()) {
@@ -191,16 +163,17 @@ public class RestServlet extends HttpServlet  {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		try {
-			SerializationManager sman = getSerializationManager(req, resp);
-			ResourceReader reader = ResourceReaders.forRequest(req, sman, resp);
-			ResourceWriter w = ResourceWriters.forRequest(req, sman, resp);
 			if (resp.isCommitted()) {
 				return;
 			}
 			resp.setCharacterEncoding("UTF-8");
-			if (!restAcc.setAccessContext(req, resp, SECURITY_ENABLED)) {
+			final ApplicationManager appman = restAcc.authenticate(req, resp);
+			if (appman == null) {
 				return;
 			}
+			SerializationManager sman = getSerializationManager(req, resp, appman);
+			ResourceReader reader = ResourceReaders.forRequest(req, sman, resp);
+			ResourceWriter w = ResourceWriters.forRequest(req, sman, resp);
 			resp.setContentType(w.contentType());
 			String path = req.getPathInfo();
 			if (path == null || path.equals("/")) {
@@ -208,7 +181,8 @@ public class RestServlet extends HttpServlet  {
 				w.write(resource, resp.getWriter());
 			}
 			else {
-				Resource r = selectResource(req.getPathInfo()).getResource();
+				final ResourceRequestInfo info = selectResource(req.getPathInfo(), appman);
+				Resource r = info == null ? null:  info.getResource();
 				if (r == null) {
 					resp.sendError(HttpServletResponse.SC_NOT_FOUND);
 				}
@@ -227,7 +201,8 @@ public class RestServlet extends HttpServlet  {
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		try {
-			if (!restAcc.setAccessContext(req, resp, SECURITY_ENABLED)) {
+			final ApplicationManager appman = restAcc.authenticate(req, resp);
+			if (appman == null) {
 				return;
 			}
 			resp.setCharacterEncoding("UTF-8");
@@ -237,7 +212,7 @@ public class RestServlet extends HttpServlet  {
 				return;
 			}
 
-			ResourceRequestInfo r = selectResource(req.getPathInfo());
+			ResourceRequestInfo r = selectResource(req.getPathInfo(), appman);
 			if (r == null) {
 				resp.sendError(HttpServletResponse.SC_NOT_FOUND);
 			}
@@ -252,7 +227,7 @@ public class RestServlet extends HttpServlet  {
 		}
 	}
 
-	protected ResourceRequestInfo selectResource(String pathInfo) {
+	protected static ResourceRequestInfo selectResource(String pathInfo, ApplicationManager appman) {
 		if (pathInfo == null || pathInfo.isEmpty() || "/".equals(pathInfo)) {
 			return new ResourceRequestInfo(new RootResource(appman), false, 0, 0);
 		}
@@ -302,7 +277,7 @@ public class RestServlet extends HttpServlet  {
 	 * create a SerializationManager according to the request parameters, may send an error and close the response if
 	 * any of the parameters are bad.
 	 */
-	protected SerializationManager getSerializationManager(HttpServletRequest req, HttpServletResponse resp)
+	protected static SerializationManager getSerializationManager(HttpServletRequest req, HttpServletResponse resp, ApplicationManager appman)
 			throws IOException {
 		SerializationManager sman = appman.getSerializationManager();
 		String depth = req.getParameter(PARAM_DEPTH);

@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.accesscontrol;
 
@@ -19,6 +19,7 @@ import java.security.AccessController;
 import java.security.Permission;
 import java.security.PrivilegedAction;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -33,8 +34,8 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class ResourcePermission extends Permission {
-    
-    private static Map<String, Class<?>> resourceTypeClasses = new ConcurrentHashMap<>();
+
+	private static Map<String, Class<?>> resourceTypeClasses = new ConcurrentHashMap<>();
 
 	private static final long serialVersionUID = -7090110935361939550L;
 	public static final String READ = "read";
@@ -52,7 +53,7 @@ public class ResourcePermission extends Permission {
 	public static final int _CREATE = 1 << 3;
 	public static final int _DELETE = 1 << 4;
 	public static final int _ACTIVITY = 1 << 5;
-    private static final String[] ALLACTIONSTRINGS = new String[1<<6];
+	private static final String[] ALLACTIONSTRINGS = new String[1 << 6];
 	public static final int _ALLACTIONS = _READ | _WRITE | _ADDSUB | _CREATE | _DELETE | _ACTIVITY;
 	public static final int _NOACTIONS = 0;
 	private static final String INVALID_CLASS_NAME = "$";
@@ -70,7 +71,7 @@ public class ResourcePermission extends Permission {
 	}
 
 	String path;
-	boolean wced;
+	boolean star, minus;
 	int actionsAsMask;
 	String type; // type name string instead of Class itself avoid CNFE after policy entry
 	int count;
@@ -80,7 +81,7 @@ public class ResourcePermission extends Permission {
 	}
 
 	public boolean isWced() {
-		return wced;
+		return star || minus;
 	}
 
 	public String getType() {
@@ -95,7 +96,7 @@ public class ResourcePermission extends Permission {
 	private TreeElement node;
 
 	enum PathType {
-		WILDCARD, WILDCARD_ONLY, NO_WILDCARD
+		STAR, STAR_ONLY, NO_WILDCARD, MINUS_ONLY, MINUS
 	};
 
 	PathType pathType;
@@ -126,10 +127,12 @@ public class ResourcePermission extends Permission {
 			 * If the filter string doesn't specify a path this is equal to "*" That means path=null and wildcarded =
 			 * true
 			 */
-			this.wced = true;
+			this.star = true;
+			this.minus = true;
 			parseFilter(filter);
 		} catch (Throwable e) {
-			LoggerFactory.getLogger(ResourcePermission.class).error("Failed to create resource permission for filter {} and actions {}",filter,actions);
+			LoggerFactory.getLogger(ResourcePermission.class)
+					.error("Failed to create resource permission for filter {} and actions {}", filter, actions);
 			throw e;
 		}
 		setPathType();
@@ -202,6 +205,14 @@ public class ResourcePermission extends Permission {
 			// translated into a path free of OGEMA 2.0 references (location) before the
 			// check. OGEMA 2.0 references may point to any position of the tree and do
 			// not forward any permission.
+
+			// trim '/' at the end of
+			int len = 0;
+			if (this.path != null) {
+				len = this.path.length();
+				if (this.path.charAt(len - 1) == '/')
+					this.path = this.path.substring(0, len - 1);
+			}
 			this.owner = te.getAppID();
 			this.node = te;
 		} catch (Throwable e) {
@@ -212,11 +223,15 @@ public class ResourcePermission extends Permission {
 	}
 
 	private void setPathType() {
-		if (wced && path == null)
-			pathType = PathType.WILDCARD_ONLY;
-		if (wced && path != null)
-			pathType = PathType.WILDCARD;
-		if (!wced)
+		if (star && path == null)
+			pathType = PathType.STAR_ONLY;
+		else if (star && path != null)
+			pathType = PathType.STAR;
+		else if (!star && minus && path == null)
+			pathType = PathType.MINUS_ONLY;
+		else if (!star && minus && path != null)
+			pathType = PathType.MINUS;
+		else
 			pathType = PathType.NO_WILDCARD;
 	}
 
@@ -236,20 +251,46 @@ public class ResourcePermission extends Permission {
 		// encode it in a path equal null and wildcard flag true.
 		if (value == null || value.equals("*")) {
 			this.path = null;
-			wced = true;
+			star = true;
+			minus = false;
+			return;
+		}
+		if (value == null || value.equals("-")) {
+			this.path = null;
+			star = false;
+			minus = true;
 			return;
 		}
 
 		int wcindex = value.indexOf('*');
+		int minusindex = value.indexOf('-');
 		// Case 3 : path is not wildcarded
-		if (wcindex == -1) {
+		if (wcindex == -1 && minusindex == -1) {
 			this.path = value;
-			wced = false;
+			star = false;
+			minus = false;
+			// if no wildcard remove '/' at the end
+			value = this.path;
+			int len = value.length();
+			if (value.charAt(len - 1) == '/')
+				this.path = value.substring(0, len - 1);
 		}
 		// Case 2 : path ends with a wildcard
 		else if (wcindex == length - 1) {
+			// the wildcard must be after '/'
+			if (value.charAt(length - 2) != '/')
+				throw new IllegalArgumentException("Invalid path string: " + value);
 			this.path = value.substring(0, length - 1);
-			wced = true;
+			star = true;
+			minus = false;
+		}
+		else if (minusindex == length - 1) {
+			// the wildcard must be after '/'
+			if (value.charAt(length - 2) != '/')
+				throw new IllegalArgumentException("Invalid path string: " + value);
+			this.path = value.substring(0, length - 1);
+			minus = true;
+			star = false;
 		}
 		// Case 4 : wildcard amid of the path string
 		else
@@ -263,7 +304,17 @@ public class ResourcePermission extends Permission {
 		if (filter.equals("*")) {
 			this.path = "*";
 			this.count = Integer.MAX_VALUE;
-			this.wced = true;
+			this.star = true;
+			this.minus = false;
+			this.type = null;
+			this.owner = null;
+			return;
+		}
+		else if (filter.equals("-")) {
+			this.path = "*";
+			this.count = Integer.MAX_VALUE;
+			this.star = false;
+			this.minus = true;
 			this.type = null;
 			this.owner = null;
 			return;
@@ -276,8 +327,13 @@ public class ResourcePermission extends Permission {
 			String token = st1.nextToken();
 			/* to get the keys */
 			StringTokenizer st2 = new StringTokenizer(token, "=");
-			String key = st2.nextToken();
-			String value = st2.nextToken();
+			String key = null;
+			String value = null;
+			try {
+				key = st2.nextToken();
+				value = st2.nextToken();
+			} catch (NoSuchElementException e1) {
+			}
 			if (key == null || value == null)
 				throw new IllegalArgumentException("Invalid filter string: " + filter);
 			key = key.trim();
@@ -299,29 +355,43 @@ public class ResourcePermission extends Permission {
 				// encode it in a path equal null and wildcard flag true.
 				if (value.equals("*")) {
 					this.path = null;
-					wced = true;
+					star = true;
+					minus = false;
 					break;
 				}
-
+				if (value.equals("-")) {
+					this.path = null;
+					star = false;
+					minus = true;
+					break;
+				}
 				// Case 4 : wildcard amid of the path string
 				int wcindex = value.indexOf('*');
+				int minusindex = value.indexOf('-');
 				// Case 3 : path is not wildcarded
-				if (wcindex == -1) {
+				if ((wcindex == -1) && (minusindex == -1)) {
 					this.path = value;
-					wced = false;
-					break;
+					star = false;
+					minus = false;
+					// break;
 				}
 				// Case 2 : path ends with a wildcard
 				else if (wcindex == value.length() - 1) {
 					this.path = value.substring(0, value.length() - 1);
-					wced = true;
+					star = true;
+					minus = false;
+				}
+				else if (minusindex == value.length() - 1) {
+					this.path = value.substring(0, value.length() - 1);
+					star = false;
+					minus = true;
 				}
 				else
 					throw new IllegalArgumentException("Invalid filter string: " + filter);
 				// remove /'s at the end of path
 				value = this.path;
 				int len = this.path.length();
-				if (value.charAt(len - 1) == '/')
+				if (/* !wced && */(value.charAt(len - 1) == '/'))
 					this.path = value.substring(0, len - 1);
 				break;
 			case "type":
@@ -344,31 +414,33 @@ public class ResourcePermission extends Permission {
 
 		}
 	}
-    
-    private Class<?> getClass(final String typename) {
-        Class<?> c = resourceTypeClasses.get(typename);
-        if (c == null) {
-            c = getClassPrivileged(typename);
-            if (c != null) {
-                resourceTypeClasses.put(typename, c);
-            }
-        }
-        return c;
-    }
+
+	private Class<?> getClass(final String typename) {
+		Class<?> c = resourceTypeClasses.get(typename);
+		if (c == null) {
+			c = getClassPrivileged(typename);
+			if (c != null) {
+				resourceTypeClasses.put(typename, c);
+			}
+		}
+		return c;
+	}
 
 	private Class<?> getClassPrivileged(final String typename) {
 		Class<?> result = AccessController.doPrivileged(new PrivilegedAction<Class<?>>() {
-            @Override
+			@Override
 			public Class<?> run() {
 				try {
 					return Class.forName(typename);
 				} catch (ClassNotFoundException ioe) {
-					// This exception occurs in particular, as long as no resource of a custom type has been created. 
+					// This exception occurs in particular, as long as no resource of a custom type has been created.
 					// The log message is misleading in this case; if the resource type is really not exported, no
 					// resource of the respective type can be created anyway
-//					logger.warn(String.format(
-//							"Resource type class %s couldn't be loaded. Therefor the type hierarchy can't be considered in the permission check. To avoid this the type class should be exported by the system or any other application.",
-//							typename));
+					// logger.warn(String.format(
+					// "Resource type class %s couldn't be loaded. Therefor the type hierarchy can't be considered in
+					// the permission check. To avoid this the type class should be exported by the system or any other
+					// application.",
+					// typename));
 					return null;
 				}
 			}
@@ -499,40 +571,40 @@ public class ResourcePermission extends Permission {
 			actions = ALLACTIONS;
 		}
 		else {
-            actions = ALLACTIONSTRINGS[actionsAsMask];
-            if (actions == null) {
-                StringBuilder sb = new StringBuilder(CANONICAL_ACTIONS_LENGTH);
-                if ((actionsAsMask & _READ) != 0) {
-                    sb.append(READ);
-                }
-                if ((actionsAsMask & _WRITE) != 0) {
-                    if (sb.length() > 0)
-                        sb.append(',');
-                    sb.append(WRITE);
-                }
-                if ((actionsAsMask & _CREATE) != 0) {
-                    if (sb.length() > 0)
-                        sb.append(',');
-                    sb.append(CREATE);
-                }
-                if ((actionsAsMask & _ADDSUB) != 0) {
-                    if (sb.length() > 0)
-                        sb.append(',');
-                    sb.append(ADDSUB);
-                }
-                if ((actionsAsMask & _DELETE) != 0) {
-                    if (sb.length() > 0)
-                        sb.append(',');
-                    sb.append(DELETE);
-                }
-                if ((actionsAsMask & _ACTIVITY) != 0) {
-                    if (sb.length() > 0)
-                        sb.append(',');
-                    sb.append(ACTIVITY);
-                }
-                actions = sb.toString();
-                ALLACTIONSTRINGS[actionsAsMask] = actions;
-            }
+			actions = ALLACTIONSTRINGS[actionsAsMask];
+			if (actions == null) {
+				StringBuilder sb = new StringBuilder(CANONICAL_ACTIONS_LENGTH);
+				if ((actionsAsMask & _READ) != 0) {
+					sb.append(READ);
+				}
+				if ((actionsAsMask & _WRITE) != 0) {
+					if (sb.length() > 0)
+						sb.append(',');
+					sb.append(WRITE);
+				}
+				if ((actionsAsMask & _CREATE) != 0) {
+					if (sb.length() > 0)
+						sb.append(',');
+					sb.append(CREATE);
+				}
+				if ((actionsAsMask & _ADDSUB) != 0) {
+					if (sb.length() > 0)
+						sb.append(',');
+					sb.append(ADDSUB);
+				}
+				if ((actionsAsMask & _DELETE) != 0) {
+					if (sb.length() > 0)
+						sb.append(',');
+					sb.append(DELETE);
+				}
+				if ((actionsAsMask & _ACTIVITY) != 0) {
+					if (sb.length() > 0)
+						sb.append(',');
+					sb.append(ACTIVITY);
+				}
+				actions = sb.toString();
+				ALLACTIONSTRINGS[actionsAsMask] = actions;
+			}
 		}
 		return bitMask;
 	}
@@ -565,11 +637,11 @@ public class ResourcePermission extends Permission {
 	 * @return true, if this granted permission implies the queried permission, false otherwise.
 	 */
 	/* @formatter:on */
-    @Override
-    public boolean implies(Permission p) {
-        if (!(p instanceof ResourcePermission))
+	@Override
+	public boolean implies(Permission p) {
+		if (!(p instanceof ResourcePermission))
 			return false;
-        ResourcePermission qp = (ResourcePermission) p;
+		ResourcePermission qp = (ResourcePermission) p;
 		/*
 		 * Condition 1: The action flag of the queried permission was set in the granted permission
 		 */
@@ -597,7 +669,7 @@ public class ResourcePermission extends Permission {
 							"ResourcePermission should be queried with ResourceList as type only at first creation of the resource! Such a permission doesn't imply any ResourcePermission!");
 					return false;
 				}
-				else if (!(qp.type.equals(RESOURCE_LIST_CLASS_NAME)) && !this.type.equals(qp.type))
+				else if (qp.type != null && !(qp.type.equals(RESOURCE_LIST_CLASS_NAME)) && !this.type.equals(qp.type))
 					return false;
 			}
 			else {
@@ -646,48 +718,106 @@ public class ResourcePermission extends Permission {
 		/* @formatter:off */
 		/*
 		 * case | granted	| query 	|									|
-		 * 		| path type	| path type	| 			implies					| example
-		 * ===================================================================================================
-		 * 1    | 		1	| 	1	 	| 			true					| 
-		 * _____|___________|___________|___________________________________|___________|____________
+		 * 		| path type	| path type	| 			implies					|
+		 * ==================================================================
+		 * 1    | 		1	| 	1	 	| 			true					|
+		 * _____|___________|___________|___________________________________|
 		 * 2    | 		1	| 	2	 	| 			true					|
-		 * _____|___________|___________|___________________________________|___________|____________
-		 * 3    | 		1	|  	3	 	| 			true					|   
-		 * _____|___________|___________|___________________________________|___________|____________
-		 * 4    |  		2	| 	1		| 			false					|	
-		 * _____|___________|___________|___________________________________|___________|____________
-		 * 5    |  		2	| 	2 		| queryPath.startswith(grantedPath)	|			|
-		 * _____|___________|___________|___________________________________|___________|____________
-		 * 6    |  		2	|  	3 		| queryPath.startswith(grantedPath)	|			|
-		 * _____|___________|___________|___________________________________|___________|____________
-		 * 7    |  		3	|  	1		| 			false					|			|
-		 * _____|___________|___________|___________________________________|___________|____________
-		 * 8    |  		3	|  	2		| 			false					|			|
-		 * _____|___________|___________|___________________________________|___________|____________
-		 * 9    |  		3	|  	3 		| queryPath.equals(grantedPath)		|			|
-		 * 
+		 * _____|___________|___________|___________________________________|
+		 * 3    | 		1	|  	3	 	| 			true					|
+		 * _____|___________|___________|___________________________________|
+		 * 4    |  		2	| 	1		| 			false					|
+		 * _____|___________|___________|___________________________________|
+		 * 5    |  		2	| 	2 		| queryPath.startswith(grantedPath)	|
+		 * _____|___________|___________|___________________________________|
+		 * 6    |  		2	|  	3 		| queryPath.startswith(grantedPath) |
+		 * 		|			|			|	grantedPath ends with '/'		|
+		 * _____|___________|___________|___________________________________|
+		 * 7    |  		3	|  	1		| 			false					|
+		 * _____|___________|___________|___________________________________|
+		 * 8    |  		3	|  	2		| 			false					|
+		 * _____|___________|___________|___________________________________|
+		 * 9    |  		3	|  	3 		| queryPath.equals(grantedPath)		|
+		 * _____|___________|___________|___________________________________|
 		 * True condition is (case 1 || case 2 || case 3 || case 5 || case 6 || case 9)
 		 * 
 		 * Here we need the false condition as break condition which is
 		 *  (! case 1 && ! case 2 && ! case 3 && ! case 5 && ! case 6 && ! case 9)
 		 *  
+		 *  Note: in case 6 queryPath has to start with grant Path but mustn't be equal to it,
+		 *  so "myPath/*" doesn't imply "myPath/"
+		 *  additionally queryPath has to contain a '/' at grantPath.length()
+		 *   
 		 */
 		/* @formatter:on */
 
-		String queryPath = qp.path;
-
 		// case 1-3
-		if (pathType != PathType.WILDCARD_ONLY)
-			// case 5
-			if (pathType != PathType.WILDCARD || qp.pathType != PathType.WILDCARD
-					|| (path != null && queryPath != null && !queryPath.startsWith(path)))
-				// case 6
-				if (pathType != PathType.WILDCARD || qp.pathType != PathType.NO_WILDCARD
-						|| (path != null && queryPath != null && !queryPath.startsWith(path)))
-					// case 9
-					if (pathType != PathType.NO_WILDCARD || qp.pathType != PathType.NO_WILDCARD
-							|| (path != null && queryPath != null && !queryPath.equals(path)))
-					return false;
+		if ((pathType != PathType.STAR_ONLY))
+			// case 16-20
+			if ((pathType != PathType.MINUS_ONLY)) {
+				String queryPath = qp.path;
+				String grantPath = getGrantPath(queryPath);
+				int glen = 0;
+				if (grantPath != null)
+					glen = grantPath.length();
+
+				boolean queryNotStartsWithGrant = true;
+				try {
+					queryNotStartsWithGrant = grantPath != null && queryPath != null
+							&& !queryPath.startsWith(grantPath);
+				} catch (Exception e) {
+				}
+
+				boolean queryNotEqualsGrant = true;
+				try {
+					queryNotEqualsGrant = grantPath != null && queryPath != null && !queryPath.equals(grantPath);
+				} catch (Exception e) {
+				}
+
+				boolean grantEndSlashNotMatchWithQuery = true;
+				try {
+					if (queryPath != null && queryPath.indexOf('/') != -1) {
+						if ((queryPath.length() > glen)) {
+							if (queryPath.charAt(glen) != '/') {
+								grantEndSlashNotMatchWithQuery = true;
+							}
+							else {
+								grantEndSlashNotMatchWithQuery = false;
+							}
+						}
+					}
+					else if (!queryNotEqualsGrant) {
+						grantEndSlashNotMatchWithQuery = false;
+					}
+				} catch (Exception e) {
+				}
+
+				// case 7
+				if (pathType != PathType.STAR || qp.pathType != PathType.STAR || queryNotStartsWithGrant
+						|| grantEndSlashNotMatchWithQuery) {
+					// case 8
+					if (pathType != PathType.STAR || qp.pathType != PathType.NO_WILDCARD
+							|| (queryNotEqualsGrant && (queryNotStartsWithGrant || grantEndSlashNotMatchWithQuery)))
+						// case 10
+						if (pathType != PathType.STAR || qp.pathType != PathType.MINUS
+								|| (queryNotEqualsGrant && (queryNotStartsWithGrant || grantEndSlashNotMatchWithQuery)))
+							// case 13
+							if (pathType != PathType.NO_WILDCARD || qp.pathType != PathType.NO_WILDCARD
+									|| (queryNotEqualsGrant))
+								// case 22
+								if (pathType != PathType.MINUS || qp.pathType != PathType.STAR
+										|| (queryNotStartsWithGrant) || !queryNotEqualsGrant
+										|| grantEndSlashNotMatchWithQuery)
+									// case 23
+									if (pathType != PathType.MINUS || qp.pathType != PathType.NO_WILDCARD
+											|| (queryNotStartsWithGrant) || !queryNotEqualsGrant
+											|| grantEndSlashNotMatchWithQuery)
+										// case 25
+										if (pathType != PathType.MINUS || qp.pathType != PathType.MINUS
+												|| queryNotStartsWithGrant || grantEndSlashNotMatchWithQuery)
+											return false;
+				}
+			}
 		/*
 		 * Condition 4: the owner of the queried permission (owner of the referenced resource) is equal to the owner of
 		 * the granted permission or the owner of the granted permission is null.
@@ -717,6 +847,18 @@ public class ResourcePermission extends Permission {
 		return true;
 	}
 
+	// if queryPath doesn't contain any '/'s drop an ending '/' of grantedPath
+	private String getGrantPath(String queryPath) {
+		String result = this.path;
+		if ((result != null) && (queryPath != null) && (queryPath.indexOf('/') == -1)) {
+			int len = result.length();
+			if (result.charAt(len - 1) == '/') {
+				result = result.substring(0, len - 1);
+			}
+		}
+		return result;
+	}
+
 	@Override
 	public boolean equals(Object obj) {
 		if (obj == this)
@@ -724,8 +866,10 @@ public class ResourcePermission extends Permission {
 		if (!(obj instanceof ResourcePermission))
 			return false;
 		ResourcePermission perm = (ResourcePermission) obj;
-		if ((actionsAsMask == perm.actionsAsMask) && ((path == null && perm.path == null)
-				|| (path != null && perm.path != null && path.equals(perm.path))) && wced == perm.wced)
+		if ((actionsAsMask == perm.actionsAsMask)
+				&& ((path == null && perm.path == null)
+						|| (path != null && perm.path != null && path.equals(perm.path)))
+				&& (star == perm.star) && (minus == perm.minus))
 			return true;
 		return false;
 	}

@@ -66,7 +66,7 @@ ngOGFrAdminApp.controller('getUserListCtrl', ['$scope', 'ogemaGateway', '$rootSc
 
         var editUserCtrl = function ($scope, $modalInstance) {
 
-            $scope.permissionActions = ["read", "write", "addSub", "create", "delete", "activity"];
+            $scope.permissionActions = ["read", "write", "addsub", "create", "delete", "activity"];
             $scope.newpolicy = {"accessDecision": "allow","permissionName":"org.ogema.accesscontrol.ResourcePermission","uniqueName":null, "resourcePath": "", "resourceType": null, "permissionActions": []};
 
             $scope.initUserData = function () {
@@ -204,6 +204,13 @@ ngOGFrAdminApp.controller('getUserListCtrl', ['$scope', 'ogemaGateway', '$rootSc
                 ogemaGateway.postData(path, {user: user, oldpwd: oldpwd, pwd: pwd}).then(function (result) {
                 //    console.log("RESULT", result)
                     $scope.initUser();
+                    alert("User password updated: " + user);
+                }).catch(function(status) {
+                    //   console.log("Error POST", status, error, result);
+                	if (status === 401)
+                		alert("Wrong password.");
+                	else
+                		alert("Password update failed: " + status);
                 });
             }
         }

@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.resourcemanager.impl.test;
 
@@ -21,6 +21,8 @@ import static org.ogema.exam.ResourceAssertions.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import org.junit.Assert;
 import org.junit.Test;
 import org.ogema.core.channelmanager.measurements.IntegerValue;
 import org.ogema.core.channelmanager.measurements.SampledValue;
@@ -29,15 +31,18 @@ import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.schedule.Schedule;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
+import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.AccessMode;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceOperationException;
+import org.ogema.core.resourcemanager.transaction.ReadConfiguration;
 import org.ogema.core.resourcemanager.transaction.ResourceTransaction;
 import org.ogema.core.resourcemanager.transaction.TransactionFuture;
 import org.ogema.core.resourcemanager.transaction.WriteConfiguration;
 import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 import org.ogema.model.connections.ElectricityConnection;
 import org.ogema.model.locations.Room;
+import org.ogema.model.sensors.PowerSensor;
 import org.ogema.model.sensors.TemperatureSensor;
 import org.ogema.tools.resource.util.ValueResourceUtils;
 import org.ogema.tools.timeseries.api.MemoryTimeSeries;
@@ -302,6 +307,29 @@ public class ResourceTransactionTest extends OsgiTestBase {
 		assertEquals(values1, result.getValue().getValues(Long.MIN_VALUE));
 		f1.delete();
 	}
+	
+	@Test
+	public void returnNullConfigWorks() {
+		// two inactive resource
+		final FloatResource flt = resMan.createResource(newResourceName(), FloatResource.class);
+		final TimeResource time = resMan.createResource(newResourceName(), TimeResource.class);
+		
+		final PowerSensor top = resMan.createResource(newResourceName(), PowerSensor.class);
+		// two virtual resources
+		final FloatResource flt2 = top.reading();
+		final TimeResource time2 = top.getSubResource("dummy", TimeResource.class);
+		final ResourceTransaction trans = resAcc.createResourceTransaction();
+		final TransactionFuture<Float> v0 = trans.getFloat(flt, ReadConfiguration.RETURN_NULL);
+		final TransactionFuture<Float> v1 = trans.getFloat(flt2, ReadConfiguration.RETURN_NULL);
+		final TransactionFuture<Long> v2 = trans.getTime(time, ReadConfiguration.RETURN_NULL);
+		final TransactionFuture<Long> v3 = trans.getTime(time2, ReadConfiguration.RETURN_NULL);
+		trans.commit();
+		Assert.assertNull("ReadConfiguration.RETURN_NULL was ignored", v0.getValue());
+		Assert.assertNull("ReadConfiguration.RETURN_NULL was ignored", v1.getValue());
+		Assert.assertNull("ReadConfiguration.RETURN_NULL was ignored", v2.getValue());
+		Assert.assertNull("ReadConfiguration.RETURN_NULL was ignored", v3.getValue());
+	}
+	
 	
 	
 	

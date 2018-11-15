@@ -19,5 +19,6 @@
 #(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.devices.buildingtechnology.Thermostat" "read,write,addsub,create,activity")
 (org.ogema.accesscontrol.ResourcePermission "path=*" "read,write,addsub,create,activity")
 
-# FIXME this permission should not be granted... 
-(java.lang.RuntimePermission "accessDeclaredMembers")
+(org.osgi.framework.CapabilityPermission "ogema.core" "require")
+
+

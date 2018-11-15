@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.impl.persistence;
 
@@ -34,6 +34,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 
 import org.ogema.core.model.ModelModifiers;
 import org.ogema.core.model.Resource;
@@ -69,6 +70,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	 * Map of all top level resources as Proxy instances with resource name as key.
 	 */
 	final ConcurrentHashMap<String, TreeElementImpl> root;
+	private final Collection<TreeElement> topElementsUnmodifiable;
 
 	/**
 	 * These counter help determining unique IDs for resource types resources and sub resources. At the boot time the
@@ -89,9 +91,9 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 
 	// FIXME make these final?
 	ConcurrentHashMap<String, Class<?>> typeClassByName;
-	ConcurrentHashMap<String, Integer> resIDByName;
+	ConcurrentHashMap<String, Integer> resIDByName; // actually by path
 	ConcurrentHashMap<Integer, TreeElementImpl> resNodeByID;
-	ConcurrentHashMap<String, Vector<Integer>> resIDsByType;
+	ConcurrentHashMap<String, Vector<Integer>> resIDsByType; // TODO replace Vector?
 
 	final boolean activatePersistence;
 
@@ -111,6 +113,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	 */
 	public ResourceDBImpl() {
 		root = new ConcurrentHashMap<>();
+		topElementsUnmodifiable = Collections.<TreeElement> unmodifiableCollection(root.values());
 		// Allocate enough memory for all entries in the archive and some memory
 		// as reserves.
 		typeClassByName = new ConcurrentHashMap<>(INITIAL_MAP_SIZE);
@@ -243,7 +246,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 			// iterate over all of the non-optional direct children and
 			// create a
 			// sub tree each child and hook it on the parent tree.
-			Set<Entry<String, TreeElementImpl>> tlrs = node.requireds.entrySet();
+			Set<Entry<String, TreeElementImpl>> tlrs = node.getOrCreateRequireds(false).entrySet();
 			for (Map.Entry<String, TreeElementImpl> entry : tlrs) {
 
 				TreeElementImpl res = entry.getValue();
@@ -343,7 +346,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		Class<?> clazz;
 		Method[] methods = type.getDeclaredMethods();
 		int len = methods.length;
-		Vector<Class<?>> result = new Vector<>(len);
+		Collection<Class<?>> result = new ArrayList<>(len);
 
 		for (Method m : methods) {
 
@@ -430,7 +433,8 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 	 * for the resource and all of the nodes in the tree.
 	 * 
 	 * @throws InvalidResourceTypeException
-	 * @throws TypeNotFoundException
+	 * @throws ResourceAlreadyExistsException
+	 * @throws TypeNotPresentException
 	 * 
 	 */
 	@Override
@@ -580,9 +584,9 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 			return getTypeChildren0(cls);
 		}
 		else {
-			int id = v.get(0);
+			int id = v.iterator().next();
 			TreeElementImpl e = resNodeByID.get(id);
-			return e.typeChildren.values();
+			return Collections.unmodifiableCollection(e.typeChildren.values());
 		}
 	}
 
@@ -631,14 +635,14 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		 */
 		TreeElementImpl parent = node.parent;
 		if (parent != null)
-			parent.requireds.remove(node.name);
+			parent.removeRequired(node.name);
 
 		unRegisterRes(node);
 
-		if (!node.requireds.isEmpty()) {
+		if (!node.getOrCreateRequireds(false).isEmpty()) {
 			// iterate over all of the children (optionals and requireds) and
 			// delete their nodes.
-			Set<Entry<String, TreeElementImpl>> tlrs = node.requireds.entrySet();
+			Set<Entry<String, TreeElementImpl>> tlrs = node.getOrCreateRequireds(false).entrySet();
 			for (Map.Entry<String, TreeElementImpl> entry : tlrs) {
 				TreeElementImpl res = entry.getValue();
 				removeTree(res, delete);
@@ -674,11 +678,11 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		return root.get(name);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<TreeElement> getAllToplevelResources() {
-		Vector<TreeElement> result = new Vector<TreeElement>(root.values());
-		return (Collection<TreeElement>) result.clone();
+		return topElementsUnmodifiable;	
+//		Vector<TreeElement> result = new Vector<TreeElement>(root.values());
+//		return (Collection<TreeElement>) result.clone();
 	}
 
 	@Override
@@ -689,7 +693,7 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 		String owner = dict.get("owner");
 		String residStr = dict.get("id");
 
-		boolean isRoot = residStr.equals("#");
+		boolean isRoot = "#".equals(residStr);
 		if (residStr != null && !isRoot) {
 
 			int residInt = Integer.valueOf(residStr);
@@ -780,14 +784,16 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 						if (e.appID.equals(owner))
 							if (!e.reference) {
 								if (!e.isToplevel())
-									result.add(e.topLevelParent);
+                                    result.add(e);
+									// ??? result.add(e.topLevelParent);
 								else
 									result.add(e);
 							}
 					}
 					else if (!e.reference) {
 						if (!e.isToplevel())
-							result.add(e.topLevelParent);
+                            result.add(e);
+							// ??? result.add(e.topLevelParent);
 						else
 							result.add(e);
 					}
@@ -865,10 +871,42 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 
 	@Override
 	public synchronized void stop(BundleContext context) throws Exception {
+		final ServiceRegistration<ResourceDB> registration = this.registration;
+		this.registration = null;
+		final CountDownLatch latch;
 		if (registration != null) {
-			registration.unregister();
+			latch = new CountDownLatch(1);
+			// this will trigger ApplicationTracker#stop, and hence enter apps' custom code
+			// we must not hold the synchronized lock here -> leads to deadlock; hence we start a new thread
+			new Thread(new Runnable() {
+				
+				@Override
+				public void run() {
+					registration.unregister();
+					latch.countDown();
+				}
+			}).start();
 		}
-		registration = null;
+		else
+			latch = null;
+		if (latch != null) {
+			for (int i=0; i < 30; i++) {
+				if (latch.getCount() <= 0)
+					break;
+				try {
+					// wait for apps to shutdown; if we did not wait here, apps would not be able to 
+					// execute their stop method any more, because persistence would be deactivated already
+					// furthermore, it is important to release the synchronized lock, so that the other synchronized methods
+					// in this class remain accessible; hence we cannot simply wait on latch, but need to call this.wait
+					// If this times out (30 times, e.g. because some app simply does not return from its stop method), 
+					// then we'll get a lot of ugly log output from apps' stop methods; but still a restart works fine
+					// TODO implement a blacklisting for apps that do not return timely from their stop method?
+					this.wait(1000);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
+			}
+		}
 		if (activatePersistence) {
 			if (persistence != null) {
 				persistence.triggerStorage();
@@ -882,7 +920,11 @@ public class ResourceDBImpl implements ResourceDB, BundleActivator {
 			for (int i = 0; i < 30; i++) {
 				if (!(((TimedPersistence) persistence).running))
 					break;
-				Thread.sleep(100);
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
 			}
 			if (((TimedPersistence) persistence).running) {
 				logger.error("Could not shut down timed persistence");

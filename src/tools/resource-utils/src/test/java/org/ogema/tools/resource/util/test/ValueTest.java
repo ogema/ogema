@@ -1,34 +1,44 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.tools.resource.util.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Arrays;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.ogema.core.channelmanager.measurements.FloatValue;
 import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.resourcemanager.ResourceManagement;
+import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.exam.OsgiAppTestBase;
 import org.ogema.tools.resource.util.ValueResourceUtils;
+import org.ogema.tools.timeseries.api.FloatTimeSeries;
+import org.ogema.tools.timeseries.implementations.FloatTreeTimeSeries;
+import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
+import org.ops4j.pax.exam.spi.reactors.PerClass;
+import org.junit.Assert;
 
+@ExamReactorStrategy(PerClass.class)
 public class ValueTest extends OsgiAppTestBase {
 
 	private ResourceManagement rm;
@@ -78,6 +88,30 @@ public class ValueTest extends OsgiAppTestBase {
 		ValueResourceUtils.setValue(timeRes, str);
 		assertEquals(Long.parseLong(str), timeRes.getValue());
 		assertEquals(str, ValueResourceUtils.getValue(timeRes));
+	}
+	
+	@Test
+	public void integrate2Works1() {
+		final FloatTimeSeries t = new FloatTreeTimeSeries();
+		t.addValue(0, FloatValue.ZERO);
+		t.addValue(10, new FloatValue(10));
+		t.addValue(11, FloatValue.ZERO);
+		t.addValue(21, new FloatValue(10));
+		t.setInterpolationMode(InterpolationMode.LINEAR);
+		final double d = ValueResourceUtils.integrate2(t);
+		Assert.assertEquals("Unexpected integration result", 105, d, 1);
+	}
+	
+	@Test
+	public void integrate2Works2() {
+		final FloatTimeSeries t = new FloatTreeTimeSeries();
+		t.addValue(0, new FloatValue(10));
+		t.addValue(10, FloatValue.ZERO);
+		t.addValue(15, new FloatValue(10));
+		t.addValue(20, FloatValue.ZERO);
+		t.setInterpolationMode(InterpolationMode.STEPS);
+		final double d = ValueResourceUtils.integrate2(t);
+		Assert.assertEquals("Unexpected integration result", 150, d, 1);
 	}
 
 }

@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.recordeddata.slotsdb;
 
@@ -356,18 +356,21 @@ public class SlotsDb implements DataRecorder, ClockChangeListener {
 			return;
 		final long now = clock.getExecutionTime();
 		synchronized (slotsDbStorages) {
+			// folder lock must be obtained after locking the time series! We cannot completely rule out the possibility
+			// that further future data is written while we do the check here.
+//			proxy.folderLock.writeLock().lock();
+			boolean futureDataExists = false;
+			for (SlotsDbStorage s: slotsDbStorages.values()) {
+				final SampledValue sv = s.getPreviousValue(Long.MAX_VALUE);
+				if (sv != null && sv.getTimestamp() > now) {
+					futureDataExists = true;
+					break;
+				}
+			}
+			if (!futureDataExists)
+				return;
 			proxy.folderLock.writeLock().lock();
 			try {
-				boolean futureDataExists = false;
-				for (SlotsDbStorage s: slotsDbStorages.values()) {
-					final SampledValue sv = s.getPreviousValue(Long.MAX_VALUE);
-					if (sv != null && sv.getTimestamp() > now) {
-						futureDataExists = true;
-						break;
-					}
-				}
-				if (!futureDataExists)
-					return;
 				FileObjectProxy.logger.info("Found future log data after a clock change event... cleaning up.");
 				proxy.deleteFutureFolders();
 			} catch (IOException e1) {

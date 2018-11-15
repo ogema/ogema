@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.tools.timeseries.iterator.api;
 
@@ -35,6 +35,7 @@ import com.google.common.base.Function;
  *
  * @param <N>
  */
+// TODO restrict domain of definition for the resulting time series: start time - end time
 public class MultiTimeSeriesBuilder<N> {
 
 	private final Collection<ReadOnlyTimeSeries> timeSeries;
@@ -113,7 +114,7 @@ public class MultiTimeSeriesBuilder<N> {
 	/**
 	 * Define how to calculate the values of the multi time series from the 
 	 * values of the underlying time series. Note: in order to calculate the
-	 * sum or average values for float time series, {@link #setSum())} or {@link #setAverage()}
+	 * sum or average values for float time series, {@link #setSum()} or {@link #setAverage()}
 	 * can be used instead.
 	 * @param function
 	 */

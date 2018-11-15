@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.core.rads.impl;
 
@@ -30,7 +30,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.ogema.core.administration.RegisteredPatternListener;
 import org.ogema.core.application.ApplicationManager;
-import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
 import org.ogema.core.rads.change.PatternChangeListenerRegistration;
 import org.ogema.core.rads.creation.DefaultPatternFactory;
@@ -42,6 +41,8 @@ import org.ogema.core.rads.tools.ResourceFieldInfo;
 import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.patternaccess.AdministrationPatternAccess;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.core.resourcemanager.pattern.PatternListener;
 import org.ogema.core.resourcemanager.pattern.ContextSensitivePattern;
@@ -53,7 +54,7 @@ import org.ogema.core.resourcemanager.pattern.PatternChangeListener;
  */
 public class AdvancedAccessImpl implements AdministrationPatternAccess {
 
-    private final OgemaLogger m_logger;
+    private final Logger m_logger;
     private final ApplicationManager m_appMan;
 //    private final ResourceManagement m_resMan;
     private final ResourceAccess m_resAcc;
@@ -64,10 +65,10 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
     private final Map<RequestedChangeDemand,PatternChangeListenerRegistration> changeListeners = new ConcurrentHashMap<>();
     private volatile boolean active = true;
 
-    public AdvancedAccessImpl(ApplicationManager appManager, PermissionManager permMan) {
+    public AdvancedAccessImpl(final ApplicationManager appManager, final PermissionManager permMan) {
         m_appMan = appManager;
-        m_logger = appManager.getLogger();
-//        m_resMan = appManager.getResourceManagement();
+//        m_logger = appManager.getLogger();
+        m_logger = LoggerFactory.getLogger("PatternAccess_" + appManager.getAppID().getApplication().getClass().getName());
         m_resAcc = appManager.getResourceAccess();
         m_permMan = permMan; 
         
@@ -117,7 +118,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
             return;
         }
         @SuppressWarnings({"rawtypes", "unchecked"})
-        final RadAssembler assembler = new RadAssembler(m_appMan, clazz, prio, listener, factory, null, m_permMan);
+        final RadAssembler assembler = new RadAssembler(m_appMan, m_logger, clazz, prio, listener, factory, null, m_permMan);
         assembler.start();
         m_assemblers.put(demand, assembler);		
 	}
@@ -132,7 +133,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
             return;
         }
         @SuppressWarnings({"rawtypes", "unchecked"})
-        final RadAssembler assembler = new RadAssembler(m_appMan, clazz, prio, listener, new DefaultPatternFactory<P>(clazz),container, m_permMan);
+        final RadAssembler assembler = new RadAssembler(m_appMan, m_logger, clazz, prio, listener, new DefaultPatternFactory<P>(clazz),container, m_permMan);
         assembler.start();
         m_assemblers.put(demand, assembler);		
 	}
@@ -185,7 +186,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
 	public <P extends ResourcePattern<?>> P addDecorator(Resource parent, String name, Class<P> radtype, PatternFactory<P> factory) {
 		if (!active)
 			return null;
-        final RadCreator creator = new RadCreator(m_appMan, (Class<? extends ResourcePattern<?>>) radtype, factory, null);
+        final RadCreator creator = new RadCreator(m_appMan, m_logger, (Class<? extends ResourcePattern<?>>) radtype, factory, null);
         creator.addDecorator(parent, name);
         return (P) creator.getRad();
 	}
@@ -196,7 +197,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
 	public <P extends ContextSensitivePattern<?, C>, C> P addDecorator(Resource parent, String name, Class<P> radtype, C container) {
 		if (!active)
 			return null;
-		final RadCreator creator = new RadCreator(m_appMan, (Class<? extends ResourcePattern<?>>) radtype, new DefaultPatternFactory<P>(radtype), container);
+		final RadCreator creator = new RadCreator(m_appMan, m_logger, (Class<? extends ResourcePattern<?>>) radtype, new DefaultPatternFactory<P>(radtype), container);
         creator.addDecorator(parent, name);
         return (P) creator.getRad();
 	}
@@ -214,7 +215,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
 	public <P extends ResourcePattern<?>> P createResource(String name,	Class<P> radtype, PatternFactory<P> factory) {
 		if (!active)
 			return null;
-		final RadCreator creator = new RadCreator(m_appMan, (Class<? extends ResourcePattern<?>>) radtype, factory,null);
+		final RadCreator creator = new RadCreator(m_appMan, m_logger, (Class<? extends ResourcePattern<?>>) radtype, factory,null);
         creator.create(name);
         return (P) creator.getRad();
 	}
@@ -225,7 +226,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
 	public <P extends ContextSensitivePattern<?, C>, C> P createResource(String name, Class<P> radtype, C container) {
 		if (!active)
 			return null;
-		final RadCreator creator = new RadCreator(m_appMan, (Class<? extends ResourcePattern<?>>) radtype, new DefaultPatternFactory<P>(radtype), container);
+		final RadCreator creator = new RadCreator(m_appMan, m_logger, (Class<? extends ResourcePattern<?>>) radtype, new DefaultPatternFactory<P>(radtype), container);
         creator.create(name);
         return (P) creator.getRad();
 	}
@@ -274,7 +275,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
 	public <P extends ResourcePattern<?>> List<P> getPatterns(Class<P> type, AccessPriority writePriority, PatternFactory<P> factory) {
 		if (!active)
 			return null;
-		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, type, factory, writePriority);
+		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, m_logger, type, factory, writePriority);
 		return finder.getAllPatterns(null, false);
 	}
 	
@@ -283,7 +284,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
 	public <P extends ContextSensitivePattern<?, C>, C> List<P> getPatterns(Class<P> type, AccessPriority writePriority, C container) {
 		if (!active)
 			return null;
-		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, type, new DefaultPatternFactory<P>(type), writePriority, container);
+		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, m_logger, type, new DefaultPatternFactory<P>(type), writePriority, container);
 		return finder.getAllPatterns(null, false);
 	}
 
@@ -293,7 +294,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
 			boolean recursive, AccessPriority writePriority) {
 		if (!active)
 			return null;
-		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, type,  new DefaultPatternFactory<P>(type), writePriority);
+		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, m_logger, type,  new DefaultPatternFactory<P>(type), writePriority);
 		return finder.getAllPatterns(resource, recursive);
 	}
 
@@ -302,7 +303,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
 			AccessPriority writePriority, C context) {
 		if (!active)
 			return null;
-		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, type,  new DefaultPatternFactory<P>(type), writePriority, context);
+		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, m_logger, type,  new DefaultPatternFactory<P>(type), writePriority, context);
 		return finder.getAllPatterns(resource, recursive);
 	}
 
@@ -342,7 +343,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
 		final RequestedDemand demand = new RequestedDemand(pattern, listener);
 		IndividualRadAssembler assembler = m_individual_assemblers.get(demand);
 		if (assembler == null) {
-			assembler = new IndividualRadAssembler(m_appMan, pattern, prio, listener, 
+			assembler = new IndividualRadAssembler(m_appMan, m_logger, pattern, prio, listener, 
 					new DefaultPatternFactory<P>(pattern), null, m_permMan);
 			m_individual_assemblers.put(demand, assembler);
 		}
@@ -380,7 +381,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
 	public <P extends ResourcePattern<?>> boolean isSatisfied(P instance, Class<P> type) {
 		if (!active)
 			return false;
-		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, type,  
+		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, m_logger, type,  
 				new DefaultPatternFactory<P>(type), AccessPriority.PRIO_LOWEST, null);
 		return finder.isSatisfied(instance);
 	}
@@ -389,7 +390,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
 	public <P extends ContextSensitivePattern<?, C>, C> boolean isSatisfied(P instance, Class<P> type, C context) {
 		if (!active)
 			return false;
-		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, type,  
+		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, m_logger, type,  
 				new DefaultPatternFactory<P>(type), AccessPriority.PRIO_LOWEST, context);
 		return finder.isSatisfied(instance);
 	}
@@ -398,7 +399,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
 	public <P extends ResourcePattern<?>> void createOptionalResourceFields(P instance, Class<P> patternType, boolean createAll) {
 		if (!active)
 			return;
-		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, patternType,  
+		PatternFinder<P> finder = new PatternFinder<P>(m_resAcc, m_logger, patternType,  
 				new DefaultPatternFactory<P>(patternType), AccessPriority.PRIO_LOWEST, null);
 		finder.createOptionalFields(instance, createAll);
 	}
@@ -414,7 +415,7 @@ public class AdvancedAccessImpl implements AdministrationPatternAccess {
 			return;
 		}
 		PatternChangeListenerRegistration registration 
-			= new PatternChangeListenerRegistration(instance, m_appMan, listener, type);
+			= new PatternChangeListenerRegistration(instance, m_appMan, m_logger, listener, type);
 		changeListeners.put(demand, registration);
 	}
 	

@@ -1,0 +1,30 @@
+The security bundle supports a set of configuration options. All configurations are optional. We try to use secure settings by
+default, several of the configuration options have an adverse effect on the (web) security of the system. Use with caution.
+See class org.ogema.impl.security.headers.HttpBundleConfiguration for more details on the individual configurations.
+
+CORS and generic HTTP header configuration. It is possible to add CORS-Headers
+(Access-Control-Allow-Origin, Access-Control-Allow-Credentials and Access-Control-Allow-Headers) to certain HTTP responses, or any other
+type of headers.
+	via system properties: this way the headers are applied to all requests:
+		- property "org.ogema.webresourcemanager.allowedOrigin"    (String, such as "*" or a specific remote)
+		- property "org.ogema.webresourcemanager.allowCredentials" (boolean)
+		- property "org.ogema.webresourcemanager.allowHeaders"     (String, comma separated list of allowed headers, such as "Content-Type, X-Request-With") 
+		
+	or via ConfigAdmin configurations, in which case the config only applies to requests targeted at a specific bundle.
+	The PID must be of the form
+	"org.ogema.impl.security.HttpConfig~SOMETHING". Properties:
+	   - property "bundleSymbolicName" : bundle symbolic name of the target bundle
+	   - property "corsAllowedOrigin"   (see system props)
+	   - property "corsAllowCredentials (see system props)
+	   - property "corsAllowHeaders"    (see system props)
+	   - properties "header.0.key", "header.0.value", "header.1.key", "header.1.value", ... : add arbitrary headers 
+	  
+Request redirect configuration. Redirect requests to a servlet or resource that do not exactly match a servlet or resource path.
+	via system properties:
+	   - property "org.ogema.webresourcemanager.staticredirects":   (String, even number of comma-separated paths. Redirect static web resource requests starting with the first path to the second.)
+	   - property "org.ogema.webresourcemanager.staticuriredirects" (String, even number of comma-separated paths. Redirect servlet requests starting with the first path to the second.)
+	   
+	or via ConfigAdmin configurations, same as for the headers above (PID "org.ogema.impl.security.HttpConfig~SOMETHING").
+	 - property "staticRedirects"     (see system props)
+	 - property "staticUriRedirects"  (see system props)
+ 

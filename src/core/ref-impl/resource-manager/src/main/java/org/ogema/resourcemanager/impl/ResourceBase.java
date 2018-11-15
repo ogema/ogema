@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.resourcemanager.impl;
 
@@ -101,7 +101,7 @@ public abstract class ResourceBase implements ConnectedResource {
 		resMan.getDatabaseManager().getElementInfo(getEl()).fireResourceChanged(this,
 				resMan.getApplicationManager().getFrameworkTime(), valueChanged);
 	}
-	
+
 	/*
 	 * Use instead of handleResourceUpdate when holding the resource lock
 	 */
@@ -329,16 +329,16 @@ public abstract class ResourceBase implements ConnectedResource {
 	public AccessMode getAccessModeInternal() {
 		return resMan.getDatabaseManager().getElementInfo(el).getAccessMode(resMan.getApplicationManager());
 	}
-	
+
 	@Override
 	public AccessPriority getAccessPriority() {
 		return resMan.getDatabaseManager().getElementInfo(getEl()).getAccessPriority(resMan.getApplicationManager());
 	}
-	
+
 	private Resource getParentPrivileged() {
 		resMan.getDatabaseManager().lockStructureRead();
         try {
-            if (getEl().isToplevel()) {
+            if (getElInternal().isToplevel()) {
                 return null;
             }
             String parentPath = path.substring(0, path.lastIndexOf('/'));
@@ -352,7 +352,7 @@ public abstract class ResourceBase implements ConnectedResource {
 	public <T extends Resource> T getParent() {
         resMan.getDatabaseManager().lockStructureRead();
         try {
-            if (getEl().isToplevel()) {
+            if (getElInternal().isToplevel()) {
                 return null;
             }
             String parentPath = path.substring(0, path.lastIndexOf('/'));
@@ -362,13 +362,13 @@ public abstract class ResourceBase implements ConnectedResource {
         }
 	}
 
-	
-	
+
+
 	@Override
     public <T extends Resource> List<T> getReferencingResources(Class<T> parentType) {
         resMan.getDatabaseManager().lockStructureRead();
         try {
-            ElementInfo info = resMan.getDatabaseManager().getElementInfo(getEl());
+            ElementInfo info = resMan.getDatabaseManager().getElementInfo(getElInternal());
             Collection<TreeElement> referencingElements = info.getReferences(getPath(),true);
             if (referencingElements.isEmpty()) {
                 return Collections.emptyList();
@@ -430,7 +430,7 @@ public abstract class ResourceBase implements ConnectedResource {
                 return getSubResources(Resource.class, true);
             }
 
-            List<TreeElement> children = getEl().getChildren();
+            List<TreeElement> children = getElInternal().getChildren();
             List<Resource> result = new ArrayList<>(children.size());
             for (TreeElement child : children) {
                 if (!validResourceName(child)) {
@@ -448,7 +448,7 @@ public abstract class ResourceBase implements ConnectedResource {
             resMan.getDatabaseManager().unlockStructureRead();
         }
     }
-	
+
 	protected <T extends Resource> List<T> getDirectSubResources(Class<T> type, final boolean recursive) {
 		if (type == Resource.class)
 			type = null; // more efficient
@@ -460,14 +460,14 @@ public abstract class ResourceBase implements ConnectedResource {
             resMan.getDatabaseManager().unlockStructureRead();
         }
 	}
-    
+
 	@Deprecated
     private <T extends Resource> List<T> getDirectSubResourcesClassical(final Class<T> type, final boolean recursive) {
         /*
          * note: in case of only direct subresources, no loops can occur in the resource graph. Hence, they do not have
          * to be taken care of.
          */
-        
+
         List<TreeElement> children = getEl().getChildren();
         List<T> result = new ArrayList<>(children.size());
         for (TreeElement child : getEl().getChildren()) {
@@ -502,14 +502,15 @@ public abstract class ResourceBase implements ConnectedResource {
         }
         return result;
     }
-    
+
+	// read lock must be held
     @SuppressWarnings("unchecked")
 	private <T extends Resource> List<T> getDirectSubResourcesViaTreeElements(final Class<T> type, final boolean recursive) {
         /*
          * note: in case of only direct subresources, no loops can occur in the resource graph. Hence, they do not have
          * to be taken care of.
          */
-        final List<TreeElement> children = getEl().getChildren();
+        final List<TreeElement> children = getElInternal().getChildren();
         final List<Resource> result0 = new ArrayList<>(children.size());
         final boolean secure = System.getSecurityManager() != null;
         for (TreeElement child : children) {
@@ -519,12 +520,12 @@ public abstract class ResourceBase implements ConnectedResource {
         }
 		return (List<T>) result0;
     }
-    
+
   	@Override
     public List<Resource> getDirectSubResources(boolean recursive) {
         return getDirectSubResources(null, recursive);
     }
-    
+
     /**
      * @param name sub resource name.
      * @return true iff app has read permission for sub resource or sub resource does not exist.
@@ -533,7 +534,7 @@ public abstract class ResourceBase implements ConnectedResource {
         Objects.requireNonNull(name, "name must not be null");
         resMan.getDatabaseManager().lockStructureRead();
         try {
-            TreeElement childElement = getEl().getChild(name);
+            TreeElement childElement = getElInternal().getChild(name);
             if (childElement == null) {
                 return true;
             }
@@ -548,8 +549,12 @@ public abstract class ResourceBase implements ConnectedResource {
 		Objects.requireNonNull(name, "name must not be null");
         resMan.getDatabaseManager().lockStructureRead();
         try {
-            VirtualTreeElement childElement = getEl().getChild(name);
+            VirtualTreeElement childElement = getElInternal().getChild(name);
             if (childElement == null) {
+                if (!validResourceName(name)) {
+                    throw (new NoSuchResourceException("'" + name
+                        + "' is not a valid resource name."));
+                }
                 return null;
             }
             assert childElement.getName().equals(name) : "name mismatch";
@@ -559,12 +564,12 @@ public abstract class ResourceBase implements ConnectedResource {
             resMan.getDatabaseManager().unlockStructureRead();
         }
 	}
-	
+
 	private <T extends Resource> T getSubResourcePrivileged(String name) {
 		Objects.requireNonNull(name, "name must not be null");
         resMan.getDatabaseManager().lockStructureRead();
         try {
-            VirtualTreeElement childElement = getEl().getChild(name);
+            VirtualTreeElement childElement = getElInternal().getChild(name);
             if (childElement == null) {
                 return null;
             }
@@ -584,11 +589,11 @@ public abstract class ResourceBase implements ConnectedResource {
                 // note: getting subresources has to take care of loops in the resource graph. This is taken care of by a
                 // specialized method.
                 final List<T> result = new ArrayList<>(10);
-                getSubTreeElementsRecursively(resourceType, getEl(), path, new HashSet<TreeElement>(), result);
+                getSubTreeElementsRecursively(resourceType, getElInternal(), path, new HashSet<TreeElement>(), result);
                 return result;
             }
 
-            List<TreeElement> children = getEl().getChildren();
+            List<TreeElement> children = getElInternal().getChildren();
             final List<T> result = new ArrayList<>(children.size());
             for (TreeElement child : children) {
                 // do not include tree elements starting with illegal character (used in Schedules as a hack).
@@ -606,9 +611,9 @@ public abstract class ResourceBase implements ConnectedResource {
             resMan.getDatabaseManager().unlockStructureRead();
         }
     }
-    
+
     private void fireActiveStateChanged(boolean newState) {
-    	List<String> aliases = isReference(true) ? ((ResourceBase)getLocationResource()).computeAliasesForLocation() : computeAliasesForLocation();
+    	List<String> aliases = isReference(true) ? getLocationResourcePrivileged().computeAliasesForLocation() : computeAliasesForLocation();
         for (String a: aliases) {
             //FIXME: path string mangling
             for (InternalStructureListenerRegistration l: resMan.getDatabaseManager().getStructureListeners(a.substring(1))) {
@@ -617,50 +622,91 @@ public abstract class ResourceBase implements ConnectedResource {
         }
     }
 
-	@Override
+    @Override
 	public void activate(boolean recursive) {
-		checkActiveStatePermission();
-		final TreeElement element = getEl();
-        /* treated as structure change to allow proper synchronization with
-        structure listeners, esp. during recursive (de-)activation
-        */
+        setActiveState(true, recursive);
+    }
+
+	private void setActiveState(boolean newState, boolean recursive) {
+		if (!recursive) {
+			resMan.getDatabaseManager().lockStructureRead();
+			try {
+				final TreeElement element = getElInternal();
+				if (newState == element.isActive())
+					return;
+			} finally {
+				resMan.getDatabaseManager().unlockStructureRead();
+			}
+		}
+		final TreeElement element;
         resMan.getDatabaseManager().lockStructureWrite();
+        List<ResourceBase> changedResources = null;
         try {
-            if (!element.isActive()) {
-                element.setActive(true);
-                getResourceDB().resourceActivated(element);
-                fireActiveStateChanged(true);
+        	element = getElInternal();
+            boolean resourceChanged = false;
+            checkActiveStatePermission();
+            if (newState ^ element.isActive()) {
+                element.setActive(newState);
+                resourceChanged = true;
             }
             if (recursive) {
+                changedResources = new ArrayList<>();
+                if (resourceChanged) {
+                    changedResources.add(this);
+                }
                 for (Resource sub : getDirectSubResources(false)) {
-                    sub.activate(true);
+                    ((ResourceBase)sub).setActiveStateRecursive(newState, changedResources);
+                }
+            }
+            resMan.getDatabaseManager().lockStructureRead();
+        } finally {
+            resMan.getDatabaseManager().unlockStructureWrite();
+        }
+        try {
+            if (recursive && changedResources != null) {
+                for (ResourceBase r: changedResources) {
+                    r.fireActiveStateChanged(newState);
+                    if (newState) {
+                        getResourceDB().resourceActivated(r.getElInternal());
+                    } else {
+                        getResourceDB().resourceDeactivated(r.getElInternal());
+                    }
+                }
+            } else {
+                fireActiveStateChanged(newState);
+                if (newState) {
+                    getResourceDB().resourceActivated(getElInternal());
+                } else {
+                    getResourceDB().resourceDeactivated(getElInternal());
                 }
             }
         } finally {
-            resMan.getDatabaseManager().unlockStructureWrite();
+            resMan.getDatabaseManager().unlockStructureRead();
         }
 	}
 
+	// write lock must be held
+    private void setActiveStateRecursive(boolean newState, List<ResourceBase> changedResources) {
+        final TreeElement element = getElInternal();
+        if (newState ^ element.isActive()) {
+        	try {
+        		checkActiveStatePermission();
+        	} catch (SecurityException e) {
+        		// for recursive activation we simply skip forbidden resources
+        		return;
+        	}
+            element.setActive(newState);
+            changedResources.add(this);
+        }
+        for (Resource sub : getDirectSubResources(false)) {
+            ((ResourceBase)sub).setActiveStateRecursive(newState, changedResources);
+        }
+    }
+
 	@Override
 	public void deactivate(boolean recursive) {
-		checkActiveStatePermission();
-        resMan.getDatabaseManager().lockStructureWrite();
-        try {
-            final TreeElement element = getEl();
-            if (element.isActive()) {
-                element.setActive(false);
-                getResourceDB().resourceDeactivated(element);
-                fireActiveStateChanged(false);
-            }
-            if (recursive) {
-                for (Resource sub : getDirectSubResources(false)) {
-                    sub.deactivate(true);
-                }
-            }
-        } finally {
-            resMan.getDatabaseManager().unlockStructureWrite();
-        }
-	}
+        setActiveState(false, recursive);
+    }
 
 	@Override
 	public void setOptionalElement(final String name, final Resource newElement) throws NoSuchResourceException,
@@ -701,9 +747,9 @@ public abstract class ResourceBase implements ConnectedResource {
 		checkAddPermission();
 		resMan.getDatabaseManager().lockStructureWrite();
 		try {
-			TreeElement newTreeElement = ((ConnectedResource) newElement).getTreeElement();
+			TreeElement newTreeElement = ((ResourceBase) newElement).getElInternal();
 
-			TreeElement existingElement = getEl().getChild(name);
+			TreeElement existingElement = getElInternal().getChild(name);
 
 			Collection<InternalValueChangedListenerRegistration> oldReferenceListeners = Collections.emptyList();
 			Map<String, DeletedLinkInfo> dli = null;
@@ -719,11 +765,11 @@ public abstract class ResourceBase implements ConnectedResource {
                 //existingResource.notifyDelete(existingResource, false, new HashSet<>(existingResource.computeAliases()));
                 dli = existingResource.deleteInternal(null);
 			}
-            if (getEl().isVirtual()) {
+            if (getElInternal().isVirtual()) {
                 create();
             }
-			getEl().addReference(newTreeElement, name, false);
-			TreeElement dec = getEl().getChild(name);
+			getElInternal().addReference(newTreeElement, name, false);
+			TreeElement dec = getElInternal().getChild(name);
             if (!oldReferenceListeners.isEmpty()) {
 				ElementInfo info = resMan.getDatabaseManager().getElementInfo(dec);
 				for (InternalValueChangedListenerRegistration l : oldReferenceListeners) {
@@ -736,23 +782,27 @@ public abstract class ResourceBase implements ConnectedResource {
                     }
 				}
 				info.updateListenerRegistrations();
-			}            
-            
-			treeElementReferenceAdded(getEl(), dec);
+			}
+
+			treeElementReferenceAdded(getElInternal(), dec);
 
 			if (dli != null) {
 				postProcessLinks(dli);
 			}
-            
-            notifyReference(this, (ResourceBase) newElement, name);
 
 			assert getEl().getChild(name).isReference() : "should be a reference";
 			assert getEl().getChild(name).getName().equals(name) : "reference name not ok";
 			assert getEl().getChild(name).getResID() != newTreeElement.getResID() : "wrong id";
 			assert getSubResource(name).getName().equals(name) : "wrong name on reference";
 			assert dec.getResRef() != null;
+			resMan.getDatabaseManager().lockStructureRead();
 		} finally {
 			resMan.getDatabaseManager().unlockStructureWrite();
+		}
+		try {
+			notifyReference(this, (ResourceBase) newElement, name);
+		} finally {
+			resMan.getDatabaseManager().unlockStructureRead();
 		}
 	}
 
@@ -782,7 +832,7 @@ public abstract class ResourceBase implements ConnectedResource {
 	@Override
 	public Resource addOptionalElement(String name) throws NoSuchResourceException {
 		Objects.requireNonNull(name);
-		//		if(getEl().isVirtual()) throw new ResourceException("Cannot add optional element to a virtual resource (" + getPath()+")" + el ); 
+		//		if(getEl().isVirtual()) throw new ResourceException("Cannot add optional element to a virtual resource (" + getPath()+")" + el );
 		if (!validResourceName(name)) {
 			throw (new NoSuchResourceException("Name " + name
 					+ " is not a valid resource name. Will not add the element."));
@@ -805,7 +855,7 @@ public abstract class ResourceBase implements ConnectedResource {
 			throw (new NoSuchResourceException(String.format("type %s has no optional element named %s", getEl()
 					.getType(), name)));
 		}
-
+		final Resource result;
         resMan.getDatabaseManager().lockStructureWrite();
         try {
             List<InternalValueChangedListenerRegistration> oldReferenceListeners = Collections.emptyList();
@@ -813,7 +863,7 @@ public abstract class ResourceBase implements ConnectedResource {
                 oldReferenceListeners = replaceReference(existingReference, name);
                 getSubResource(name).delete();
             }
-            TreeElement opt = getEl().addChild(name, optionalElementType, false);
+            TreeElement opt = getElInternal().addChild(name, optionalElementType, false);
             if (!oldReferenceListeners.isEmpty()) {
                 ElementInfo info = resMan.getDatabaseManager().getElementInfo(opt);
                 for (InternalValueChangedListenerRegistration l : oldReferenceListeners) {
@@ -821,19 +871,24 @@ public abstract class ResourceBase implements ConnectedResource {
                 }
                 info.updateListenerRegistrations();
             }
-            treeElementChildAdded(getEl(), opt);
+            treeElementChildAdded(getElInternal(), opt);
 
             assert opt.isActive() == false : "newly-created tree elements must be inactive";
-            Resource result = getSubResource(name);
+            result = getSubResource(name);
             if (!result.exists()) { // probably fixed; was caused by a call to getParent() in ResourceFactory.createResource() -> no, still a problem
                 result.create();
                 resMan.logger.error(
                         "Error in resource management: newly created optional element '{}' does not exist", name);
             }
-            notifyCreate(this, (ResourceBase)result);
-            return result;
+            resMan.getDatabaseManager().lockStructureRead();
         } finally {
             resMan.getDatabaseManager().unlockStructureWrite();
+        }
+        try {
+        	 notifyCreate(this, (ResourceBase)result);
+             return result;
+        } finally {
+        	resMan.getDatabaseManager().unlockStructureRead();
         }
 	}
 
@@ -927,9 +982,10 @@ public abstract class ResourceBase implements ConnectedResource {
 						optionalElementType)));
 			}
 		}
+		final T result;
         resMan.getDatabaseManager().lockStructureWrite();
         try {
-			VirtualTreeElement existingDecorator = getEl().getChild(name);
+			VirtualTreeElement existingDecorator = getElInternal().getChild(name);
 			if (existingDecorator != null) {
 				Class<?> existingType = existingDecorator.getType();
                 //TODO: try to simplify conditions
@@ -965,18 +1021,22 @@ public abstract class ResourceBase implements ConnectedResource {
 						+ resourceType.getSimpleName() + ": Decorator with type " + existingType.getSimpleName()
 						+ " already exists."));
 			}
-			TreeElement dec = getEl().addChild(name, resourceType, true);
-			treeElementChildAdded(getEl(), dec);
-            T result = resMan.getResource(path + "/" + dec.getName());
-            notifyCreate(this, (ResourceBase) result);
-            
+			TreeElement dec = getElInternal().addChild(name, resourceType, true);
+			treeElementChildAdded(getElInternal(), dec);
+            result = resMan.getResource(path + "/" + dec.getName());
 			assert dec.isActive() == false : "newly-created tree elements must be inactive";
-			return result;
+			resMan.getDatabaseManager().lockStructureRead();
 		} finally {
 			resMan.getDatabaseManager().unlockStructureWrite();
 		}
+        try {
+            notifyCreate(this, (ResourceBase) result);
+        	return result;
+        } finally {
+        	resMan.getDatabaseManager().unlockStructureRead();
+        }
 	}
-    
+
     /* used in addDecorator to check for incompatible element change, will be
     overridden in ResourceList implementation */
     protected void checkDecoratorCompatibility(Resource newDecorator, TreeElement existingDecorator) {
@@ -1016,8 +1076,8 @@ public abstract class ResourceBase implements ConnectedResource {
 		}
         resMan.getDatabaseManager().lockStructureWrite();
         try {
-			TreeElement decoratorElement = ((ConnectedResource) decorator).getTreeElement();
-			TreeElement existingDecorator = getEl().getChild(name);
+			TreeElement decoratorElement = ((ResourceBase) decorator).getElInternal();
+			TreeElement existingDecorator = getElInternal().getChild(name);
             Collection<InternalValueChangedListenerRegistration> oldReferenceListeners = Collections.emptyList();
 			if (existingDecorator != null) {
 				if (getSubResource(name).equalsLocation(decorator) && !existingDecorator.isReference()) {
@@ -1033,10 +1093,10 @@ public abstract class ResourceBase implements ConnectedResource {
                 }
                 resMan.getDatabaseManager().deleteResource(existingDecorator);
 			}
-            
+
 			getEl().addReference(decoratorElement, name, optionalElementType == null);
 			TreeElement dec = getEl().getChild(name);
-            
+
             if (!oldReferenceListeners.isEmpty()) {
 				ElementInfo info = resMan.getDatabaseManager().getElementInfo(dec);
 				for (InternalValueChangedListenerRegistration l : oldReferenceListeners) {
@@ -1049,21 +1109,24 @@ public abstract class ResourceBase implements ConnectedResource {
                     }
 				}
 				info.updateListenerRegistrations();
-			}            
-            
+			}
+
 			treeElementReferenceAdded(getEl(), dec);
 
 			assert optionalElementType != null ^ dec.isDecorator();
 			assert dec.getResRef() != null;
-            
-            notifyReference(this, (ResourceBase) decorator, name);
-            
-			return resMan.getResource(path + "/" + name);
+			resMan.getDatabaseManager().lockStructureRead();
 		} finally {
 			resMan.getDatabaseManager().unlockStructureWrite();
 		}
+        try {
+        	notifyReference(this, (ResourceBase) decorator, name);
+			return resMan.getResource(path + "/" + name);
+        } finally {
+        	resMan.getDatabaseManager().unlockStructureRead();
+        }
     }
-    
+
 	@Override
 	public <T extends Resource> T addDecorator(String name, T decorator) throws ResourceAlreadyExistsException,
 			NoSuchResourceException, ResourceGraphException {
@@ -1118,7 +1181,7 @@ public abstract class ResourceBase implements ConnectedResource {
 	public String getLocation(String delimiter) {
         resMan.getDatabaseManager().lockStructureRead();
         try {
-            TreeElement currentElement = this.getEl();
+            TreeElement currentElement = this.getElInternal();
             StringBuilder location = new StringBuilder();
             while (true) {
                 while (currentElement.isReference()) {
@@ -1189,9 +1252,9 @@ public abstract class ResourceBase implements ConnectedResource {
         resMan.getDatabaseManager().lockStructureRead();
         try {
             if (!recursive) {
-                return getEl().isReference();
+                return getElInternal().isReference();
             }
-            return getEl().isReference() || (getParent() != null && getParent().isReference(recursive));
+            return getElInternal().isReference() || (getParent() != null && getParent().isReference(recursive));
         } finally {
             resMan.getDatabaseManager().unlockStructureRead();
         }
@@ -1227,30 +1290,36 @@ public abstract class ResourceBase implements ConnectedResource {
 			}
 			assert parent.exists();
 			((ResourceBase) getParent()).checkAddPermission();
-			getEl().create();
+			getElInternal().create();
             revision = resMan.getDatabaseManager().incrementRevision(); //reference paths may need to be reloaded
-            notifyCreate((ResourceBase)getParent(), this);
 
-			parent.treeElementChildAdded(parent.getTreeElement(), getEl());
+			parent.treeElementChildAdded(parent.getElInternal(), getElInternal());
 			//FIXME somethings broken (in ScheduleTreeElement?)
 			assert exists() : "Newly created resource " + path + " does not exist";
-			return (T) this;
+
+			resMan.getDatabaseManager().lockStructureRead(); // FIXME maybe this does not work here; test
 		} finally {
 			resMan.getDatabaseManager().unlockStructureWrite();
 		}
+		try {
+			 notifyCreate((ResourceBase)getParent(), this);
+			 return (T) this;
+		} finally {
+			resMan.getDatabaseManager().unlockStructureRead();
+		}
 	}
-    
-    //raises structure events for newly created references
+
+    //raises structure events for newly created references; requires read lock held
     private void notifyReference(ResourceBase parent, ResourceBase reference, String refName) {
         //FIXME loops between root and the reference are not handled correctly
         List<String> parentAliases = parent.computeAliasesForLocation();
-        
+
         /*
          * referenceChanged on the reference
          * called only on the reference path itself, not its aliases!
          */
         for (InternalStructureListenerRegistration reg : resMan.getDatabaseManager().getStructureListeners(reference.getPath())) {
-            reg.queueReferenceChangedEvent(parent.getTreeElement(), true);
+            reg.queueReferenceChangedEvent(parent.getElInternal(), true);
         }
 
         /*
@@ -1270,7 +1339,7 @@ public abstract class ResourceBase implements ConnectedResource {
                 }
             }
         }
-        
+
         //create and subresourceAdded callbacks inside the 'newly created' reference subtree
         List<String> referenceAliases = new ArrayList<>(parentAliases.size());
         for (String a: parentAliases) {
@@ -1293,10 +1362,10 @@ public abstract class ResourceBase implements ConnectedResource {
                 }
             }
         }
-        
+
     }
-    
-    //raises structure events for newly created resources
+
+    //raises structure events for newly created resources; requires read lock held
     private void notifyCreate(ResourceBase parent, ResourceBase newResource) {
         //FIXME loops between root and the created resource are not handled correctly
         if (parent == null) {
@@ -1315,7 +1384,7 @@ public abstract class ResourceBase implements ConnectedResource {
                 }
                 if (listenerResource.equalsLocation(parent)) {
                     for (InternalStructureListenerRegistration reg: e.getValue()) {
-                        reg.queueSubResourceAddedEvent(newResource.getTreeElement());
+                        reg.queueSubResourceAddedEvent(newResource.getElInternal());
                     }
                 } else {
                     if (listenerResource.equalsLocation(newResource)) {
@@ -1327,41 +1396,45 @@ public abstract class ResourceBase implements ConnectedResource {
                 }
             }
         }
-        
+
     }
-    
+
 	@Override
 	public <T extends Resource> T getSubResource(String name, Class<T> type) throws NoSuchResourceException {
 		Objects.requireNonNull(name, "name must not be null");
 		Objects.requireNonNull(type, "type must not be null");
         resMan.getDatabaseManager().lockStructureRead();
         try {
-            VirtualTreeElement subRes = getEl().getChild(name);
+            VirtualTreeElement subRes = getElInternal().getChild(name);
             if (subRes != null) {
-                if (!type.isAssignableFrom(subRes.getType())) { 
+                if (!type.isAssignableFrom(subRes.getType())) {
                     if (subRes.getType().isAssignableFrom(type) && subRes.isVirtual()) {
                         subRes.constrainType(type);
                         return getSubResource(name);
-                    } else {                    
+                    } else {
                         throw (new NoSuchResourceException(String.format(
                                 "A sub resource called '%s' already exists, but has incompatible type", name)));
                     }
                 }
                 else {
                 	T t = getSubResource(name);
-                	// XXX required to avoid weakly referenced element being removed 
+                	// XXX required to avoid weakly referenced element being removed
                 	// 2nd condition to ensure method behaviour is not changed in case of names containing path separator
-                	if (!name.equals(subRes.getName()) && !name.endsWith("/" + subRes.getName())) 
+                	if (!name.equals(subRes.getName()) && !name.endsWith("/" + subRes.getName()))
                 		throw new RuntimeException("Names do not match: requested " + name + ", but got " + subRes.getName());
                     return t;
                 }
             }
             else {
-                VirtualTreeElement newDecorator = getEl().getChild(name, type); //will create virtual decorator
+                if (!validResourceName(name)) {
+                    throw (new NoSuchResourceException("'" + name
+                        + "' is not a valid resource name."));
+                }
+                VirtualTreeElement newDecorator = getElInternal().getChild(name, type); //will create virtual decorator
                 assert newDecorator != null;
                 T t = getSubResource(name);
-                // required to avoid weakly referenced element being removed 
-                if (newDecorator == null) 
+                // required to avoid weakly referenced element being removed
+                if (newDecorator == null)
                 	throw new NullPointerException("Virtual element found null, this is a framework bug.");
                 return t;
             }
@@ -1390,8 +1463,8 @@ public abstract class ResourceBase implements ConnectedResource {
 		}
 		resMan.getDatabaseManager().lockStructureWrite();
 		try {
-			getEl();
-            
+			getElInternal(); // FIXME ?
+
 			if (!getParent().exists()) {
 				getParent().create();
 			}
@@ -1420,11 +1493,12 @@ public abstract class ResourceBase implements ConnectedResource {
 		final String name;
 		final String path;
 
-		DeletedLinkInfo(Resource link) {
+		// requires read lock held
+		DeletedLinkInfo(ResourceBase link) {
 			type = link.getResourceType();
 			name = link.getName();
-			parent = ((ResourceBase) link).getParentPrivileged();
-			path = ((ConnectedResource) link).getTreeElement().getReference().getPath();
+			parent = link.getParentPrivileged();
+			path = link.getElInternal().getReference().getPath();
 		}
 	}
 
@@ -1439,19 +1513,19 @@ public abstract class ResourceBase implements ConnectedResource {
         }
 
         for (Map.Entry<Resource, String> inc: incoming()) {
-            Resource sub = inc.getKey().getSubResource(inc.getValue());
+            ResourceBase sub = inc.getKey().getSubResource(inc.getValue());
             if (!sub.equals(this) && sub.isReference(false)) {
                 if (danglingLinks.containsKey(sub.getPath())) {
                         continue;
                 }
-                
+
                 danglingLinks.put(sub.getPath(), new DeletedLinkInfo(sub));
-                assert ((ResourceBase) sub).getParentPrivileged().equals(inc.getKey());
-                ((ResourceBase) sub).deleteInternal(danglingLinks);
+                assert sub.getParentPrivileged().equals(inc.getKey());
+                sub.deleteInternal(danglingLinks);
             }
         }
 
-        
+
         if (!isReference(false)) {
             //delete sub resources only if this is not a reference
             //for (Resource sub : getDirectSubResources(false)) {
@@ -1459,15 +1533,16 @@ public abstract class ResourceBase implements ConnectedResource {
                 ((ResourceBase)sub).deleteInternal(danglingLinks);
             }
         }
-        
+
         deleteTreeElement();
         return danglingLinks;
     }
-    
-	protected void deleteTreeElement() {
-		resMan.getDatabaseManager().resourceDeleted(getEl());
 
-		((VirtualTreeElement) getTreeElement()).delete();
+	// write lock must be held
+	protected void deleteTreeElement() {
+		resMan.getDatabaseManager().resourceDeleted(getElInternal());
+
+		((VirtualTreeElement) getElInternal()).delete();
 		resMan.getDatabaseManager().incrementRevision();
 	}
 
@@ -1501,7 +1576,7 @@ public abstract class ResourceBase implements ConnectedResource {
 			resMan.getDatabaseManager().unlockStructureWrite();
 		}
 	}
-    
+
     //raises structure events for deleted resources
     private void notifyDelete(ResourceBase r, boolean reachedThroughReference, Set<String> affectedPaths, Set<String> visitedPaths) {
         if (visitedPaths.contains(r.getLocation())) {
@@ -1517,18 +1592,18 @@ public abstract class ResourceBase implements ConnectedResource {
                     continue;
                 }
                 // p/name is reference
-                String refPath = p.getTreeElement().getChild(name).getReference().getPath();
+                String refPath = p.getElInternal().getChild(name).getReference().getPath();
                 if (!affectedPaths.contains(refPath)) {
                     continue;
                 }
             }
             affectedPaths.add("/" + p.getPath() + "/" + name);
         }
-        
+
         for (Resource c : r.getSubResources(false)) {
             notifyDelete((ResourceBase) c, c.isReference(false) || reachedThroughReference, extendPaths(affectedPaths, c.getName()), visitedPaths);
         }
-        
+
         for (String p : affectedPaths) {
             for (InternalStructureListenerRegistration l : resMan.getDatabaseManager().getStructureListeners(p.substring(1))) {
                 l.queueResourceDeletedEvent();
@@ -1543,18 +1618,18 @@ public abstract class ResourceBase implements ConnectedResource {
                 for (InternalStructureListenerRegistration l : resMan.getDatabaseManager().getStructureListeners(pParent.substring(1))) {
                     l.queueSubResourceRemovedEvent(e);
                 }
-                
+
                 if (e.isReference()) {
                     String refPath = e.getReference().getPath();
                     for (InternalStructureListenerRegistration l : resMan.getDatabaseManager().getStructureListeners(refPath)) {
                         l.queueReferenceChangedEvent(resMan.findTreeElement(pParent), false);
                     }
                 }
-                
+
             }
         }
     }
-    
+
     private static Set<String> extendPaths(Set<String> paths, String name) {
         Set<String> rval = new HashSet<>(paths.size());
         for (String p: paths) {
@@ -1592,12 +1667,12 @@ public abstract class ResourceBase implements ConnectedResource {
 	public void addAccessModeListener(AccessModeListener listener) {
         resMan.getDatabaseManager().lockRead();
         try {
-            resMan.getDatabaseManager().getElementInfo(getEl()).addAccessModeListener(listener, this,
+            resMan.getDatabaseManager().getElementInfo(getElInternal()).addAccessModeListener(listener, this,
 				resMan.getApplicationManager());
         } finally {
             resMan.getDatabaseManager().unlockRead();
         }
-        
+
 	}
 
 	@Override
@@ -1613,21 +1688,28 @@ public abstract class ResourceBase implements ConnectedResource {
 	protected VirtualTreeElement getEl() {
         resMan.getDatabaseManager().lockStructureRead();
         try {
-            if (revision == resMan.getDatabaseManager().getRevision()) {
-                return this.el;
-            }
-            int newRevision = resMan.getDatabaseManager().getRevision();
-            VirtualTreeElement newEl = resMan.findTreeElement(path);
-            if (newEl != null && newEl != el) {
-                accessRights = resMan.getAccessRights(newEl);
-                this.el = newEl;
-            }
-            revision = newRevision;
-            reload();
-            return this.el;
+            return getElInternal();
         } finally {
             resMan.getDatabaseManager().unlockStructureRead();
         }
+	}
+
+	/*
+	 * Needs external database read lock
+	 */
+	protected VirtualTreeElement getElInternal() {
+		if (revision == resMan.getDatabaseManager().getRevision()) {
+            return this.el;
+        }
+        int newRevision = resMan.getDatabaseManager().getRevision();
+        VirtualTreeElement newEl = resMan.findTreeElement(path);
+        if (newEl != null && newEl != el) {
+            accessRights = resMan.getAccessRights(newEl);
+            this.el = newEl;
+        }
+        revision = newRevision;
+        reload();
+        return this.el;
 	}
 
 	protected void reload() {
@@ -1653,15 +1735,15 @@ public abstract class ResourceBase implements ConnectedResource {
         }
         return te.getLastModified();
 	}
-	
+
 	private List<String> computeAliasesForLocation() {
 		return computeAliases(new HashSet<Resource>(), true);
 	}
-    
+
     private List<String> computeAliasesForPath() {
 		return computeAliases(new HashSet<Resource>(), false);
 	}
-    
+
     /**
      * Returns all paths under which this resource is reachable. In case of loops,
      * the path will contain the same resource at most twice.
@@ -1671,18 +1753,18 @@ public abstract class ResourceBase implements ConnectedResource {
         if (visited == null) {
             visited = new HashSet<>();
         }
-        
+
         if (forLocation && exists() && isReference(false)) {
             /* XXX this fixes missing structure callbacks on references but
             causes spurious resource_deleted callbacks (need test) */
-            return ((ResourceBase)getLocationResource()).computeAliases(visited, forLocation);
+            return getLocationResourcePrivileged().computeAliases(visited, forLocation);
         }
-        
+
         if (visited.contains(this)) {
         	return Arrays.asList("/" + getPath());
         }
         visited.add(this);
-        
+
         List<String> rval = new ArrayList<>();
         if (isTopLevel()) {
             rval.add("/" + getName());
@@ -1695,7 +1777,7 @@ public abstract class ResourceBase implements ConnectedResource {
         }
         return rval;
     }
-    
+
     /**
      * Returns all resources which contain this resource as a child element along
      * with that child element's name.
@@ -1717,16 +1799,16 @@ public abstract class ResourceBase implements ConnectedResource {
         }
         return rval;
     }
-    
+
     /**
-     * Similar to {@link #getReferences()}, except that no transitive refernces are reported
+     * Similar to #getReferences(), except that no transitive refernces are reported
      * @return
      */
     @Override
     public List<Resource> getReferencingNodes(boolean transitive) {
         resMan.getDatabaseManager().lockStructureRead();
         try {
-            Collection<TreeElement> refs = resMan.getDatabaseManager().getElementInfo(getEl()).getReferences(getPath(), transitive);
+            Collection<TreeElement> refs = resMan.getDatabaseManager().getElementInfo(getElInternal()).getReferences(getPath(), transitive);
             if (refs == null || refs.isEmpty()) {
                 return Collections.emptyList();
             }
@@ -1742,10 +1824,14 @@ public abstract class ResourceBase implements ConnectedResource {
             resMan.getDatabaseManager().unlockStructureRead();
         }
     }
-    
+
     @Override
     public <T extends Resource> T getLocationResource() {
     	return resMan.getApplicationManager().getResourceAccess().getResource(getLocation());
+    }
+
+    private ResourceBase getLocationResourcePrivileged() {
+    	return resMan.findResourcePrivileged("/" + getLocation());
     }
 
 }

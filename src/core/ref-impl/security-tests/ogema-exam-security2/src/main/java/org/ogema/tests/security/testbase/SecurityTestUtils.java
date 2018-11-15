@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.tests.security.testbase;
 
@@ -157,7 +157,7 @@ public class SecurityTestUtils {
 			final String actions) {
 		final ConditionalPermissionAdmin cpa = getService(ctx, ConditionalPermissionAdmin.class);
 		final ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
-		addResourcePermission(cpa, cpu, path, resourceType, appMan, actions, true, -1);
+		addResourcePermission(cpa, cpu, path, resourceType, appMan.getAppID().getBundle(), actions, true, -1);
 		cpu.commit();
 	}
 	
@@ -174,7 +174,7 @@ public class SecurityTestUtils {
 			final String actions) {
 		final ConditionalPermissionAdmin cpa = getService(ctx, ConditionalPermissionAdmin.class);
 		final ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
-		addResourcePermission(cpa, cpu, path, resourceType, appMan, actions, false, 0);
+		addResourcePermission(cpa, cpu, path, resourceType, appMan.getAppID().getBundle(), actions, false, 0);
 		cpu.commit();
 	}
     
@@ -198,16 +198,18 @@ public class SecurityTestUtils {
     }
 	
 	/**
-	 * 
-	 * @param ctx
+	 * @param cpAdmin
+	 * @param update
 	 * @param path
 	 * @param resourceType
-	 * @param appMan
+	 * @param bundle
 	 * @param actions
 	 * 		not null; wildcard "*" for all actions
+	 * @param allowOrDeny
+	 * @param index
 	 */
 	public final static void addResourcePermission(final ConditionalPermissionAdmin cpAdmin, final ConditionalPermissionUpdate update, 
-			final String path, final String resourceType, final ApplicationManager appMan, final String actions, final boolean allowOrDeny, int index) {
+			final String path, final String resourceType, final Bundle bundle, final String actions, final boolean allowOrDeny, int index) {
 		Assert.assertFalse("Path and type conditions must not both be null",path == null && resourceType == null);
 		Objects.requireNonNull(actions);
 		final StringBuilder sb = new StringBuilder();
@@ -218,7 +220,7 @@ public class SecurityTestUtils {
 				sb.append(',');
 			sb.append("path=").append(path);
 		}
-		addPermission(appMan.getAppID().getBundle(), ResourcePermission.class, sb.toString(), actions, cpAdmin, update, allowOrDeny, index);
+		addPermission(bundle, ResourcePermission.class, sb.toString(), actions, cpAdmin, update, allowOrDeny, index);
 	}
 	
 	public final static void addServicePermission(final Bundle bundle, final Class<?> service, boolean getOrRegister,
@@ -276,6 +278,20 @@ public class SecurityTestUtils {
 		addPermission(bundle, AllPermission.class, null, null, ctx, true);
 	}
 	
+	/**
+	 * @param user
+	 * @param app
+	 * @param ctx
+	 * @throws InterruptedException 
+	 * @throws IllegalStateException
+	 */
+	public static void addWebResourcePermission(final String user, final String app, final BundleContext ctx) throws InterruptedException {
+		final Bundle urp = waitForUser(user, ctx);
+		if (urp == null)
+			throw new IllegalStateException("User bundle for " + user + " not found");
+		addPermission(urp, WebAccessPermission.class, "name=" + (app == null ? "*" : app), null, ctx, true);
+	}
+	
 	public static void addWebResourcePermission(final ApplicationManager appMan, final String app, final BundleContext ctx) { 
 		addPermission(appMan.getAppID().getBundle(), WebAccessPermission.class, "name=" + (app == null ? "*" : app), null, ctx, true);
 	}
@@ -293,8 +309,7 @@ public class SecurityTestUtils {
 	 * 		may be null
 	 * @param actions
 	 * 		may be null
-	 * @param cpAdmin
-	 * @param update
+	 * @param ctx
 	 * @param allowOrDeny
 	 * @return
 	 * 		whether or not the permission update was successful. See {@link ConditionalPermissionUpdate#commit()}.
@@ -337,6 +352,11 @@ public class SecurityTestUtils {
 	}
 	
 	public static UserAccount createPrivilegedNaturalUser(final String user, final ApplicationManager appMan) throws InterruptedException {
+		return createUser(user, appMan, true, true);
+	}
+
+	public static UserAccount createUser(final String user, final ApplicationManager appMan, 
+			final boolean naturalOrMachineUser, final boolean privileged) throws InterruptedException {
 		final BundleContext ctx = appMan.getAppID().getBundle().getBundleContext();
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicReference<Bundle> bundle = new AtomicReference<Bundle>(null);
@@ -355,7 +375,7 @@ public class SecurityTestUtils {
 			}
 		};
 		ctx.addBundleListener(listener);
-		final UserAccount userAcc = appMan.getAdministrationManager().createUserAccount(user, true);
+		final UserAccount userAcc = appMan.getAdministrationManager().createUserAccount(user, naturalOrMachineUser);
 		final Bundle target;
 		if (!latch.await(3, TimeUnit.SECONDS))
 			target = ctx.getBundle("urp:" + user);
@@ -363,9 +383,52 @@ public class SecurityTestUtils {
 			target = bundle.get();
 		ctx.removeBundleListener(listener);
 		Assert.assertNotNull("User bundle not registered",target);
-		addAllPermissions(target, ctx);
+		if (privileged)
+			addAllPermissions(target, ctx);
 		return userAcc;
 	}
-
+	
+	public static boolean addResourcePermissions(final String user, final BundleContext ctx, final String path,
+			final String resourceType, String actions) {
+		final Bundle b = ctx.getBundle("urp:" + user);
+		if (b == null)
+			return false;
+		final ConditionalPermissionAdmin cpa = getService(ctx, ConditionalPermissionAdmin.class);
+		final ConditionalPermissionUpdate cpu = cpa.newConditionalPermissionUpdate();
+		addResourcePermission(cpa, cpu, path, resourceType, b, actions, true, -1);
+		cpu.commit();
+		return true;
+	}
+	
+	private static Bundle waitForUser(final String user, final BundleContext ctx) throws InterruptedException {
+		Bundle b = ctx.getBundle("urp:" + user);
+		if (b != null)
+			return b;
+		final AtomicReference<Bundle> bundle = new AtomicReference<Bundle>(null);
+		final CountDownLatch latch = new CountDownLatch(1);
+		final BundleListener listener = new BundleListener() {
+			
+			@Override
+			public void bundleChanged(BundleEvent event) {
+				if (event.getType() == BundleEvent.INSTALLED) {
+					final Bundle b = event.getBundle();
+					if (("urp:" + user).equals(b.getLocation())) {
+						bundle.set(b);
+						latch.countDown();
+					}
+				}
+			}
+		};
+		ctx.addBundleListener(listener);
+		try {
+			b = ctx.getBundle("urp:" + user);
+			if (b != null)
+				return b;
+			latch.await(3, TimeUnit.SECONDS);
+			return ctx.getBundle("urp:" + user);
+		} finally {
+			ctx.removeBundleListener(listener);
+		}
+	}
 	
 }

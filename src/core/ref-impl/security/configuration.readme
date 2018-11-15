@@ -1,0 +1,20 @@
+The security bundle supports a set of configuration options. All configurations are optional. We try to use secure settings by
+default, several of the configuration options have an adverse effect on the (web) security of the system. Use with caution.
+See class org.ogema.impl.security.ConfigurationConstants for more details on the individual configurations.
+
+Enable Http connections (by default, only https is allowed):
+	via system property "org.ogema.non-secure.http.enable". Set to "true".
+
+Login page customization: 
+	either via system properties
+	   - property "org.ogema.login.icon" : set icon file name (see below)
+	   - property "org.ogema.login.style.bootstrap" : set bootstrap style (values: primary, secondary, info, warning, success, danger, ...)
+	 
+	or via a ConfigAdmin configuration for PID org.ogema.impl.security.AccessManagerImpl
+	   - property "loginIcon" : set icon file name
+	   - property "loginStyleBootstrap" : set bootstrap style
+	   
+	The icon file must be available through the class loader of the bundle. It must be provided via a fragment bundle, in the folder
+	"src/main/resources/web", and the filename must match the icon property (system or config admin).
+	Only the default OGEMA icon is included in this bundle.
+	

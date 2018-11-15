@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.tools;
 
@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -52,6 +53,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class ResourceFlashServlet extends HttpServlet {
 
+	private final static String PREFIX_ = "__testResource";
 	final private static long serialVersionUID = 1L;
 	//private final ApplicationManager am;
 	final private ResourceAccess ra;
@@ -60,13 +62,13 @@ public class ResourceFlashServlet extends HttpServlet {
 	final private List<TestClass> objects;
 	final private DefinitionSchedule schedule;
 	final private int DEFAULT_RES_NUM = 1; // default nr of resources to be generated
-	private int counter = 0;
+	private final AtomicInteger counter;
 	private final static String NOT_FOUND="{\"error\":\"not found\"}";
 	private final static String TREE_PREFIX = "__tree_test_resources_";
 	private volatile int treeCounter = 0;
 	
 	@SuppressWarnings("unused")
-	private class TestClass {
+	private static class TestClass {
 		
 		private String test1;
 		private String test2;
@@ -98,9 +100,14 @@ public class ResourceFlashServlet extends HttpServlet {
 		this.rm = am.getResourceManagement();
 		this.classLoaders = new ArrayList<>();
 		this.objects = new ArrayList<>();
-		FloatResource fl = rm.createResource("__testFloatRes__", FloatResource.class);
-		this.schedule = fl.program().create();
-		schedule.activate(false);
+		if (Boolean.getBoolean("org.ogema.apps.createtestresources")) {
+			FloatResource fl = rm.createResource("__testFloatRes__", FloatResource.class);
+			this.schedule = fl.program().create();
+			schedule.activate(false);
+		} else {
+			this.schedule = null;
+		}
+		// FIXME ugly approach!
 		classLoaders.add(Resource.class.getClassLoader());
 		classLoaders.add(Room.class.getClassLoader());
 		classLoaders.add(this.getClass().getClassLoader());
@@ -114,12 +121,36 @@ public class ResourceFlashServlet extends HttpServlet {
 					treeCounter = cnt+1;
 			} catch (Exception e) {}
 		}
+		int cnt = 0;
+		for (Resource r : ra.getToplevelResources(null)) {
+			final String name = r.getName();
+			if (name.startsWith(PREFIX_) && name.length() > PREFIX_.length()) {
+				final StringBuilder sb = new StringBuilder();
+				boolean wasNr = false;
+				for (char c : name.toCharArray()) {
+					if (!Character.isDigit(c)) {
+						if (!wasNr)
+							continue;
+						else 
+							break;
+					} else {
+						sb.append(c);
+						wasNr = true;
+					}
+				}
+				if (sb.length() > 0) {
+					final int nr = Integer.parseInt(sb.toString());
+					if (nr >= cnt)
+						cnt = nr + 1;
+				}
+			}
+		}
+		this.counter = new AtomicInteger(cnt);
 	}
 
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		counter++;
-		int localCounter = counter;
+		final int localCounter = counter.getAndIncrement();
 		StringBuilder sb = new StringBuilder();
 		BufferedReader reader = req.getReader();
 		try {
@@ -183,7 +214,7 @@ public class ResourceFlashServlet extends HttpServlet {
 				String prefix2 = prefix + String.valueOf(localCounter) + "__";
 				for (int i=0;i<nr;i++) {
 					try {
-						Resource res = rm.createResource(rm.getUniqueResourceName(prefix2 + String.valueOf(i)), clazz);
+						Resource res = rm.createResource(prefix2 + String.valueOf(i), clazz);
 						res.activate(false);
 					} catch (Exception e) {
 						e.printStackTrace();

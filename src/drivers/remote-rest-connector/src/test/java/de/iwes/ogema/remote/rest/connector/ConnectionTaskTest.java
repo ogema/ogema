@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package de.iwes.ogema.remote.rest.connector;
 
@@ -29,7 +29,7 @@ import org.junit.Test;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.LogLevel;
 import org.ogema.core.logging.LogOutput;
-import org.ogema.core.logging.LoggerFactory;
+import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.BooleanResource;
@@ -44,6 +44,7 @@ import org.ops4j.pax.exam.Option;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 import org.osgi.service.http.HttpService;
+import org.slf4j.LoggerFactory;
 
 import de.iwes.ogema.remote.rest.connector.model.RestConnection;
 import de.iwes.ogema.remote.rest.connector.model.RestPullConfig;
@@ -64,9 +65,6 @@ public class ConnectionTaskTest extends OsgiAppTestBase {
 
 	@Inject
 	HttpService http;
-	
-	@Inject 
-	LoggerFactory loggerFactory;
     
     ApplicationManager appman;
 
@@ -90,7 +88,12 @@ public class ConnectionTaskTest extends OsgiAppTestBase {
 	public void setup() throws Exception {
 		waitForServer();
 		appman = getApplicationManager();
-		loggerFactory.getLogger("de.iwes.ogema.remote.rest.connector.RemoteRestConnector").setMaximumLogLevel(LogOutput.CONSOLE, LogLevel.TRACE);
+		try {
+			((OgemaLogger) LoggerFactory.getLogger("de.iwes.ogema.remote.rest.connector.RemoteRestConnector"))
+				.setMaximumLogLevel(LogOutput.CONSOLE, LogLevel.TRACE);
+		} catch (ClassCastException e) {
+			// ignore
+		}
 	}
 
 	protected final static TaskScheduler dummyScheduler = new TaskScheduler() {

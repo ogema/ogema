@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.rest.tests;
 
@@ -23,6 +23,8 @@ import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.inject.Inject;
 import javax.xml.bind.JAXBContext;
@@ -53,8 +55,11 @@ import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.schedule.Schedule;
+import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.units.TemperatureResource;
+import org.ogema.core.recordeddata.RecordedDataConfiguration;
+import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.timeseries.InterpolationMode;
@@ -97,6 +102,7 @@ public class RestTest extends OsgiAppTestBase {
 
 	OnOffSwitch sw;
 	final static String baseUrl = "http://localhost:" + HTTP_PORT + "/rest/resources";
+	final static String baseUrlDataRecorder = "http://localhost:" + HTTP_PORT + "/rest/recordeddata";
 	// schedule to use in the test.
 	Schedule schedule;
 
@@ -157,9 +163,12 @@ public class RestTest extends OsgiAppTestBase {
 		string.setValue("test");
 
 	}
+    
+    public void waitForServer() throws Exception {
+        waitForServlet(baseUrl);
+    }
 
-	public void waitForServer() throws Exception {
-		//assertNotNull(servletContext);
+	public void waitForServlet(String baseUrl) throws IOException {
 		assertNotNull(http);
 		Request test = Request.Head(appendUserInfo(baseUrl)).addHeader("Accept", "application/json");
 		int tries = 0;
@@ -171,7 +180,11 @@ public class RestTest extends OsgiAppTestBase {
 			if (tries++ > 40) {
 				Assert.fail("REST servlet not working: " + statusCode);
 			}
-			Thread.sleep(50);
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
+            }
 		}
 	}
 
@@ -607,4 +620,30 @@ public class RestTest extends OsgiAppTestBase {
 		assertTrue(response.contains(testString));
 	}
 
+	@Test
+	public void recordedDataServletWorks() throws ClientProtocolException, IOException {
+        waitForServlet(baseUrlDataRecorder);
+		final FloatResource r = getApplicationManager().getResourceManagement().createResource(newResourceName(), FloatResource.class);
+		final StorageType type = StorageType.FIXED_INTERVAL;
+		// enable logging via POST
+		final int code = Request.Post(appendUserInfo(baseUrlDataRecorder + "/" + r.getPath()))
+			.bodyString("{\"storageType\":\"" + type.toString() + "\"}", ContentType.APPLICATION_JSON)
+			.execute().returnResponse().getStatusLine().getStatusCode();
+		Assert.assertEquals("Datalogging config POST request failed: unexpected status code", 200, code);
+		final RecordedDataConfiguration cfg = r.getHistoricalData().getConfiguration();
+		Assert.assertNotNull("Logging should have been enabled",cfg);
+		Assert.assertEquals("Unexpected storage type",type, cfg.getStorageType());
+		// get log data via GET
+		final int code2 = Request.Get(appendUserInfo(baseUrlDataRecorder + "/" + r.getPath()))
+				.execute().returnResponse().getStatusLine().getStatusCode();
+		Assert.assertEquals("Datalogging GET request failed: unexpected status code", 200, code2);
+		// disable logging via DELETE
+		final int code3 = Request.Delete(appendUserInfo(baseUrlDataRecorder + "/" + r.getPath()))
+				.execute().returnResponse().getStatusLine().getStatusCode();
+		Assert.assertEquals("Datalogging config DELETE request failed: unexpected status code", 200, code3);
+		final RecordedDataConfiguration cfg3 = r.getHistoricalData().getConfiguration();
+		Assert.assertNull("Logging should have been disabled",cfg3);
+		r.delete();
+	}
+	
 }

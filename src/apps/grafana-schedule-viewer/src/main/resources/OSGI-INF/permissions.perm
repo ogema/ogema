@@ -1,6 +1,7 @@
 (org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
 (org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
 (org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+(org.osgi.framework.PackagePermission "org.slf4j" "import")
 
 (org.osgi.framework.PackagePermission "org.ogema.tools.grafana.base" "import")
 (org.osgi.framework.PackagePermission "org.ogema.tools.grafana.base.*" "import")

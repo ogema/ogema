@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.core.rads.listening;
 
@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 import org.ogema.core.application.ApplicationManager;
-import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
 import org.ogema.core.rads.tools.ContainerTool;
 import org.ogema.core.rads.tools.RadFactory;
@@ -29,7 +28,7 @@ import org.ogema.core.resourcemanager.pattern.PatternListener;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern.CreateMode;
 import org.ogema.core.resourcemanager.pattern.ContextSensitivePattern;
-import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 /**
  * Takes a RAD with a matched primary demand and checks if all required fields are set.
@@ -40,7 +39,7 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 	public static final boolean tryFixLists = false;
 
 	private final ApplicationManager m_appMan;
-	private final OgemaLogger m_logger;
+	private final Logger m_logger;
 	public final P m_rad;
 	// List of required fields
 	private final List<ConnectedResource> m_required;  
@@ -69,13 +68,13 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 		return result;
 	}
 	
-	public CompletionListener(ApplicationManager appMan, P rad, final List<ResourceFieldInfo> fields) {
-		this(appMan, rad, fields, null);
+	public CompletionListener(ApplicationManager appMan, Logger logger, P rad, final List<ResourceFieldInfo> fields) {
+		this(appMan, logger, rad, fields, null);
 	}
 
-	public CompletionListener(ApplicationManager appMan, P rad, final List<ResourceFieldInfo> fields, Object container) {
+	public CompletionListener(ApplicationManager appMan, Logger logger, P rad, final List<ResourceFieldInfo> fields, Object container) {
 		m_appMan = appMan;
-		m_logger = appMan.getLogger();
+		m_logger = logger;
 		m_rad = rad;
 		m_container = container;
 		m_required = new ArrayList<>(5);
@@ -104,7 +103,14 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 		for (ConnectedResource conRes : getAllConnectedResources()) {
 			conRes.start();
 		}
-		if (getAllConnectedResources().isEmpty()) {
+		boolean empty = true;
+		for (ConnectedResource cr  : getAllConnectedResources()) {
+			if (!cr.isOptional()) {
+				empty = false;
+				break;
+			}
+		}
+		if (empty) {
 			checkInitRequirement();
 		}
 	}
@@ -139,22 +145,24 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 		
 	}
 
-	public void resourceAvailable(ConnectedResource conRes) {
+	public synchronized void resourceAvailable(ConnectedResource conRes) {
         m_logger.trace("connected resource available: {}", conRes);
-		//if (conRes.isRequired() && !m_completed)
-		checkCompletion();
+		if (conRes.isRequired() && !m_completed) {
+            checkCompletion();
+        }
 	}
 
-	public void resourceUnavailable(ConnectedResource conRes, boolean isDeleted) {		
+	public synchronized void resourceUnavailable(ConnectedResource conRes, boolean isDeleted) {		
 		//System.out.println("  res unavailable callback " + conRes.toString());
         m_logger.trace("connected resource unavailable: {}, deleted={}", conRes, isDeleted);
         m_logger.trace("pattern state: completed={}, init satisfied={}", m_completed, init_satisfied);
 		if (!conRes.isRequired()) {
-			if (m_completed) checkInitRequirement();
+			if (m_completed) {
+                checkInitRequirement();
+            }
 			return;
 		}
 		if (m_completed && init_satisfied) {
-			//m_listener.patternUnavailable(m_rad);
             reportPatternUnavailable(m_rad);
 		}
 		m_completed = false;	
@@ -186,7 +194,7 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 			try {
 				ContainerTool.setContainer((ContextSensitivePattern) m_rad, m_container);
 			} catch (NoSuchFieldException | IllegalAccessException | RuntimeException e) {
-				LoggerFactory.getLogger(getClass()).error("Internal error: could not set pattern container: " + e);
+				m_logger.error("Internal error: could not set pattern container for {}: " + e, m_rad);
 			}
 //			((ResourcePatternExtended) m_rad).setContainer(m_container);
 		}
@@ -194,7 +202,7 @@ class CompletionListener<P extends ResourcePattern<?>>  {
 		try {
 			result = m_rad.accept();
 		} catch (Exception e) {
-			LoggerFactory.getLogger(m_rad.getClass()).error("Pattern accept method has thrown an exception.",e);
+			m_logger.error("Pattern accept method of {} has thrown an exception.", m_rad, e);
 		}
 		if (result) {
 			if (init_satisfied) return;

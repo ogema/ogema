@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.impl.security;
 
@@ -22,6 +22,7 @@ import java.security.PrivilegedAction;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.Objects;
 import java.util.Set;
 
@@ -31,6 +32,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
+import org.ogema.accesscontrol.HttpConfigManagement;
 import org.ogema.core.application.AppID;
 import org.ogema.webadmin.AdminWebAccessManager;
 import org.osgi.framework.Bundle;
@@ -50,17 +52,20 @@ public class ApplicationWebAccessManager implements AdminWebAccessManager {
 	final static String FILTER_APPLICATION = "FILTER_APPLICATION";
 	private final static Permission adminPackagePermission = new PackagePermission(
 			AdminWebAccessManager.class.getPackage().getName(), "import");
+	private final AtomicReference<HttpConfigManagement> headerManagement;
 
 	volatile OgemaHttpContext ctx;
 
-	ApplicationWebAccessManager(AppID appId, ApplicationWebAccessFactory fac) {
+	ApplicationWebAccessManager(AppID appId, ApplicationWebAccessFactory fac, 
+			AtomicReference<HttpConfigManagement> headerManagement) {
 		this.appId = appId;
 		this.fac = fac;
+		this.headerManagement = headerManagement;
 	}
 
 	private synchronized OgemaHttpContext getOrCreateHttpContext() {
 		if (ctx == null) {
-			ctx = new OgemaHttpContext(fac.pm, appId);
+			ctx = new OgemaHttpContext(fac.pm, appId, headerManagement);
 		}
 		return ctx;
 	}
@@ -69,7 +74,7 @@ public class ApplicationWebAccessManager implements AdminWebAccessManager {
 		if (ctx != null) {
 			for (String alias : ctx.resources.keySet()) {
 				unregisterWebResource(alias, true);
-			} 
+			}
 			for (String alias : ctx.servlets.keySet()) {
 				unregisterWebResource(alias, true);
 			}
@@ -169,7 +174,7 @@ public class ApplicationWebAccessManager implements AdminWebAccessManager {
 				fac.logger.info("No registration found " + alias);
 		}
 	}
-	
+
 	@Override
 	public boolean unregisterWebResourcePath(String alias) {
 		alias = normalizePath(alias);
@@ -243,9 +248,13 @@ public class ApplicationWebAccessManager implements AdminWebAccessManager {
 				if (urls != null) {
 					String url = urls.nextElement().getPath();
 					final int length = alias.length();
-					if (length > 0 && alias.charAt(length-1) == '/')
-						return url.replaceFirst(path, alias.substring(0, length-1)); 
-					return url.replaceFirst(path, alias);
+					int lastChar = alias.charAt(length - 1);
+					if (length > 0 && lastChar == '/')
+						return url.replaceFirst(path, alias.substring(0, length - 1));
+					if (path.equals("/") && lastChar != '/')
+						return alias + url;
+					else
+						return url.replaceFirst(path, alias);
 				}
 			}
 		}

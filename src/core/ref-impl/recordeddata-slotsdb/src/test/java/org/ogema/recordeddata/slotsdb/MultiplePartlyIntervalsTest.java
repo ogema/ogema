@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.recordeddata.slotsdb;
 
@@ -49,15 +49,15 @@ public class MultiplePartlyIntervalsTest extends DbTest {
 		RecordedDataStorage rds_setup = sdb.createRecordedDataStorage(STORAGE_NAME, conf);
 
 		// NOTE: setFixedInterval has to match witch timestamps
-		rds_setup.insertValue(new SampledValue(new DoubleValue(4.0), 4000, Quality.GOOD));
-		rds_setup.insertValue(new SampledValue(new DoubleValue(5.0), 5000, Quality.GOOD));
-		rds_setup.insertValue(new SampledValue(new DoubleValue(6.0), 6000, Quality.GOOD));
-		rds_setup.insertValue(new SampledValue(new DoubleValue(7.0), 7000, Quality.GOOD));
-		rds_setup.insertValue(new SampledValue(new DoubleValue(8.0), 8000, Quality.GOOD));
-		rds_setup.insertValue(new SampledValue(new DoubleValue(9.0), 9000, Quality.GOOD));
-		rds_setup.insertValue(new SampledValue(new DoubleValue(10.0), 10000, Quality.GOOD));
-		rds_setup.insertValue(new SampledValue(new DoubleValue(11.0), 11000, Quality.GOOD));
-		rds_setup.insertValue(new SampledValue(new DoubleValue(12.0), 12000, Quality.GOOD));
+		rds_setup.insertValue(new SampledValue(DoubleValues.of(4.0), 4000, Quality.GOOD));
+		rds_setup.insertValue(new SampledValue(DoubleValues.of(5.0), 5000, Quality.GOOD));
+		rds_setup.insertValue(new SampledValue(DoubleValues.of(6.0), 6000, Quality.GOOD));
+		rds_setup.insertValue(new SampledValue(DoubleValues.of(7.0), 7000, Quality.GOOD));
+		rds_setup.insertValue(new SampledValue(DoubleValues.of(8.0), 8000, Quality.GOOD));
+		rds_setup.insertValue(new SampledValue(DoubleValues.of(9.0), 9000, Quality.GOOD));
+		rds_setup.insertValue(new SampledValue(DoubleValues.of(10.0), 10000, Quality.GOOD));
+		rds_setup.insertValue(new SampledValue(DoubleValues.of(11.0), 11000, Quality.GOOD));
+		rds_setup.insertValue(new SampledValue(DoubleValues.of(12.0), 12000, Quality.GOOD));
 
 		rds = sdb.getRecordedDataStorage(STORAGE_NAME);
 	}

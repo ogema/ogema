@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.driver.knxdriver;
 
@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import tuwien.auto.calimero.link.KNXNetworkLinkIP;
 
@@ -28,7 +29,7 @@ public class KNXStorage {
 
 	private Map<String, String> allInterface = new HashMap<String, String>();
 
-	private HashMap<String, KNXNetworkLinkIP> knxNetConnections = new HashMap<>();
+	private Map<String, KNXNetworkLinkIP> knxNetConnections = new ConcurrentHashMap<>();
 
 	private List<ConnectionInfo> deviceConnections = new ArrayList<>();
 
@@ -45,7 +46,7 @@ public class KNXStorage {
 		return allInterface;
 	}
 
-	public HashMap<String, KNXNetworkLinkIP> getKnxNetConnections() {
+	public Map<String, KNXNetworkLinkIP> getKnxNetConnections() {
 		return knxNetConnections;
 	}
 

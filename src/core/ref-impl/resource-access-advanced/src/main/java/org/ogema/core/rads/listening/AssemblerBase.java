@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.core.rads.listening;
 
@@ -42,7 +42,7 @@ public class AssemblerBase<T extends Resource, P extends ResourcePattern<T>> imp
 
 	protected final ApplicationManager m_appMan;
 	protected final PermissionManager m_permMan;
-	protected final Logger logger;
+	protected final Logger m_logger;
 	protected final PatternListener<P> m_listener;
 
 	protected final Class<P> m_radClass;
@@ -57,10 +57,10 @@ public class AssemblerBase<T extends Resource, P extends ResourcePattern<T>> imp
 
 	protected final Object m_container;
 
-	public AssemblerBase(ApplicationManager appMan, Class<P> radClass, AccessPriority writePriority, PatternListener<P> listener,
+	public AssemblerBase(ApplicationManager appMan, Logger logger, Class<P> radClass, AccessPriority writePriority, PatternListener<P> listener,
 			PatternFactory<P> factory, Object container, PermissionManager permMan) {
 		m_appMan = appMan;
-		logger = appMan.getLogger();
+		m_logger = logger;
 		m_listener = listener;
 		m_radClass = radClass;
 		m_container = container;
@@ -88,7 +88,7 @@ public class AssemblerBase<T extends Resource, P extends ResourcePattern<T>> imp
 
 		@Override
 		public void patternAvailable(P rad) {
-			final CompletionListener<P> completeListener = new CompletionListener<>(m_appMan, rad,
+			final CompletionListener<P> completeListener = new CompletionListener<>(m_appMan, m_logger, rad,
 					m_factory.getResourceFieldInfos(), m_container);
 			completeListener.start(m_completionListener);
 			m_completionListeners.put(rad.model.getPath(), completeListener);
@@ -105,7 +105,7 @@ public class AssemblerBase<T extends Resource, P extends ResourcePattern<T>> imp
 			// for (CompletionListener<P> listener : m_completionListeners) {
 			CompletionListener<P> listener = m_completionListeners.remove(object2beLost.model.getPath());
 			if (listener == null) {
-				logger.warn("potential AdvancedAccess internal error... CompletionListener found null.");
+				m_logger.warn("potential AdvancedAccess internal error... CompletionListener found null.");
 				return;
 			}
 			listener.stop();

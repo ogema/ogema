@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.application.manager.impl;
 
@@ -34,6 +34,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.ogema.accesscontrol.AdminPermission;
 import org.ogema.accesscontrol.Util;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.administration.FrameworkClock;
@@ -186,11 +187,11 @@ public class ApplicationManagerImpl implements ApplicationManager, TimerRemovedL
 				final Future<Boolean> stopEvent = submitEvent(callStop);
 				if (stopEvent != null) {
 					try {
-						stopped = stopEvent.get(5, TimeUnit.SECONDS);
+						stopped = stopEvent.get(3, TimeUnit.SECONDS);
 					} catch (TimeoutException ee) {
 						// the app-specific logger output typically has a high log level configured
 						LoggerFactory.getLogger(ApplicationTracker.class).warn("Application takes longer to shutdown than requested: {}",application.getClass().getName());
-						stopped = stopEvent.get(25, TimeUnit.SECONDS);
+						stopped = stopEvent.get(7, TimeUnit.SECONDS);
 					}
 				}
 				else {
@@ -293,6 +294,9 @@ public class ApplicationManagerImpl implements ApplicationManager, TimerRemovedL
 
 	@Override
 	public AdministrationManager getAdministrationManager() {
+		final SecurityManager sm = System.getSecurityManager();
+		if (sm != null)
+			sm.checkPermission(new AdminPermission(AdminPermission.APP));
 		return tracker.administration;
 	}
 
@@ -303,7 +307,8 @@ public class ApplicationManagerImpl implements ApplicationManager, TimerRemovedL
 
 	@Override
 	public OgemaLogger getLogger() {
-		return (OgemaLogger) LoggerFactory.getLogger(application.getClass().getName());
+		final Logger logger = LoggerFactory.getLogger(application.getClass().getName());
+		return logger instanceof OgemaLogger ? (OgemaLogger) logger : new SimpleLogger(logger);
 	}
 
 	@Override
@@ -342,6 +347,7 @@ public class ApplicationManagerImpl implements ApplicationManager, TimerRemovedL
 			logger.error("App {} did not shut down properly, there are still running tasks",appID.getIDString());
 		else
 			logger.debug("shut down application manager for app '{}'", appID.getIDString());
+		((AppIDImpl) appID).close();
 	}
 
 	@Override
@@ -352,7 +358,8 @@ public class ApplicationManagerImpl implements ApplicationManager, TimerRemovedL
 		Future<T> f = executor.submit(application);
 		workQueue.add(f);
 		if (workQueue.size() > WORKQUEUE_FORCE_DRAIN_SIZE) {
-			if (workQueue.peek().isDone()) {
+			final Future<?> future = workQueue.peek();
+			if (future != null && future.isDone()) {
 				executor.submit(drainWorkQueueTask);
 			}
 		}
@@ -364,19 +371,21 @@ public class ApplicationManagerImpl implements ApplicationManager, TimerRemovedL
 	 */
 	protected void drainWorkQueue() {
 //		int done = 0;
-		while (!workQueue.isEmpty() && workQueue.peek().isDone()) {
-			Future<?> f = workQueue.remove();
-			try {
-				f.get();
-//				done++;
-			} catch (ExecutionException ee) {
-				reportException(ee.getCause());
-			} catch (InterruptedException ie) {
-				// after isDone() == true?!?
-				getLogger().error("really unexpected exception in ApplicationManagerImpl.drainWorkQueue(), review code",
-						ie);
+		try {
+			while (!workQueue.isEmpty() && workQueue.peek().isDone()) {
+				Future<?> f = workQueue.poll();
+				try {
+					f.get();
+	//				done++;
+				} catch (ExecutionException ee) {
+					reportException(ee.getCause());
+				} catch (InterruptedException ie) {
+					// after isDone() == true?!?
+					getLogger().error("really unexpected exception in ApplicationManagerImpl.drainWorkQueue(), review code",
+							ie);
+				}
 			}
-		}
+		} catch (NullPointerException e) {} // may happen sporadically due to unsynchronized access to the queue
 		// System.out.printf("%d jobs done, %d in queue%n", done, workQueue.size());
 	}
 

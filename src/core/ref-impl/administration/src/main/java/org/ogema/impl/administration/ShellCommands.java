@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.impl.administration;
 
@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Dictionary;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,6 +38,7 @@ import org.apache.felix.service.command.Descriptor;
 import org.apache.felix.service.command.Parameter;
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.PermissionManager;
+import org.ogema.accesscontrol.ResourcePermission;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.administration.AdminLogger;
 import org.ogema.core.administration.AdministrationManager;
@@ -60,17 +62,25 @@ import org.osgi.framework.BundleException;
 import org.osgi.framework.FrameworkEvent;
 import org.osgi.framework.FrameworkListener;
 import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.wiring.FrameworkWiring;
+import org.osgi.service.condpermadmin.ConditionalPermissionAdmin;
 import org.osgi.service.condpermadmin.ConditionalPermissionInfo;
 import org.osgi.service.permissionadmin.PermissionInfo;
+import org.osgi.service.useradmin.Group;
+import org.osgi.service.useradmin.Role;
+import org.osgi.service.useradmin.UserAdmin;
 
 /**
  * 
  * @author jlapp
  */
-@Component(specVersion = "1.2", immediate = true)
+@Component(specVersion = "1.2")
 @Properties({ @Property(name = "osgi.command.scope", value = "ogm"), @Property(name = "osgi.command.function", value = {
-		"apps", "clock", "loggers", "log", "dump_cache", "update", "listUsers", "createUser", "deleteUser", "setNewPassword" }) })
+		"apps", "clock", "loggers", "log", "dump_cache", "update", 
+		"listUsers", "getUserProps", "setUserProp", "removeUserProp", "createUser", "deleteUser", 
+		"listGroups", "createGroup", "addMember", "removeMember",
+		"setNewPassword" }) })
 @Service(ShellCommands.class)
 @Descriptor("OGEMA administration commands")
 public class ShellCommands {
@@ -80,6 +90,9 @@ public class ShellCommands {
 	
 	@Reference
 	private PermissionManager permMan;
+	
+	@Reference
+	private UserAdmin userAdmin;
 
 	@Descriptor("list running OGEMA apps")
 	public void apps(@Descriptor("show listeners registered by app") @Parameter(names = { "-l",
@@ -348,12 +361,18 @@ public class ShellCommands {
 		admin.createUserAccount(id, !machineUser);
 		System.out.println("User created: " + id);
 		if (isAdmin) {
-			if (!id.equals("master")) {
-				final String result = grantAdminRights(id);
-				if (result != null) {
-					System.out.println("Could no grant admin rights to user " + id + ": " + result);
-				}
+			if (permMan.getAccessManager().isNatural(id)) {
+				if (!id.equals("master")) { // FIXME?
+					final String result = grantAdminRights(id);
+					if (result != null) {
+						System.out.println("Could no grant admin rights to user " + id + ": " + result);
+					}
+				} 
+			} else {
+				final ResourcePermission resPerm = new ResourcePermission("path=*", "*");
+				permMan.getAccessManager().addPermission(id, resPerm);
 			}
+			
 		}
 	}
 	
@@ -375,11 +394,24 @@ public class ShellCommands {
 			
 	
 	@Descriptor("List known users")
-	public void listUsers() {
+	public void listUsers(
+			@Parameter(names= {"-f", "--filter"}, absentValue = "")
+			@Descriptor("A filter, such as \"ogemaRole=naturalUser\", \"ogemaRole=machineUser\" or \"\"!(ogemaRole=machineUser)\"\".")
+			String filter) throws InvalidSyntaxException {
+		filter = adjustFilter(filter);
+		final Role[] roles0 = userAdmin.getRoles(filter);
+		if (roles0 == null)
+			return;
+		final List<String> roles = new ArrayList<>(roles0.length);
+		for (Role r : roles0) {
+			roles.add(r.getName());
+		}
 		final AccessManager accMan = permMan.getAccessManager();
 		System.out.println("Known users:");
 		final StringBuilder sb=  new StringBuilder();
 		for (UserAccount user: admin.getAllUsers()) {
+			if (!roles.contains(user.getName()))
+				continue;
 			sb.append(" ").append(user.getName()).append(": ").append((accMan.isNatural(user.getName()) ? "natural" : "machine") + " user");
 			if (checkUserAdmin(user.getName())) {
 				sb.append(" (admin)");
@@ -387,6 +419,129 @@ public class ShellCommands {
 			sb.append('\n');
 		}
 		System.out.println(sb.toString());
+	}
+	
+	@Descriptor("List groups")
+	public List<Role> listGroups(
+			@Parameter(names= {"-f", "--filter"}, absentValue = "")
+			@Descriptor("A filter, for instance \"ogemaRole=userGroup\" or \"ogemaRole=applicationGroup\".")
+			String filter) throws InvalidSyntaxException {
+		filter = adjustFilter(filter);
+		final Role[] roles = userAdmin.getRoles(filter);
+		if (roles == null)
+			return null;
+		final List<Role> groups = new ArrayList<>();
+		for (Role r : roles) {
+			if (r.getType() == Role.GROUP)
+				groups.add(r);
+		}
+		return groups;
+	}
+	
+	@Descriptor("Create a new group")
+	public Role createGroup(@Descriptor("Group name") String name) {
+		if (userAdmin.getRole(name) != null) {
+			System.out.println("Role " + name + " already exists.");
+			return userAdmin.getRole(name);
+		}
+		return userAdmin.createRole(name, Role.GROUP);
+	}
+	
+	@Descriptor("Add a member to a group")
+	public boolean addMember(
+			@Descriptor("Group name") String group,
+			@Descriptor("User name or group name; the member to be added.") String user) {
+		final Role g = userAdmin.getRole(group);
+		if (g == null) {
+			System.out.println("Group " + group + " does not exist.");
+			return false;
+		}
+		if (g.getType() != Role.GROUP) {
+			System.out.println("Role " + group + " is not of type GROUP.");
+			return false;
+		}
+		final Role u = userAdmin.getRole(user);
+		if (u == null) {
+			System.out.println("User " + user + " does not exist.");
+			return false;
+		}
+		return ((Group) g).addMember(u);
+	}
+	
+	@Descriptor("Remove a member from a group")
+	public boolean removeMember(
+			@Descriptor("Group name") String group,
+			@Descriptor("User name or group name; the member to be removed.") String user) {
+		final Role g = userAdmin.getRole(group);
+		if (g == null) {
+			System.out.println("Group " + group + " does not exist.");
+			return false;
+		}
+		if (g.getType() != Role.GROUP) {
+			System.out.println("Role " + group + " is not of type GROUP.");
+			return false;
+		}
+		final Role u = userAdmin.getRole(user);
+		if (u == null) {
+			System.out.println("User " + user + " does not exist.");
+			return false;
+		}
+		return ((Group) g).removeMember(u);
+	}
+	
+	
+	@SuppressWarnings("unchecked")
+	@Descriptor("Print user or group properties")
+	public Dictionary<String, Object> getUserProps(@Descriptor("User or group id") String user) {
+		user = user.trim();
+		final Role r = userAdmin.getRole(user);
+		if (r == null) {
+			System.out.println("User " + user + " not found");
+			return null;
+		}
+		return r.getProperties();
+	}
+	
+	@SuppressWarnings("unchecked")
+	@Descriptor("Set user or group properties")
+	public Dictionary<String, Object> setUserProp(
+			@Descriptor("User or group id") String user,
+			@Descriptor("Property key") String key,
+			@Descriptor("Property value") String value) {
+		user = user.trim();
+		final Role r = userAdmin.getRole(user);
+		if (r == null) {
+			System.out.println("User " + user + " not found");
+			return null;
+		}
+		key = key.trim();
+		value = value.trim();
+		if (key.isEmpty() || value.isEmpty()) {
+			System.out.println("Key or value is empty");
+			return r.getProperties();
+		}
+		r.getProperties().put(key, value);
+		return r.getProperties();
+	}
+	
+	@SuppressWarnings("unchecked")
+	@Descriptor("Remove user or group properties")
+	public Dictionary<String, Object> removeUserProp(
+			@Descriptor("User or group id") String user,
+			@Descriptor("Property key") String key) {
+		user = user.trim();
+		final Role r = userAdmin.getRole(user);
+		if (r == null) {
+			System.out.println("User " + user + " not found");
+			return null;
+		}
+		key = key.trim();
+		if (key.isEmpty()) {
+			System.out.println("Key is empty");
+			return r.getProperties();
+		}
+		r.getProperties().remove(key);
+		return r.getProperties();
 	}
 	
 	@Descriptor("Set new password")
@@ -506,7 +661,7 @@ public class ShellCommands {
 	 * @return null on success, an explanation otherwise
 	 */
 	private String grantAdminRights(String user) {
-		// master is always admin
+		// master is always admin // XXX
 		if ("master".equals(user)) {
 			return "Master user is always admin(?)";
 		}
@@ -531,7 +686,7 @@ public class ShellCommands {
 	 */
 	private boolean checkUserAdmin(String user) {
 
-		if ("master".equals(user)) {
+		if ("master".equals(user)) { // FIXME?
 			return true;
 		}
 		final AccessManager accessManager = permMan.getAccessManager();
@@ -552,6 +707,15 @@ public class ShellCommands {
 			}
 		}
 		return false;
+	}
+	
+	private static String adjustFilter(String filter) {
+		filter = filter.trim();
+		if (filter.isEmpty())
+			return null;
+		if (!filter.startsWith("("))
+			return "(" + filter + ")";
+		return filter;
 	}
 	
 }

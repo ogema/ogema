@@ -1,17 +1,17 @@
 /**
- * This file is part of OGEMA.
+ * Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
  *
- * OGEMA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 3
- * as published by the Free Software Foundation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * OGEMA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with OGEMA. If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.ogema.impl.security;
 
@@ -35,16 +35,24 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.ConfigurationPolicy;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.ReferenceCardinality;
+import org.apache.felix.scr.annotations.ReferencePolicy;
+import org.apache.felix.scr.annotations.ReferencePolicyOption;
+import org.apache.felix.scr.annotations.References;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.AdminPermission;
 import org.ogema.accesscontrol.AppDomainCombiner;
+import org.ogema.accesscontrol.Authenticator;
 import org.ogema.accesscontrol.ChannelPermission;
+import org.ogema.accesscontrol.HttpConfigManagement;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.ResourceAccessRights;
 import org.ogema.accesscontrol.ResourcePermission;
@@ -83,7 +91,30 @@ import org.slf4j.Logger;
  * @author Zekeriya Mansuroglu
  *
  */
-@Component(immediate = true)
+@References({
+	@Reference(
+			referenceInterface=Authenticator.class,
+			policy=ReferencePolicy.DYNAMIC,
+			cardinality=ReferenceCardinality.OPTIONAL_MULTIPLE,
+			name="authenticator",
+			bind="addAuthenticator",
+			unbind="removeAuthenticator"
+	),
+	@Reference(
+			referenceInterface=HttpConfigManagement.class,
+			policy=ReferencePolicy.DYNAMIC,
+			policyOption=ReferencePolicyOption.GREEDY,
+			cardinality=ReferenceCardinality.OPTIONAL_UNARY,
+			name="headerManagement",
+			bind="setHeaderManagement",
+			unbind="unsetHeaderManagement"
+	)
+})
+@Component(
+		immediate = true,
+		configurationPid=ConfigurationConstants.CONFIGURATION_PID,
+		policy=ConfigurationPolicy.OPTIONAL
+)
 @Service(PermissionManager.class)
 public class DefaultPermissionManager implements PermissionManager {
 
@@ -101,7 +132,19 @@ public class DefaultPermissionManager implements PermissionManager {
 
 	@Reference
 	StaticPolicies staticPolicies;
+	
+	private final AtomicReference<HttpConfigManagement> headerManagement 
+			= new AtomicReference<HttpConfigManagement>(null);
+	
 
+	protected void setHeaderManagement(HttpConfigManagement headerManagement) {
+		this.headerManagement.set(headerManagement);
+	}
+
+	protected void unsetHeaderManagement(HttpConfigManagement headerManagement) {
+		this.headerManagement.compareAndSet(headerManagement, null);
+	}
+	
 	BundleContext bc;
 
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
@@ -110,7 +153,7 @@ public class DefaultPermissionManager implements PermissionManager {
 
 	public final ThreadLocal<AccessControlContext> currentAccessControlContext = new ThreadLocal<>();
 
-	AccessManagerImpl accessMan;
+	volatile AccessManagerImpl accessMan;
 	volatile SecurityManager security;
 	volatile SecurityManager initial;
 	HashSet<String> permNames;
@@ -123,7 +166,8 @@ public class DefaultPermissionManager implements PermissionManager {
 	AppPermissionImpl defaultPolicies;
 	private ShellCommands sc;
 
-	private HashMap<Application, AccessControlContext> accs = new HashMap<>();
+	private final HashMap<Application, AccessControlContext> accs = new HashMap<>();
+	final Map<String, ServiceReference<Authenticator>> authenticators = new ConcurrentHashMap<>(4);
 
 	@Override
 	public WebAccessManager getWebAccess() {
@@ -142,7 +186,7 @@ public class DefaultPermissionManager implements PermissionManager {
 	}
 	
 	@Activate
-	public synchronized void activate(BundleContext bc) throws BundleException {
+	public synchronized void activate(BundleContext bc, Map<String, Object> config) throws BundleException {
 		this.bc = bc;
 		// Get reference to ConditionalPermissionAdmin
 		ServiceReference<?> sRef = bc.getServiceReference(ConditionalPermissionAdmin.class.getName());
@@ -160,10 +204,10 @@ public class DefaultPermissionManager implements PermissionManager {
 			throw new BundleException("URPHandler registration failed.", e);
 		}
 
-		this.accessMan = new AccessManagerImpl(ua, bc, cStore, this, staticPolicies);
+		this.accessMan = new AccessManagerImpl(ua, bc, cStore, this, staticPolicies, config);
 		bc.addBundleListener(this.accessMan); // BundleListener is needed to
 												// manage storage area each app.
-		this.webAccess = new ApplicationWebAccessFactory(this, http, ua);
+		this.webAccess = new ApplicationWebAccessFactory(this, http, ua, headerManagement, config);
 
 		security = System.getSecurityManager();
 		// Create and set custom SecurityManager
@@ -187,7 +231,47 @@ public class DefaultPermissionManager implements PermissionManager {
 		this.domainCombiner = new AppDomainCombiner();
 		sc = new ShellCommands(this, bc);
 	}
+	
+	@org.apache.felix.scr.annotations.Modified
+	protected void modified(Map<String, Object> config) {
+		final AccessManagerImpl accMan = this.accessMan;
+		if (accMan == null) // should not really happen
+			logger.warn("Received a property changed callback for AccessManager, but it is not available");
+		else
+			accMan.configChanged(config);
+		final WebAccessManager webAccess = this.webAccess;
+		if (webAccess != null)
+			((ApplicationWebAccessFactory) webAccess).configChanged(config);
+	}
+	
 
+	@Deactivate
+	protected synchronized void deactivate(BundleContext context) throws Exception {
+		if (this.webAccess != null)
+			((ApplicationWebAccessFactory) webAccess).close();
+		if (sc != null)
+			sc.close();
+		if (context != null && accessMan != null) {
+			context.removeBundleListener(this.accessMan);
+		}
+		if (accessMan != null)
+			accessMan.close();
+		unregisterURPHandler(context);
+		// currentAccessControlContext // are we sure instances are cleaned up?
+//		this.webAccess = null;
+		this.sc = null;
+//		this.accessMan = null; // avoid returning null in #getAccessManager
+		this.bc = null;
+		this.cpa = null;
+		this.security = null;
+		try {
+			System.setSecurityManager(initial);
+		} catch (Exception ignore) {
+			ignore.printStackTrace();
+		}
+		this.initial = null;
+	}
+	
 	// this construction is a workaround to a NoClassDefFoundError in Felix component activator
 	// if the OgemaSecurityManager class (which is an optional dependency) is not available, and
 	// one tries to register it in the activate method
@@ -216,31 +300,27 @@ public class DefaultPermissionManager implements PermissionManager {
 		return l;
 	}
 
-	@Deactivate
-	protected synchronized void deactivate(BundleContext context) throws Exception {
-		if (this.webAccess != null)
-			((ApplicationWebAccessFactory) webAccess).close();
-		if (sc != null)
-			sc.close();
-		if (context != null && accessMan != null) {
-			context.removeBundleListener(this.accessMan);
+	protected void addAuthenticator(final ServiceReference<Authenticator> authenticator) {
+		final Object id = authenticator.getProperty(Authenticator.AUTHENTICATOR_ID);
+		if (!(id instanceof String)) {
+			logger.warn("Authenticator service without authenticator.id in bundle {}", authenticator.getBundle());
+			return;
 		}
-		if (accessMan != null)
-			accessMan.close();
-		unregisterURPHandler(context);
-		// currentAccessControlContext // are we sure instances are cleaned up?
-		this.webAccess = null;
-		this.sc = null;
-		this.accessMan = null;
-		this.bc = null;
-		this.cpa = null;
-		this.security = null;
-		try {
-			System.setSecurityManager(initial);
-		} catch (Exception ignore) {
-			ignore.printStackTrace();
+		if (Authenticator.DEFAULT_USER_PW_ID.equals(id))
+			throw new IllegalArgumentException("Illegal authenticator id " + id + " in bundle " + authenticator.getBundle());
+		final ServiceReference<Authenticator> old = authenticators.put((String) id, authenticator);
+		if (old != null) {
+			logger.warn("Duplicate authenticator id: {}: {}, {}",id, old, authenticator);
 		}
-		this.initial = null;
+	}
+	
+	protected void removeAuthenticator(final ServiceReference<Authenticator> authenticator) {
+		final Object id = authenticator.getProperty(Authenticator.AUTHENTICATOR_ID);
+		if (!(id instanceof String)) {
+			return;
+		}
+		if (authenticator.equals(authenticators.get(id)))
+			authenticators.remove(id);
 	}
 
 	private ServiceRegistration<URLStreamHandlerService> urpHandlerRegistratrion;
@@ -465,6 +545,11 @@ public class DefaultPermissionManager implements PermissionManager {
 	// null.
 	@Override
 	public ResourceAccessRights getAccessRights(Application app, TreeElement el) {
+		return getAccessRights(app, el, null);
+	}
+	
+	@Override
+	public ResourceAccessRights getAccessRights(Application app, TreeElement el, String user) {
 		// Get the AccessControlContex of the involved app
 		// If no user app is involved in this case the caller system app must
 		// have set the AccessControlContext to be
@@ -473,7 +558,7 @@ public class DefaultPermissionManager implements PermissionManager {
 		if ((acc = currentAccessControlContext.get()) == null) {
 			acc = getACC(app);
 		}
-		return new ResourceAccessRights(acc, el, this);
+		return new ResourceAccessRights(acc, el, this, user);
 	}
 
 	@Override
