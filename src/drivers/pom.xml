@@ -19,6 +19,8 @@
 	<!-- Sub-projects (i.e. the OGEMA Applications): Try to keep alphabetical 
 		order. -->
 	<modules>
+		<module>bacnet</module>
+		<module>bacnet-ogema</module>
 		<module>channel-mapper-v2</module>
 		<module>drs485de-driver</module>
 		<module>hm-hl-driver</module>
