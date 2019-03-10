@@ -1,0 +1,125 @@
+<!--
+
+    Copyright 2011-2018 Fraunhofer-Gesellschaft zur Förderung der angewandten Wissenschaften e.V.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Homematic XmlRpc config</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="homematic.css" rel="stylesheet"></link>
+    </head>
+    <body>
+    	<h1>Homematic XmlRpc config</h1>
+    	<!-- TODO
+    		* trigger an action (push a button)
+    		* ...
+    	-->
+    	<h2>Interface</h2>
+    	<div class="row">
+    		<span>Select an interface:</span>
+    		<select id="ifcSelect" class="margin-left"></select>
+    	</div>
+    	<h2>Special functions</h2>
+    	<div class="row">
+    		<span>Select a function:</span>
+	    	<select id="specialFunctionSelect" class="margin-left">
+	    		<option value="empty" selected></option>
+	    		<option value="pairing">Pairing mode</option>
+	    		<option value="battery" title="Show battery state of all devices">Battery status</option> 
+	    		<option value="unreach" title="Check whether devices are unreachable">Unreach status</option> 
+	    		<option value="roomClimate" title="Show temperature and humidity values">Room climate data</option> 
+	    		<option value="thermostats" title="Check the operating mode of thermostats (manual, auto, party, boost) and whether button locks are active">
+	    				Thermostats operating modes</option>
+	    		<option value="power" title="Display energy meter data">Power data</option> 
+	    	</select>
+	    	<input type="button" value="Update" class="initial-hidden margin-left" id="updateFunctionData"></input> 
+	    </div>
+	    <br>
+	    <div id="pairingContainer" class="special-function">
+	    	<div class="items-margin-right">
+	    		<span>Pairing mode active:</span>
+	    		<span id="installMode"></span>
+	    		<input type="button" id="installModeTrigger"></input>
+	    	</div>
+	    </div>
+	    <div id="batteryContainer" class="special-function">
+    		<div id="batteryGrid" class="status-grid grid-4">
+    			<span>Device</span><span>Battery low?</span><span>Battery state</span><span>Low battery limit</span><span></span>
+    		</div>
+    	</div>
+	    <div id="unreachContainer" class="special-function">
+    		<div id="unreachGrid" class="status-grid grid-4">
+    			<span>Device</span><span>Unreachable?</span><span title="Sticky unreach means that the device has been unreachable at least
+    				once since the last reset of the value">Sticky unreachable?</span><span>Reset sticky unreach status</span><span></span>
+    		</div>
+    	</div>
+	    <div id="roomClimateContainer" class="special-function">
+    		<div id="roomClimateGrid" class="status-grid grid-4">
+    			<span>Device</span><span>Temperature</span><span>Humidity</span><span>Valve position</span><span></span>
+    		</div>
+    	</div>
+    	<div id="thermostatsContainer" class="special-function">
+    		<div id="thermostatsGrid" class="status-grid grid-4">
+    			<span>Device</span><span>Mode</span><span>Button lock</span><span>Temperature setpoint</span><span></span>
+    		</div>
+    		<h4>Bulk operations</h4>
+			<div class="status-grid grid-3">
+				<span>Mode</span><div><select id="modeForAll">
+						<option value="0">AUTO_MODE</option>
+						<option value="1">MANU_MODE</option>
+						<option value="2">PARTY_MODE</option>
+						<option value="3">BOOST_MODE</option>
+					</select></div><input type="button" value="Set for all" id="modeForAllSubmit"></input><div></div>
+				<span>Button lock</span><input type="checkbox" id="lockForAll"><input type="button" value="Set for all" id="lockForAllSubmit"></input><div></div>
+				<span>Setpoint</span><input type="text" placeholder="19.5°C" id="setpointForAll"><input type="button" value="Set for all" id="setpointForAllSubmit"></input><div></div>
+			</div>
+    		<!-- TODO bulk operations -->
+    	</div>
+    	<div id="powerContainer" class="special-function">
+    		<div id="powerGrid" class="status-grid grid-7">
+    			<span>Device</span><span>State</span><span>Power</span><span>Energy</span><span>Voltage</span><span>Current</span><span>Frequency</span><span></span>
+    		</div>
+    		<div>
+    			<input type="button" class="initial-hidden margin-top" value="Switch all off" id="powerAllOff"></input>
+    		</div>
+    	</div>
+    	<br>
+    	<h2>Devices</h2>
+    	<span class="initial-visible trigger-text" id="showFilters">Show filters</span>
+    	<div class="row">
+	    	<fieldset class="initial-hidden" id="filtersSet">
+	    		<legend class="trigger-text" title="Click to hide">Filters</legend>
+		    	<div class="filter-grid">
+		    		<span>Filter address:</span><input type="input" id="addressFilter"></input><div></div>
+		    		<span>Filter device type:</span><input type="input" id="devTypeFilter"></input><div></div>
+		    		<span>Filter room:</span><input type="input" id="roomFilter"></input><div></div>
+		    		<span>Filter type id:</span><input type="input" id="typeFilter"></input><div></div>
+		    	</div>
+		    </fieldset>
+		    <div></div>
+	    </div>
+    	<div id="devices" class="devices-table grid-sortable">
+    		<h3 class="col-sortable">Address</h3><h3 class="col-sortable">Device type</h3><h3 class="col-sortable">Room</h3>
+    			<h3 class="col-sortable">Type id</h3><h3>Channels</h3><h3>Parameter sets</h3><h3>Add link</h3><h3>Existing Links</h3><h3></h3>
+    	</div>
+    	
+		<div class="spinner"></div>
+		<span class="spinner-text">Loading devices...</span>
+    	<script src="app.js" type="text/javascript"></script>
+    </body>
+</html>

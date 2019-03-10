@@ -25,6 +25,7 @@
 		<module>drs485de-driver</module>
 		<module>hm-hl-driver</module>
 		<module>homematic-driver</module>
+		<module>homematic-xmlrpc-cfg</module>
 		<module>homematic-xmlrpc-ll</module>
 		<module>homematic-xmlrpc-hl</module>
 		<module>iec62056-21-driver</module>

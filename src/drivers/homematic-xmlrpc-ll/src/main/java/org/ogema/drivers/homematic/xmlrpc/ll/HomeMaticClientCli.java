@@ -24,6 +24,7 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.felix.service.command.Descriptor;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.DeviceDescription;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.HomeMatic;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.ParameterDescription;
@@ -49,7 +50,7 @@ public class HomeMaticClientCli {
         props.put("osgi.command.function", new String[]{
             "list", "params", "tim", "read", "readValue", "valueUsage", "set",
         "addLink", "removeLink", "getLinkInfo", "getLinks",
-        "deleteDevice", "abortDeleteDevice", "getServiceMessages", "client"});
+        "deleteDevice", "abortDeleteDevice", "getServiceMessages", "client", "ping"});
         return ctx.registerService(HomeMaticClientCli.class, this, props);
     }
     
@@ -57,9 +58,7 @@ public class HomeMaticClientCli {
         return register(ctx, "hm");
     }
 
-    /**
-     * Read and print the list of known devices along with their type and version.
-     */
+    @Descriptor("Read and print the list of known devices along with their type and version.")
     public void list() throws Exception {
         List<DeviceDescription> l = client.listDevices();
         for (DeviceDescription dd : l) {
@@ -68,11 +67,12 @@ public class HomeMaticClientCli {
     }
 
     /**
-     * Read and print all available parameter descriptions from a device.
+     * 
      * 
      * @param addr device address
      */
-    public void params(String addr) throws Exception {
+    @Descriptor("Read and print all available parameter descriptions from a device.")
+    public void params(@Descriptor("Device/channel address, such as 'LEQ0568335' or 'LEQ0568335:1'") String addr) throws Exception {
         DeviceDescription dd = client.getDeviceDescription(addr);
         for (String setName : dd.getParamsets()) {
             Map<String, ParameterDescription<?>> params = client.getParamsetDescription(addr, setName);
@@ -87,7 +87,7 @@ public class HomeMaticClientCli {
         }
     }
     
-    private void printParameterDescription(ParameterDescription<?> desc, PrintStream out) {
+    private static void printParameterDescription(ParameterDescription<?> desc, PrintStream out) {
         Map<String, Object> struct = desc.toMap();
         out.append("{");
         boolean firstEntry = true;
@@ -113,12 +113,8 @@ public class HomeMaticClientCli {
         out.append("}");
     }
     
-    /**
-     * Read and print all available parameter sets from a device.
-     * 
-     * @param addr device address
-     */
-    public void read(String addr) throws Exception {
+    @Descriptor("Read and print all available parameter sets from a device.")
+    public void read(@Descriptor("Device/channel address, such as 'LEQ0568335' or 'LEQ0568335:1'") String addr) throws Exception {
         DeviceDescription dd = client.getDeviceDescription(addr);
         for (String setName : dd.getParamsets()) {
             Map<String, Object> values = client.getParamset(addr, setName).toMap();
@@ -139,6 +135,7 @@ public class HomeMaticClientCli {
     /**
      * Toggle installation mode.
      */
+    @Descriptor("Toggle installation mode")
     public void tim() throws Exception {
         int rem = client.getInstallMode();
         if (rem > 0) {
@@ -153,41 +150,62 @@ public class HomeMaticClientCli {
             System.out.printf("install mode on, time remaining = %ds%n", rem);
         }
     }
+
+    @Descriptor("Ping")
+    public void ping(@Descriptor("Caller id") String callerId) throws Exception {
+        client.ping(callerId);
+    }
     
-    public void valueUsage(String address, String valueId, int refCounter) throws Exception {
+    @Descriptor("value usage") // ?
+    public void valueUsage(
+    		@Descriptor("Device/channel address, such as 'LEQ0568335' or 'LEQ0568335:1'") String address, 
+    		@Descriptor("Value id") String valueId, 
+    		@Descriptor("Reference counter") int refCounter) throws Exception {
         System.out.println(client.reportValueUsage(address, valueId, refCounter));
     }
     
-    public void set(String address, String valueId, Object value) throws Exception {
+    @Descriptor("Set parameter value")
+    public void set(@Descriptor("Device/channel address, such as 'LEQ0568335' or 'LEQ0568335:1'") String address, 
+    		@Descriptor("Parameter key") String valueId, 
+    		@Descriptor("Value") Object value) throws Exception {
         client.setValue(address, valueId, value);
         System.out.printf("value=%s%n", String.valueOf(client.getValue(address, valueId)));
     }
     
-    public void readValue(String address, String valueKey) throws Exception {
-        System.out.println(client.<Object>getValue(address, valueKey));
+    @Descriptor("Read a parameter value")
+    public Object readValue(@Descriptor("Device/channel address, such as 'LEQ0568335' or 'LEQ0568335:1'") String address, 
+    		@Descriptor("Value key") String valueKey) throws Exception {
+        return client.<Object>getValue(address, valueKey);
     }
     
-    public void addLink(String sender, String receiver, String name, String description) throws Exception {
+    @Descriptor("Create a link between two devices")
+    public void addLink(@Descriptor("Sender address") String sender, 
+    		@Descriptor("Receiver address") String receiver, 
+    		@Descriptor("Name (??)") String name, 
+    		@Descriptor("Description (??)") String description) throws Exception {
         client.addLink(sender, receiver, name, description);
     }
     
-    public void removeLink(String sender, String receiver) throws Exception {
+    @Descriptor("Example to remove a link from a TH sensor (LEQ0568335) to a thermostat (OEQ2083227) (non-IP): \"removeLink LEQ0568335:1 OEQ2083227:1\"")
+    public void removeLink(@Descriptor("Sender") String sender, @Descriptor("Receiver") String receiver) throws Exception {
         client.removeLink(sender, receiver);
     }
     
-    public Map<String, Object> getLinkInfo(String sender, String receiver) throws Exception {
+    public Map<String, Object> getLinkInfo(@Descriptor("Sender") String sender, @Descriptor("Receiver") String receiver) throws Exception {
         return client.getLinkInfo(sender, receiver);
     }
     
-    public void getLinks(String address, int flags) throws Exception {
+    public void getLinks(@Descriptor("Device/channel address, such as 'LEQ0568335' or 'LEQ0568335:1'") String address, 
+    		@Descriptor("Flags (??)") int flags) throws Exception {
         System.out.println(client.getLinks(address, flags));
     }
     
-    public void deleteDevice(String address, int flags) throws Exception {
+    public void deleteDevice(@Descriptor("Device/channel address, such as 'LEQ0568335' or 'LEQ0568335:1'") String address, 
+    		@Descriptor("Flags (??)") int flags) throws Exception {
         client.deleteDevice(address, flags);
     }
     
-    public void abortDeleteDevice(String address) throws Exception {
+    public void abortDeleteDevice(@Descriptor("Device/channel address, such as 'LEQ0568335' or 'LEQ0568335:1'") String address) throws Exception {
         client.abortDeleteDevice(address);
     }
     

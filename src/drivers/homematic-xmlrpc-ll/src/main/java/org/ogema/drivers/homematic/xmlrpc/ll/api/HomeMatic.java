@@ -15,6 +15,7 @@
  */
 package org.ogema.drivers.homematic.xmlrpc.ll.api;
 
+import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import org.apache.xmlrpc.XmlRpcException;
@@ -30,6 +31,8 @@ public interface HomeMatic {
     void ping(String callerId) throws XmlRpcException;
     
     void init(String url, String interface_id) throws XmlRpcException;
+    
+    URL getServerUrl();
     
     List<DeviceDescription> listDevices() throws XmlRpcException;
     
@@ -51,7 +54,7 @@ public interface HomeMatic {
     
     /**
      * @param on install mode active state.
-     * @param time time to remain active.
+     * @param time time to remain active in seconds
      * @param mode 1: normal mode, 2: set all MASTER parameters to their default value and delete all links.
      * @throws XmlRpcException 
      */    

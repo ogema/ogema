@@ -130,7 +130,7 @@ public class MaintenanceChannel extends AbstractDeviceHandler {
         mnt.communicationStatus().communicationDisturbed().create();
         try {
             mnt.communicationStatus().communicationDisturbed().setValue(conn.<Boolean>getValue(desc.getAddress(), PARAMS.UNREACH.name()));
-        } catch (IOException ioex) {
+        } catch (IOException | ClassCastException ioex) {
             logger.warn("could not read UNREACH state of device {}: {}", desc.getAddress(), ioex.getMessage());
         }
         mnt.communicationStatus().activate(true);

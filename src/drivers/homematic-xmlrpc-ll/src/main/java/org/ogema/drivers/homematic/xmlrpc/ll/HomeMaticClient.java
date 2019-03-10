@@ -16,15 +16,34 @@
 package org.ogema.drivers.homematic.xmlrpc.ll;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.net.Proxy;
 import java.net.URL;
+import java.net.URLConnection;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
 import org.apache.xmlrpc.XmlRpcException;
 import org.apache.xmlrpc.client.XmlRpcClient;
 import org.apache.xmlrpc.client.XmlRpcClientConfigImpl;
+import org.apache.xmlrpc.client.XmlRpcSun15HttpTransport;
+import org.apache.xmlrpc.client.XmlRpcSun15HttpTransportFactory;
+import org.apache.xmlrpc.client.XmlRpcTransport;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.DeviceDescription;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.HomeMatic;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.ParameterDescription;
@@ -44,6 +63,8 @@ public class HomeMaticClient implements HomeMatic {
 
     final XmlRpcClient client;
     final Logger logger;
+    private final URL url;
+    private final HomematicType type;
     
     public static class DefaultServiceMessage implements ServiceMessage {
         
@@ -85,16 +106,32 @@ public class HomeMaticClient implements HomeMatic {
         
     }
 
-    public HomeMaticClient(String urlString) throws IOException {
-        URL url = new URL(urlString);
+    /**
+     * @param urlString
+     * @param user
+     * 		may be null
+     * @param pw
+     * 		may be null
+     * @throws IOException
+     */
+    public HomeMaticClient(String urlString, String user, String pw) throws IOException {
+        this.url = new URL(urlString);
+        this.type = HomematicType.forPort(url.getPort());
         XmlRpcClientConfigImpl config = new XmlRpcClientConfigImpl();
         config.setServerURL(url);
         config.setEnabledForExtensions(true);
         config.setEncoding("ISO-8859-1"); //only used in modified XmlRpcStreamTransport
         config.setEnabledForExceptions(true);
-
         client = new XmlRpcClient();
         client.setConfig(config);
+        // we cannot assume valid certificates in a home network
+        if ("https".equalsIgnoreCase(url.getProtocol())) {
+        	disableSslChecks(client);
+        }
+        if (user != null && pw != null) {
+        	config.setBasicUserName(user);
+        	config.setBasicPassword(pw);
+        }
         this.logger = LoggerFactory.getLogger(getClass().getCanonicalName() + "-" + url.getHost());
     }
 
@@ -160,7 +197,10 @@ public class HomeMaticClient implements HomeMatic {
 
     @Override
     public void setInstallMode(boolean on, int time, int mode) throws XmlRpcException {
-        client.execute("setInstallMode", new Object[]{on, time, mode});
+    	if (type == HomematicType.Ip)
+    		client.execute("setInstallMode", new Object[]{on, time});
+    	else
+    		client.execute("setInstallMode", new Object[]{on, time, mode});
     }
 
     @Override
@@ -253,6 +293,85 @@ public class HomeMaticClient implements HomeMatic {
     @SuppressWarnings("unchecked")
     public XmlRpcStruct rssiInfo() throws XmlRpcException {
         return new MapXmlRpcStruct((Map<String, Object>)client.execute("rssiInfo", new Object[]{}));
+    }
+ 
+    @Override
+    public URL getServerUrl() {
+    	return url;
+    }
+    
+    private static void disableSslChecks(final XmlRpcClient client) {
+    	client.setTransportFactory(new XmlRpcSun15HttpTransportFactory(client) {
+    		
+    		private final SSLSocketFactory factory;
+    		private final Proxy proxyCopy;
+    		private final HostnameVerifier noop = new HostnameVerifier() {
+				
+				@Override
+				public boolean verify(String arg0, SSLSession arg1) {
+					return true;
+				}
+			};
+    		
+    		{
+    			try {
+	    			final SSLContext ctx = SSLContext.getInstance("TLS"); // or SSL?
+	    			ctx.init(null, new TrustManager[] {
+	    					new X509TrustManager() {
+								
+								@Override
+								public X509Certificate[] getAcceptedIssuers() {
+									return null;
+								}
+								
+								@Override
+								public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+									// trust all
+								}
+								
+								@Override
+								public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+									// trust all
+								}
+							}
+	    			}, new java.security.SecureRandom());
+	    			factory = ctx.getSocketFactory();
+    			} catch (KeyManagementException | NoSuchAlgorithmException e) {
+    				throw new RuntimeException(e);
+    			}
+    			try {
+    				final Field field = XmlRpcSun15HttpTransportFactory.class.getDeclaredField("proxy");
+    				field.setAccessible(true);
+    				proxyCopy = (Proxy) field.get(this);
+    			} catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
+					throw new RuntimeException(e);
+				}
+    		}
+    		
+    		@Override
+    		public SSLSocketFactory getSSLSocketFactory() {
+    			return factory;
+    		}
+    		
+    		@Override
+    	    public XmlRpcTransport getTransport() {
+    	        XmlRpcSun15HttpTransport transport = new XmlRpcSun15HttpTransport(getClient()) {
+    	        	
+    	        	@Override
+    	        	protected URLConnection getURLConnection() {
+    	        		final URLConnection conn = super.getURLConnection();
+    	        		if (conn instanceof HttpsURLConnection)
+    	        			((HttpsURLConnection) conn).setHostnameVerifier(noop);
+    	        		return conn;
+    	        	}
+    	        	
+    	        };
+    	        transport.setSSLSocketFactory(getSSLSocketFactory());
+    	        transport.setProxy(proxyCopy);
+    	        return transport;
+    	    }
+    		
+    	});
     }
     
 }

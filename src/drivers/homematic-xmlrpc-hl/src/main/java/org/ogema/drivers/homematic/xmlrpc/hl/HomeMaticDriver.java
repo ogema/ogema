@@ -139,7 +139,7 @@ public class HomeMaticDriver implements Application {
                     l.add(reg.fac);
                 }
             }
-            HmConnection conn = new HmConnection(l, appman, eventAdmin, ctx, logger, HomeMaticDriver.this, t);
+            HmConnection conn = new HmConnection(l, appman, eventAdmin, ctx, HomeMaticDriver.this, t);
             connections.put(t, conn);
             conn.init();
         }
@@ -162,9 +162,9 @@ public class HomeMaticDriver implements Application {
         t.addListener(new TimerListener() {
             @Override
             public void timerElapsed(Timer timer) {
+            	timer.destroy();
                 logger.info("HomeMatic driver ready, configuration pending");
                 appman.getResourceAccess().addResourceDemand(HmLogicInterface.class, configListener);
-                t.destroy();
             }
         });
     }
@@ -180,8 +180,9 @@ public class HomeMaticDriver implements Application {
     		it.remove();
     		conn.close();
     	}
+    	acceptedDevices.clear();
     }
-
+    
     protected void pollParameters(HmConnection connection) {
         for (HmDevice dev : connection.baseResource.devices().getAllElements()) {
             for (HmDevice sub : dev.channels().getAllElements()) {

@@ -12,6 +12,7 @@
     <packaging>bundle</packaging>
     <name>OGEMA Drivers :: HomeMatic XMLRPC</name>
     <description>Generic Homematic XML-RPC low-level driver</description>
+	<version>2.2.0_1</version>
 
     <properties>
         <maven.compiler.source>1.7</maven.compiler.source>
@@ -53,6 +54,10 @@
             <artifactId>ws-commons-util</artifactId>
             <version>1.0.2</version>
         </dependency>
+        <dependency>
+			<groupId>org.apache.felix</groupId>
+			<artifactId>org.apache.felix.gogo.runtime</artifactId>
+		</dependency>
     </dependencies>
 
     <build>
@@ -76,6 +81,10 @@
                             org.ogema.drivers.homematic.xmlrpc.ll.api,
                             org.ogema.drivers.homematic.xmlrpc.ll.xmlrpc
                         </Export-Package>
+                        <Import-Package>
+                        	org.apache.felix.service.command;resolution:=optional;version="[${felix.service.command.version.min},${felix.service.command.version.max})",
+                        	*
+                        </Import-Package>
                     </instructions>
 
                 </configuration>

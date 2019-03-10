@@ -15,19 +15,22 @@
  */
 package org.ogema.drivers.homematic.xmlrpc.hl.channels;
 
-import org.ogema.drivers.homematic.xmlrpc.hl.api.AbstractDeviceHandler;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.SingleValueResource;
-import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.resourcemanager.ResourceStructureEvent;
 import org.ogema.core.resourcemanager.ResourceStructureListener;
 import org.ogema.core.resourcemanager.ResourceValueListener;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.AbstractDeviceHandler;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.DeviceHandler;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.DeviceHandlerFactory;
+import org.ogema.drivers.homematic.xmlrpc.hl.api.HomeMaticConnection;
 import org.ogema.drivers.homematic.xmlrpc.hl.types.HmDevice;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.DeviceDescription;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.HmEvent;
@@ -35,16 +38,18 @@ import org.ogema.drivers.homematic.xmlrpc.ll.api.HmEventListener;
 import org.ogema.drivers.homematic.xmlrpc.ll.api.ParameterDescription;
 import org.ogema.model.devices.buildingtechnology.Thermostat;
 import org.ogema.model.sensors.TemperatureSensor;
+import org.ogema.tools.resource.util.ResourceUtils;
+import org.osgi.framework.Constants;
+import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ogema.drivers.homematic.xmlrpc.hl.api.HomeMaticConnection;
-import org.ogema.tools.resource.util.ResourceUtils;
 
 /**
  *
  * @author jlapp
  */
-public class IpThermostatChannel extends AbstractDeviceHandler {
+@Component(service = {DeviceHandlerFactory.class}, property = {Constants.SERVICE_RANKING + ":Integer=1"})
+public class IpFALMOTChannel extends AbstractDeviceHandler implements DeviceHandlerFactory {
     
     public static final String PARAM_TEMPERATUREFALL_MODUS = "TEMPERATUREFALL_MODUS";
     /**
@@ -55,7 +60,16 @@ public class IpThermostatChannel extends AbstractDeviceHandler {
 
     Logger logger = LoggerFactory.getLogger(getClass());
     
-    public IpThermostatChannel(HomeMaticConnection conn) {
+    @Override
+    public DeviceHandler createHandler(HomeMaticConnection connection) {
+        return new IpFALMOTChannel(connection);
+    }
+
+    public IpFALMOTChannel() {
+        super(null);
+    }
+
+    public IpFALMOTChannel(HomeMaticConnection conn) {
         super(conn);
     }
     
@@ -82,11 +96,12 @@ public class IpThermostatChannel extends AbstractDeviceHandler {
                     }
 
                 },
-        VALVE_STATE() {
+        LEVEL() {
 
                     @Override
                     public float convertInput(float v) {
-                        return v / 100f;
+                    	// FALMOT provides 0.0 to 1.0 values for the LEVEL valve state
+                        return v;
                     }
 
                 },
@@ -137,14 +152,13 @@ public class IpThermostatChannel extends AbstractDeviceHandler {
     @Override
     public boolean accept(DeviceDescription desc) {
         //System.out.println("parent type = " + desc.getParentType());
-        return ("HMIP-eTRV".equalsIgnoreCase(desc.getParentType()) && "HEATING_CLIMATECONTROL_TRANSCEIVER".equalsIgnoreCase(desc.getType())) ||
-        		("HmIP-WTH-2".equalsIgnoreCase(desc.getParentType()) && "HEATING_CLIMATECONTROL_TRANSCEIVER".equalsIgnoreCase(desc.getType()));
+        return ("HmIP-FALMOT-C12".equalsIgnoreCase(desc.getParentType()) && "CLIMATECONTROL_FLOOR_TRANSCEIVER".equalsIgnoreCase(desc.getType()));
     }
 
     @Override
     public void setup(HmDevice parent, DeviceDescription desc, Map<String, Map<String, ParameterDescription<?>>> paramSets) {
         final String deviceAddress = desc.getAddress();
-        logger.debug("setup THERMOSTAT handler for address {} type {}", desc.getAddress(), desc.getType());
+        logger.debug("setup FALMOT-THERMOSTAT handler for address {} type {}", desc.getAddress(), desc.getType());
         String swName = ResourceUtils.getValidResourceName("THERMOSTAT" + desc.getAddress());
         Map<String, ParameterDescription<?>> values = paramSets.get(ParameterDescription.SET_TYPES.VALUES.name());
         if (values == null) {
@@ -157,27 +171,7 @@ public class IpThermostatChannel extends AbstractDeviceHandler {
         Map<String, SingleValueResource> resources = new HashMap<>();
         for (Map.Entry<String, ParameterDescription<?>> e : values.entrySet()) {
             switch (e.getKey()) {
-                case "SET_POINT_TEMPERATURE": {
-                    TemperatureResource reading = thermos.temperatureSensor().deviceFeedback().setpoint();
-                    if (!reading.exists()) {
-                        reading.create();
-                        thermos.activate(true);
-                    }
-                    logger.debug("found supported thermostat parameter {} on {}", e.getKey(), desc.getAddress());
-                    resources.put(e.getKey(), reading);
-                    break;
-                }
-                case "ACTUAL_TEMPERATURE": {
-                    TemperatureResource reading = thermos.temperatureSensor().reading();
-                    if (!reading.exists()) {
-                        reading.create();
-                        thermos.activate(true);
-                    }
-                    logger.debug("found supported thermostat parameter {} on {}", e.getKey(), desc.getAddress());
-                    resources.put(e.getKey(), reading);
-                    break;
-                }
-                case "VALVE_STATE": {
+                case "LEVEL": {
                     FloatResource reading = thermos.valve().setting().stateFeedback();
                     if (!reading.exists()) {
                         reading.create();
@@ -187,31 +181,10 @@ public class IpThermostatChannel extends AbstractDeviceHandler {
                     resources.put(e.getKey(), reading);
                     break;
                 }
-                case "BATTERY_STATE": {
-                    FloatResource reading = thermos.battery().internalVoltage().reading();
-                    if (!reading.exists()) {
-                        reading.create();
-                        thermos.activate(true);
-                    }
-                    logger.debug("found supported thermostat parameter {} on {}", e.getKey(), desc.getAddress());
-                    resources.put(e.getKey(), reading);
-                    break;
-                }
-            }
+             }
         }
         
-        TemperatureResource setpoint = thermos.temperatureSensor().settings().setpoint();
-        setpoint.create();
         thermos.activate(true);
-        
-        setpoint.addValueListener(new ResourceValueListener<TemperatureResource>() {
-            @Override
-            public void resourceChanged(TemperatureResource t) {
-                //XXX fails without the Double conversion...
-                conn.performSetValue(deviceAddress, "SET_POINT_TEMPERATURE", Double.valueOf(t.getCelsius()));
-            }
-        
-        }, true);
         
         conn.addEventListener(new WeatherEventListener(resources, desc.getAddress()));
         setupHmParameterValues(thermos, parent.address().getValue());

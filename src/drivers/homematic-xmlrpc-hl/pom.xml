@@ -13,6 +13,7 @@
 
     <name>OGEMA Drivers :: HomeMatic XMLRPC OGEMA</name>
     <description>Homematic XML-RPC high-level driver for OGEMA</description>
+	<version>2.2.0_1</version>
 
     <properties>
         <maven.compiler.source>1.7</maven.compiler.source>

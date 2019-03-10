@@ -1,0 +1,260 @@
+.initial-hidden {
+	display:none;
+}
+
+.initial-hidden[data-state="visible"] {
+	display:block;
+}
+
+.initial-visible[data-state="hidden"] {
+	display:none;
+}
+
+.grid-3 {
+	grid-template-columns: repeat(3,auto) 1fr;
+}
+
+.grid-4 {
+	grid-template-columns: repeat(4,auto) 1fr;
+}
+
+.grid-7 {
+	grid-template-columns: repeat(7,auto) 1fr;
+}
+
+.items-margin-right>* {
+	margin-right:1em;
+}
+
+.margin-left {
+	margin-left: 1em;
+}
+
+.margin-top {
+	margin-top: 1em;
+}
+
+.trigger-text:hover {
+	cursor:pointer;
+}
+
+.row {
+	display:flex;
+}
+
+.filter-grid {
+	display:grid;
+	grid-template-columns: repeat(2, auto) 1fr;
+	grid-row-gap: 0.5em;
+	align-items: center; 
+}
+
+.filter-grid>input {
+	margin-left: 1em;
+}
+
+.devices-table {
+	display: grid;
+	grid-template-columns: repeat(8, auto) 1fr;
+	/* padding for subelements gets the background color right... */
+/*	grid-column-gap: 1em;
+	grid-row-gap: 1em;*/
+}
+
+.devices-table>h3 {
+	padding-right: 0.5em;
+}
+
+.devices-table>div>* {
+	padding: 0.5em;
+}
+
+.devices-table>div:hover>* {
+	background-color: darkgreen;
+	color: #f9f8fd;
+}
+
+.devices-table>div:hover>div>* {
+	color: darkgreen;
+}
+
+.devices-table>div:hover>div>span.parameter-field {
+	color: #f9f8fd;
+}
+
+.subgrid-container[data-state="0"] {
+	display: none;
+}
+
+.subgrid-container[data-state="1"] {
+	display: contents;
+}
+
+.subgrid-container>div>* {
+	padding: 0.5em;
+}
+
+.parameter-field {
+	padding-right: 1em;
+}
+
+.params-grid {
+	display: grid;
+	grid-template-columns: repeat(4,auto) 1fr;
+	grid-gap: 0.5em;
+}
+
+.col-sortable:hover {
+	cursor: pointer;
+	background-color: lightgrey;
+}
+
+.special-function {
+	display:none;
+}
+
+.special-function[data-state="visible"] {
+	display:flex;
+	flex-direction:column;
+}
+
+.status-grid {
+	display:grid;
+	grid-column-gap: 1em;
+	grid-row-gap: 0.5em;
+}
+
+.status-grid>span {
+	font-weight: bold;
+}
+
+.addlink-grid {
+	display: grid;
+	grid-template-columns: repeat(4,auto);
+	grid-gap: 1em;
+}
+
+.addlinkmeta-grid {
+	display: grid;
+	grid-template-columns: repeat(2, auto) 1fr;
+	grid-gap: 1em;
+}
+
+.alert {
+    padding: 1em;
+	margin: 0.5em;
+    display: block;
+	border-radius: 2px;
+	border: solid 2px;
+	font-weight: bold;
+}
+
+.alert[data-state="error"] {
+	background-color: red;
+	border-color: orange;
+	color: white;
+
+}
+
+.alert[data-state="warning"] {
+	background-color: orange;
+	border-color: red;
+	color: darkred;
+}
+
+.alert[data-state="info"] {
+	background-color: lightblue;
+	border-color: darkblue;
+	color: darkblue;
+}
+
+.close-button {
+	position: absolute;
+	right: 0.4em;
+	top: 0.4em;
+	opacity: 0.7;
+}
+
+.close-button:hover {
+	cursor:pointer;
+	opacity: 0.9;
+}
+
+.confirm-popup {
+	background-color : red;
+	color: white;
+}
+
+.confirm-popup > div {
+	margin: 0.5em;
+}
+
+.btn-row {
+	display: flex;
+	justify-content: flex-end;
+}
+
+.btn-row > input {
+	margin: 1em;
+}
+
+.spinner[data-state="hidden"] {
+	display: none;
+}
+
+.spinner {
+	display: block;
+    border: 32px solid #FFE4C4; 
+    border-top: 32px solid #B22222; 
+    border-radius: 50%;
+    position: absolute;
+    opacity: 0.9;
+	left: 50%;
+	top: 50%;
+    width: 150px;
+    height: 150px;
+    -moz-animation: spinanim 2s linear infinite;
+    -ms-animation: spinanim 2s linear infinite;
+    -o-animation: spinanim 2s linear infinite;
+    -webkit-animation: spinanim 2s linear infinite;
+    animation: spinanim 2s linear infinite;
+}
+
+@keyframes spinanim {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@-webkit-keyframes spinanim {
+    0% { -webkit-transform: translate(-50%, -50%) rotate(0deg); }
+  100% { -webkit-transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@-moz-keyframes spinanim {
+    0% { -moz-transform: translate(-50%, -50%) rotate(0deg); }
+  100% { -moz-transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@-ms-keyframes spinanim {
+    0% { -ms-transform: translate(-50%, -50%) rotate(0deg); }
+  100% { -ms-transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@-o-keyframes spinanim {
+    0% { -o-transform: translate(-50%, -50%) rotate(0deg); }
+  100% { -o-transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.spinner-text[data-state="hidden"] {
+	display: none;
+}
+
+.spinner-text {
+	display: block;
+    position: absolute;
+	/*left: calc(50% - 4em);*/
+	top: calc(50% - 0.4em);
+	font-weight: bold;
+	opacity: 0.8;
+	color: #B22222;
+}

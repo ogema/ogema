@@ -40,17 +40,57 @@ public interface HmLogicInterface extends Resource {
     StringResource baseUrl();
    
     /**
-     * The network interface on which the HomeMatic XML-RPC can be reached by the 
-     * HomeMatic gateway.
+     * The network interface on which the driver servlet can be reached by the 
+     * HomeMatic gateway. Use together with {@link #port()},
+     * alternatively to {@link #baseUrl()}.
      * @return Network interface of the XML-RPC servlet (e.g. wlan0)
      */    
     StringResource networkInterface();
+    
+    /**
+     * The port on which the driver servlet can be reached. Use together with {@link #networkInterface()},
+     * alternatively to {@link #baseUrl()}.
+     * @return
+     */
     IntegerResource port();
     
+    /**
+     * URL of the XML-RPC service. Use alternatively to {@link #serialNumber()} and {@link #clientPort()} 
+     * if gateway discovery is not available. With recent CCU software the preferred alternative
+     * is the use of {@link #serialNumber()}.  
+     * @return
+     */
     StringResource clientUrl();
+    
+    /**
+     * Serial number of the CCU (real or emulated). Requires the CCU to support UDP discovery.
+     * Use together with {@link #clientPort()}, alternatively to {@link #clientUrl()}.
+     * @return
+     */
+    StringResource serialNumber();
+    
+    /**
+     * Port number of the XML-RPC service interface. Typical values are 2001 for BidCos RF, 2010 for Homematic IP,
+     * 2000 for BidCos wired.
+     * Use together with {@link #serialNumber()}, alternatively to {@link #clientUrl()}.
+     * @return
+     */
+    IntegerResource clientPort();
 
+    /**
+     * Created by driver.
+     * @return
+     */
     ResourceList<HmDevice> devices();
     
+    /**
+     * Determine whether installation mode is active (subresource {@link OnOffSwitch#stateFeedback()})
+     * and activate installation mode (subresource {@link OnOffSwitch#stateControl()}). 
+     * @return
+     */
     OnOffSwitch installationMode();
+    
+    StringResource ccuUser();
+    StringResource ccuPw();
     
 }

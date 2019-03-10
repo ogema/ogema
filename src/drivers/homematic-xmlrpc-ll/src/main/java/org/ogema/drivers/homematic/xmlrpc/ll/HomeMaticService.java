@@ -22,6 +22,7 @@ import java.util.Dictionary;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+
 import javax.servlet.Servlet;
 import org.apache.xmlrpc.XmlRpcException;
 import org.apache.xmlrpc.XmlRpcRequest;
@@ -82,7 +83,7 @@ public class HomeMaticService {
 
         @Override
         public Object listDevices(String param) {
-            logger.info("listDevices {}", param);
+            logger.debug("listDevices {}", param);
             List<Object> rval = new ArrayList<>();
             for (DeviceDescription dd: backend.getKnownDevices(param)) {
                 rval.add(new DeviceDescriptionXmlRpc(dd).getStruct());
@@ -93,7 +94,7 @@ public class HomeMaticService {
         @Override
         @SuppressWarnings("unchecked")
         public Void newDevices(String interfaceId, Object[] descriptions) {
-            logger.info("newDevices interface: {}", interfaceId);
+            logger.debug("newDevices interface: {}", interfaceId);
 
             List<DeviceDescription> dds = new ArrayList<>(descriptions.length);
             for (Object o : descriptions) {
@@ -105,6 +106,13 @@ public class HomeMaticService {
             return null;
         }
 
+        /**
+         * XXX 
+         * Not implemented and better not to be implemented with Homematic IP, see
+         * https://github.com/ioBroker/ioBroker.hm-rpc/issues/31
+         * On startup and in regular intervals the server sends deleteDevices callbacks 
+         * for regular connected devices. 
+         */
         @Override
         public Void deleteDevices(String interfaceId, Object[] addresses) {
             logger.warn("received unsupported deleteDevices calls: iterface={}, addresses={}",
@@ -114,21 +122,37 @@ public class HomeMaticService {
 
         @Override
         public Void readdedDevice(String interfaceId, String[] addresses) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        	  logger.warn("received unsupported readdedDevice call: iterface={}, addresses={}",
+                      interfaceId, Arrays.asList(addresses));
+        	  return null;
         }
 
         @Override
         public Void replaceDevice(String interfaceId, String oldDeviceAddress, String newDeviceAddress) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        	  logger.warn("received unsupported replaceDevice calls: iterface={}, old address={}, new address={}",
+                      interfaceId, oldDeviceAddress, newDeviceAddress);
+        	  return null;
         }
 
         @Override
         public Void updateDevice(String interfaceId, String address, int hint) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        	  logger.warn("received unsupported deleteDevices calls: iterface={}, address={}, hint={}",
+                      interfaceId, address, hint);
+        	  return null;
         }
 
         @Override
         public Void event(String interfaceId, String address, String valueKey, int value) {
+            return event(interfaceId, address, valueKey, (Object) Integer.valueOf(value));
+        }
+        
+        @Override
+        public Void event(String interfaceId, String address, String valueKey, boolean value) {
+            return event(interfaceId, address, valueKey, (Object) Boolean.valueOf(value));
+        }
+        
+        @Override
+        public Void event(String interfaceId, String address, String valueKey, Object value) {
             HmEvent e = new DefaultHmEvent(interfaceId, address, valueKey, value);
             logger.trace("event({},{},{},{})", interfaceId, address, valueKey, value);
             List<HmEvent> events = Collections.singletonList(e);
@@ -137,6 +161,7 @@ public class HomeMaticService {
             }
             return null;
         }
+        
 
     };
 
