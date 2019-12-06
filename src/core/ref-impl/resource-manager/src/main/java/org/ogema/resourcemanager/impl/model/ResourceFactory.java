@@ -41,6 +41,7 @@ import org.ogema.core.model.units.AreaResource;
 import org.ogema.core.model.units.BrightnessResource;
 import org.ogema.core.model.units.ColourResource;
 import org.ogema.core.model.units.ConcentrationResource;
+import org.ogema.core.model.units.ElectricChargeResource;
 import org.ogema.core.model.units.ElectricCurrentResource;
 import org.ogema.core.model.units.ElectricResistanceResource;
 import org.ogema.core.model.units.EnergyPerAreaResource;
@@ -84,6 +85,7 @@ import org.ogema.resourcemanager.impl.model.units.DefaultAreaResource;
 import org.ogema.resourcemanager.impl.model.units.DefaultBrightnessResource;
 import org.ogema.resourcemanager.impl.model.units.DefaultColourResource;
 import org.ogema.resourcemanager.impl.model.units.DefaultConcentrationResource;
+import org.ogema.resourcemanager.impl.model.units.DefaultElectricChargeResource;
 import org.ogema.resourcemanager.impl.model.units.DefaultElectricCurrentResource;
 import org.ogema.resourcemanager.impl.model.units.DefaultElectricResistanceResource;
 import org.ogema.resourcemanager.impl.model.units.DefaultEnergyPerAreaResource;
@@ -182,6 +184,9 @@ public class ResourceFactory {
 				}
 				else if (resType.equals(ElectricCurrentResource.class)) {
 					result = new DefaultElectricCurrentResource(el, resType, path, m_resMan);
+				}
+				else if (resType.equals(ElectricChargeResource.class)) {
+					result = new DefaultElectricChargeResource(el, resType, path, m_resMan);
 				}
 				else if (resType.equals(ElectricResistanceResource.class)) {
 					result = new DefaultElectricResistanceResource(el, resType, path, m_resMan);

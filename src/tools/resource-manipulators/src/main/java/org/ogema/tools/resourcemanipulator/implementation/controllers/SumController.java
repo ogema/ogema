@@ -15,6 +15,8 @@
  */
 package org.ogema.tools.resourcemanipulator.implementation.controllers;
 
+import java.util.List;
+
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.application.Timer;
 import org.ogema.core.application.TimerListener;
@@ -42,6 +44,7 @@ import org.ogema.tools.resourcemanipulator.timer.CountDownTimer;
 public class SumController implements Controller, ResourceStructureListener,
 		ResourceValueListener<SingleValueResource>, TimerListener {
 
+	private final ApplicationManager appMan;
 	private final SumModel m_config;
 	private final CountDownTimer m_timer;
 	private volatile Long lastExecTime;
@@ -49,8 +52,10 @@ public class SumController implements Controller, ResourceStructureListener,
 	private volatile boolean active = false;
 
 	public SumController(ApplicationManager appMan, SumModel configuration) {
+		this.appMan = appMan; 
 		m_config = configuration;
-		m_timer = new CountDownTimer(appMan, configuration.delay().getValue(), this);
+		final long delay = configuration.delay().isActive() ? configuration.delay().getValue() : 0;
+		m_timer = delay > 0 ? new CountDownTimer(appMan, configuration.delay().getValue(), this) : null;
 		m_logger = appMan.getLogger();
 	}
 
@@ -71,7 +76,8 @@ public class SumController implements Controller, ResourceStructureListener,
 	@Override
 	public void stop() {
 		active = false;
-		m_timer.stop();
+		if (m_timer != null)
+			m_timer.stop();
 		for (SingleValueResource input : m_config.inputs().getAllElements()) {
 			input.removeStructureListener(this);
 			input.removeValueListener(this);
@@ -89,25 +95,49 @@ public class SumController implements Controller, ResourceStructureListener,
 	final void evaluate() {
 
 		// perform summation over all active inputs.
-		Class<? extends Resource> clazz = m_config.resultBase().getClass();
+		Class<? extends Resource> clazz = m_config.resultBase().getResourceType();
+		final float[] factors = m_config.factors().isActive() ? m_config.factors().getValues() : null;
+		final float[] offsets = m_config.offsets().isActive() ? m_config.offsets().getValues() : null;
+		final List<SingleValueResource> inputs = m_config.inputs().getAllElements();
+		if ((factors != null && factors.length != inputs.size()) ||
+				(offsets != null && offsets.length != inputs.size())) {
+			m_logger.error("Factors or offsets length does not match input for {}", m_config);
+			return;
+		}
 		if (FloatResource.class.isAssignableFrom(clazz)) {
 			Float sum = 0f;
 			boolean isEmpty = true;
-			for (SingleValueResource value : m_config.inputs().getAllElements()) {
+			int cnt = -1;
+			for (SingleValueResource value : inputs) {
+				cnt++;
 				if (!value.isActive()) {
 					continue;
 				}
-
 				if (value instanceof FloatResource) {
-					sum += ((FloatResource) value).getValue();
+					float temp = ((FloatResource) value).getValue();
+					if (factors != null)
+						temp = temp * factors[cnt];
+					if (offsets != null)
+						temp = temp + offsets[cnt];
+					sum += temp;
 					isEmpty = false;
 				}
 				else if (value instanceof IntegerResource) {
-					sum += ((IntegerResource) value).getValue();
+					int temp = ((IntegerResource) value).getValue();
+					if (factors != null)
+						temp = temp * (int) factors[cnt];
+					if (offsets != null)
+						temp = temp + (int) offsets[cnt];
+					sum += temp;
 					isEmpty = false;
 				}
 				else if (value instanceof TimeResource) {
-					sum += ((TimeResource) value).getValue();
+					long temp = ((TimeResource) value).getValue();
+					if (factors != null)
+						temp = temp * (long) factors[cnt];
+					if (offsets != null)
+						temp = temp + (long) offsets[cnt];
+					sum += temp;
 					isEmpty = false;
 				}
 				else {
@@ -131,7 +161,9 @@ public class SumController implements Controller, ResourceStructureListener,
 		else if (IntegerResource.class.isAssignableFrom(clazz) || TimeResource.class.isAssignableFrom(clazz)) {
 			Long sum = 0l;
 			boolean isEmpty = true;
-			for (SingleValueResource value : m_config.inputs().getAllElements()) {
+			int cnt = -1;
+			for (SingleValueResource value : inputs) {
+				cnt++;
 				if (!value.isActive()) {
 					continue;
 				}
@@ -139,15 +171,31 @@ public class SumController implements Controller, ResourceStructureListener,
 				if (value instanceof FloatResource) {
 					m_logger.warn("Float resource found in SumManipulator for result type " + clazz.getSimpleName()
 							+ " -> rounding float and adding it to result ...");
-					sum += Math.round(((FloatResource) value).getValue());
+					float temp = ((FloatResource) value).getValue();
+					if (factors != null)
+						temp = temp * factors[cnt];
+					if (offsets != null)
+						temp = temp + offsets[cnt];
+					sum += Math.round(temp);
 					isEmpty = false;
 				}
 				else if (value instanceof IntegerResource) {
-					sum += ((IntegerResource) value).getValue();
+					int temp = ((IntegerResource) value).getValue();
+					if (factors != null)
+						temp = temp * (int) factors[cnt];
+					if (offsets != null)
+						temp = temp + (int) offsets[cnt];
+					sum += temp;
 					isEmpty = false;
 				}
 				else if (value instanceof TimeResource) {
-					sum += ((TimeResource) value).getValue();
+					long temp = ((TimeResource) value).getValue();
+					if (factors != null)
+						temp = temp * (long) factors[cnt];
+					if (offsets != null)
+						temp = temp + (long) offsets[cnt];
+					sum += temp;
+					isEmpty = false;
 					isEmpty = false;
 				}
 				else {
@@ -165,7 +213,7 @@ public class SumController implements Controller, ResourceStructureListener,
 
 			if (IntegerResource.class.isAssignableFrom(clazz)) {
 				if (!isEmpty) {
-					if (sum > Integer.MAX_VALUE) {
+					if (sum > Integer.MAX_VALUE) { // XXX
 						m_logger.warn("Integer overflow! Setting sum to Integer.MAX_VALUE ...");
 						((IntegerResource) m_config.resultBase()).setValue(Integer.MAX_VALUE);
 					}
@@ -186,7 +234,7 @@ public class SumController implements Controller, ResourceStructureListener,
 			m_logger.error(msg);
 			throw new IllegalArgumentException(msg);
 		}
-		lastExecTime = m_timer.getExecutionTime();
+		lastExecTime = appMan.getFrameworkTime();
 	}
 
 	@Override
@@ -197,7 +245,8 @@ public class SumController implements Controller, ResourceStructureListener,
 		case RESOURCE_DEACTIVATED:
 		case RESOURCE_CREATED:
 		case RESOURCE_DELETED:
-			m_timer.start(); //?
+			resourceChanged((SingleValueResource) event.getChangedResource());
+			break;
 		case REFERENCE_ADDED:
 		case REFERENCE_REMOVED:
 		case SUBRESOURCE_ADDED:
@@ -209,7 +258,10 @@ public class SumController implements Controller, ResourceStructureListener,
 
 	@Override
 	public void resourceChanged(SingleValueResource resource) {
-		m_timer.start();
+		if (m_timer != null)
+			m_timer.start();
+		else if (active)
+			evaluate();
 	}
 
 	@Override

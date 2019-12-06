@@ -15,35 +15,16 @@
  */
 package org.ogema.tools.timeseriesimport.impl;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.lang.ref.SoftReference;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.commons.csv.CSVParser;
-import org.apache.commons.csv.CSVRecord;
-import org.ogema.core.channelmanager.measurements.FloatValue;
-import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 import org.ogema.tools.resource.util.ValueResourceUtils;
 import org.ogema.tools.timeseriesimport.api.ImportConfiguration;
-import org.slf4j.LoggerFactory;
 
 /**
  * Parses a CSV file for values and caches the result
@@ -54,89 +35,33 @@ class CsvTimeseries implements ReadOnlyTimeSeries {
 	private final Path path;
 	private final URL url;
 	private final ImportConfiguration config;
-	private SoftReference<List<SampledValue>> cached = new SoftReference<List<SampledValue>>(null);
-	private final boolean unusualDecimalSeparator;
+	private final CacheAccess cacheAccess;
 	
 	CsvTimeseries(URL url, ImportConfiguration config) {
-		this.url = Objects.requireNonNull(url);
-		this.config = config;
-		this.path = null;
-		this.unusualDecimalSeparator = config.getDecimalSeparator() != '.';
+		this(url, config, new SingleCacheAccess(url, config));
 	}
 	
 	CsvTimeseries(Path path, ImportConfiguration config) {
+		this(path, config, new SingleCacheAccess(path, config));
+	}
+	
+	CsvTimeseries(URL url, ImportConfiguration config, CacheAccess cacheAccess) {
+		this.url = Objects.requireNonNull(url);
+		this.config = config;
+		this.path = null;
+		this.cacheAccess = cacheAccess;
+	}
+	
+	CsvTimeseries(Path path, ImportConfiguration config, CacheAccess cacheAccess) {
 		this.path = Objects.requireNonNull(path).normalize();
 		this.config = config;
 		this.url = null;
-		this.unusualDecimalSeparator = config.getDecimalSeparator() != '.';
+		this.cacheAccess = cacheAccess;
 	}
 	
 	@Override
 	public List<SampledValue> getValues(long startTime, long endTime) {
-		List<SampledValue> cached=  this.cached.get();
-		if (cached == null) {
-			synchronized (this) {
-				cached=  this.cached.get();
-				if (cached == null) {
-					// parse CSV file
-					cached = AccessController.doPrivileged(new PrivilegedAction<List<SampledValue>>() {
-
-						@Override
-						public List<SampledValue> run() {
-							final List<SampledValue> cached = new ArrayList<>(100);
-							try (final BufferedReader reader = path != null ? Files.newBufferedReader(path, StandardCharsets.UTF_8) : 
-									new BufferedReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8))) {
-								try (CSVParser parser = new CSVParser(reader, config.getCsvFormat())) {
-									long timestamp;
-									float value;
-									final SimpleDateFormat format = config.getDateTimeFormat();
-									final TimeUnit unit = config.getTimeUnit();
-									for (CSVRecord record : parser) {
-										try {
-											if (format != null) {
-												timestamp = format.parse(record.get(0)).getTime();
-											} else {
-												timestamp = Long.parseLong(record.get(0));
-												if (unit != TimeUnit.MILLISECONDS) {
-													timestamp = TimeUnit.MILLISECONDS.convert(timestamp, unit);
-												}
-											}
-											value = Float.parseFloat(unusualDecimalSeparator ? record.get(1).replace(config.getDecimalSeparator(), '.') : record.get(1));
-										} catch (NumberFormatException | ArrayIndexOutOfBoundsException | 
-												NullPointerException | ParseException e) {
-											continue;
-										}
-										cached.add(new SampledValue(new FloatValue(value), timestamp, Quality.GOOD));	
-									}
-								}
-							} catch (IOException e) {
-								LoggerFactory.getLogger(CsvTimeseries.class).error("Failed to parse CSV data from path {}" ,path,e);
-								return Collections.emptyList();
-							}
-							return cached;
-						}
-					});
-					
-					this.cached = new SoftReference<List<SampledValue>>(cached);
-				}
-			}
-		}
-		return getValuesInternal(startTime, endTime, cached);
-	}
-	
-	private List<SampledValue> getValuesInternal(long startTime, long endTime, List<SampledValue> cached) {
-		if (cached.isEmpty() || startTime <= cached.get(0).getTimestamp() && endTime >= cached.get(cached.size()-1).getTimestamp())
-			return Collections.unmodifiableList(cached);
-		final List<SampledValue> copy = new ArrayList<>(cached.size());
-		for (SampledValue sv : cached) {
-			final long t = sv.getTimestamp();
-			if (t < startTime)
-				continue;
-			if (t >= endTime)
-				break;
-			copy.add(sv);
-		}
-		return copy;
+		return cacheAccess.getValues(startTime, endTime);
 	}
 	
 	@Override
@@ -185,45 +110,8 @@ class CsvTimeseries implements ReadOnlyTimeSeries {
 	@Override
 	public SampledValue getNextValue(long time) {
 		// special case: determine first value only should not require reading the whole file
-		if (time == Long.MIN_VALUE && this.cached.get() == null) {
-			synchronized (this) {
-				return AccessController.doPrivileged(new PrivilegedAction<SampledValue>() {
-
-					@Override
-					public SampledValue run() {
-						try (final BufferedReader reader = path != null ? Files.newBufferedReader(path, StandardCharsets.UTF_8) : 
-							new BufferedReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8))) {
-							try (CSVParser parser = new CSVParser(reader, config.getCsvFormat())) {
-								long timestamp;
-								float value;
-								final SimpleDateFormat format = config.getDateTimeFormat();
-								final TimeUnit unit = config.getTimeUnit();
-								for (CSVRecord record : parser) {
-									try {
-										if (format != null) {
-											timestamp = format.parse(record.get(0)).getTime();
-										} else {
-											timestamp = Long.parseLong(record.get(0));
-											if (unit != TimeUnit.MILLISECONDS) {
-												timestamp = TimeUnit.MILLISECONDS.convert(timestamp, unit);
-											}
-										}
-										value = Float.parseFloat(unusualDecimalSeparator ? record.get(1).replace(config.getDecimalSeparator(), '.') : record.get(1));
-										return new SampledValue(new FloatValue(value), timestamp, Quality.GOOD);
-									} catch (NumberFormatException | ArrayIndexOutOfBoundsException | 
-											NullPointerException | ParseException e) {
-										continue;
-									}
-								}
-							}
-						} catch (IOException e) {
-							LoggerFactory.getLogger(CsvTimeseries.class).error("Failed to parse CSV data from path {}" ,path,e);
-						}
-						return null; // if we arrive here at all, then there are no values to be read
-					}
-				});
-			}
-			
+		if (time == Long.MIN_VALUE && !cacheAccess.isLoaded()) {
+			return cacheAccess.getFirstValue();
 		}
 		final Iterator<SampledValue> it = iterator(time, Long.MAX_VALUE);
 		return it.hasNext() ? it.next() : null;
@@ -287,7 +175,7 @@ class CsvTimeseries implements ReadOnlyTimeSeries {
 	
 	@Override
 	public String toString() {
-		return "CsvTimeseries[" + path.toString() + "]";
+		return "CsvTimeseries[" + (path != null ? path.toString() : url.toString()) + "]";
 	}
 	
 }

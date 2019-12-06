@@ -15,7 +15,6 @@
  */
 package org.ogema.resourcemanager.tests;
 
-import java.io.File;
 import org.junit.Assert;
 import org.junit.Test;
 import org.ogema.core.model.Resource;
@@ -23,15 +22,24 @@ import org.ogema.core.model.ResourceList;
 import org.ogema.model.locations.Building;
 import org.ogema.model.locations.BuildingPropertyUnit;
 import org.ogema.model.sensors.TemperatureSensor;
-import org.ops4j.io.FileUtils;
+import org.ogema.resourcemanager.tests.custom.NonPersistentTestType;
+import org.ops4j.pax.exam.ProbeBuilder;
+import org.ops4j.pax.exam.TestProbeBuilder;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
+import org.osgi.framework.Constants;
 
 @ExamReactorStrategy(PerClass.class)
 public class PersistenceRestartTest extends TestBase {
+    
+    @ProbeBuilder
+    public TestProbeBuilder buildCustomProbe(TestProbeBuilder builder) {
+        builder.setHeader(Constants.EXPORT_PACKAGE, "org.ogema.resourcemanager.tests.custom");
+        return builder;
+    }
 
     private static Bundle findPersistence(final BundleContext ctx) {
         for (Bundle b : ctx.getBundles()) {
@@ -43,14 +51,16 @@ public class PersistenceRestartTest extends TestBase {
         return null;
     }
 
-    private void restartPersistence() throws BundleException {
+    private void restartPersistence() throws BundleException, InterruptedException {
         final Bundle persistence = findPersistence(ctx);
         System.out.printf("restarting bundle %s%n", persistence);
         persistence.stop();
         //Assert.assertNotEquals(Bundle.ACTIVE, persistence.getState());
         Assert.assertEquals(Bundle.RESOLVED, persistence.getState());
+        Assert.assertNull("app manager still available, although  persistence has stopped", getApplicationManager());
         persistence.start();
         Assert.assertEquals(Bundle.ACTIVE, persistence.getState());
+        waitForAppManager();
         System.out.printf("restart complete%n");
     }
 
@@ -142,6 +152,25 @@ public class PersistenceRestartTest extends TestBase {
         Assert.assertNotNull("Resource list has lost its element type", building2.buildingPropertyUnits().getElementType());
         Assert.assertEquals("Resource list element type has changed", BuildingPropertyUnit.class, building2.buildingPropertyUnits().getElementType());
         building2.delete();
+    }
+    
+    @Test public void nonPersistentResourcesAreNotPersistent() throws InterruptedException, BundleException {
+        final NonPersistentTestType npttInit = getApplicationManager().getResourceManagement().createResource(newResourceName(), NonPersistentTestType.class);
+        npttInit.npBool().create();
+        npttInit.npFloat().create();
+        npttInit.npLong().create();
+        npttInit.npString().create();
+        npttInit.activate(true);
+        Thread.sleep(3 * PERSISTENCE_PERIOD_MS);
+        Assert.assertFalse("boolean default is false", npttInit.npBool().getValue());
+        npttInit.npBool().setValue(true);
+        Assert.assertEquals("float default is 0", 0f, npttInit.npFloat().getValue(), 0f);
+        npttInit.npFloat().setValue(1);
+        Thread.sleep(3 * PERSISTENCE_PERIOD_MS);
+        restartPersistence();
+        NonPersistentTestType npttReload = getApplicationManager().getResourceAccess().getResource(npttInit.getPath());
+        Assert.assertFalse("boolean was persisted", npttReload.npBool().getValue());
+        Assert.assertEquals("float was persisted", 0f, npttReload.npFloat().getValue(), 0f);
     }
 
 }

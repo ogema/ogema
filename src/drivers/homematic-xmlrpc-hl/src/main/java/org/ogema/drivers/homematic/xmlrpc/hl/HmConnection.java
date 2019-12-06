@@ -479,6 +479,10 @@ public class HmConnection implements HomeMaticConnection {
 		if (urlPattern == null || urlPattern.isEmpty()) {
 			urlPattern = "http://%s:%d";
 		}
+		if(Boolean.getBoolean("org.ogema.drivers.homematic.xmlrpc.hl.testwithoutconnection")) {
+			String address = String.format(urlPattern, "localhost", 9999);
+			return address;
+		}
 		String iface = config.networkInterface().getValue();
 		if (interfaces.isEmpty()) {
 			if (config.networkInterface().isActive()) {
@@ -630,6 +634,8 @@ public class HmConnection implements HomeMaticConnection {
 			connectionThread = new Thread(new Runnable() {
 				@Override
 				public void run() {
+					if(Boolean.getBoolean("org.ogema.drivers.homematic.xmlrpc.hl.testwithoutconnection"))
+						return;
 					connect();
 				}
 			}, "homematic-xmlrpc-init");

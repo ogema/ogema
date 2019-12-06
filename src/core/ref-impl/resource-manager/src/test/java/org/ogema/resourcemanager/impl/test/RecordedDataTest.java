@@ -509,6 +509,7 @@ public class RecordedDataTest extends OsgiAppTestBase {
         int randomInt = new Random().nextInt(MAX_FOR_REDUCTION_MODE_TEST);
         // use (probable) prime as seed
         long seed = new BigInteger(String.valueOf(randomInt)).nextProbablePrime().longValue();
+        //FIXME: fails for seed 48437;
         Random rnd = new Random(seed);
         int nmbOfValues = rnd.nextInt(MAX_FOR_REDUCTION_MODE_TEST) + 2; // at least 2 values ...
         int nmbOfIntervals = rnd.nextInt(nmbOfValues / 2) + 2; // at least two intervals

@@ -11,6 +11,7 @@
 (org.osgi.framework.PackagePermission "org.json" "import")
 
 (org.ogema.accesscontrol.ResourcePermission "path=*" "read")
+(java.util.PropertyPermission "org.ogema.gui.usecdn" "read")
 
 # FIXME
 (org.osgi.framework.AdminPermission "*" "context")

@@ -24,6 +24,7 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Method;
 import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
@@ -111,10 +112,34 @@ final class SerializationCore {
 	final ResourceManagement resman;
 	final static Logger LOGGER = LoggerFactory.getLogger(SerializationCore.class);
 	// JAXBContext is thread safe and expensive to build, initialize only once.
-	private final static JAXBContext MARSHALLING_CONTEXT = createMarshallingContext();
-	private final static JAXBContext UNMARSHALLING_CONTEXT = createUnmarshallingContext();
-	private final static JAXBContext COLLECTIONS_MARSHALLING_CONTEXT = createCollectionsMarshallingContext();
-    private final static XMLInputFactory INPUT_FACTORY = XMLInputFactory.newFactory();
+	private final static JAXBContext MARSHALLING_CONTEXT = AccessController.doPrivileged(new PrivilegedAction<JAXBContext>() {
+
+		@Override
+		public JAXBContext run() {
+			return createMarshallingContext();
+		}
+	});
+	private final static JAXBContext UNMARSHALLING_CONTEXT = AccessController.doPrivileged(new PrivilegedAction<JAXBContext>() {
+
+		@Override
+		public JAXBContext run() {
+			return createUnmarshallingContext();
+		}
+	});
+	private final static JAXBContext COLLECTIONS_MARSHALLING_CONTEXT = AccessController.doPrivileged(new PrivilegedAction<JAXBContext>() {
+
+		@Override
+		public JAXBContext run() {
+			return createCollectionsMarshallingContext();
+		}
+	});
+    private final static XMLInputFactory INPUT_FACTORY =  AccessController.doPrivileged(new PrivilegedAction<XMLInputFactory>() {
+
+		@Override
+		public XMLInputFactory run() {
+			return XMLInputFactory.newFactory();
+		}
+	});
     
     static {
         /* XXE prevention: disable external entities, but keep DTD support for
@@ -856,6 +881,13 @@ final class SerializationCore {
 	// FIXME context is expensive and should be recycled
 	String toXml(Collection<Resource> resources, SerializationManager manager) {
 		final StringWriter sw = new StringWriter(200);
+        try {
+            writeXml(sw, resources, manager);
+        } catch (IOException ex) {
+            LOGGER.warn("XML serialization failed for resources {}", resources, ex);
+        }
+        return sw.toString();
+        /*
 		try {
 			final JaxbResourceCollection jres = JaxbFactory.createJaxbResources(resources, manager);
 			// wrapping is required for 'xsi:type' attribute.
@@ -877,6 +909,7 @@ final class SerializationCore {
 			LOGGER.warn("XML serialization failed for resources {}", resources, jaxb.getCause());
 		}
 		return sw.toString();
+        */
 	}
 
 	@SuppressWarnings("unchecked")
@@ -897,8 +930,11 @@ final class SerializationCore {
 				@SuppressWarnings("rawtypes")
 				@Override
 				public Object run() throws JAXBException {
-					return ((JAXBElement) UNMARSHALLING_CONTEXT.createUnmarshaller()
-							.unmarshal(src)).getValue();
+                    //XXX moxy and the reference implementation return different things here
+                    Object o = UNMARSHALLING_CONTEXT.createUnmarshaller().unmarshal(src);
+                    return (o instanceof ResourceCollection)
+                            ? o
+                            : ((JAXBElement) o).getValue();
 				}
 
 				

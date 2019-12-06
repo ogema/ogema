@@ -23,6 +23,9 @@ import com.google.common.io.BaseEncoding;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -232,7 +235,7 @@ public class JsonReaderJackson {
     
     Collection<Resource> readCollection(Reader reader) throws IOException {
         Collection<Resource> c = new ArrayList<>();
-        try (JsonParser p = JFAC.createParser(reader)) {
+        try (JsonParser p = createParser(reader)) {
             acceptStartArray(p);
             p.nextToken();
             do {
@@ -245,7 +248,7 @@ public class JsonReaderJackson {
     }
 
     Resource read(Reader reader) throws IOException, ClassNotFoundException {
-        try (JsonParser p = JFAC.createParser(reader)) {
+        try (JsonParser p = createParser(reader)) {
             p.nextToken(); //TODO: test startObject
             return (Resource) readResource(null, p);
         } catch (JsonParseException jpe) {
@@ -547,5 +550,27 @@ public class JsonReaderJackson {
         //Reader r = new InputStreamReader(u.openStream());
         new JsonReaderJackson().read(r);
     }
+    
+    static final JsonParser createParser(final Reader reader) throws IOException {
+		try {
+			return AccessController.doPrivileged(new PrivilegedExceptionAction<JsonParser>() {
+
+				@Override
+				public JsonParser run() throws Exception { // method accesses a system property internally
+					return JFAC.createParser(reader);
+				}
+			});
+		} catch (PrivilegedActionException e) {
+			final Throwable t = e.getCause();
+			if (t instanceof IOException)
+				throw (IOException) t;
+			else if (t instanceof RuntimeException)
+				throw (RuntimeException) t;
+			else if (t instanceof Error)
+				throw (Error) t;
+			throw new RuntimeException(t);
+		}
+		
+	}
 
 }

@@ -38,6 +38,7 @@ public class DefaultFloatArrayResource extends ResourceBase implements FloatArra
 
 	@Override
 	public float[] getValues() {
+		checkReadPermission();
 		return getEl().getData().getFloatArr().clone();
 	}
 
@@ -61,6 +62,7 @@ public class DefaultFloatArrayResource extends ResourceBase implements FloatArra
 
 	@Override
 	public float getElementValue(int index) {
+        	checkReadPermission();
 		return getEl().getData().getFloatArr()[index];
 	}
 

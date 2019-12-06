@@ -1,0 +1,86 @@
+{
+  "@type" : "Resource",
+  "name" : "HomeMaticIP",
+  "type" : "org.ogema.drivers.homematic.xmlrpc.hl.types.HmLogicInterface",
+  "path" : "HomeMaticIP",
+  "decorating" : false,
+  "active" : true,
+  "referencing" : false,
+  "subresources" : [ {
+    "StringResource" : {
+      "value" : "http://localhost:2010",
+      "name" : "clientUrl",
+      "type" : "org.ogema.core.model.simple.StringResource",
+      "path" : "HomeMaticIP/clientUrl",
+      "decorating" : false,
+      "active" : true,
+      "referencing" : false,
+      "subresources" : [ ]
+    }
+  }, {
+    "IntegerResource" : {
+      "value" : 8080,
+      "name" : "port",
+      "type" : "org.ogema.core.model.simple.IntegerResource",
+      "path" : "HomeMaticIP/port",
+      "decorating" : false,
+      "active" : true,
+      "referencing" : false,
+      "subresources" : [ ]
+    }
+  }, {
+    "StringResource" : {
+      "value" : "lo",
+      "name" : "networkInterface",
+      "type" : "org.ogema.core.model.simple.StringResource",
+      "path" : "HomeMaticIP/networkInterface",
+      "decorating" : false,
+      "active" : true,
+      "referencing" : false,
+      "subresources" : [ ]
+    }
+  }, {
+    "StringResource" : {
+      "value" : "/homematicip",
+      "name" : "alias",
+      "type" : "org.ogema.core.model.simple.StringResource",
+      "path" : "HomeMaticIP/alias",
+      "decorating" : false,
+      "active" : true,
+      "referencing" : false,
+      "subresources" : [ ]
+    }
+  }, {
+    "resource" : {
+      "name" : "installationMode",
+      "type" : "org.ogema.model.actors.OnOffSwitch",
+      "path" : "HomeMaticIP/installationMode",
+      "decorating" : false,
+      "active" : true,
+      "referencing" : false,
+      "subresources" : [ {
+        "BooleanResource" : {
+          "value" : false,
+          "name" : "stateControl",
+          "type" : "org.ogema.core.model.simple.BooleanResource",
+          "path" : "HomeMaticIP/installationMode/stateControl",
+          "decorating" : false,
+          "active" : true,
+          "referencing" : false,
+          "subresources" : [ ]
+        }
+      }, {
+        "BooleanResource" : {
+          "value" : false,
+          "name" : "stateFeedback",
+          "type" : "org.ogema.core.model.simple.BooleanResource",
+          "path" : "HomeMaticIP/installationMode/stateFeedback",
+          "decorating" : false,
+          "active" : true,
+          "referencing" : false,
+          "subresources" : [ ]
+        }
+      } ]
+    }
+  } ]
+}

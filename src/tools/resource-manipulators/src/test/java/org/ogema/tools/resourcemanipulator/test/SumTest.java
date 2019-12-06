@@ -20,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
@@ -27,6 +28,8 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
+import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.ogema.core.model.simple.FloatResource;
@@ -39,12 +42,15 @@ import org.ogema.tools.resourcemanipulator.ResourceManipulator;
 import org.ogema.tools.resourcemanipulator.ResourceManipulatorImpl;
 import org.ogema.tools.resourcemanipulator.configurations.ManipulatorConfiguration;
 import org.ogema.tools.resourcemanipulator.configurations.Sum;
+import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
+import org.ops4j.pax.exam.spi.reactors.PerClass;
 
 /**
  * Tests for sum manipulator tool.
  * 
  * @author Marco Postigo Perez
  */
+@ExamReactorStrategy(PerClass.class)
 public class SumTest extends OsgiAppTestBase {
 
 	private static final float EPSILON = 1E-6f;
@@ -62,6 +68,19 @@ public class SumTest extends OsgiAppTestBase {
 		resman = getApplicationManager().getResourceManagement();
 		tool = new ResourceManipulatorImpl(getApplicationManager());
 		tool.start();
+	}
+	
+	@After
+	public void shutdown() {
+		tool.stop();
+		tool.deleteAllConfigurations();
+		for (int i = 0; i < 40; i++) {
+			if (tool.getConfigurations(ManipulatorConfiguration.class).isEmpty())
+				break;
+			sleep(100);
+		}
+		final List<ManipulatorConfiguration> leftoverRules = tool.getConfigurations(ManipulatorConfiguration.class);
+		assertTrue(leftoverRules.isEmpty());
 	}
 
 	@Test
@@ -116,13 +135,6 @@ public class SumTest extends OsgiAppTestBase {
 
 		assertTrue("Sum is not correct! Expected: " + expectedSum + ", sum: " + result.getValue() + ", seed: " + seed,
 				nearlyEqual(result.getValue(), expectedSum, EPSILON));
-
-		tool.stop();
-		tool.deleteAllConfigurations();
-		sleep(1000);
-
-		List<ManipulatorConfiguration> leftoverRules = tool.getConfigurations(ManipulatorConfiguration.class);
-		assertTrue(leftoverRules.isEmpty());
 	}
 
 	@Test
@@ -180,12 +192,6 @@ public class SumTest extends OsgiAppTestBase {
 		assertTrue("Sum is not correct! Expected: " + expectedSum + ", sum: " + result.getValue() + ", seed: " + seed,
 				result.getValue() == expectedSum);
 
-		tool.stop();
-		tool.deleteAllConfigurations();
-		sleep(1000);
-
-		List<ManipulatorConfiguration> leftoverRules = tool.getConfigurations(ManipulatorConfiguration.class);
-		assertTrue("Not all ManipulatorConfigurations were deleted", leftoverRules.isEmpty());
 	}
 
 	private List<FloatResource> createAndActivateFloatResources(int n) {
@@ -206,18 +212,14 @@ public class SumTest extends OsgiAppTestBase {
 		return result;
 	}
 
-	private int floatCounter = 0;
-
 	private FloatResource createAndActivateFloatResource() {
-		final FloatResource f = resman.createResource("test_" + ++floatCounter, FloatResource.class);
+		final FloatResource f = resman.createResource(newResourceName(), FloatResource.class);
 		f.activate(false);
 		return f;
 	}
 
-	private int intCounter = 0;
-
 	private IntegerResource createAndActivateIntResource() {
-		final IntegerResource i = resman.createResource("test_" + ++intCounter, IntegerResource.class);
+		final IntegerResource i = resman.createResource(newResourceName(), IntegerResource.class);
 		i.activate(false);
 		return i;
 	}
@@ -229,7 +231,7 @@ public class SumTest extends OsgiAppTestBase {
 	 * @return <code>true</code> if a and b are nearly equal, <code>false</code>
 	 * otherwise.
 	 */
-	private boolean nearlyEqual(float a, float b, float epsilon) {
+	private static boolean nearlyEqual(float a, float b, float epsilon) {
 		if (Double.compare(a, b) == 0) {
 			return true;
 		}
@@ -262,7 +264,7 @@ public class SumTest extends OsgiAppTestBase {
 		try {
 			Thread.sleep(millis);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -315,6 +317,27 @@ public class SumTest extends OsgiAppTestBase {
 		assertTrue("sum should update", listener.latch.await(5, TimeUnit.SECONDS));
 		assertEquals("ResourceManipulator (Sum) failed", currentSum, sum.getValue());
 		sum.removeValueListener(listener);
-		tool.deleteAllConfigurations();
+	}
+	
+	@Test
+	public void testFactorAndOffset() {
+		final FloatResource f = createAndActivateFloatResource(); 
+		final FloatResource sum = createAndActivateFloatResource();
+		assertTrue(f.isActive());
+		assertTrue(sum.isActive());
+		final float factor = 17;
+		final float offset = 3;
+		Sum sumConfig = tool.createConfiguration(Sum.class);
+		sumConfig.setAddends(Collections.singletonList(f), Collections.singletonList(new Float(factor)), Collections.singletonList(new Float(offset)), sum);
+		sumConfig.commit();
+		final float v = 10;
+		final float expected = 10 * factor + offset;
+		f.setValue(v);
+		for (int i=0;i<100; i++) {
+			if (nearlyEqual(sum.getValue(), expected, 0.5F))
+				break;
+			sleep(100);
+		}
+		Assert.assertEquals("Sum is not correct! Expected: " + expected + ", sum: " + sum.getValue(), expected, sum.getValue(), 0.5F);
 	}
 }

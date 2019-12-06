@@ -24,9 +24,9 @@ import java.util.Map;
 public enum PhysicalUnit {
 
 	SQUARE_METERS("m²"), AMPERES("A"), OHMS("O"), VOLTS("V"), JOULES("J"), HERTZ("Hz"), METERS("m"), DEGREES(
-			"°"), KILOGRAMS("kg"), PARTS_PER_MILLION("ppm"), WATTS("W"), LUX("lx"), LUMEN("lm"), KELVIN(
-					"K"), JOULE_PER_KELVIN("J/K"), WATT_PER_SQUARE_METER("W/m²"), METERS_PER_SECOND(
-							"m/s"), CUBIC_METERS_PER_SECOND("m³/s"), CUBIC_METERS("m³"), UNKNOWN("???"), PERCENT("%");
+			"°"), KILOGRAMS("kg"), PARTS_PER_MILLION("ppm"), WATTS("W"), LUX("lx"), LUMEN("lm"), KELVIN("K"), JOULE_PER_KELVIN("J/K"), WATT_PER_SQUARE_METER(
+							"W/m²"), METERS_PER_SECOND("m/s"), CUBIC_METERS_PER_SECOND(
+									"m³/s"), CUBIC_METERS("m³"), UNKNOWN("???"), PERCENT("%"), AMPERE_HOURS("Ah");
 
 	static final Map<String, PhysicalUnit> stringToEnum;
 

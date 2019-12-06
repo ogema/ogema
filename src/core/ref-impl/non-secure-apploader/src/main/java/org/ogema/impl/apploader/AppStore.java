@@ -55,6 +55,8 @@ public class AppStore implements ApplicationSource {
 	public List<InstallableApplication> getAppsAvailable() {
 		ArrayList<InstallableApplication> apps = new ArrayList<>();
 		File f = new File(location);
+		if (!f.exists())
+			f.mkdirs();
 		String[] files = f.list();
 		for (String name : files) {
 			File file = new File(f, name);

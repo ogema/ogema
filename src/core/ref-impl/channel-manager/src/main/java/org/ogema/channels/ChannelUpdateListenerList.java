@@ -55,7 +55,7 @@ class ChannelUpdateListenerList implements ChannelUpdateListener {
 			Channel channel = listenChannels.get(svc.getChannelLocator());
 
 			if (channel == null)
-				logger.warn("received unrequested channel {} in channelsUpdated.", svc.getChannelLocator());
+				logger.debug("received unrequested channel {} in channelsUpdated.", svc.getChannelLocator());
 			else
 				channel.update(svc);
 		}

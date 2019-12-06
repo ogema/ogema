@@ -55,12 +55,12 @@ import org.ogema.accesscontrol.HttpConfig;
 import org.ogema.accesscontrol.HttpConfigManagement;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.SessionAuth;
-import org.ogema.accesscontrol.Util;
 import org.ogema.applicationregistry.ApplicationRegistry;
 import org.ogema.core.administration.AdminApplication;
 import org.ogema.core.application.AppID;
 import org.ogema.core.application.Application;
 import org.ogema.core.security.WebAccessManager;
+import org.ogema.util.Util;
 import org.ogema.webadmin.AdminWebAccessManager;
 import org.osgi.service.http.HttpContext;
 import org.slf4j.Logger;
@@ -237,9 +237,13 @@ public class OgemaHttpContext implements HttpContext {
 			}
 
 			try {
-				if (Configuration.DEBUG)
-					logger.debug("New Session is forwarded to Login page.");
-				request.getRequestDispatcher(LoginServlet.LOGIN_SERVLET_PATH).forward(request, response);
+				// if we did not check for the method, then open browser tabs that periodically POST data would lead to invalid login requests
+				// and the user getting blocked...
+				if ("GET".equals(request.getMethod())) {
+					if (Configuration.DEBUG)
+						logger.debug("New Session is forwarded to Login page.");
+					request.getRequestDispatcher(LoginServlet.LOGIN_SERVLET_PATH).forward(request, response);
+				}
 			} catch (ServletException e) {
 				logger.error(this.getClass().getSimpleName(), e);
 			} catch (IOException e) {
@@ -282,12 +286,14 @@ public class OgemaHttpContext implements HttpContext {
 		 * Satisfaction of APP-SEC 16
 		 */
 		// 1. Check if it is a servlet query
+		/*
 		String key = servlets.get(currenturi);
 		if (key == null)
-			key = Util.startsWithAnyKey(servlets, currenturi); // FIXME safe?
+			key = Util.startsWithAnyKey(servlets, currenturi); // FIXME safe? Case of overlapping servlet/static registrations?
+			*/
 		// 1.1 If not skip further checks related to OTP
 		boolean result = true;
-		if (key != null && !isStaticServlet(currenturi)) {
+		if (isServletAndNonStatic(currenturi, resources, servlets, staticRegistrations)) {
 			// 2. Determine the App that owns the servlet (it's the field value owner)
 			AppID servletOwner = owner;
 			// 3. Get the app that owns the referrer of the servlet
@@ -386,6 +392,43 @@ public class OgemaHttpContext implements HttpContext {
 			return true;
 		}
 	}
+	
+	private static Map.Entry<String, String> getBestMatchingEntry(final String uri, final Map<String, String> map) {
+		Map.Entry<String, String> result = null;
+		for (Map.Entry<String, String> entry : map.entrySet()) {
+			if (uri.startsWith(entry.getKey() + "/")) {
+				if (result == null || result.getKey().length() < entry.getKey().length())
+					result = entry;
+			}
+		}
+		return result;
+	}
+	
+	/**
+	 * @param uri
+	 * @param resources
+	 * @param servlets
+	 * @param staticRegistrations
+	 * 		may be null
+	 * @return
+	 */
+	private static boolean isServletAndNonStatic(final String uri, final Map<String, String> resources, 
+				final Map<String, String> servlets, final Map<String, AdminWebAccessManager.StaticRegistration> staticRegistrations) {
+		final String value0 = servlets.get(uri);
+		if (value0 != null) 
+			return staticRegistrations == null || !staticRegistrations.containsKey(uri);
+		if (resources.containsKey(uri))
+			return false;
+		final Map.Entry<String, String> bestMatchingServlet = getBestMatchingEntry(uri, servlets);
+		if (bestMatchingServlet == null)
+			return false;
+		final Map.Entry<String, String> bestMatchingResource = getBestMatchingEntry(uri, resources);
+		if (bestMatchingResource == null || bestMatchingResource.getKey().length() < bestMatchingServlet.getKey().length()) {
+			final boolean isStatic = staticRegistrations != null && staticRegistrations.containsKey(bestMatchingServlet.getKey());
+			return !isStatic;
+		}
+		return false;
+	}
 
 	/*
 	 * Called by the Http Service to map a resource name to a URL. For servlet contextRegs, Http Service will call this
@@ -460,13 +503,6 @@ public class OgemaHttpContext implements HttpContext {
 	public String getMimeType(String name) {
 		// MimeType of the default HttpContext will be used.
 		return null;
-	}
-
-	private final boolean isStaticServlet(final String uri) {
-		final Map<String, AdminWebAccessManager.StaticRegistration> statics = this.staticRegistrations;
-		if (statics == null)
-			return false;
-		return statics.containsKey(uri);
 	}
 
 	private synchronized Map<String, AdminWebAccessManager.StaticRegistration> getStaticRegistrations() {

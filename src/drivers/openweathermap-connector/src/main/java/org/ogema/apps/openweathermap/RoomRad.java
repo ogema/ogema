@@ -18,6 +18,7 @@ package org.ogema.apps.openweathermap;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
+import org.ogema.model.devices.sensoractordevices.WindSensor;
 import org.ogema.model.locations.GeographicLocation;
 import org.ogema.model.locations.Room;
 import org.ogema.model.sensors.HumiditySensor;
@@ -41,6 +42,9 @@ public class RoomRad extends ResourcePattern<Room> {
 
 	@Existence(required = CreateMode.MUST_EXIST)
 	public final HumiditySensor humiditySens = model.humiditySensor();
+	
+	@Existence(required = CreateMode.OPTIONAL)
+	public final WindSensor windSens = model.getSubResource("windSensor", WindSensor.class);
 
 	@Existence(required = CreateMode.OPTIONAL)
 	public final StringResource city = model.location().geographicLocation().getSubResource("city");

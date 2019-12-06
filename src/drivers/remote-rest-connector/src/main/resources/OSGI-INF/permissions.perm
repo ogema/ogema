@@ -1,4 +1,5 @@
 (org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.osgi.framework.ServicePermission "org.ogema.tools.remote.ogema.auth.RemoteOgemaAuth" "get")
 (org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
 (org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
 (org.osgi.framework.PackagePermission "org.ogema.tools.*" "import")
@@ -9,13 +10,20 @@
 (org.osgi.framework.PackagePermission "javax.net.ssl" "import")
 (org.osgi.framework.PackagePermission "javax.net.ssl.*" "import")
 (org.osgi.framework.PackagePermission "org.json" "import")
+(org.osgi.framework.PackagePermission "com.google.common.io" "import")
+(org.osgi.framework.PackagePermission "org.osgi.framework" "import")
 
 # export custom resource type
 (org.osgi.framework.PackagePermission "de.iwes.ogema.remote.rest.connector.model" "exportonly")
 
-# TODO less generous resource permissions?
 (org.ogema.accesscontrol.ResourcePermission "type=*" "read,write,addsub,create,activity,delete")
+
+(java.util.PropertyPermission "java.version" "read")
+# may be further restricted at runtime...
+(java.net.SocketPermission "*" "connect,resolve")
 
 # needed to shut down the executor
 (java.lang.RuntimePermission "modifyThread")
+# needed to build the HttpClient XXX 
+(java.lang.RuntimePermission "getClassLoader")
 

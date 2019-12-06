@@ -54,6 +54,11 @@ public class List implements Comparable<List> {
 	@JsonIgnore
 	private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
+	/**
+	 * Returns the timestamp in seconds since Epoch
+	 *
+	 * @return      timestamp in seconds since Epoch
+	 */
 	@JsonProperty("dt")
 	public long getDt() {
 		return dt;

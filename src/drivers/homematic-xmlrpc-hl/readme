@@ -1,1 +1,3 @@
-See https://ogema-source.net/wiki/display/OGEMA/HomeMaticXmlRpc
+The HomeMatic XmlRpc driver requires a configuration resource of type org.ogema.drivers.homematic.xmlrpc.hl.types.HmLogicInterface.
+Each Homematic interface (wired, BidCos radio, IP) requires a separate configuration.
+The folder src/main/resources/config contains two sample resource files, one for the BidCos radio type, one for Homematic IP. 

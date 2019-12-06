@@ -22,7 +22,7 @@ import java.io.FilePermission;
 import java.security.Permission;
 import java.security.Permissions;
 
-import org.ogema.accesscontrol.Util;
+import org.ogema.util.Util;
 
 /**
  * @author Zekeriya Mansuroglu zekeriya.mansuroglu@iis.fraunhofer.de

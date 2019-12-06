@@ -27,6 +27,8 @@ import org.ogema.core.application.ApplicationManager;
 import org.ogema.recordeddata.DataRecorder;
 import org.osgi.service.http.HttpService;
 import org.osgi.service.http.NamespaceException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Register REST debug GUI
@@ -35,6 +37,7 @@ import org.osgi.service.http.NamespaceException;
 @Service(Application.class)
 public class RestApp implements Application {
 
+	static final Logger logger = LoggerFactory.getLogger(RestApp.class);
 	private ApplicationManager appMan;
 	
 	@Reference

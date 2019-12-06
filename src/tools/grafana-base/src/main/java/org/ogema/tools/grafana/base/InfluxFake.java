@@ -36,6 +36,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -49,7 +50,6 @@ import org.ogema.core.model.simple.BooleanResource;
 import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.SingleValueResource;
-import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
 import org.ogema.core.model.units.TemperatureResource;
 import org.ogema.core.recordeddata.RecordedData;
@@ -60,9 +60,11 @@ import org.ogema.core.resourcemanager.ResourceManagement;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 import org.ogema.model.actors.Actor;
+import org.ogema.model.locations.Room;
 import org.ogema.model.prototypes.PhysicalElement;
 import org.ogema.model.sensors.Sensor;
 import org.ogema.model.sensors.TemperatureSensor;
+import org.ogema.tools.resource.util.ResourceUtils;
 import org.ogema.tools.timeseries.iterator.api.MultiTimeSeriesIterator;
 import org.ogema.tools.timeseries.iterator.api.MultiTimeSeriesIteratorBuilder;
 import org.ogema.tools.timeseries.iterator.api.SampledValueDataPoint;
@@ -329,6 +331,18 @@ public class InfluxFake extends HttpServlet {
 			long[] interval = getQueryInterval(query);
 			startTime = interval[0];
 			endTime = interval[1];
+
+			HttpSession ses = req.getSession();
+
+			if (startTime == 0) {
+				startTime = (Long) ses.getAttribute("startTime");
+				endTime = (Long) ses.getAttribute("endTime");
+			}
+			else {
+				ses.setAttribute("startTime", new Long(startTime));
+				ses.setAttribute("endTime", new Long(endTime));
+			}
+
 			if (query.contains("select") && query.contains("from")) {
 				int idx = query.indexOf("from");
 				String subStr1 = query.substring(idx + 6);
@@ -385,19 +399,9 @@ public class InfluxFake extends HttpServlet {
 			columnsArray.put("time");
 			//columnsArray.put("sequence_number"); // required?
 			columnsArray.put(name);
-			String displayName = name;
-			try {
-				displayName = getDeviceLocation(name);
-			} catch (Exception e) {
-			}
-			String alternativeName = getAlternativeDisplayName(res);
-			if (alternativeName != null) {
-				displayName = alternativeName;
-			}
 			obj1.put("columns", columnsArray);
 			obj1.put("points", pointsArray);
-			obj1.put("name", displayName);
-
+			obj1.put("name", getName(res));
 		}
 		else if (params.containsKey("resourceType")) {
 			// return a list of resources of that type
@@ -918,27 +922,40 @@ public class InfluxFake extends HttpServlet {
 		return map;
 	}
 
-	private String getDeviceLocation(String resLoc) {
-		Resource res = ra.getResource(resLoc);
-		if (res instanceof PhysicalElement) {
-			PhysicalElement device = (PhysicalElement) res;
-			// two possible ways to determine location of a device
-			if (device.location().exists() && device.location().room().exists()
-					&& device.location().room().name().exists()) {
-				return device.location().room().name().getValue();
+	private String getName(final Resource res) {
+		final String altName = getAlternativeDisplayName(res);
+		if (altName != null)
+			return altName;
+		final StringBuilder nameBuilder = new StringBuilder();
+		boolean first = true;
+		try {
+			final PhysicalElement device = ResourceUtils.getFirstParentOfType(res, PhysicalElement.class);
+			if (device != null) {
+				nameBuilder.append(device.getResourceType().getSimpleName());
+				first = false;
 			}
-			Resource parent = device.getParent();
-			if (parent != null && parent.getSubResource("name") != null
-					&& (parent.getSubResource("name") instanceof StringResource)) {
-				return ((StringResource) parent.getSubResource("name")).getValue();
+		} catch (SecurityException e) {}
+		try {
+			final String room = getDeviceLocation(res);
+			if (room !=null) {
+				if (!first)
+					nameBuilder.append('|');
+				nameBuilder.append(room);
+				first = false;
 			}
+		} catch (SecurityException e) {
 		}
-		else if (res instanceof SingleValueResource) { // check whether parent has a location
-			if (!res.isTopLevel()) {
-				return getDeviceLocation(res.getParent().getLocation());
-			}
+		return nameBuilder.toString();
+	}
+	
+	private static String getDeviceLocation(final Resource res) {
+		Room room = null;
+		try {
+			room = ResourceUtils.getDeviceLocationRoom(res);
+		} catch (SecurityException e) {
+			room = ResourceUtils.getDeviceRoom(res);
 		}
-		return null; // FIXME
+		return room != null ? ResourceUtils.getHumanReadableName(room) : null;
 	}
 
 	@Override

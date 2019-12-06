@@ -45,7 +45,6 @@ public class TimeSeriesMultiIteratorImplStepSize extends TimeSeriesMultiIterator
 	final Map<Integer,Float> integrals;
 	// complete integrals over the last period
 	final Map<Integer,Float> currentIntegrals;
-
 	
 	// states for stepSize
 	final Map<Integer,SampledValue> nextPrevious = new HashMap<>();
@@ -54,16 +53,15 @@ public class TimeSeriesMultiIteratorImplStepSize extends TimeSeriesMultiIterator
 	
 	public TimeSeriesMultiIteratorImplStepSize(List<Iterator<SampledValue>> iterators, int maxNrHistoricalValues,
 			final Map<Integer,SampledValue> lowerBoundaryValues, final Map<Integer,SampledValue> upperBoundaryValues,
-			InterpolationMode globalMode, List<InterpolationMode> modes, boolean doAverage, boolean doIntegrate, Long stepSize, Long startTime) {
+			InterpolationMode globalMode, List<InterpolationMode> modes, boolean doAverage, boolean doIntegrate,
+			Long stepSize, Long startTime) {
 //			boolean doAverage, boolean doIntegrate) {
 		super(iterators, maxNrHistoricalValues, lowerBoundaryValues, upperBoundaryValues, globalMode, modes, doAverage, doIntegrate);
 		this.stepSize = stepSize;
 		this.startTime = startTime;
 		this.integrals = (doAverage || doIntegrate) ? new HashMap<Integer,Float>(iterators.size()) : null;
 		this.currentIntegrals = (doAverage || doIntegrate) ? new HashMap<Integer,Float>(iterators.size()) : null;
-//		this.doAverage = doAverage;
-//		this.doIntegrate = doIntegrate;
-		init2();
+		init2();		
 	}
 	
 	@Override
@@ -88,48 +86,25 @@ public class TimeSeriesMultiIteratorImplStepSize extends TimeSeriesMultiIterator
 				}
 				final SampledValue previous = entry.getValue();
 				final InterpolationMode mode = getInterpolationMode(idx);
-				final float val;
+				float val;
 //				if (integrals.containsKey(idx)) // tp > lastPoint
 //					val = integrate(previous, previous, upperBoundayPoint, upperBoundayPoint, mode) + integrals.get(idx); // FIXME mode NEAREST not considered! 
 //				else {
 				if (!integrals.containsKey(idx)) {// tp < lastPoint
-					SampledValue lowerBoundaryPoint = interpolate(nextTargetTime - stepSize, previous, upperBoundayPoint, mode);
+					final boolean fullyCovered = previous == null || nextTargetTime - stepSize >= previous.getTimestamp();
+					SampledValue lowerBoundaryPoint = fullyCovered ? interpolate(nextTargetTime - stepSize, previous, upperBoundayPoint, mode) : previous;
 					if (lowerBoundaryPoint == null || lowerBoundaryPoint.getQuality() == Quality.BAD)
 						continue;
 					val = integrate(previous, lowerBoundaryPoint, upperBoundayPoint, upperBoundayPoint, mode);
+					if (!fullyCovered && doAverage && previous != null)
+						val = val * stepSize / (upperBoundayPoint.getTimestamp() - previous.getTimestamp()); 
 				} else
 					val = integrals.get(idx);
 				currentIntegrals.put(idx, val);
-				// init new integrals computation XXX
-//				SampledValue sv= comingValues.get(idx);
-//				final SampledValue boundaryVal = sv != null? sv : interpolate(nextTargetTime, previous, next, mode);
-//				if (boundaryVal != null) {
-//					float itg = integrate(sv != null ? sv : previous, boundaryVal, next, next, mode);
-//					if (!Float.isNaN(itg))
-//						integrals.put(idx, itg);
-//					else
-//						integrals.remove(idx);
-//				}
-//				else
-//					integrals.remove(idx);
 			}
 			// init new integrals computation -> moved to advance loop below
 			for (Map.Entry<Integer, SampledValue> entry: comingValues.entrySet()) {
 				final int idx = entry.getKey();
-//				final SampledValue next = nextNext.get(idx);
-//				if (next == null) {
-//					integrals.remove(idx);
-//					continue;
-//				}
-//				// FIXME
-//				System.out.println("    coming: " + entry.getValue().getTimestamp() + " : next " + next.getTimestamp());
-//				// other case will be dealt with in finish integrals computation above
-//				if (next.getTimestamp() < nextTargetTime+startTime) {
-//					final InterpolationMode mode = getInterpolationMode(idx);
-//					float val = integrate(entry.getValue(), entry.getValue(), next, next, mode);
-//					integrals.put(idx, val);
-//				} else
-//					integrals.remove(idx);
 				if (!currentIntegrals.containsKey(idx)) // relevant for initialisation, if first point matches first target time stamp
 					currentIntegrals.put(idx, 0F); 
 				integrals.put(idx, 0F);
@@ -145,8 +120,9 @@ public class TimeSeriesMultiIteratorImplStepSize extends TimeSeriesMultiIterator
 			float val;
 			for (Map.Entry<Integer, Float> entry: currentIntegrals.entrySet()) {
 				val = entry.getValue();
-				if (doAverage)
+				if (doAverage) {
 					val = val/stepSize;
+				}
 				currentValues.put(entry.getKey(), new SampledValue(new FloatValue(val), nextTargetTime, Quality.GOOD)); // FIXME quality
 			}
 		} 
@@ -172,9 +148,7 @@ public class TimeSeriesMultiIteratorImplStepSize extends TimeSeriesMultiIterator
 				final SampledValue last = comingValues.get(idx);
 				if (last != null) {
 					final SampledValue end = (t < nextTargetTime ? n : interpolate(nextTargetTime, last, n, mode));
-					
-					// FIXME the order of n and end must be interchanged... but then it doesn't work any more
-					float itgr = integrate(last, last, n, end, mode);
+					float itgr = integrate(last, last, end, n, mode);
 					integrals.put(idx, integrals.get(idx) + itgr);
 				}
 			}
@@ -184,8 +158,11 @@ public class TimeSeriesMultiIteratorImplStepSize extends TimeSeriesMultiIterator
 					break;
 				}
 				nextPrevious.put(idx, n);
-				n = it.next();
-				t = n.getTimestamp();
+				final SampledValue aux = it.next();
+				t = aux.getTimestamp();
+				if (t <= nextPrevious.get(idx).getTimestamp()) // FIXME iterator bug?
+					continue;
+				n = aux;
 				if (doIntegrate) {
 					final SampledValue last = nextPrevious.get(idx);
 					final SampledValue end = (t <= nextTargetTime ? n : interpolate(nextTargetTime, last, n, mode));
@@ -198,11 +175,6 @@ public class TimeSeriesMultiIteratorImplStepSize extends TimeSeriesMultiIterator
 				nextNext.remove(idx);
 			} else {
 				if (t==nextTargetTime) {
-					// XXX ?
-//						if (n==null) 
-//							comingValues.put(idx, n);
-//						else
-//							comingValues.remove(idx);
 					comingValues.put(idx, n); // TODO check
 					if (it.hasNext()) 
 						nextNext.put(idx, it.next());

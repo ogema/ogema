@@ -885,4 +885,15 @@ public class ResourcePermission extends Permission {
 	public String getActions() {
 		return actions;
 	}
+
+	 public String toString() {
+		 if (path != null && type != null) {
+			 return "(\"" + getClass().getName() + "\" \"path=" + path + ",type=" + type + "\" \"" + getActions() + "\")";
+		 } else if (path != null) {
+			 return "(\"" + getClass().getName() + "\" \"path=" + path + "\" \"" + getActions() + "\")";
+		 } else {
+			 return "(\"" + getClass().getName() + "\" \"type=" + type + "\" \"" + getActions() + "\")";
+		 }
+	 }
+	
 }

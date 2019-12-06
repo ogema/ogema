@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.ogema.core.timeseries.ReadOnlyTimeSeries;
 
@@ -26,6 +27,12 @@ import org.ogema.core.timeseries.ReadOnlyTimeSeries;
  * Retrieve an instance as an OSGi service
  */
 public interface TimeseriesImport {
+	
+	List<ReadOnlyTimeSeries> parseMultiple(URL url, ImportConfiguration config, int nrTimeseries) throws IOException;
+	
+	List<ReadOnlyTimeSeries> parseMultiple(InputStream stream, ImportConfiguration config, int nrTimeseries) throws IOException;
+	
+	List<ReadOnlyTimeSeries> parseMultiple(Path path, ImportConfiguration config, int nrTimeseries) throws IOException;
 	
 	/**
 	 * 
@@ -54,5 +61,5 @@ public interface TimeseriesImport {
 	 * @throws SecurityException if the caller does not have the read permission for the specified path
 	 */
 	ReadOnlyTimeSeries parseCsv(URL url, ImportConfiguration config) throws IOException;
-	
+
 }

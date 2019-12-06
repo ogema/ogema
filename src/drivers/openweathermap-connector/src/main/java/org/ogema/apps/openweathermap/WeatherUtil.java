@@ -23,31 +23,20 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
-import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
-import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
-import java.util.TimeZone;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 //import org.joda.time.DateTime;
-import org.ogema.apps.openweathermap.dao.Clouds;
 import org.ogema.apps.openweathermap.dao.CurrentData;
 import org.ogema.apps.openweathermap.dao.ForecastData;
-import org.ogema.apps.openweathermap.dao.Main;
 import org.ogema.apps.openweathermap.dao.OpenWeatherMapREST;
-import org.ogema.apps.openweathermap.dao.Rain;
 
 /**
  * 
@@ -57,38 +46,14 @@ import org.ogema.apps.openweathermap.dao.Rain;
  */
 public class WeatherUtil {
 
-	private final TrustManager[] trustAllCerts;
 	private static WeatherUtil instance;
-	private boolean ssl = false;
-	private final SimpleDateFormat sdf = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
 
 	private WeatherUtil() {
-
-		javax.net.ssl.HttpsURLConnection.setDefaultHostnameVerifier(new javax.net.ssl.HostnameVerifier() {
-			@Override
-			public boolean verify(String hostname, javax.net.ssl.SSLSession sslSession) {
-				return true;
-			}
-		});
-		trustAllCerts = new TrustManager[] { new X509TrustManager() {
-			@Override
-			public void checkClientTrusted(final X509Certificate[] chain, final String authType) {
-			}
-
-			@Override
-			public void checkServerTrusted(final X509Certificate[] chain, final String authType) {
-			}
-
-			@Override
-			public X509Certificate[] getAcceptedIssuers() {
-				return null;
-			}
-		} };
 	}
 
 	public String call(String querry) {
 
-		if (ssl) {
+		if (querry.toLowerCase().startsWith("https")) {
 			return callSSL(querry);
 		}
 
@@ -107,7 +72,7 @@ public class WeatherUtil {
 		} catch (IOException e) {
 			OpenWeatherMapApplication.instance.appMan.getLogger().error(
 					"Exception by http-Request to OpenWeathermap: " + e.getMessage());
-			return "{}";
+			return null;
 		}
 		return result;
 	}
@@ -117,7 +82,7 @@ public class WeatherUtil {
 		String result = "{}";
 		try {
 			final SSLContext sslContext = SSLContext.getInstance("SSL");
-			sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+//			sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
 			final SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
 			final URLConnection urlCon = new URL(querry).openConnection();
 			urlCon.setRequestProperty("accept", "text/json");
@@ -130,7 +95,7 @@ public class WeatherUtil {
 			}
 			input.close();
 
-		} catch (NoSuchAlgorithmException | KeyManagementException | IOException e) {
+		} catch (NoSuchAlgorithmException | IOException e) {
 			return "ERROR: " + e.getStackTrace();
 		}
 		return result;
@@ -149,125 +114,12 @@ public class WeatherUtil {
 		}
 	}
 
-	public static WeatherUtil getInstance() {
+	public static synchronized WeatherUtil getInstance() {
 		if (WeatherUtil.instance == null) {
 			WeatherUtil.instance = new WeatherUtil();
 		}
 
 		return WeatherUtil.instance;
-	}
-
-	public boolean isSsl() {
-		return ssl;
-	}
-
-	public void setSsl(boolean ssl) {
-		this.ssl = ssl;
-	}
-
-	public ForecastData interpolateForecast(ForecastData data, int intervallInMinutes) {
-
-		org.ogema.apps.openweathermap.dao.List first, last;
-		Collections.sort(data.getList());
-		List<org.ogema.apps.openweathermap.dao.List> resultList = new ArrayList<>();
-		final int intervall = intervallInMinutes * 60;
-		for (int i = 0; i < data.getList().size() - 1; i++) {
-			first = data.getList().get(i);
-			last = data.getList().get(i + 1);
-			resultList.addAll(interpolate(first, last, intervall));
-		}
-		if (resultList.size() > 0) {
-			Collections.sort(resultList);
-			data.setList(resultList);
-			calculateIrradiation(data);
-		}
-		return data;
-	}
-
-	private List<org.ogema.apps.openweathermap.dao.List> interpolate(org.ogema.apps.openweathermap.dao.List first,
-			org.ogema.apps.openweathermap.dao.List last, int intervall) {
-
-		List<org.ogema.apps.openweathermap.dao.List> result = new ArrayList<>();
-		final Integer COUNT = Long.valueOf((last.getDt() - first.getDt()) / intervall).intValue();
-
-		// Clouds
-		List<Double> clouds = split(first.getClouds().getAll().doubleValue(), last.getClouds().getAll().doubleValue(),
-				COUNT);
-
-		// Main
-		List<Double> grndLevel = split(first.getMain().getGrndLevel(), last.getMain().getGrndLevel(), COUNT);
-		List<Double> humidity = split(first.getMain().getHumidity().doubleValue(), last.getMain().getHumidity()
-				.doubleValue(), COUNT);
-		List<Double> pressure = split(first.getMain().getPressure(), last.getMain().getPressure(), COUNT);
-		List<Double> seaLevel = split(first.getMain().getSeaLevel(), last.getMain().getSeaLevel(), COUNT);
-		List<Double> temp = split(first.getMain().getTemp(), last.getMain().getTemp(), COUNT);
-		List<Double> tempMax = split(first.getMain().getTempMax(), last.getMain().getTempMax(), COUNT);
-		List<Double> tempMin = split(first.getMain().getTempMin(), last.getMain().getTempMin(), COUNT);
-
-		// Rain
-		List<Double> rainData;
-		if (first.getRain() != null && last.getRain() != null) {
-			Double rain1 = (double) first.getRain().get3h() / COUNT;
-			Double rain2 = (double) last.getRain().get3h() / COUNT;
-			rainData = split(rain1, rain2, COUNT);
-			;
-		}
-		else {
-			rainData = split(0.0d, 0.0d, COUNT);
-		}
-
-		for (Integer i = 0; i < COUNT; i++) {
-			org.ogema.apps.openweathermap.dao.List entry = new org.ogema.apps.openweathermap.dao.List();
-			// Clouds
-			Clouds cloud = new Clouds(clouds.get(i).intValue());
-			entry.setClouds(cloud);
-			entry.getAdditionalProperties().putAll(first.getAdditionalProperties());
-
-			// Rain
-			Rain rain = new Rain();
-			rain.set3h(rainData.get(i).intValue());
-			entry.setRain(rain);
-
-			// Main-Weather
-			Main main = new Main();
-			main.setGrndLevel(grndLevel.get(i));
-			main.setHumidity(humidity.get(i).intValue());
-			main.setPressure(pressure.get(i));
-			main.setTemp(temp.get(i));
-			main.setTempMax(tempMax.get(i));
-			main.setTempMin(tempMin.get(i));
-			main.setSeaLevel(seaLevel.get(i));
-			entry.setMain(main);
-
-			// DateTime //"2015-03-17 12:00:00"
-			long millis = (first.getDt() + intervall * i) * 1000;
-			millis += TimeZone.getDefault().getOffset(millis);
-			entry.setDt(millis);
-			String txt = sdf.format(new Date(millis));
-			entry.setDtTxt(txt);
-
-			entry.setSys(first.getSys());
-			result.add(entry);
-		}
-
-		Collections.sort(result);
-		return result;
-	}
-
-	private List<Double> split(final Double value1, final Double value2, final Integer COUNT) {
-		final List<Double> result = new ArrayList<>();
-		Double diff = Math.abs(Math.abs(value1) - Math.abs(value2));
-
-		if (value1 >= value2) {
-			diff *= -1;
-		}
-		final Double STEP = diff / COUNT;
-		Double value = value1;
-		for (Integer i = 0; i < COUNT; i++) {
-			result.add(value);
-			value += STEP;
-		}
-		return result;
 	}
 
 	public String toString(ForecastData data) {
@@ -308,7 +160,7 @@ public class WeatherUtil {
 		return sb.toString();
 	}
 
-	private void calculateIrradiation(ForecastData data) {
+	public void calculateIrradiation(ForecastData data) {
 		final String city = data.getCity().getName();
 		final String country = data.getCity().getCountry();
 
@@ -317,26 +169,28 @@ public class WeatherUtil {
 			final long sunUp = getMillisOfDay(current.getSys().getSunrise());
 			final long sunDown = getMillisOfDay(current.getSys().getSunset());
 
-			final Double latidute = data.getCity().getCoord().getLat(); // Breitengrad
-			final Double longitude = data.getCity().getCoord().getLon(); // LÃ¤ngengrad
+			final Double latitude = data.getCity().getCoord().getLat(); // Breitengrad
+			final Double longitude = data.getCity().getCoord().getLon(); // Laengengrad
 
 			for (final org.ogema.apps.openweathermap.dao.List entry : data.getList()) {
 				Integer cloudPercent = entry.getClouds().getAll();
 
-				long millis = entry.getDt();
+				long millis = entry.getDt() * 1000l;
 
 				// TODO: Sonnenauf- und untergang
 				Double irradiance = 0.0d;
 				long dayMillis = getMillisOfDay(millis);
 				if (sunUp < dayMillis && dayMillis < sunDown) {
-					irradiance = calculateIrradiation(latidute, longitude, cloudPercent, millis);
+					irradiance = calculateIrradiation(latitude, longitude, cloudPercent, millis);
 				}
 				entry.setIrradiation(irradiance);
 			}
 		}
+		/*
 		else {
 			OpenWeatherMapApplication.instance.logger.error("current weather not received sunrise is missing");
 		}
+		*/
 	}
 
 	private long getMillisOfDay(long millis) {

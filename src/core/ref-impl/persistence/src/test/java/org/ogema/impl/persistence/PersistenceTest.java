@@ -154,7 +154,7 @@ public class PersistenceTest extends DBBasicTest {
 		// ... and some simple resources to the subresource
 		TreeElement commStatus = comminfo.addChild("communicationStatus", CommunicationStatus.class, false);
 		// another NonPersistent child
-		TreeElementImpl quality = (TreeElementImpl) commStatus.addChild("quality", FloatResource.class, false);
+		//TreeElementImpl quality = (TreeElementImpl) commStatus.addChild("quality", FloatResource.class, false);
 		TreeElementImpl communicationAddress = (TreeElementImpl) comminfo.addChild("communicationAddress",
 				StringResource.class, false);
 		TreeElementImpl lastTimeReceive = (TreeElementImpl) comminfo.addChild("lastTimeReceive", TimeResource.class,
@@ -162,7 +162,7 @@ public class PersistenceTest extends DBBasicTest {
 		comminfo.addChild("lastTimeSend", TimeResource.class, false);
 
 		// set some simple values of the sub resources above
-		quality.simpleValue.setFloat(123.567f);
+		//quality.simpleValue.setFloat(123.567f);
 		// radioQuality.simpleValue.setFloat(987.456f);
 		// communicationStatus.simpleValue.setInt(123456789);
 		// communicationNotInitialized.simpleValue.setBoolean(true);

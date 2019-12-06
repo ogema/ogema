@@ -342,7 +342,7 @@ public class DefaultRecordedData implements RecordedData {
 				default:
 					throw new UnsupportedOperationException();
 				}
-			} catch (DataRecorderException rdae) {
+			} catch (DataRecorderException | IllegalStateException rdae) {
 				logger.error("failed to write recorded data", rdae);
 			}
 		}
@@ -350,7 +350,7 @@ public class DefaultRecordedData implements RecordedData {
 		void writeFixedIntervalData(long time) {
 			try {
 				data.insertValue(createValue(time));
-			} catch (DataRecorderException rdae) {
+			} catch (DataRecorderException | IllegalStateException rdae) {
 				logger.error("failed to write recorded data", rdae);
 			}
 		}

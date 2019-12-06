@@ -47,6 +47,8 @@ import org.slf4j.Logger;
 @Component
 public class RestAccessImpl implements RestAccess, Application {
 
+	// we put the basic auth logger here so it needn't be expensively cunstructed every time the service is recreated
+	static final Logger loggerBasicAuth = org.slf4j.LoggerFactory.getLogger(RestAccessImpl.class.getPackage().getName() + ".BasicAuthentication");
 	private final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 	private final AppDomainCombiner domainCombiner = new AppDomainCombiner();
 
@@ -80,7 +82,7 @@ public class RestAccessImpl implements RestAccess, Application {
 		 * Check access permission trough the AccessControlContext of the App which is involved in this request.
 		 */
 
-		final HttpSession ses = req.getSession();
+		final HttpSession ses = req.getSession(false);
 		/*
 		 * Get The authentication information
 		 */
@@ -112,7 +114,7 @@ public class RestAccessImpl implements RestAccess, Application {
 			accMan.setCurrentUser(user);
 			return appManInternal;
 		}
-		logger.info("RestAccess denied.");
+		logger.debug("RestAccess denied for app man.");
 		return null;
 	}
 	
@@ -132,7 +134,7 @@ public class RestAccessImpl implements RestAccess, Application {
 		/*
 		 * If the app is already registered with this one time password the access is permitted.
 		 */
-		return permMan.getWebAccess().authenticate(ses, usr, pwd);
+		return ses != null && permMan.getWebAccess().authenticate(ses, usr, pwd);
 	}
 
 	/*
@@ -157,13 +159,13 @@ public class RestAccessImpl implements RestAccess, Application {
 		final ApplicationManager appManInternal = this.appMan;
 		if (appManInternal == null) // framework not running or service not started yet
 			return null;
-		final HttpSession ses = req.getSession();
 		/*
 		 * Get The authentication information
 		 */
 		final String usr = req.getParameter(OTUNAME);
 		final String pwd = req.getParameter(OTPNAME);
 		final AccessManager accMan = permMan.getAccessManager();
+		final HttpSession ses = req.getSession(false);
 		if (usr != null && pwd != null && check1TimePW(ses, usr, pwd)) {
 			// Get the AccessControlContex of the involved app
 			AdminApplication aaa = appManInternal.getAdministrationManager().getAppById(usr);// ctx.wam.admin.getAppById(usr);
@@ -172,11 +174,18 @@ public class RestAccessImpl implements RestAccess, Application {
 			final String user = accMan.getLoggedInUser(req);
 			final UserRightsProxy urp = user == null ? null : accMan.getUrp(user);
 			accMan.setCurrentUser(urp == null ? null : user);
-			final ProtectionDomain pd = aaa.getID().getApplication().getClass().getProtectionDomain();
-			if (urp == null)
-				return new AccessControlContext(new ProtectionDomain[] {pd});
-			else
-				return new AccessControlContext(new ProtectionDomain[] {pd, urp.getClass().getProtectionDomain()});
+			if (System.getSecurityManager() != null) {
+				final ProtectionDomain pd = aaa.getID().getApplication().getClass().getProtectionDomain();
+				if (urp == null)
+					return new AccessControlContext(new ProtectionDomain[] {pd});
+				else
+					return new AccessControlContext(new ProtectionDomain[] {pd, urp.getClass().getProtectionDomain()});
+			} else {
+				if (urp == null)
+					return new AccessControlContext(new ProtectionDomain[] {});
+				else
+					return new AccessControlContext(new ProtectionDomain[] {urp.getClass().getProtectionDomain()});
+			}
 		}
 		final String user = accMan.authenticate(req, false);
 		if (user != null) {
@@ -188,7 +197,7 @@ public class RestAccessImpl implements RestAccess, Application {
 			accMan.setCurrentUser(user);
 			return new AccessControlContext(new ProtectionDomain[] {urp.getClass().getProtectionDomain()});
 		}
-		logger.info("RestAccess denied.");
+		logger.debug("RestAccess denied.");
 		return null;
 	}
 	

@@ -25,8 +25,7 @@ import org.ogema.core.channelmanager.measurements.DoubleValue;
 import org.ogema.core.channelmanager.measurements.Quality;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.model.schedule.Schedule;
-import org.ogema.core.model.simple.FloatResource;
-import org.ogema.core.model.units.TemperatureResource;
+import org.ogema.core.model.units.LengthResource;
 import org.ogema.core.timeseries.InterpolationMode;
 
 /**
@@ -38,24 +37,38 @@ import org.ogema.core.timeseries.InterpolationMode;
 public class ResourceUtil {
 
 	private final Schedule irradiationForecast;
+	private final Schedule humidityForecast;
 	private final Schedule temperatureForecast;
+	private Schedule windSpeedForecast = null;
+	private Schedule windDirectionForecast = null;
 	private final ApplicationManager appMan;
 
-	public ResourceUtil(ApplicationManager appMan, TemperatureResource tempResouce, FloatResource irrad) {
+	public ResourceUtil(ApplicationManager appMan, RoomRad pattern) {
 
-		temperatureForecast = tempResouce.forecast().create();
-
-		irradiationForecast = irrad.forecast().create();
-
-		tempResouce.forecast().setInterpolationMode(InterpolationMode.LINEAR);
-		irrad.forecast().setInterpolationMode(InterpolationMode.LINEAR);
-		tempResouce.activate(true);
-		irrad.activate(true);
+		temperatureForecast = pattern.tempSens.reading().forecast().create();
+		humidityForecast = pattern.humiditySens.reading().forecast().create();
+		irradiationForecast = pattern.irradSensor.reading().forecast().create();
+		temperatureForecast.setInterpolationMode(InterpolationMode.LINEAR);
+		humidityForecast.setInterpolationMode(InterpolationMode.LINEAR);
+		irradiationForecast.setInterpolationMode(InterpolationMode.LINEAR);
+		temperatureForecast.activate(true);
+		humidityForecast.activate(true);
+		irradiationForecast.activate(true);
+		
+		if(pattern.windSens.isActive()) {
+			windSpeedForecast = pattern.windSens.speed().reading().forecast().create();
+			windDirectionForecast = pattern.windSens.direction().reading().forecast().create();
+			windSpeedForecast.setInterpolationMode(InterpolationMode.LINEAR);
+			windDirectionForecast.setInterpolationMode(InterpolationMode.LINEAR);
+			pattern.windSens.altitude().<LengthResource> create().setValue(0);
+			pattern.windSens.activate(true);
+		}
+		
 		this.appMan = appMan;
 	}
 
 	/**
-	 * calculate/interpolate weather information (temperature,solarirradiation)
+	 * calculate/interpolate weather information (temperature, solarirradiation)
 	 * 
 	 * @param city
 	 *            name of the city
@@ -65,28 +78,54 @@ public class ResourceUtil {
 	public void update(String city, String county) {
 
 		ForecastData data = OpenWeatherMapREST.getInstance().getWeatherForcast(city, county);
-		int intervallInMinutes = 1;
-		data = WeatherUtil.getInstance().interpolateForecast(data, intervallInMinutes);
+		if (data == null)
+			return;
+		WeatherUtil.getInstance().calculateIrradiation(data);
+		boolean ignoreWind = (windDirectionForecast == null || windSpeedForecast == null);
 
-		List<SampledValue> irradiationList = new ArrayList<>();
 		List<SampledValue> tempList = new ArrayList<>();
+		List<SampledValue> humidityList = new ArrayList<>();
+		List<SampledValue> irradiationList = new ArrayList<>();
+		List<SampledValue> windSpeedList = null;
+		List<SampledValue> windDirectionList = null;
+		if(!ignoreWind) {
+			windSpeedList = new ArrayList<>();
+			windDirectionList = new ArrayList<>();
+		}
 		appMan.getLogger().debug("got {} values for {}/{}", data.getList().size(), county, city);
 
 		for (org.ogema.apps.openweathermap.dao.List entry : data.getList()) {
 
-			// DateTime c = new DateTime(entry.getDt());
-			SampledValue irrad = newSampledDouble(entry.getIrradiation(), entry.getDt());
-			SampledValue temp = newSampledDouble(entry.getMain().getTemp(), entry.getDt());
-			irradiationList.add(irrad);
+			SampledValue temp = newSampledDouble(entry.getMain().getTemp(), entry.getDt() * 1000l);
+			SampledValue humidity = newSampledDouble(((double) entry.getMain().getHumidity()) / 100.0, entry.getDt() * 1000l);
+			SampledValue irrad = newSampledDouble(entry.getIrradiation(), entry.getDt() * 1000l);
+			
 			tempList.add(temp);
-			// appMan.getLogger().info(c + " " + temp);
-			// appMan.getLogger().info(c + " " + irrad);
+			humidityList.add(humidity);
+			irradiationList.add(irrad);
+
+			if(!ignoreWind) {
+				SampledValue windSpeed = newSampledDouble((double)entry.getWind().getSpeed(), entry.getDt() * 1000l);
+				SampledValue windDirection = newSampledDouble((double)entry.getWind().getDeg(), entry.getDt() * 1000l);
+				windSpeedList.add(windSpeed);
+				windDirectionList.add(windDirection);
+			}
 		}
 
-		irradiationForecast.addValues(irradiationList);
 		temperatureForecast.addValues(tempList);
-		appMan.getLogger().debug("wrote {} values to {}", irradiationList.size(), irradiationForecast.getPath());
+		humidityForecast.addValues(humidityList);
+		irradiationForecast.addValues(irradiationList);
+		
+		if(!ignoreWind) {
+			windSpeedForecast.addValues(windSpeedList);
+			windDirectionForecast.addValues(windDirectionList);
+			appMan.getLogger().debug("wrote {} values to {}", windSpeedList.size(), windSpeedForecast.getPath());
+			appMan.getLogger().debug("wrote {} values to {}", windDirectionList.size(), windDirectionForecast.getPath());
+		}
+
 		appMan.getLogger().debug("wrote {} values to {}", tempList.size(), temperatureForecast.getPath());
+		appMan.getLogger().debug("wrote {} values to {}", humidityList.size(), humidityForecast.getPath());
+		appMan.getLogger().debug("wrote {} values to {}", irradiationList.size(), irradiationForecast.getPath());
 	}
 
 	private SampledValue newSampledDouble(Double value, long timestamp) {

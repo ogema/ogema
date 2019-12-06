@@ -150,6 +150,7 @@ public class MinimalDeviceService implements IndicationListener<Void> {
     }
 
     private void sendAck(Indication i) {
+        logger.trace("Send Ack to "+i.getSource().toDestinationAddress()+" from MinimalDeviceService");
         ByteBuffer buf = ByteBuffer.allocate(30);
         ProtocolControlInformation pci = new ProtocolControlInformation(ApduConstants.APDU_TYPES.SIMPLE_ACK, i.getProtocolControlInfo().getServiceChoice()).withInvokeId(i.getProtocolControlInfo().getInvokeId());
         pci.write(buf);
@@ -162,6 +163,7 @@ public class MinimalDeviceService implements IndicationListener<Void> {
     }
 
     private void sendReject(Indication i, int reason) {
+        logger.trace("Send Reject to "+i.getSource().toDestinationAddress()+" from MinimalDeviceService");
         ByteBuffer buf = ByteBuffer.allocate(30);
         ProtocolControlInformation pci = new ProtocolControlInformation(ApduConstants.APDU_TYPES.REJECT, reason).withInvokeId(i.getProtocolControlInfo().getInvokeId());
         pci.write(buf);
@@ -175,6 +177,7 @@ public class MinimalDeviceService implements IndicationListener<Void> {
     }
 
     private void sendError(Indication i, BACnetErrorClass eClass, BACnetErrorCode eCode) {
+        logger.trace("Send Error to "+i.getSource().toDestinationAddress()+" from MinimalDeviceService");
         ByteBuffer buf = ByteBuffer.allocate(30);
         ProtocolControlInformation pci = new ProtocolControlInformation(ApduConstants.APDU_TYPES.ERROR, i.getProtocolControlInfo().getServiceChoice()).withInvokeId(i.getProtocolControlInfo().getInvokeId());
         pci.write(buf);
@@ -189,6 +192,7 @@ public class MinimalDeviceService implements IndicationListener<Void> {
     }
 
     private void sendProperty(Indication i, ObjectIdentifierTag oid, int propId) {
+        logger.trace("Send Property to "+i.getSource().toDestinationAddress()+" from MinimalDeviceService");
         PropertyConversion p = objects.getOrDefault(oid, Collections.emptyMap()).get(propId);
         if (p == null || p.supplier == null) {
             sendError(i, BACnetErrorClass.property, BACnetErrorCode.unknown_property);
@@ -226,6 +230,7 @@ public class MinimalDeviceService implements IndicationListener<Void> {
     }
 
     private void sendObjectList(Indication i) {
+        logger.trace("Send objectList to "+i.getSource().toDestinationAddress()+" from MinimalDeviceService");
         ByteBuffer buf = ByteBuffer.allocate(1500);
         ProtocolControlInformation pci = new ProtocolControlInformation(
                 ApduConstants.APDU_TYPES.COMPLEX_ACK, BACnetConfirmedServiceChoice.readProperty);

@@ -292,8 +292,12 @@ public class TreeTimeSeries implements MemoryTimeSeries {
 
 	@Override
 	public List<SampledValue> getValues(long startTime, long endTime) {
-		SortedSet<SampledValue> elements = getSubset(startTime, endTime);
+		try {
+			SortedSet<SampledValue> elements = getSubset(startTime, endTime);
 		return getValuesInternal(elements);
+		} catch(IllegalArgumentException e) {
+			throw new IllegalArgumentException("Probably startTime "+startTime+" after endTime "+endTime, e);
+		}
 	}
 
 	protected List<SampledValue> getValuesInternal(SortedSet<SampledValue> elements) {

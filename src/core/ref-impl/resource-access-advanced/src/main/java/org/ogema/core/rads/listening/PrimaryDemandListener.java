@@ -43,12 +43,12 @@ class PrimaryDemandListener<T extends Resource, P extends ResourcePattern<T>> {
     final Map<String, P> m_matches = new HashMap<>();
     final Logger m_log;
 
-    public PrimaryDemandListener(ApplicationManager appMan, Class<T> resType, Class<P> radType, PatternListener<P> listener, PatternFactory<P> factory) {
+    public PrimaryDemandListener(ApplicationManager appMan, Logger logger, Class<T> resType, Class<P> radType, PatternListener<P> listener, PatternFactory<P> factory) {
     	m_resAcc = appMan.getResourceAccess();
         m_resType = resType;
         m_radType = radType;
         m_radListener = listener;
-        m_log = appMan.getLogger();
+        m_log = logger;
 //        try {
 //            m_constructor = m_radType.getConstructor(Resource.class);
 //        } catch (NoSuchMethodException | SecurityException ex) {

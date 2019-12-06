@@ -59,17 +59,17 @@ import org.slf4j.LoggerFactory;
  * 
  * The following channel addressing modes are supported by this driver:
  * 
- * - access 16bit register(s) called Input Registers (read only) 
- *   channelAddressString format: "&lt;DEVICE_ID&gt;:INPUT_REGISTERS:&lt;REGISTERNUMBER&gt;:&lt;COUNT&gt;"
+ * - access 16bit register(s) called Input Registers (read only) channelAddressString format:
+ * "&lt;DEVICE_ID&gt;:INPUT_REGISTERS:&lt;REGISTERNUMBER&gt;:&lt;COUNT&gt;"
  * 
- * - access 16bit register(s) called Holding Registers (read / write) 
- *   channelAddressString format: "&lt;DEVICE_ID&gt;:HOLDING_REGISTERS:&lt;REGISTERNUMBER&gt;:&lt;COUNT&gt;"
+ * - access 16bit register(s) called Holding Registers (read / write) channelAddressString format:
+ * "&lt;DEVICE_ID&gt;:HOLDING_REGISTERS:&lt;REGISTERNUMBER&gt;:&lt;COUNT&gt;"
  * 
- * - access 1bit called Discrete Input (read only) 
- *   channelAddressString format: "&lt;DEVICE_ID&gt;:DISCRETE_INPUTS:&lt;REGISTERNUMBER&gt;:&lt;COUNT&gt;"
+ * - access 1bit called Discrete Input (read only) channelAddressString format:
+ * "&lt;DEVICE_ID&gt;:DISCRETE_INPUTS:&lt;REGISTERNUMBER&gt;:&lt;COUNT&gt;"
  * 
- * - access 1bit called Coils (read / write) 
- *   channelAddressString format: "&lt;DEVICE_ID&gt;:COILS:&lt;REGISTERNUMBER&gt;:&lt;COUNT&gt;"
+ * - access 1bit called Coils (read / write) channelAddressString format:
+ * "&lt;DEVICE_ID&gt;:COILS:&lt;REGISTERNUMBER&gt;:&lt;COUNT&gt;"
  * 
  * The parts of the addressString are:
  * 
@@ -88,15 +88,15 @@ import org.slf4j.LoggerFactory;
  * 
  * - Device Id: modbus device address (normally 0 for modbus/tcp)
  * 
- * - Registernumber : address of first addressed register (0-65535)
- * e.g. read holding register 0 -&gt; modbus register address 400001
+ * - Registernumber : address of first addressed register (0-65535) e.g. read holding register 0 -&gt; modbus register
+ * address 400001
  * 
- * - Count : number of addressed coils/inputs/etc
- * e.g. read holding register 0 count 5 -&gt; modbus registers 400001 - 400005
+ * - Count : number of addressed coils/inputs/etc e.g. read holding register 0 count 5 -&gt; modbus registers 400001 -
+ * 400005
  * 
- * - Datatype
- * all read from a channel is an int[] array. Boolean values (COILS or DISCRETE_INPUTS) are converted to in (false -&gt; 0, true -&gt; 1).
- * all data written to a channel must be an int[] array. Boolean values are interpreted (0 -&gt; false, !0 -&gt; true)
+ * - Datatype all read from a channel is an int[] array. Boolean values (COILS or DISCRETE_INPUTS) are converted to in
+ * (false -&gt; 0, true -&gt; 1). all data written to a channel must be an int[] array. Boolean values are interpreted
+ * (0 -&gt; false, !0 -&gt; true)
  * 
  * 
  * @author pau

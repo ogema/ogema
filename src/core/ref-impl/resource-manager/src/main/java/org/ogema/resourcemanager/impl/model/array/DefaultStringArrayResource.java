@@ -38,6 +38,7 @@ public class DefaultStringArrayResource extends ResourceBase implements StringAr
 
 	@Override
 	public String[] getValues() {
+		checkReadPermission();
 		return getEl().getData().getStringArr().clone();
 	}
 
@@ -61,6 +62,7 @@ public class DefaultStringArrayResource extends ResourceBase implements StringAr
 
 	@Override
 	public String getElementValue(int index) {
+        	checkReadPermission();
 		return getEl().getData().getStringArr()[index];
 	}
 

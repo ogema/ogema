@@ -18,14 +18,14 @@ package org.ogema.apps.openweathermap.resources;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.ogema.apps.openweathermap.RoomRad;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.FloatResource;
+import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.StringResource;
-import org.ogema.core.model.units.TemperatureResource;
-import org.ogema.core.recordeddata.RecordedDataConfiguration;
-import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
+import org.ogema.core.model.units.LengthResource;
 import org.ogema.model.locations.Room;
 import org.ogema.model.sensors.SolarIrradiationSensor;
 
@@ -37,69 +37,41 @@ import org.ogema.model.sensors.SolarIrradiationSensor;
  */
 public class EnvironmentCreater {
 
-	static EnvironmentCreater instance = new EnvironmentCreater();
-	private OgemaLogger logger;
-	private ApplicationManager appMan;
+	private final OgemaLogger logger;
+	private final ApplicationManager appMan;
 
 	private static final int solarLowerLimit = 0;
 	private static final int solarUpperLimit = 1500;
 
-	private EnvironmentCreater() {
-
-	}
-
-	public void init(ApplicationManager appManager) {
-
-		logger = appManager.getLogger();
-		appMan = appManager;
-
-	}
-
-	public static EnvironmentCreater getInstance() {
-		return instance;
+	public EnvironmentCreater(ApplicationManager appMan) {
+		this.logger = appMan.getLogger();
+		this.appMan = appMan;
 	}
 
 	public Resource createResource(String name, final String city, final String country) {
 
 		logger.info("create new resource with name: " + name);
 
-		RecordedDataConfiguration cfg = new RecordedDataConfiguration();
-		cfg.setStorageType(StorageType.ON_VALUE_CHANGED);
-
 		Room environment = appMan.getResourceManagement().createResource(name, Room.class);
+		RoomRad pattern = new RoomRad(environment);
+		environment.type().<IntegerResource> create().setValue(0);
 
-		environment.type().setValue(0);
+		pattern.city.<StringResource> create().setValue(city);
+		pattern.country.<StringResource> create().setValue(country);
+		pattern.tempSens.reading().forecast().create();
+		pattern.humiditySens.reading().forecast().create();
+		pattern.windSens.direction().reading().forecast().create();
+		pattern.windSens.speed().reading().forecast().create();
+		pattern.windSens.altitude().<LengthResource> create().setValue(0);
+		
+		SolarIrradiationSensor irradSens = pattern.irradSensor;
+		irradSens.reading().forecast().create();
+		irradSens.ratedValues().upperLimit().<FloatResource> create().setValue(solarUpperLimit);
+		irradSens.ratedValues().lowerLimit().<FloatResource> create().setValue(solarLowerLimit);
 
-		environment.location().geographicLocation().create();
-
-		StringResource cityRes = environment.location().geographicLocation().addDecorator("city", StringResource.class);
-
-		cityRes.setValue(city);
-
-		StringResource countryRes = environment.location().geographicLocation()
-				.addDecorator("country", StringResource.class);
-
-		countryRes.setValue(country);
-
-		TemperatureResource tempSens = environment.temperatureSensor().reading();
-		tempSens.forecast().create();
-		tempSens.getHistoricalData().setConfiguration(cfg);
-
-		SolarIrradiationSensor irradSensorX = environment.addDecorator("solarIrradiationSensor",
-				SolarIrradiationSensor.class);
-
-		irradSensorX.ratedValues().upperLimit().setValue(solarUpperLimit);
-
-		irradSensorX.ratedValues().lowerLimit().setValue(solarLowerLimit);
-
-		FloatResource humidity = environment.humiditySensor().reading().create();
-
-		humidity.getHistoricalData().setConfiguration(cfg);
-
-		humidity.forecast().create();
-
-		environment.activate(true);
-
+		appMan.getResourcePatternAccess().activatePattern(pattern);
+		pattern.tempSens.reading().forecast().activate(false);
+		
 		return environment;
 	}
 

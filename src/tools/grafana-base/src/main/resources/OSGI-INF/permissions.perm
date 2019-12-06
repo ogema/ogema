@@ -5,10 +5,6 @@
 (org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
 (org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
 (org.osgi.framework.PackagePermission "org.ogema.tools.timeseries.iterator.api" "import")
-
+(org.osgi.framework.PackagePermission "org.ogema.tools.resource.util" "import")
 
 (org.osgi.framework.PackagePermission "org.ogema.tools.grafana.base" "exportonly")
-(org.osgi.framework.PackagePermission "org.ogema.tools.grafana.base.*" "exportonly")
-
-# TODO find out actually required permissions to get this working, without granting all permissions
-#(java.security.AllPermission)

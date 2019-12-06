@@ -15,6 +15,8 @@
  */
 package de.fhg.iee.bacnet.apdu;
 
+import de.fhg.iee.bacnet.api.BACnetEnumeration;
+
 /**
  * Contains bitmasks (8 bit) used in APDUs.
  * 
@@ -31,7 +33,7 @@ public abstract class ApduConstants {
     public static final byte TYPE_REJECT          = 0b0110_0000;
     public static final byte TYPE_ABORT           = 0b0111_0000;
     
-    public enum APDU_TYPES {
+    public enum APDU_TYPES implements BACnetEnumeration {
         CONFIRMED_REQUEST(TYPE_CONFIRMED_REQ),
         UNCONFIRMED_REQ(TYPE_UNCONFIRMED_REQ),
         SIMPLE_ACK(TYPE_SIMPLE_ACK),
@@ -49,6 +51,22 @@ public abstract class ApduConstants {
         public int getMask() {
             return mask;
         }
+        
+        public static APDU_TYPES forEnumValue(int val) {
+ 			for (APDU_TYPES o: values()) {
+                if (val == o.getBACnetEnumValue()){
+                    return o;
+                }
+            }
+            return null;
+            //throw new IllegalArgumentException("unknown enum value: " + val);
+        }
+
+		@Override
+		public int getBACnetEnumValue() {
+			return mask;
+		}
+
     }
     
     public enum MAX_SEGMENTS {

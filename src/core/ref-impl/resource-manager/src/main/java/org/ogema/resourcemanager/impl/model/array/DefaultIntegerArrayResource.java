@@ -38,6 +38,7 @@ public class DefaultIntegerArrayResource extends ResourceBase implements Integer
 
 	@Override
 	public int[] getValues() {
+		checkReadPermission();
 		return getEl().getData().getIntArr().clone();
 	}
 
@@ -61,6 +62,7 @@ public class DefaultIntegerArrayResource extends ResourceBase implements Integer
 
 	@Override
 	public int getElementValue(int index) {
+        	checkReadPermission();
 		return getEl().getData().getIntArr()[index];
 	}
 

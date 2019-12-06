@@ -128,7 +128,8 @@ public class CovSubscriber implements Closeable {
         }
 
         public Future<Boolean> cancel() {
-            subscriptions.remove(id);
+            logger.debug("Cancel subscription on {} / {}", object.getObjectType(), object.getInstanceNumber());
+        	subscriptions.remove(id);
             if (refreshHandle != null) {
                 refreshHandle.cancel(false);
             }
@@ -203,13 +204,13 @@ public class CovSubscriber implements Closeable {
                             public Void event(Indication ind) {
                                 //TODO: check for error result
                                 if (ind.getProtocolControlInfo().getPduType() == ApduConstants.TYPE_SIMPLE_ACK) {
-                                    logger.debug("subscription confirmed for {}@{}", sub.object, sub.destination);
+                                    logger.trace("subscription confirmed for {}@{}", sub.object, sub.destination);
                                 }
                                 return null;
                             }
                         };
+                        logger.debug("request refresh for subscription on {}@{}", sub.object, sub.destination);
                         transport.request(sub.destination, bb, Transport.Priority.Normal, true, refreshConfirmedListener);
-                        logger.debug("requested refresh for subscription on {}@{}", sub.object, sub.destination);
                     } catch (IOException ex) {
                         logger.error("could not refresh subscription for {}@{}: {}", sub.object, sub.destination, ex);
                     }
@@ -220,6 +221,7 @@ public class CovSubscriber implements Closeable {
     }
 
     public Future<Subscription> subscribe(DeviceAddress device, ObjectIdentifierTag object, boolean confirmed, int lifetime, CovListener l) throws IOException {
+        logger.trace("Send Subscribe to "+device+" for "+object.getObjectType()+" / "+object.getInstanceNumber());
         Objects.requireNonNull(object);
         Objects.requireNonNull(l);
         int id = subscriptionID.incrementAndGet();
@@ -231,7 +233,7 @@ public class CovSubscriber implements Closeable {
                 //TODO: handle failure (COV_SUBSCRIPTION_FAILED)
                 // BACnetErrorClass.services + BACnetErrorCode.cov_subscription_failed
                 if (i.getProtocolControlInfo().getPduType() == ApduConstants.TYPE_SIMPLE_ACK) {
-                    logger.debug("subscription confirmed for {}@{}", object, device);
+                    logger.trace("subscription confirmed for {}@{}", object, device);
                     subscriptions.put(sub.id, sub);
                     scheduleRefresh(sub);
                 }
@@ -296,6 +298,7 @@ public class CovSubscriber implements Closeable {
         ProtocolControlInformation ackPci
                 = new ProtocolControlInformation(ApduConstants.APDU_TYPES.SIMPLE_ACK, BACnetConfirmedServiceChoice.confirmedCOVNotification)
                         .withInvokeId(i.getProtocolControlInfo().getInvokeId());
+        logger.trace("Send Ack to "+i.getSource().toDestinationAddress()+" from CovSubscriber");
         ByteBuffer bb = ByteBuffer.allocate(10);
         ackPci.write(bb);
         bb.flip();

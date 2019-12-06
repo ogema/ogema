@@ -1,0 +1,91 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<artifactId>ogema-tools</artifactId>
+		<groupId>org.ogema.tools</groupId>
+		<version>2.2.1</version>
+	</parent>
+
+    <description>
+        Bundle with a synchronous activator which will install OGEMA resources
+        from XML (.ogx) or JSON (.ogj) files located in config/resources (default).
+        This requires a running OGEMA framework when the bundle is started and
+        enables the installation of basic resources before other applications
+        are activated.
+        
+        Also adds a service for felix fileinstall that will install such
+        resource files. Files installed through fileinstall will be reinstalled
+        when they are updated or when a newer version of an installed file is
+        found after a restart (using the file's last modification timestamp).
+        Files installed from the configuration directory will only be reinstalled
+        on a restart, if they have been changed.
+    </description>
+	<name>OGEMA Tools :: OGEMA Fileinstall</name>
+	<artifactId>ogema-fileinstall</artifactId>
+
+	<packaging>bundle</packaging>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-scr-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+                <configuration>
+                    <instructions>
+                        <Bundle-Activator>org.ogema.tools.ogema.fileinstall.ConfigurationResourceInstaller</Bundle-Activator>
+                        <Import-Package>
+                            org.apache.felix.fileinstall;resolution:=optional,
+                            *
+                        </Import-Package>
+                        <Private-Package>org.ogema.tools.ogema.fileinstall</Private-Package>
+                        <!-- let bnd create permissions: -->
+                        <Include-Resource>
+                            {maven-resources},
+                            {OSGI-INF/permissions.perm=src/main/resources/OSGI-INF/permissions.perm}
+                        </Include-Resource>
+                    </instructions>
+                </configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.osgi</groupId>
+			<artifactId>org.osgi.compendium</artifactId>
+        </dependency>
+        <dependency>
+			<groupId>org.apache.felix</groupId>
+			<artifactId>org.apache.felix.fileinstall</artifactId>
+            <version>3.2.6</version>
+		</dependency>
+		<dependency>
+			<groupId>org.ogema.core</groupId>
+			<artifactId>api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.ogema.core</groupId>
+			<artifactId>models</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.ogema.ref-impl</groupId>
+			<artifactId>ogema-exam-base</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+</project>

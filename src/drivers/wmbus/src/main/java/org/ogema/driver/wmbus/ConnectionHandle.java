@@ -15,12 +15,16 @@
  */
 package org.ogema.driver.wmbus;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.ChannelUpdateListener;
-import org.ogema.driver.wmbus.WirelessMBusDriver.TRANCECIVER;
+import org.ogema.core.channelmanager.driverspi.DeviceLocator;
+import org.openmuc.jmbus.wireless.WMBusConnection;
 
 /**
  * Class representing an MBus Connection.<br>
@@ -29,17 +33,23 @@ import org.ogema.driver.wmbus.WirelessMBusDriver.TRANCECIVER;
  */
 public class ConnectionHandle {
 	private ChannelUpdateListener listener;
-	private int deviceCounter = 1;
-	private final Object mBusSap;
-	TRANCECIVER tranceciver;
-	private boolean open;
-	private final List<ChannelLocator> channelList = new LinkedList<ChannelLocator>();
+	private WMBusConnection mBusConnection;
+	private final Map<DeviceLocator, List<ChannelLocator>> deviceList = new HashMap<>();
+	private String keys;
+	private DeviceLocator dl;
 
-	public ConnectionHandle(Object mBusSap, ChannelLocator channelLocator, TRANCECIVER tranceciver) {
-		this.mBusSap = mBusSap;
-		this.tranceciver = tranceciver;
-		this.channelList.add(channelLocator);
+	String getParams() {
+		return keys;
+	}
 
+	String getIfaceId() {
+		return dl.getInterfaceName();
+	}
+
+	public ConnectionHandle(WMBusConnection mBusCon, DeviceLocator dl) {
+		this.mBusConnection = mBusCon;
+		this.dl = dl;
+		this.keys = dl.getParameters();
 	}
 
 	public ChannelUpdateListener getListener() {
@@ -50,40 +60,51 @@ public class ConnectionHandle {
 		this.listener = listener;
 	}
 
-	public TRANCECIVER getTranceciver() {
-		return tranceciver;
+	public WMBusConnection getMBusConnection() {
+		return mBusConnection;
 	}
 
-	public Object getMBusSap() {
-		return mBusSap;
+	public int getDeviceCount() {
+		return deviceList.size();
 	}
 
-	public void increaseDeviceCounter() {
-		deviceCounter++;
+	void addDevice(DeviceLocator dl) {
+		if (!deviceList.containsKey(dl))
+			deviceList.put(dl, new ArrayList<>());
 	}
 
-	public void decreaseDeviceCounter() {
-		deviceCounter--;
+	public List<ChannelLocator> getChannels(DeviceLocator dl) {
+		return deviceList.get(dl);
 	}
 
-	public int getDeviceCounter() {
-		return deviceCounter;
+	public void addChannel(DeviceLocator dl, ChannelLocator channel) {
+		if (!deviceList.containsKey(dl))
+			addDevice(dl);
+		deviceList.get(dl).add(channel);
 	}
 
-	public boolean isOpen() {
-		return open;
+	public void removeDevice(DeviceLocator dl) {
+		deviceList.remove(dl);
 	}
 
-	public void open() {
-		open = true;
+	public Set<DeviceLocator> getDevices() {
+		return deviceList.keySet();
 	}
 
-	public void close() {
-		open = false;
+	public boolean equals(Object o) {
+		if (o == null)
+			return false;
+		if (!(o instanceof ConnectionHandle))
+			return false;
+		ConnectionHandle ch = (ConnectionHandle) o;
+		if (ch.dl.equals(this.dl))
+			return true;
+		return false;
 	}
 
-	public List<ChannelLocator> getChannels() {
-		return channelList;
+	public int hashCode() {
+		int result = 0;
+		result = dl.hashCode();
+		return result;
 	}
-
 }

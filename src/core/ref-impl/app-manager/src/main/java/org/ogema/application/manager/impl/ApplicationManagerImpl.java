@@ -35,7 +35,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.ogema.accesscontrol.AdminPermission;
-import org.ogema.accesscontrol.Util;
 import org.ogema.core.administration.AdministrationManager;
 import org.ogema.core.administration.FrameworkClock;
 import org.ogema.core.administration.RegisteredTimer;
@@ -60,6 +59,7 @@ import org.ogema.resourcemanager.impl.ApplicationResourceManager;
 import org.ogema.timer.TimerRemovedListener;
 import org.ogema.timer.TimerScheduler;
 import org.ogema.tools.impl.SerializationManagerImpl;
+import org.ogema.util.Util;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +74,7 @@ public class ApplicationManagerImpl implements ApplicationManager, TimerRemovedL
 	protected final ExecutorService executor;
 	private final Queue<Future<?>> workQueue;
 	private static final int WORKQUEUE_FORCE_DRAIN_SIZE = 50;
-	private final Callable<Void> drainWorkQueueTask;
+	final Callable<Void> drainWorkQueueTask;
 	private final ApplicationThreadFactory tfac;
 
 	private final Application application;
@@ -368,24 +368,21 @@ public class ApplicationManagerImpl implements ApplicationManager, TimerRemovedL
 
 	/**
 	 * Removes completed futures from the workqueue and logs all exceptions as warnings.
+	 * Synchronization note: must be called in app thread only.
 	 */
 	protected void drainWorkQueue() {
-//		int done = 0;
-		try {
-			while (!workQueue.isEmpty() && workQueue.peek().isDone()) {
-				Future<?> f = workQueue.poll();
-				try {
-					f.get();
-	//				done++;
-				} catch (ExecutionException ee) {
-					reportException(ee.getCause());
-				} catch (InterruptedException ie) {
-					// after isDone() == true?!?
-					getLogger().error("really unexpected exception in ApplicationManagerImpl.drainWorkQueue(), review code",
-							ie);
-				}
+		while (!workQueue.isEmpty() && workQueue.peek().isDone()) {
+			Future<?> f = workQueue.poll();
+			try {
+				f.get();
+			} catch (ExecutionException ee) {
+				reportException(ee.getCause());
+			} catch (InterruptedException ie) {
+				// after isDone() == true?!?
+				getLogger().error("really unexpected exception in ApplicationManagerImpl.drainWorkQueue(), review code",
+						ie);
 			}
-		} catch (NullPointerException e) {} // may happen sporadically due to unsynchronized access to the queue
+		}
 		// System.out.printf("%d jobs done, %d in queue%n", done, workQueue.size());
 	}
 

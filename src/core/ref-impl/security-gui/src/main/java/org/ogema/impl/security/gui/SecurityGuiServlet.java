@@ -227,6 +227,7 @@ public class SecurityGuiServlet extends HttpServlet {
 				printResponse(resp, data);
 			} catch (Exception e) {
 				e.printStackTrace(resp.getWriter());
+				resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 			}
 			break;
 		case "/app":

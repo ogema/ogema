@@ -212,9 +212,12 @@ public class ProgramEnforcerController implements Controller, ResourceValueListe
 		final InterpolationMode interpolation = program.getInterpolationMode();
 		switch (interpolation) {
 		case LINEAR: {
-			timer.setTimingInterval(updateInterval);
-			timer.resume();
-			return;
+			if (updateInterval > 0) {
+				timer.setTimingInterval(updateInterval);
+				timer.resume();
+				return;
+			}
+			// else: intentional fallthrough
 		}
 		case STEPS: {
 			final SampledValue nextProgramValue = program.getNextValue(t0 + 1);

@@ -32,7 +32,7 @@ import org.ogema.drivers.homematic.xmlrpc.hl.api.HomeMaticConnection;
 import org.ogema.tools.resource.util.ResourceUtils;
 
 /**
- * Handler for a {@code HM-ES-PMSw1-Pl} device. Does not do any HomeMatic
+ * Handler for a {@code HM-ES-PMSw1-Pl} or {@code HM-ES-PMSw1-Pl-DN-R1} device. Does not do any HomeMatic
  * communication itself, but relies on {@link PowerMeterChannel} and
  * {@link SwitchChannel} and only aggregates the resources created by these
  * handlers into an OGEMA {@link SingleSwitchBox}.
@@ -46,9 +46,12 @@ public class PMSwitchDevice extends AbstractDeviceHandler {
         super(conn);
     }
 
+    /** Enter main device for power meter and/or switching device here*/
     @Override
     public boolean accept(DeviceDescription desc) {
-        return "HM-ES-PMSw1-Pl".equals(desc.getType());
+    	String type = desc.getType();
+    	return "HM-ES-PMSw1-Pl".equals(type) || "HM-ES-PMSw1-Pl-DN-R1".equals(type)
+    			|| "HMIP-PSM".equals(type);
     }
 
     protected ResourceStructureListener subChannelListener(final HmDevice dev) {

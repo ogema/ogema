@@ -56,6 +56,8 @@ public class IAmListener implements IndicationListener<Boolean> {
     }
 
     public void sendIAm(Transport t, DeviceAddress target) {
+        //TODO
+    	System.out.println("Send Iam to "+target+" from IamListner");
         ByteBuffer iAmPdu = UnconfirmedServices.createIAmApdu(
                 new ObjectIdentifierTag(BACnetObjectType.device, instanceNumber),
                 maxApduSizeAccepted, segmentationSupport, vendorId);

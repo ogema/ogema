@@ -16,7 +16,17 @@
 package org.ogema.pattern.debugger;
 
 import java.io.IOException;
+import java.lang.reflect.GenericDeclaration;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -30,12 +40,16 @@ import org.ogema.core.administration.RegisteredPatternListener;
 import org.ogema.core.application.AppID;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.logging.OgemaLogger;
+import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.SingleValueResource;
+import org.ogema.core.resourcemanager.AccessPriority;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.core.resourcemanager.pattern.ResourcePattern;
+import org.ogema.core.resourcemanager.pattern.ResourcePatternAccess;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.wiring.BundleWiring;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.json.*;
 
@@ -92,21 +106,48 @@ public class PatternDebuggerServlet extends HttpServlet {
 				return;
 			}
 			List<RegisteredPatternListener> listeners = adminApp.getPatternListeners();
-			JSONArray listenersResult = new JSONArray();
+			final Set<String> listenersResult = new HashSet<>(listeners.size());
 			for (RegisteredPatternListener lst: listeners) {
 				String patternType = lst.getDemandedPatternType().getName();
-				listenersResult.put(patternType);
+				listenersResult.add(patternType);
 			}
-			writeResultToResponse(resp,listenersResult.toString());
+			tryLoadInternalPatternClasses(adminApp, listenersResult);
+			writeResultToResponse(resp, new JSONArray(listenersResult).toString());
 			return;
 		case "patterns":
 			RegisteredPatternListener targetListener = getPatternListener(req);
+			List<ResourcePattern<?>> completePatterns;
+			List<ResourcePattern<?>> incompletePatterns;
+			String demandedModel = "null";
 			if (targetListener == null) {
-				setBadRequest(resp);
-				return;
+				final Class<? extends ResourcePattern<?>> cl = tryLoadInternalPatternClass(getApp(req), req.getParameter("listener"));
+				if (cl == null) {
+					setBadRequest(resp);
+					return;
+				}
+				completePatterns = new ArrayList<>();
+				incompletePatterns = new ArrayList<>();
+				demandedModel = getGenericClassParameter(cl, ResourcePattern.class).getSimpleName();
+				try {
+					final ResourcePatternAccess rpa = getApp(req).getAppManager().getResourcePatternAccess();
+					final List<? extends ResourcePattern<?>> patterns = rpa.getPatterns(cl, AccessPriority.PRIO_LOWEST);
+					for (ResourcePattern<?> p : patterns) {
+						boolean satisfied = false;
+						try {
+							satisfied = rpa.isSatisfied((ResourcePattern) p, (Class) cl);
+						} catch (Exception e) {}
+						if (satisfied)
+							completePatterns.add(p);
+						else
+							incompletePatterns.add(p);
+					}
+				} catch (Exception e) {}
+			} else {
+				completePatterns = (List<ResourcePattern<?>>) targetListener.getCompletedPatterns();			
+				incompletePatterns = (List<ResourcePattern<?>>) targetListener.getIncompletePatterns();
+				demandedModel = targetListener.getPatternDemandedModelType().getSimpleName();
+				
 			}
-			List<? extends ResourcePattern<?>> completePatterns =targetListener.getCompletedPatterns();
-			List<? extends ResourcePattern<?>> incompletePatterns =targetListener.getIncompletePatterns();
 			JSONObject result = new JSONObject();
 			JSONArray arr = new JSONArray();
 			for (ResourcePattern<?> pattern: completePatterns) {
@@ -124,30 +165,34 @@ public class PatternDebuggerServlet extends HttpServlet {
 				arr.put(obj);
 			}
 			result.put("patterns", arr);
-			result.put("demandedModel", targetListener.getPatternDemandedModelType().getSimpleName());
+			result.put("demandedModel", demandedModel);
 			writeResultToResponse(resp, result.toString());
 			return;
 		case "patternInfo":
 			targetListener = getPatternListener(req);
-			if (targetListener == null) {
-				setBadRequest(resp);
-				return;
-			}
 			String pattern = req.getParameter("pattern");
 			if (pattern == null) {
 				setBadRequest(resp);
 				return;
 			}
 			ResourcePattern<?> selectedPattern = null;
-			incompletePatterns =targetListener.getIncompletePatterns();
-			for (ResourcePattern<?> pt: incompletePatterns) {
-				if (pt.model.getPath().equals(pattern)) {
-					selectedPattern = pt;
-					break;
+			List<PatternCondition> conditions = null;
+			Class<? extends ResourcePattern<?>> modelType = null;
+			if (targetListener == null) {
+				final Class<? extends ResourcePattern<?>> cl = tryLoadInternalPatternClass(getApp(req), req.getParameter("listener"));
+				if (cl != null) {
+					try {
+						final Resource r = getApp(req).getAppManager().getResourceAccess().getResource(pattern);
+						if (r != null)
+							selectedPattern = cl.getConstructor(Resource.class).newInstance(r);
+					} catch (Exception e) {
+					}
 				}
-			}
-			if (selectedPattern == null) {
-				incompletePatterns =targetListener.getCompletedPatterns();
+				modelType = cl;
+				conditions = Condition.getResourceInfoRecursively(cl, selectedPattern);
+				
+			} else {
+				incompletePatterns =(List<ResourcePattern<?>>) targetListener.getIncompletePatterns();
 				for (ResourcePattern<?> pt: incompletePatterns) {
 					if (pt.model.getPath().equals(pattern)) {
 						selectedPattern = pt;
@@ -155,11 +200,23 @@ public class PatternDebuggerServlet extends HttpServlet {
 					}
 				}
 				if (selectedPattern == null) {
-					setBadRequest(resp);
-					return;
+					incompletePatterns =(List<ResourcePattern<?>>) targetListener.getCompletedPatterns();
+					for (ResourcePattern<?> pt: incompletePatterns) {
+						if (pt.model.getPath().equals(pattern)) {
+							selectedPattern = pt;
+							break;
+						}
+					}
+				}
+				if (selectedPattern != null) {
+					modelType =	targetListener.getDemandedPatternType();
+					conditions = targetListener.getConditions(selectedPattern);
 				}
 			}
-			List<PatternCondition> conditions = targetListener.getConditions(selectedPattern);
+			if (selectedPattern == null) {
+				setBadRequest(resp);
+				return;
+			}
 //			List<? extends Resource> missingConditions = targetListener.getMissingConditions(selectedPattern);
 			result = new JSONObject();
 			JSONObject patterns = new JSONObject();
@@ -194,18 +251,48 @@ public class PatternDebuggerServlet extends HttpServlet {
 
 			result.put("patterns", patterns);
 			result.put("demandedModel", pattern);
-			result.put("type", targetListener.getDemandedPatternType().getName());
+			result.put("type", modelType.getName());
 			writeResultToResponse(resp, result.toString());
 			return;
 		default:
 			setBadRequest(resp);
 		}
-		
-		
+	}
+	
+	// by side effect
+	private static void tryLoadInternalPatternClasses(final AdminApplication app, final Set<String> knownPatterns) {
+		try {
+			final BundleWiring wiring = app.getBundleRef().adapt(BundleWiring.class);
+			final ClassLoader loader = wiring.getClassLoader();
+			final Collection<String> resources = wiring.listResources("/", "*", BundleWiring.LISTRESOURCES_LOCAL | BundleWiring.LISTRESOURCES_RECURSE);
+			for (String r : resources) {
+				if (!r.contains(".class"))
+					continue;
+				final int classDollar = r.indexOf('$');
+				final String name = r.substring(0, classDollar > 0 ? classDollar : r.length()-6).replace('/', '.');
+				try {
+					if (!ResourcePattern.class.isAssignableFrom(loader.loadClass(name)))
+						continue;
+				} catch (ClassNotFoundException e) {
+					continue;
+				}
+				knownPatterns.add(name);
+			}
+		} catch (Exception e) {}
+	}
+	
+	private static Class<? extends ResourcePattern<?>> tryLoadInternalPatternClass(final AdminApplication app, final String clazz) {
+		try {
+			final BundleWiring wiring = app.getBundleRef().adapt(BundleWiring.class);
+			final ClassLoader loader = wiring.getClassLoader();
+			return (Class<? extends ResourcePattern<?>>) loader.loadClass(clazz);
+		} catch (Exception e) {
+			return null;
+		}
 	}
 	
 	// use this only with JSON strings!
-	private void writeResultToResponse(HttpServletResponse resp,String result) throws IOException {
+	private static void writeResultToResponse(HttpServletResponse resp,String result) throws IOException {
 		resp.getWriter().write(result);
 		resp.setStatus(HttpServletResponse.SC_OK);
 //		resp.setContentType("application/json"); // FIXME does not accept arrays?
@@ -249,5 +336,44 @@ public class PatternDebuggerServlet extends HttpServlet {
 			return null;
 		AppID appID = admin.getAppByBundle(bdl);
 		return admin.getAppById(appID.getIDString());
+	}
+	
+	// https://stackoverflow.com/questions/18707582/get-actual-type-of-generic-type-argument-on-abstract-superclass
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private static final Class<?> getGenericClassParameter(final Class<?> parameterizedSubClass, final Class<?> genericSuperClass) {
+	    // a mapping from type variables to actual values (classes)
+	    final Map<TypeVariable<?>, Class<?>> mapping = new HashMap<>();
+
+	    Class<?> klass = parameterizedSubClass;
+	    while (klass != null) {
+	        final Type type = klass.getGenericSuperclass();
+	        if (type instanceof ParameterizedType) {
+	            final ParameterizedType parType = (ParameterizedType) type;
+	            final Type rawType = parType.getRawType();
+	            if (rawType == genericSuperClass) {
+	                // found
+	                final Type t = parType.getActualTypeArguments()[0];
+	                if (t instanceof Class<?>) {
+	                    return (Class<?>) t;
+	                } else {
+	                    return mapping.get((TypeVariable<?>)t);
+	                }
+	            }
+	            // resolve
+	            final Type[] vars = ((GenericDeclaration)(parType.getRawType())).getTypeParameters();
+	            final Type[] args = parType.getActualTypeArguments();
+	            for (int i = 0; i < vars.length; i++) {
+	                if (args[i] instanceof Class<?>) {
+	                    mapping.put((TypeVariable)vars[i], (Class<?>)args[i]);
+	                } else {
+	                    mapping.put((TypeVariable)vars[i], mapping.get((TypeVariable<?>)(args[i])));
+	                }
+	            }
+	            klass = (Class<?>) rawType;
+	        } else {
+	            klass = klass.getSuperclass();
+	        }
+	    }
+	    throw new IllegalArgumentException("no generic supertype for " + parameterizedSubClass + " of type " + genericSuperClass);
 	}
 }

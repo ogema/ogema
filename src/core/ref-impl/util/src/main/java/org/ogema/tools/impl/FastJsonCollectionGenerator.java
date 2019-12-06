@@ -24,12 +24,10 @@ import org.ogema.core.model.Resource;
 import org.ogema.core.tools.SerializationManager;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 
 public class FastJsonCollectionGenerator {
 
-	private final static JsonFactory jsonFactory = StaticJsonGenerator.jsonFactory;
 //	private JsonGenerator jGen = null;
 	
 	public static final String serialize(Collection<Resource> resources, SerializationManager sman) throws IOException {
@@ -39,7 +37,7 @@ public class FastJsonCollectionGenerator {
 	}
 	
 	public static final void serialize(Writer writer, Collection<Resource> resources, SerializationManager sman) throws IOException {
-		JsonGenerator jGen = jsonFactory.createGenerator(writer).useDefaultPrettyPrinter();
+		JsonGenerator jGen = StaticJsonGenerator.createGenerator(writer);
 //		jGen.writeStartObject();
 		jGen.writeStartArray();
 		for (Resource res: resources) {

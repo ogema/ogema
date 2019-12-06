@@ -115,6 +115,7 @@ public class ConnectionTaskTest extends OsgiAppTestBase {
          conn.remotePath().setValue(baseUrl + "/" + remotePath);
          conn.remoteUser().<StringResource> create().setValue("rest");
          conn.remotePw().<StringResource> create().setValue("rest");
+//         conn.activate(true); // don't do this -> triggers execution in the app itself, which is not desired in these tests
          return conn;
 	}
 	 
@@ -146,7 +147,7 @@ public class ConnectionTaskTest extends OsgiAppTestBase {
         src.setValue("Hello OGEMA!");
         assertTrue(target.getValue().isEmpty());
         
-        PullTask ct = new PullTask(conn, appman, dummyScheduler);
+        PullTask ct = new PullTask(conn, appman, ctx, dummyScheduler);
 //        ConnectionTask ct = new ConnectionTask(conn, appman, appman.getLogger());
         ct.doPull();
         
@@ -171,7 +172,7 @@ public class ConnectionTaskTest extends OsgiAppTestBase {
         origin.setValue("Hello OGEMA!");
         assertTrue(remote.getValue().isEmpty());
         
-        PushTask ct = new PushTask(conn, appman, dummyScheduler);
+        PushTask ct = new PushTask(conn, appman, ctx, dummyScheduler);
         
 //        ConnectionTask ct = new ConnectionTask(conn, appman, appman.getLogger());
         ct.doPush();
@@ -195,7 +196,7 @@ public class ConnectionTaskTest extends OsgiAppTestBase {
     	pushConfig.depth().<IntegerResource> create().setValue(10);
     	conn.individualPushConfigs().activate(true);
     	
-    	PushTask ct = new PushTask(conn, appman, dummyScheduler);
+    	PushTask ct = new PushTask(conn, appman, ctx, dummyScheduler);
     	
 //    	ConnectionTask ct = new ConnectionTask(conn, appman, appman.getLogger());
         ct.doPush();
@@ -220,7 +221,7 @@ public class ConnectionTaskTest extends OsgiAppTestBase {
     	pullConfig.depth().<IntegerResource> create().setValue(10);
     	conn.individualPullConfigs().activate(true);
     	
-    	PullTask ct = new PullTask(conn, appman, dummyScheduler);
+    	PullTask ct = new PullTask(conn, appman, ctx, dummyScheduler);
 //    	ConnectionTask ct = new ConnectionTask(conn, appman, appman.getLogger());
         ct.doPull();
         System.out.println("Local: " + tempSens2.reading().getCelsius() + ", Remote: " + tempSens1.reading().getCelsius());
@@ -248,7 +249,7 @@ public class ConnectionTaskTest extends OsgiAppTestBase {
     	pullConfig.pushOnInit().<BooleanResource> create().setValue(true);
     	conn.individualPullConfigs().activate(true);
     	
-    	PullTask ct = new PullTask(conn, appman, dummyScheduler);
+    	PullTask ct = new PullTask(conn, appman, ctx, dummyScheduler);
 //    	ConnectionTask ct = new ConnectionTask(conn, appman, appman.getLogger());
         ct.doPull();
         TemperatureSensor tempSens2 = appman.getResourceAccess().getResource(remotePath);
@@ -279,7 +280,7 @@ public class ConnectionTaskTest extends OsgiAppTestBase {
     	pullConfig.pushOnInit().<BooleanResource> create().setValue(true);
     	conn.individualPullConfigs().activate(true);
     	
-    	PullTask ct = new PullTask(conn, appman, dummyScheduler);
+    	PullTask ct = new PullTask(conn, appman, ctx, dummyScheduler);
 //    	ConnectionTask ct = new ConnectionTask(conn, appman, appman.getLogger());
         ct.doPull();
         TemperatureSensor tempSens2 = appman.getResourceAccess().getResource(remotePath);
@@ -317,13 +318,13 @@ public class ConnectionTaskTest extends OsgiAppTestBase {
     	conn.individualPullConfigs().activate(true);
     	conn.pushConfig().activate(true);
     	
-    	PushTask ct = new PushTask(conn, appman, dummyScheduler);
+    	PushTask ct = new PushTask(conn, appman, ctx, dummyScheduler);
 //    	ConnectionTask ct = new ConnectionTask(conn, appman, appman.getLogger());
     	final int code = ct.doPush();
     	Assert.assertEquals("Unexpected server response " + code,200, code);
     	Assert.assertEquals("Push failed", val1, tempSens2.settings().setpoint().getCelsius(),0.1F);
     	Assert.assertEquals("Server value to be pulled has been overwritten by push", val2, tempSens2.reading().getCelsius(),0.1F);
-    	PullTask ct2 = new PullTask(conn, appman, dummyScheduler);
+    	PullTask ct2 = new PullTask(conn, appman, ctx, dummyScheduler);
     	ct2.doPull();
     	Assert.assertEquals("Pull failed", val2, tempSens1.reading().getCelsius(),0.1F);
     	tempSens1.delete();

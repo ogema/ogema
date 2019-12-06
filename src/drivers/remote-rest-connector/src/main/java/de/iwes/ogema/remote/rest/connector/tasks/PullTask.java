@@ -19,6 +19,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.Collections;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,13 +30,13 @@ import java.util.concurrent.TimeoutException;
 
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
-import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.SingleValueResource;
+import org.osgi.framework.BundleContext;
 
 import de.iwes.ogema.remote.rest.connector.model.RestConnection;
 import de.iwes.ogema.remote.rest.connector.model.RestPullConfig;
@@ -43,8 +45,8 @@ public class PullTask extends ConnectionTask {
     
     private final PullListener pullListener;
 
-    public PullTask(RestConnection con, ApplicationManager appman, final TaskScheduler trigger) {
-        super(con, appman);
+    public PullTask(RestConnection con, ApplicationManager appman, BundleContext ctx, final TaskScheduler trigger) {
+        super(con, appman, ctx);
         this.pullListener = new PullListener(this, trigger);
     }
 
@@ -107,7 +109,7 @@ public class PullTask extends ConnectionTask {
     	
     private int pullWithRetry(RestPullConfig config, boolean pushIfNotFound, CloseableHttpClient client, ExecutorService exec) throws IOException {
     	int localStatusCode = pullElement(config, client);
-		if (pushIfNotFound && localStatusCode == HttpServletResponse.SC_NOT_FOUND) { 
+		if (pushIfNotFound && localStatusCode == HttpServletResponse.SC_NOT_FOUND) {
 			pushOnInit(config, exec);
 			localStatusCode = pullElement(config, client);
 		}
@@ -133,7 +135,6 @@ public class PullTask extends ConnectionTask {
         	relativePath = null;
     	if (pullConfig.depth().isActive())
     		url = url + "?depth=" + pullConfig.depth().getValue();
-    	url = appendUserInfo(url);
     	boolean schedules = false;
     	boolean references = false;
     	if (pullConfig.schedules().isActive())
@@ -141,83 +142,39 @@ public class PullTask extends ConnectionTask {
     	if (pullConfig.resolveReferences().isActive())
     		references = pullConfig.resolveReferences().getValue();
     	if (schedules)
-    		url = url + "&schedules=true";
+    		url = appendParam(url, "schedules=true");
     	if (references)
-    		url = url + "&references=true";
-        HttpGet get = new HttpGet(url);
-        get.addHeader("Accept", "application/json");
-        HttpResponse resp = client.execute(get);
-        boolean forceUpdate = false;
-        if (pullConfig.forceWrite().isActive())
-        	forceUpdate = pullConfig.forceWrite().getValue();
-        try (InputStream is = resp.getEntity().getContent()) {
-	        StatusLine sl = resp.getStatusLine();
-	        int responseCode = sl.getStatusCode();
-	        logger.trace("Http response {}: {}", responseCode, sl.getReasonPhrase());
-	        Resource targetRes = getTargetResource();       
-	    	if (individualResource) 
-	    		targetRes = targetRes.getSubResource(relativePath);
-	        if (responseCode > 200) {
-	        	logger.error("Not found: " + url); 
-	        	if (logger.isTraceEnabled()) {
-	        		logger.trace(new Scanner(is).useDelimiter("//A").next());
-	        	}
-	        	return responseCode;
+    		url = appendParam(url, "references=true");
+        ;
+        try (CloseableHttpResponse resp = send(url, client, "GET", null, Collections.singletonMap("Accept", "application/json"))) {
+	        boolean forceUpdate = false;
+	        if (pullConfig.forceWrite().isActive())
+	        	forceUpdate = pullConfig.forceWrite().getValue();
+	        try (InputStream is = resp.getEntity().getContent()) {
+		        StatusLine sl = resp.getStatusLine();
+		        int responseCode = sl.getStatusCode();
+		        logger.trace("Http response {}: {}", responseCode, sl.getReasonPhrase());
+		        Resource targetRes = getTargetResource();       
+		    	if (individualResource) 
+		    		targetRes = targetRes.getSubResource(relativePath);
+		        if (responseCode > 200) {
+		        	logger.error("Not found: " + url); 
+		        	if (logger.isTraceEnabled()) {
+		        		try {
+		        			logger.trace(new Scanner(is).useDelimiter("//A").next());
+		        		} catch (NoSuchElementException expected) {}
+		        	}
+		        	return responseCode;
+		        }
+		        try (Reader in = new InputStreamReader(is)) {
+		            appman.getSerializationManager().applyJson(in, targetRes, forceUpdate); 
+		        } 
+		        if (logger.isTraceEnabled())
+		        	logger.trace("updated resource {} from {}", getTargetResource().getPath(), getRemotePath());
+		        return responseCode;
 	        }
-	        try (Reader in = new InputStreamReader(is)) {
-	            appman.getSerializationManager().applyJson(in, targetRes, forceUpdate); 
-	        } 
-	        if (logger.isTraceEnabled())
-	        	logger.trace("updated resource {} from {}", getTargetResource().getPath(), getRemotePath());
-	        return responseCode;
         }
     }
-    
-	/*
-	// FIXME pushes all individual subresources, even if only one individual subresource is missing
-    private void pushOnInit() {
-    	if (!needsPushOnInit(con))
-    		return;
-		final int statusCode;
-		final CloseableHttpClient client = getClient();
-		try {
-			statusCode = doPull(client, false);
-			if (statusCode < 300) // remote target already exists
-				return;
-		} catch (Exception e) {}
-		final ExecutorService exec = Executors.newSingleThreadExecutor();
-		try {
-			final InitPushTask initPushTask = new InitPushTask(con, appman, con.pullConfig(), client);
-//				int code = pushIndividualOnInit(con.getParent(),null, remoteName, client, depth, schedules, references, true);
-			// if we used the standard executor here, there would be a deadlock
-			Future<ConnectionTask> future = exec.submit(initPushTask);
-			// wait for push init; throws an exception if the call()-method does
-			future.get(10, TimeUnit.SECONDS);
-		} catch (Exception e) {
-			logger.warn("Initial push failed for connection {}",con,e);
-			return;
-		}
-		for (RestPullConfig config: con.individualPullConfigs().getAllElements()) {
-    		if (!needsIndividualPushOnInit(config)) 
-    			continue;
-			final String relativePath = config.remoteRelativePath().getValue();
-			if (relativePath == null || relativePath.trim().isEmpty()) 
-				throw new IllegalArgumentException("Inconsistent pullConfiguration; remote relative path missing in " + config.remoteRelativePath());
-			try {
-				final InitPushTask initPushTask = new InitPushTask(con, appman, config, client);
-				// if we used the standard executor here, there would be a deadlock
-				Future<ConnectionTask> future = exec.submit(initPushTask);
-				// wait for push init; throws an exception if the call()-method does
-				future.get(10, TimeUnit.SECONDS);
-				logger.debug("Initial push for resource {} successful", relativePath);
-			} catch (TimeoutException | InterruptedException e) {
-				logger.info("Initial push failed for conenction {}, relative path {}: timeout.",con,relativePath);
-			} catch (Exception e) {
-				logger.warn("Initial push failed for connection {}, local target {}",con,relativePath, e);
-			}
-    	}
-    }
-    */
     
     private void pushOnInit(RestPullConfig config, final ExecutorService exec) {
     	if (!needsIndividualPushOnInit(config))
@@ -229,14 +186,14 @@ public class PullTask extends ConnectionTask {
 		} catch (Exception e) {}
 		if (statusCode == HttpServletResponse.SC_NOT_FOUND) {
 			try {
-				final InitPushTask initPushTask = new InitPushTask(con, appman, con.pullConfig(), client);
+				final InitPushTask initPushTask = new InitPushTask(con, appman, ctx, con.pullConfig(), client);
 	//				int code = pushIndividualOnInit(con.getParent(),null, remoteName, client, depth, schedules, references, true);
 				// if we used the standard executor here, there would be a deadlock
 				Future<ConnectionTask> future = exec.submit(initPushTask);
 				// wait for push init; throws an exception if the call()-method does
 				future.get(10, TimeUnit.SECONDS);
 			} catch (Exception e) {
-				logger.warn("Initial push failed for connection {}",con,e);
+				logger.warn("Initial push failed for connection {}, {}", con.remotePath().getValue(), con, e);
 				return;
 			}
 		}
@@ -246,15 +203,19 @@ public class PullTask extends ConnectionTask {
 		if (relativePath == null || relativePath.trim().isEmpty()) 
 			throw new IllegalArgumentException("Inconsistent pullConfiguration; remote relative path missing in " + config.remoteRelativePath());
 		try {
-			final InitPushTask initPushTask = new InitPushTask(con, appman, config, client);
+			final InitPushTask initPushTask = new InitPushTask(con, appman, ctx, config, client);
 			Future<ConnectionTask> future = exec.submit(initPushTask);
 			// wait for push init; throws an exception if the call()-method does
 			future.get(10, TimeUnit.SECONDS);
 			logger.debug("Initial push for resource {} successful", relativePath);
-		} catch (TimeoutException | InterruptedException e) {
+		} catch (InterruptedException e) {
+			try {
+				Thread.currentThread().interrupt();
+			} catch (SecurityException ee) {}
+ 		} catch (TimeoutException e) {
 			logger.info("Initial push failed for conenction {}, relative path {}: timeout.",con,relativePath);
 		} catch (Exception e) {
-			logger.warn("Initial push failed for connection {}, local target {}",con,relativePath, e);
+			logger.warn("Initial push failed for connection {}, local target {}",con, relativePath, e);
 		}
     }
     

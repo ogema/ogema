@@ -42,6 +42,7 @@ import org.ogema.core.channelmanager.ChannelConfiguration.Direction;
 import org.ogema.core.channelmanager.driverspi.ChannelDriver;
 import org.ogema.core.channelmanager.driverspi.ChannelLocator;
 import org.ogema.core.channelmanager.driverspi.DeviceLocator;
+import org.ogema.exam.OsgiAppTestBase;
 import org.ops4j.pax.exam.Configuration;
 import org.ops4j.pax.exam.CoreOptions;
 import org.ops4j.pax.exam.MavenUtils;
@@ -51,7 +52,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 
 @RunWith(PaxExam.class)
-public class ChannelManagerTestBase implements Application {
+public class ChannelManagerTestBase extends OsgiAppTestBase implements Application {
 
 	protected static final AtomicInteger deviceCounter  = new AtomicInteger(0);
 	protected static final AtomicInteger channelCounter = new AtomicInteger(0); 
@@ -110,6 +111,7 @@ public class ChannelManagerTestBase implements Application {
 		System.out.println("stop");
 	}
 
+    /*
 	@Configuration
 	public Option[] configure() {
 		return options(
@@ -178,9 +180,11 @@ public class ChannelManagerTestBase implements Application {
 		);
 
 	}
+    */
 	
 //	@Override
 //	@Configuration
+    /*
 	public Option[] config() {
 		return new Option[] {
 				CoreOptions.systemProperty("org.ogema.security").value("off"),
@@ -193,6 +197,7 @@ public class ChannelManagerTestBase implements Application {
 				
 			};
 	}
+    */
 
 	protected ChannelConfiguration addMbusChannel(int samplingPeriod) throws ChannelAccessException {
 		return addAndConfigureWritableChannel("mbus", "/dev/ttyUSB0", "p" + deviceCounter.incrementAndGet(), 
@@ -250,7 +255,7 @@ public class ChannelManagerTestBase implements Application {
 	}
 
 	@Override
-	public void stop(AppStopReason reason) {
+	public void stop(AppStopReason r) {
 		// TODO Auto-generated method stub
 		
 	}

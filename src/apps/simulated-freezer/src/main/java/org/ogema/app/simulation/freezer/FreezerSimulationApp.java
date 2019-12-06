@@ -56,7 +56,7 @@ public class FreezerSimulationApp implements Application {
 		m_advAcc = appManager.getResourcePatternAccess();
 
 		m_log.debug("Creating a simulation object.");
-		final String name = m_appMan.getResourceManagement().getUniqueResourceName("SimulatedFreezer");
+		final String name = /*m_appMan.getResourceManagement().getUniqueResourceName(*/"SimulatedFreezer";//);
 		final CoolingDevice existingFreezer = m_appMan.getResourceAccess().getResource(name);
 		if (existingFreezer != null) { // resource already exists (appears in case of non-clean start)
 			final FreezerPattern freezer = new FreezerPattern(existingFreezer);

@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.ogema.core</groupId>
         <artifactId>ogema-core</artifactId>
-        <version>2.2.0</version>
+        <version>2.2.1</version>
     </parent>
 
     <artifactId>api</artifactId>
@@ -42,6 +42,11 @@
             <groupId>javax.servlet</groupId>
             <artifactId>servlet-api</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.ogema.core</groupId>
+            <artifactId>timeseries-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
 	
@@ -53,6 +58,8 @@
                 <extensions>true</extensions>
                 <configuration>
                     <instructions>
+                    	<!-- note: we must export all packages from this project and from 
+                    		the timeseries-api project, which is the case with this configuration -->
                         <Export-Package>
                             org.ogema.core.*
                         </Export-Package>

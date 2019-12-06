@@ -131,8 +131,11 @@ public class ResourceDBManager {
 		for (String id : recordedDataAccess.getAllRecordedDataStorageIDs()) {
 			VirtualTreeElement el = DefaultRecordedData.findTreeElement(id, this);
 			if (el == null || el.isVirtual()) {
-				logger.warn("found recorded data for unknown resource: {}, deleting...", id);
-				recordedDataAccess.deleteRecordedDataStorage(id);
+				logger.warn("found recorded data for unknown resource: {}", id);
+				if (Boolean.getBoolean("org.ogema.resman.removeUnknownLogdata")) {
+					logger.warn("Deleting recorded data for unknown resource: {}", id);
+					recordedDataAccess.deleteRecordedDataStorage(id);
+				}
 			}
 			else {
 				DefaultRecordedData d = recordedDataManager.getRecordedData(el, true);

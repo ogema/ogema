@@ -15,15 +15,31 @@
  */
 package de.iwes.ogema.remote.rest.connector.tasks;
 
+import java.io.IOException;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 import javax.net.ssl.SSLContext;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpHead;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -47,7 +63,12 @@ import org.ogema.core.model.simple.IntegerResource;
 import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.model.simple.StringResource;
 import org.ogema.core.model.simple.TimeResource;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.InvalidSyntaxException;
+import org.osgi.framework.ServiceReference;
 import org.slf4j.Logger;
+
+import com.google.common.io.BaseEncoding;
 
 import de.iwes.ogema.remote.rest.connector.RemoteRestConnector;
 import de.iwes.ogema.remote.rest.connector.model.RestConnection;
@@ -62,13 +83,15 @@ public abstract class ConnectionTask implements Comparable<ConnectionTask>, Call
     protected final RestConnection con;
     protected final Logger logger;
     protected final ApplicationManager appman;
+    protected final BundleContext ctx;
     private volatile long nextExec = 0;
     private volatile Long lastExec = null;
     
-    protected ConnectionTask(RestConnection con, ApplicationManager appman) {
+    protected ConnectionTask(RestConnection con, ApplicationManager appman, BundleContext ctx) {
         this.con = con;
         this.appman = appman;
         this.logger = appman.getLogger();
+        this.ctx = ctx;
     }
     
     /**
@@ -89,9 +112,9 @@ public abstract class ConnectionTask implements Comparable<ConnectionTask>, Call
     	try {
     		final int code = execute();
     		if (code >= 300) 
-    			throw new RuntimeException("Http request for " + con.remotePath() + " not successful: " + code);
-    		else
-    			logger.debug(this.getClass().getSimpleName()+" request for {}: {}",con.remotePath(), code);
+    			throw new RuntimeException("Http request for " + con.remotePath().getValue() + " not successful: " + code);
+    		else if (logger.isDebugEnabled())
+    			logger.debug(this.getClass().getSimpleName()+" request for {}: {}",con.remotePath().getValue(), code);
 		} finally {
 			lastExec = null;
 			nextExec = appman.getFrameworkTime() + getValue(getUpdateIntervalResource());
@@ -103,7 +126,8 @@ public abstract class ConnectionTask implements Comparable<ConnectionTask>, Call
     public final long advanceExecutionTime() {
     	final long pushInterval = getValue(getUpdateIntervalResource());
     	if (pushInterval < 2 * RemoteRestConnector.MIN_EXECUTION_STEP) {
-    		logger.warn("Pull/push interval too small: {} ms", pushInterval);
+    		if (pushInterval != 0)
+    			logger.warn("Pull/push interval too small: {} ms", pushInterval);
     		nextExec = Long.MAX_VALUE;
     	}
     	else
@@ -284,16 +308,96 @@ public abstract class ConnectionTask implements Comparable<ConnectionTask>, Call
                 .build();
         return httpClient;
     }
-
-    protected String appendUserInfo(String path) {
-    	StringBuilder sb = new StringBuilder(path);
-    	int idx = path.indexOf('?');
-    	if (idx < 0)
-    		sb.append('?');
-    	else
+    
+    protected CloseableHttpResponse send(String path, final CloseableHttpClient client, final String method,
+    		HttpEntity entity, final Map<String,String> headers) throws ClientProtocolException, IOException {
+    	final HttpUriRequest request;
+    	switch (method) {
+    	case "GET":
+    		request = new HttpGet(path);
+    		break;
+    	case "POST":
+    		request = new HttpPost(path);
+    		break;
+    	case "PUT":
+    		request = new HttpPut(path);
+    		break;
+    	case "DELETE":
+    		request = new HttpDelete(path);
+    		break;
+    	case "HEAD":
+    		request = new HttpHead(path);
+    		break;
+    	default:
+    		throw new IllegalArgumentException("Unsupported method " + method);
+    	}
+    	if (entity != null) {
+   			((HttpEntityEnclosingRequestBase) request).setEntity(entity);
+    	}
+    	if (headers != null) {
+    		for (Map.Entry<String, String> entry : headers.entrySet()) {
+    			request.setHeader(entry.getKey(), entry.getValue());
+    		}
+    	}
+    	final CloseableHttpResponse resp0 = sendViaAuthService(client, request);
+    	if (resp0 != null)
+    		return resp0;
+		logger.debug("No auth service configured for connection {}" ,con);
+		final String user = con.remoteUser().getValue();
+		final String pw = con.remotePw().getValue();
+		if (!user.isEmpty() && !pw.isEmpty()) {
+    		final String str = con.remoteUser().getValue() + ":" + con.remotePw().getValue();
+    		request.addHeader("Authorization", "Basic " + BaseEncoding.base64().encode(str.getBytes(StandardCharsets.UTF_8)));
+		} else {
+			logger.warn("No authentication information available for connection {}, sending anyway...", con);
+		}
+		return client.execute(request);
+    }
+    
+    protected static String appendParam(final String in, final String param) {
+    	final StringBuilder sb = new StringBuilder(in);
+    	if (in.indexOf('?') > 0)
     		sb.append('&');
-    	sb.append("user=").append(con.remoteUser().getValue()).append("&pw=").append(con.remotePw().getValue());
+    	else
+    		sb.append('?');
+    	sb.append(param);
     	return sb.toString();
     }
+
+    private CloseableHttpResponse sendViaAuthService(final CloseableHttpClient client, final HttpUriRequest request) throws ClientProtocolException, IOException {
+    	try {
+    		return sendViaAuthServiceInternal(client, request);
+    	} catch (NoClassDefFoundError e) { // optional dependency RemoteOgemaAuth
+    		return null;
+    	}
+    }
+    
+    private CloseableHttpResponse sendViaAuthServiceInternal(final CloseableHttpClient client, final HttpUriRequest request) throws ClientProtocolException, IOException {
+    	final URI uri = request.getURI();
+    	final ServiceReference<org.ogema.tools.remote.ogema.auth.RemoteOgemaAuth> ref = getAuthService(uri.getHost(), uri.getPort());
+    	final org.ogema.tools.remote.ogema.auth.RemoteOgemaAuth auth = ref != null ? ctx.getService(ref) : null;
+    	if (auth == null)
+    		return null;
+		try {
+			return auth.execute(client, request);
+		} finally {
+			try {
+				ctx.ungetService(ref);
+			} catch (Exception ignore) {}
+    	}
+    }
+    
+    private final ServiceReference<org.ogema.tools.remote.ogema.auth.RemoteOgemaAuth> getAuthService(final String host, final int port) {
+    	final Collection<ServiceReference<org.ogema.tools.remote.ogema.auth.RemoteOgemaAuth>> services;
+		try {
+			services = ctx.getServiceReferences(org.ogema.tools.remote.ogema.auth.RemoteOgemaAuth.class, 
+					"(&(" + org.ogema.tools.remote.ogema.auth.RemoteOgemaAuth.REMOTE_HOST_PROPERTY + "=" + host 
+							+ ")(" + org.ogema.tools.remote.ogema.auth.RemoteOgemaAuth.REMOTE_PORT_PROPERTY + "=" + port + "))");
+		} catch (InvalidSyntaxException e) {
+			throw new RuntimeException(e);
+		}
+    	return services != null && !services.isEmpty() ? services.iterator().next() : null;
+    }
+
     
 }

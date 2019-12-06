@@ -22,6 +22,7 @@ import de.fhg.iee.bacnet.tags.ObjectIdentifierTag;
 import de.fhg.iee.bacnet.tags.Tag;
 import de.fhg.iee.bacnet.tags.UnsignedIntTag;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 /**
  * Utility class containing static methods for creating some BACnet confirmed
@@ -35,29 +36,51 @@ public abstract class ConfirmedServices {
     }
 
     public static ByteBuffer buildReadPropertyApdu(ObjectIdentifierTag object, int propertyId) {
+    	return buildReadPropertyApdu(object.getObjectType(),  object.getInstanceNumber(), propertyId);
+    }
+    public static ByteBuffer buildReadPropertyApdu(int objectType, int instanceNumber, int propertyId) {
         ByteBuffer buf = ByteBuffer.allocate(100);
         ProtocolControlInformation pciRequestProperty
                 = new ProtocolControlInformation(ApduConstants.APDU_TYPES.CONFIRMED_REQUEST, BACnetConfirmedServiceChoice.readProperty.getBACnetEnumValue());
         pciRequestProperty = pciRequestProperty.withAcceptanceInfo(false, ApduConstants.MAX_SEGMENTS.UNSPECIFIED, ApduConstants.RESPONSE_SIZE.UPTO_1476);
         pciRequestProperty.write(buf);
 
-        new ObjectIdentifierTag(0, Tag.TagClass.Context, object.getObjectType(), object.getInstanceNumber()).write(buf);
+        new ObjectIdentifierTag(0, Tag.TagClass.Context, objectType, instanceNumber).write(buf);
         new UnsignedIntTag(1, Tag.TagClass.Context, propertyId).write(buf);
         buf.flip();
         return buf;
     }
 
     public static ByteBuffer buildWritePropertyApdu(ObjectIdentifierTag object, int propertyId, Tag value) {
+    	return buildWritePropertyApdu(object.getObjectType(), object.getInstanceNumber(), propertyId, value);
+    }
+    public static ByteBuffer buildWritePropertyApdu(int objectType, int instanceNumber, int propertyId, Tag value) {
         ByteBuffer buf = ByteBuffer.allocate(100);
         ProtocolControlInformation pciRequestProperty
                 = new ProtocolControlInformation(ApduConstants.APDU_TYPES.CONFIRMED_REQUEST, BACnetConfirmedServiceChoice.writeProperty.getBACnetEnumValue());
         pciRequestProperty = pciRequestProperty.withAcceptanceInfo(false, ApduConstants.MAX_SEGMENTS.UNSPECIFIED, ApduConstants.RESPONSE_SIZE.UPTO_1476);
         pciRequestProperty.write(buf);
 
-        new ObjectIdentifierTag(0, Tag.TagClass.Context, object.getObjectType(), object.getInstanceNumber()).write(buf);
+        new ObjectIdentifierTag(0, Tag.TagClass.Context, objectType, instanceNumber).write(buf);
         new UnsignedIntTag(1, Tag.TagClass.Context, propertyId).write(buf);
         Tag.createOpeningTag(3).write(buf);
         value.write(buf);
+        Tag.createClosingTag(3).write(buf);
+        buf.flip();
+        return buf;
+    }
+    public static ByteBuffer buildWritePropertyApdu(int objectType, int instanceNumber, int propertyId, List<Tag> valueTags) {
+        ByteBuffer buf = ByteBuffer.allocate(100);
+        ProtocolControlInformation pciRequestProperty
+                = new ProtocolControlInformation(ApduConstants.APDU_TYPES.CONFIRMED_REQUEST, BACnetConfirmedServiceChoice.writeProperty.getBACnetEnumValue());
+        pciRequestProperty = pciRequestProperty.withAcceptanceInfo(false, ApduConstants.MAX_SEGMENTS.UNSPECIFIED, ApduConstants.RESPONSE_SIZE.UPTO_1476);
+        pciRequestProperty.write(buf);
+
+        new ObjectIdentifierTag(0, Tag.TagClass.Context, objectType, instanceNumber).write(buf);
+        new UnsignedIntTag(1, Tag.TagClass.Context, propertyId).write(buf);
+        Tag.createOpeningTag(3).write(buf);
+ 		for(Tag value: valueTags)
+        	value.write(buf);
         Tag.createClosingTag(3).write(buf);
         buf.flip();
         return buf;

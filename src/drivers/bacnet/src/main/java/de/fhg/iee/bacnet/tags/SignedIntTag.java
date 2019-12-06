@@ -18,6 +18,8 @@ package de.fhg.iee.bacnet.tags;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 
+import de.fhg.iee.bacnet.tags.Tag.TagClass;
+
 /**
  *
  * @author jlapp
@@ -43,6 +45,14 @@ public class SignedIntTag extends Tag {
         buf.get(content);
         value = new BigInteger(content);
     }
+    
+    public SignedIntTag(BigInteger value) {
+        this(TagConstants.TAG_SIGNED_INTEGER, TagClass.Application, value);
+    }
+    public SignedIntTag(long value) {
+        this(TagConstants.TAG_UNSIGNED_INTEGER, TagClass.Application, BigInteger.valueOf(value));
+    }
+
     
     public BigInteger getValue() {
         return value;

@@ -79,7 +79,11 @@ public class FrameworkGUI implements Application {
 		appManager.getWebAccessManager().registerWebResource("/ogema", "org/ogema/frameworkgui/gui");
 		appManager.getWebAccessManager().registerWebResource("/apps/ogema/framework/gui",
 				new FrameworkGUIServlet(controller));
-
+		try {
+        	if (Boolean.getBoolean("org.ogema.gui.usecdn")) {
+        		appManager.getWebAccessManager().registerStartUrl("/ogema/index2.html");
+        	}
+        } catch (SecurityException ok) {}
 	}
 
 	/*

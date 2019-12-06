@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Abstract Transport base class that handles invoke IDs and IndicationListeners
- * for concrete implemenations. Implementations need to perform the link level
+ * for concrete implementations. Implementations need to perform the link level
  * I/O through
  * {@link #sendData(java.nio.ByteBuffer, de.iwes.bacnet.api.Transport.Priority, boolean, de.iwes.bacnet.api.DeviceAddress) sendData}
  * and {@link #receivedPackage(de.iwes.bacnet.api.Indication) receivedPackage}.
@@ -58,7 +58,7 @@ public abstract class AbstractTransport implements Transport {
     final Logger logger = LoggerFactory.getLogger(getClass());
     final Thread timeoutThread;
 
-    private long messageTimeout = 250;
+    private long messageTimeout = 1000;
     private int messageRetries = 3;
     
     private final ThreadGroup executorThreads = new ThreadGroup("BACnet UDP transport executors");
@@ -173,7 +173,7 @@ public abstract class AbstractTransport implements Transport {
                             next.expiryTime = now + messageTimeout;
                             pendingReplies.offer(next);
                             try {
-                                logger.debug("resending message to {} for invoke ID {}", next.destination, next.invokeId);
+                                logger.trace("resending message to {} for invoke ID {}", next.destination, next.invokeId);
                                 //TODO: blocking i/o ?
                                 next.data.rewind();
                                 sendData(next.data, next.prio, true, next.destination);
@@ -228,7 +228,7 @@ public abstract class AbstractTransport implements Transport {
         if (hasLocalInvokeId(pci)) {
             int invokeId = pci.getInvokeId();
             invokeIds.release(invokeId);
-            logger.debug("received message from {} for invoke ID {}", indication.getSource(), invokeId);
+            logger.trace("received message from {} for invoke ID {}", indication.getSource(), invokeId);
             synchronized (pendingReplies) {
                 Iterator<PendingReply> it = pendingReplies.iterator();
                 while (it.hasNext()) {
@@ -289,6 +289,10 @@ public abstract class AbstractTransport implements Transport {
             pci = pci.withInvokeId(invokeId);
             data.rewind();
             pci.write(data);
+        	logger.trace("Schedulding message {} bytes to {}, expReply:{} invoke:{}",data.limit(), destination, expectingReply,
+        			invokeId);
+        } else {
+        	logger.trace("Schedulding unconfirmed message {} bytes to {}, expReply:{}",data.limit(), destination, expectingReply);
         }
         data.rewind();
         //sendData(data, prio, expectingReply, destination);
@@ -350,6 +354,7 @@ public abstract class AbstractTransport implements Transport {
             @Override
             public void run() {
                 try {
+                	logger.trace("Sending out message {} bytes to {}, expReply:{}",data.limit(), destination, expectingReply);
                     sendData(data, prio, expectingReply, destination);
                 } catch (IOException ex) {
                     logger.error("send failed for destination {}", destination, ex);

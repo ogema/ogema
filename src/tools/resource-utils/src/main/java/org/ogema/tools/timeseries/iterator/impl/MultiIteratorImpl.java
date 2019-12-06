@@ -137,7 +137,7 @@ public class MultiIteratorImpl<T extends Comparable<T>> implements MultiIterator
 		for (int key : currentValues.keySet()) {
 			final Iterator<T> it = iterators.get(key);
 			boolean done = false;
-			if (it.hasNext()) { 
+			if (it.hasNext()) {
 				done = true;
 				nextValues.put(key, it.next());
 			} else if (upperBoundaryValues  != null) {

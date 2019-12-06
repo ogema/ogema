@@ -18,6 +18,8 @@ package org.ogema.exam;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,6 +40,7 @@ import org.ops4j.pax.exam.MavenUtils;
 import org.ops4j.pax.exam.Option;
 import org.ops4j.pax.exam.junit.PaxExam;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceRegistration;
 
 /**
@@ -57,13 +60,23 @@ public abstract class OsgiAppTestBase {
 	private CountDownLatch stopLatch = new CountDownLatch(1);
 	private volatile ApplicationManager appMan;
 	private ServiceRegistration<Application> registration;
+	private static final Path osgiStorage = Paths.get("data/osgi-storage");
 
 	protected final static String ogemaVersion = MavenUtils.asInProject().getVersion("org.ogema.core", "api");
+	protected static final String MOXY_VERSION = "2.7.4";
 
 	protected static int HTTP_PORT = 4712;
 	protected final boolean includeTestBundle;
 
 	static final AtomicInteger resourceCounter = new AtomicInteger(0);
+	
+	protected static int getJavaVersion() {
+		String version = System.getProperty("java.specification.version");
+		final int idx = version.indexOf('.');
+		if (idx > 0)
+			version = version.substring(idx + 1);
+		return Integer.parseInt(version); 
+	}
 
 	public OsgiAppTestBase() {
 		this(false);
@@ -79,17 +92,31 @@ public abstract class OsgiAppTestBase {
 
 	@Configuration
 	public Option[] config() {
-		return new Option[] { CoreOptions.systemProperty("ogema.resources.useByteCodeGeneration").value("true"),
+		return new Option[] { 
+				CoreOptions.cleanCaches(),
+				CoreOptions.frameworkProperty(Constants.FRAMEWORK_STORAGE).value(osgiStorage.toString()), 
+				CoreOptions.frameworkProperty(Constants.FRAMEWORK_BSNVERSION).value(Constants.FRAMEWORK_BSNVERSION_MULTIPLE),
+				CoreOptions.vmOption("-ea"), 
 				CoreOptions.frameworkProperty("osgi.console").value("true"),
 				CoreOptions.frameworkProperty("osgi.console.enable.builtin").value("true"),
 				CoreOptions.frameworkProperty("org.osgi.service.http.port").value(Integer.toString(HTTP_PORT)),
 				CoreOptions.frameworkProperty("org.osgi.framework.bsnversion").value("multiple"),
+				CoreOptions.systemProperty("ogema.resources.useByteCodeGeneration").value("true"),
 				// CoreOptions.systemProperty("org.ogema.security").value("on"),
 				CoreOptions.junitBundles(),
 				// load the bundle of the extending class directly from maven build dir:
 				CoreOptions.when(includeTestBundle)
 						.useOptions(CoreOptions.bundle("reference:file:target/classes/").start()),
 				CoreOptions.composite(frameworkBundles()),
+				CoreOptions.when(getJavaVersion() >= 11).useOptions(
+						CoreOptions.mavenBundle("com.sun.activation", "javax.activation", "1.2.0"),
+						CoreOptions.mavenBundle("javax.annotation", "javax.annotation-api", "1.3.2"),
+						CoreOptions.mavenBundle("javax.xml.bind", "jaxb-api", "2.4.0-b180830.0359"),
+						CoreOptions.mavenBundle("org.eclipse.persistence", "org.eclipse.persistence.asm", MOXY_VERSION),
+						CoreOptions.mavenBundle("org.eclipse.persistence", "org.eclipse.persistence.core", MOXY_VERSION),
+						CoreOptions.mavenBundle("org.eclipse.persistence", "org.eclipse.persistence.moxy", MOXY_VERSION),
+                        CoreOptions.mavenBundle("org.apache.servicemix.bundles", "org.apache.servicemix.bundles.javax.mail", "1.4.1_5")
+				),
 				// ogemaWebFrontentOption(),
 				// wicketGuiOption(),
 				// webConsoleOption(),

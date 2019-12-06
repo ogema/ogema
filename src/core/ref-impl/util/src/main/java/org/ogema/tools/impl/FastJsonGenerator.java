@@ -18,6 +18,9 @@ package org.ogema.tools.impl;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.List;
 
 import org.ogema.core.channelmanager.measurements.BooleanValue;
@@ -88,7 +91,7 @@ public class FastJsonGenerator {
 	 */
 	public void serialize(Writer writer, Resource resource, SerializationManager serializationManager)
 			throws IOException {
-		jGen = JSONFACTORY.createJsonGenerator(writer).useDefaultPrettyPrinter();
+		jGen = createJsonGenerator(writer);
 		this.stateControl = new StateController(serializationManager, resource); 
     	this.serializeResource(resource);
 		jGen.flush();
@@ -104,7 +107,7 @@ public class FastJsonGenerator {
 	/* FIXME?: this will always serialize embedded schedules (timeseries) as link */
 	public void serialize(Writer writer, Object obj, SerializationManager serializationManager) throws IOException {
 		ObjectMapper mapper = SerializationCore.createJacksonMapper(true);
-		jGen = JSONFACTORY.createJsonGenerator(writer).useDefaultPrettyPrinter().setCodec(mapper);
+		jGen = createJsonGenerator(writer).setCodec(mapper);
 		jGen.writeObject(obj);
 		jGen.flush();
 	}
@@ -441,6 +444,28 @@ public class FastJsonGenerator {
 		}
 		// NOTE deserialization of type shedule wont work
 		return "Schedule";
+	}
+	
+	static final JsonGenerator createJsonGenerator(final Writer writer) throws IOException {
+		try {
+			return AccessController.doPrivileged(new PrivilegedExceptionAction<JsonGenerator>() {
+
+				@Override
+				public JsonGenerator run() throws Exception { // method accesses a system property internally
+					return JSONFACTORY.createJsonGenerator(writer).useDefaultPrettyPrinter();
+				}
+			});
+		} catch (PrivilegedActionException e) {
+			final Throwable t = e.getCause();
+			if (t instanceof IOException)
+				throw (IOException) t;
+			else if (t instanceof RuntimeException)
+				throw (RuntimeException) t;
+			else if (t instanceof Error)
+				throw (Error) t;
+			throw new RuntimeException(t);
+		}
+		
 	}
 		
 }

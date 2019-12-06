@@ -38,6 +38,7 @@ public class DefaultTimeArrayResource extends ResourceBase implements TimeArrayR
 
 	@Override
 	public long[] getValues() {
+		checkReadPermission();
 		return getEl().getData().getLongArr().clone();
 	}
 
@@ -61,6 +62,7 @@ public class DefaultTimeArrayResource extends ResourceBase implements TimeArrayR
 
 	@Override
 	public long getElementValue(int index) {
+        	checkReadPermission();
 		return getEl().getData().getLongArr()[index];
 	}
 

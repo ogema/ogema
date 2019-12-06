@@ -49,7 +49,6 @@ import org.ops4j.pax.exam.CoreOptions;
 import org.ops4j.pax.exam.Option;
 
 import com.ghgande.j2mod.modbus.Modbus;
-import com.ghgande.j2mod.modbus.ModbusCoupler;
 import com.ghgande.j2mod.modbus.net.ModbusTCPListener;
 import com.ghgande.j2mod.modbus.procimg.SimpleInputRegister;
 import com.ghgande.j2mod.modbus.procimg.SimpleProcessImage;
@@ -109,11 +108,6 @@ public class ModbusTest extends OsgiAppTestBase {
 
 		SimpleInputRegister writeReg = new SimpleInputRegister();
 		spi.addInputRegister(writeReg);
-
-		ModbusCoupler.getReference().setProcessImage(spi);
-		ModbusCoupler.getReference().setMaster(false);
-		// TODO
-//		ModbusCoupler.getReference().setUnitID(0);
 
 		ModbusTCPListener listener = new ModbusTCPListener(1);
 

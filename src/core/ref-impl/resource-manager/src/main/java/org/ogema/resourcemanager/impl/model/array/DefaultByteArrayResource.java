@@ -62,6 +62,7 @@ public class DefaultByteArrayResource extends ResourceBase implements ByteArrayR
 
 	@Override
 	public byte getElementValue(int index) {
+        	checkReadPermission();
 		return getEl().getData().getByteArr()[index];
 	}
 

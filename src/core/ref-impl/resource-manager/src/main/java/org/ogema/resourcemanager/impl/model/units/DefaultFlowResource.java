@@ -40,11 +40,11 @@ public class DefaultFlowResource extends UnitFloatResource implements FlowResour
 
 	@Override
 	public boolean setCubicMeterPerHour(float value) {
-		return setValue(value * 3600);
+		return setValue(value / 3600);
 	}
 
 	@Override
 	public float getCubicMeterPerHour() {
-		return getValue() / 3600;
+		return getValue() * 3600;
 	}
 }

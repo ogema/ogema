@@ -90,4 +90,9 @@ public class DataPointImpl<T extends Comparable<T>> implements DataPoint<T> {
 		return (S) context;
 	}
 	
+	@Override
+	public String toString() {
+		return getClass().getSimpleName() + "[" + values + "]";
+	}
+	
 }

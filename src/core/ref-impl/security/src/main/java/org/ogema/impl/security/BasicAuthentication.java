@@ -32,7 +32,7 @@ import com.google.common.io.BaseEncoding;
 @Component
 @Property(name=Authenticator.AUTHENTICATOR_ID, value=Authenticator.DEFAULT_BASIC_AUTH)
 public class BasicAuthentication implements Authenticator {
-
+	
 	@Reference
 	private CredentialStore credentials;
 	
@@ -46,7 +46,12 @@ public class BasicAuthentication implements Authenticator {
 		final String[] split = decoded.split(":");
 		if (split.length != 2)
 			return null;
-		if (credentials.login(split[0], split[1]))
+		final boolean success = credentials.login(split[0], split[1]);
+		// do not log pw (split[1])
+		RestAccessImpl.loggerBasicAuth.debug("Authentication for user {} successful: {}", split[0], success);
+		if (RestAccessImpl.loggerBasicAuth.isTraceEnabled())
+			RestAccessImpl.loggerBasicAuth.trace("Request {} to {}", req.getMethod(), req.getPathInfo());
+		if (success)
 			return split[0];
 		else
 			return null;

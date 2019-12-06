@@ -89,9 +89,9 @@ public class ValueResourceUtils {
 	 * 		
 	 */
 	@SuppressWarnings("unchecked")
-	public static void setValue(ValueResource resource, Object value) throws ClassCastException, NumberFormatException {
+	public static boolean setValue(ValueResource resource, Object value) throws ClassCastException, NumberFormatException {
 		if (resource instanceof SingleValueResource) 
-			setValue((SingleValueResource) resource, value.toString());
+			return setValue((SingleValueResource) resource, value.toString());
 		else if (resource instanceof Schedule) {
 			Collection<SampledValue> values;
 			if (value instanceof ReadOnlyTimeSeries)
@@ -101,21 +101,23 @@ public class ValueResourceUtils {
 			else 
 				throw new IllegalArgumentException("Schedule value must be either a time series or a collection of SampledValue objects");
 			((Schedule) resource).replaceValues(Long.MIN_VALUE, Long.MAX_VALUE, values);
+			return true;
 		}
 		else if (resource instanceof IntegerArrayResource) 
-			((IntegerArrayResource) resource).setValues((int[]) value);
+			return ((IntegerArrayResource) resource).setValues((int[]) value);
 		else if (resource instanceof FloatArrayResource) 
-			((FloatArrayResource) resource).setValues((float[]) value);
+			return ((FloatArrayResource) resource).setValues((float[]) value);
 		else if (resource instanceof TimeArrayResource)
-			((TimeArrayResource) resource).setValues((long[]) value);
+			return ((TimeArrayResource) resource).setValues((long[]) value);
 		else if (resource instanceof BooleanArrayResource)
-			((BooleanArrayResource) resource).setValues((boolean[]) value);
+			return ((BooleanArrayResource) resource).setValues((boolean[]) value);
 		else if (resource instanceof StringArrayResource)
-			((StringArrayResource) resource).setValues((String[]) value);
+			return ((StringArrayResource) resource).setValues((String[]) value);
 		else if (resource instanceof ByteArrayResource)
-			((ByteArrayResource) resource).setValues((byte[]) value);
+			return ((ByteArrayResource) resource).setValues((byte[]) value);
 		else if (resource instanceof org.ogema.core.model.simple.OpaqueResource)
-			((org.ogema.core.model.simple.OpaqueResource) resource).setValue((byte[]) value);
+			return ((org.ogema.core.model.simple.OpaqueResource) resource).setValue((byte[]) value);
+		return false;
 	}
 	
 	/**
@@ -159,24 +161,26 @@ public class ValueResourceUtils {
 	 * then <code>value</code> must be parsable as float.
 	 * @param resource
 	 * @param value
+	 * @return 
 	 * @throws NumberFormatException
 	 */
-	public static void setValue(SingleValueResource resource, String value) throws NumberFormatException {
+	public static boolean setValue(SingleValueResource resource, String value) throws NumberFormatException {
 		if (resource instanceof StringResource) {
-			((StringResource) resource).setValue(value);
+			return ((StringResource) resource).setValue(value);
 		}
 		else if (resource instanceof FloatResource) {
-			((FloatResource) resource).setValue(Float.parseFloat(value));
+			return ((FloatResource) resource).setValue(Float.parseFloat(value));
 		}
 		else if (resource instanceof IntegerResource) {
-			((IntegerResource) resource).setValue(Integer.parseInt(value));
+			return ((IntegerResource) resource).setValue(Integer.parseInt(value));
 		}
 		else if (resource instanceof BooleanResource) {
-			((BooleanResource) resource).setValue(Boolean.parseBoolean(value));
+			return ((BooleanResource) resource).setValue(Boolean.parseBoolean(value));
 		}
 		else if (resource instanceof TimeResource) {
-			((TimeResource) resource).setValue(Long.parseLong(value));
+			return ((TimeResource) resource).setValue(Long.parseLong(value));
 		}
+		return false;
 	}
 
 	/**
@@ -780,8 +784,10 @@ public class ValueResourceUtils {
 	 * 		integral, with time measured in ms
 	 */
 	public static double integrate2(ReadOnlyTimeSeries timeseries, long start, long end) {
+		final SampledValue lowerBoundary = timeseries.isEmpty(start, start) ? timeseries.getValue(start) : null;
+		final SampledValue upperBoundary = timeseries.isEmpty(end, end) ? timeseries.getValue(end) : null;
 		return integrate2(timeseries.iterator(start, end), timeseries.getInterpolationMode(), 
-					timeseries.getValue(start), timeseries.getValue(end));
+					lowerBoundary, upperBoundary);
 	}
 	
 	/**
@@ -796,16 +802,18 @@ public class ValueResourceUtils {
 				.setGlobalInterpolationMode(mode)
 				.doIntegrate(true)
 				.build();
-		double sum = 0;
+		SampledValue last = null;
 		while (multiI.hasNext()) {
 			final SampledValue svdp = multiI.next().getElement(0);
 			if (svdp.getQuality() == Quality.GOOD)
-				sum = svdp.getValue().getDoubleValue();
+				last = svdp;
 		}
-		return sum;
+		return last == null ? 0 : last.getValue().getDoubleValue();
 	}
 	
 	/**
+	 * Note: if lower and/or upper boundary values are provided, then the iterator must be restricted to
+	 * timestamps strictly larger/smaller than the lower/upper boundary. 
 	 * 
 	 * @param iterator
 	 * @param mode
@@ -817,20 +825,20 @@ public class ValueResourceUtils {
 	public static double integrate2(Iterator<SampledValue> iterator, InterpolationMode mode, 
 				SampledValue lowerBoundary, SampledValue upperBoundary) {
 		final MultiTimeSeriesIteratorBuilder builder = MultiTimeSeriesIteratorBuilder.newBuilder(Collections.singletonList(iterator))
-				.setGlobalInterpolationMode(null)
+				.setGlobalInterpolationMode(mode)
 				.doIntegrate(true);
 		if (lowerBoundary != null)
 			builder.setLowerBoundaryValues(Collections.singletonMap(0, lowerBoundary));
 		if (upperBoundary != null)
 			builder.setUpperBoundaryValues(Collections.singletonMap(0, upperBoundary));
 		final MultiTimeSeriesIterator multiI = builder.build();
-		double sum = 0;
+		SampledValue last = null;
 		while (multiI.hasNext()) {
 			final SampledValue svdp = multiI.next().getElement(0);
 			if (svdp.getQuality() == Quality.GOOD)
-				sum += svdp.getValue().getDoubleValue();
+				last = svdp;
 		}
-		return sum;
+		return last == null ? 0 : last.getValue().getDoubleValue();
 	}
 
 	/**
@@ -871,7 +879,7 @@ public class ValueResourceUtils {
 			else 
 				return val / count; 
 		}
-		return integrate(schedule, startTime, endTime) / (endTime - startTime);
+		return (float) integrate2(schedule, startTime, endTime) / (endTime - startTime);
 	}
 	
 	/**

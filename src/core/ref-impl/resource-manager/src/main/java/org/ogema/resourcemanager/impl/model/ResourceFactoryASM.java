@@ -152,22 +152,27 @@ enum ResourceFactoryASM {
 		return AccessController.doPrivileged(new PrivilegedAction<Class<? extends ResourceBase>>() {
 			@Override
 			public Class<? extends ResourceBase> run() {
-				try {
-					Method define = ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class, ProtectionDomain.class);
-					define.setAccessible(true);
-					logger.debug("created implementation class for type {} ({} bytes, {} ms)",
-							ogemaType, bytes.length, System.currentTimeMillis()-startTime);
-                    @SuppressWarnings("unchecked")
-                    Class<? extends ResourceBase> implementationClass =
-                            (Class) define.invoke(cl, classname, bytes, 0, bytes.length, ogemaType.getProtectionDomain());
-					return implementationClass;
-				} catch (NoSuchMethodException | SecurityException |
-						IllegalAccessException | IllegalArgumentException | InvocationTargetException ex){
-					throw new InvalidResourceTypeException("Code generation failed", ex);
-				}
+				logger.debug("created implementation class for type {} ({} bytes, {} ms)",
+						ogemaType, bytes.length, System.currentTimeMillis()-startTime);
+				return new MyClassLoader(cl).define(classname, bytes, ogemaType.getProtectionDomain());
 			}
 		});
 	}
+    
+    // custom class loader to call defineClass without reflection
+    private class MyClassLoader extends ClassLoader {
+        
+        MyClassLoader(ClassLoader p) {
+            super(p);
+        }
+        
+        Class<? extends ResourceBase> define(String classname, byte[] bytes, ProtectionDomain pd) {
+            @SuppressWarnings("unchecked")
+            Class<? extends ResourceBase> implementationClass = (Class<? extends ResourceBase>) super.defineClass(classname, bytes, 0, bytes.length, pd);
+            return implementationClass;
+        }
+        
+    }
     
     @SuppressWarnings("unchecked")
 	public <T extends ResourceBase> T makeResource(VirtualTreeElement el, String path, ApplicationResourceManager resman) {

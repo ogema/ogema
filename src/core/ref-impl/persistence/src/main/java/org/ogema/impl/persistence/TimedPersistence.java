@@ -66,6 +66,10 @@ public class TimedPersistence implements PersistencePolicy {
 						continue;
 					}
 					TreeElementImpl e = db.resNodeByID.get(ch.id);
+                    if (e.isNonpersistent() && ch.status == ChangeInfo.VALUE_CHANGED) {
+                        assert false : "NonPersistent resource has ChangeInfo.VALUE_CHANGED";
+                        continue;
+                    }
 					db.resourceIO.storeResource(e);
 					fileChanged = true;
 				}

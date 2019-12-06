@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Service;
 import org.ogema.core.application.Application;
@@ -43,6 +44,7 @@ import org.ogema.core.resourcemanager.CompoundResourceEvent;
 import org.ogema.core.resourcemanager.ResourceValueListener;
 import org.ogema.core.resourcemanager.pattern.PatternChangeListener;
 import org.ogema.core.resourcemanager.pattern.PatternListener;
+import org.osgi.framework.BundleContext;
 
 import de.iwes.ogema.remote.rest.connector.model.ConnectionConfiguration;
 import de.iwes.ogema.remote.rest.connector.model.RestConnection;
@@ -74,6 +76,7 @@ public class RemoteRestConnector implements Application, PatternListener<RestCon
 
     private OgemaLogger logger;
     private ApplicationManager appMan;
+    private BundleContext ctx;
 
     private final Map<RestConnection, ConnectionConfiguration> connections = new HashMap<>();
     private final PriorityQueue<ConnectionTask> tasks = new PriorityQueue<>();
@@ -84,6 +87,11 @@ public class RemoteRestConnector implements Application, PatternListener<RestCon
     private Timer t; 
     // state variable
     private int failCounter = 0;
+    
+    @Activate
+    protected void activate(BundleContext ctx) {
+    	this.ctx = ctx;
+    }
     
     @Override
     public void patternAvailable(RestConnectionPattern pattern) {
@@ -159,11 +167,12 @@ public class RemoteRestConnector implements Application, PatternListener<RestCon
 
     private void connectionAdded(final RestConnectionPattern con) {
         logger.info("connection added: {}", con);
-        final ConnectionConfiguration connection = new ConnectionConfiguration(con.model, appMan, this);
+        final ConnectionConfiguration connection = new ConnectionConfiguration(con.model, appMan, ctx, this);
         connections.put(con.model, connection);
         tasks.addAll(connection.getTasks());
         // fallback for deprecated settings in RestConnection
         repairConfig(con.model);
+        connection.scheduleInitTask();
         resetTimer();
     }
 

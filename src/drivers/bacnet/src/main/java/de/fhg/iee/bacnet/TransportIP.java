@@ -88,11 +88,13 @@ public class TransportIP extends AbstractTransport {
                     int bvlcLength = bb.order(ByteOrder.BIG_ENDIAN).getChar();
                     if (bvlcType != 0x81) {
                         logger.debug("package is not a BACnet/IP message, BVLC Type field has value {}", Integer.toHexString(bvlcType));
-                        return;
+                        continue;
+                        //return;
                     }
                     if (bvlcFunction != 0x0a && bvlcFunction != 0x0b) {
                         logger.warn("received unsupported BVLC Function: {}", Integer.toHexString(bvlcType));
-                        return;
+                        continue;
+                        //return;
                     }
                     Npdu npdu = new Npdu(bb);
 
@@ -129,8 +131,9 @@ public class TransportIP extends AbstractTransport {
                 } catch (Exception ex) {
                     logger.error("exception in UDP receiver", ex);
                 }
-            }
-        }
+            } //while
+            logger.trace("Finished receive while loop...");
+        } //run
     };
     
     public static DeviceAddress createAddress(InetAddress ip, int port, Npdu npdu) {
@@ -203,7 +206,7 @@ public class TransportIP extends AbstractTransport {
         packetData[2] = (byte) ((packetSize & 0xFF00) >> 8);
         packetData[3] = (byte) (packetSize & 0xFF);
         System.arraycopy(npduOctets, 0, packetData, 4, npduOctets.length);
-        logger.trace("sending {} bytes to {}:{}", packetData.length, addr.addr, addr.port);
+        logger.trace("perform sending of {} bytes to {}:{}", packetData.length, addr.addr, addr.port);
         data.get(packetData, vlcSize + npduOctets.length, data.limit());
         DatagramPacket p = new DatagramPacket(packetData, packetData.length, addr.addr, addr.port);
         sock.send(p);

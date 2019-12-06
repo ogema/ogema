@@ -50,8 +50,6 @@ import org.ogema.core.recordeddata.RecordedDataConfiguration.StorageType;
 import org.ogema.core.resourcemanager.ResourceAccess;
 import org.ogema.recordeddata.DataRecorder;
 import org.ogema.recordeddata.RecordedDataStorage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -74,8 +72,6 @@ class RecordedDataServlet extends HttpServlet {
     //final Pattern endsWithNumber = Pattern.compile("(?:/?\\D.*)(?:/(\\d+))");
     final Pattern endsWithNumber = Pattern.compile("(?:/?\\D.*)(?:/(\\d[^/]+))");
 
-    final Logger logger = LoggerFactory.getLogger(getClass());
-
     private final DataRecorder rda;
 	private final RestAccess restAcc;
 	
@@ -90,183 +86,216 @@ class RecordedDataServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
     	final ApplicationManager appman = restAcc.authenticate(req, resp);
-        if (appman == null) {
+		if (RestApp.logger.isTraceEnabled())
+			RestApp.logger.trace("GET request to recorded data servlet {}, authenticated: {}, parameters: {}", 
+					req.getPathInfo(), (appman != null), Utils.mapParameters(req));        
+		if (appman == null) {
             return;
         }
-        final String pathInfo = req.getPathInfo();
-        if (pathInfo == null || pathInfo.isEmpty()) {
-        	resp.setContentType("text/plain");
-        	resp.setCharacterEncoding("UTF-8");
-        	outputRecordedDataIDs(resp.getWriter(), appman.getResourceAccess());
-        	resp.setStatus(HttpServletResponse.SC_OK);
-        	return;
-        }
-        String id = pathInfo.substring(1);
-        RecordedDataStorage rds = rda.getRecordedDataStorage(id);
-        if (rds == null) {
-            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "no such recorded data series: " + id);
-            return;
-        }
-        final Resource res;
         try {
-        	res = appman.getResourceAccess().getResource(id);
-        } catch (SecurityException e) {
-        	resp.sendError(HttpServletResponse.SC_FORBIDDEN);
-        	return;
-        }
-        if (res == null) {
-            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "no such resource: " + id);
-            return;
-        }
-        long start = 0;
-        long end = Long.MAX_VALUE;
-        Matcher m1 = endsWithNumber.matcher(id);
-        if (m1.matches()) {
-            id = id.substring(0, id.length() - m1.group(1).length() - 1);
-            Matcher m2 = endsWithNumber.matcher(id);
-            if (m2.matches()) {
-                start = parseTimestamp(m2.group(1));
-                end = parseTimestamp(m1.group(1));
-                id = id.substring(0, id.length() - m2.group(1).length() - 1);
-            } else {
-                start = parseTimestamp(m1.group(1));
-            }
-        }
-        String startTimestamp = req.getParameter(PARAM_START);
-        if (startTimestamp != null) 
-            start = parseTimestamp(startTimestamp);
-        String endTimestamp = req.getParameter(PARAM_END);
-        if (endTimestamp != null)
-            end = parseTimestamp(endTimestamp);
-        long interval = rds.getConfiguration().getFixedInterval();
-        ReductionMode mode = ReductionMode.NONE;
-
-        String pInterval = req.getParameter(PARAM_INTERVAL);
-        String pMode = req.getParameter(PARAM_MODE);
-
-        if (pInterval != null) {
-            try {
-                interval = Long.parseLong(pInterval);
-            } catch (NumberFormatException nfe) {
-                String error = String.format("illegal value for parameter '%s': %s", PARAM_INTERVAL, pInterval);
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, error);
-                return;
-            }
-        }
-
-        if (pMode != null) {
-            try {
-                mode = ReductionMode.valueOf(pMode);
-            } catch (IllegalArgumentException ex) {
-                String error = String.format("illegal value for parameter '%s': %s", PARAM_MODE, pMode);
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, error);
-                return;
-            }
-        }
-
-        logger.info("return RecordedData '{}', {}, {}, {}, {}", id, start, end, interval, mode);
-
-        if (Utils.xmlOrJson(req)) {
-        	resp.setContentType(Utils.XML);
-            appman.getSerializationManager().writeXml(resp.getWriter(), res, rds, start, end, interval, mode);
-        } else {
-        	resp.setContentType(Utils.JSON);
-            appman.getSerializationManager().writeJson(resp.getWriter(), res, rds, start, end, interval, mode);
-        }
-        resp.setStatus(HttpServletResponse.SC_OK);
+	        final String pathInfo = req.getPathInfo();
+	        if (pathInfo == null || pathInfo.isEmpty()) {
+	        	resp.setContentType("text/plain");
+	        	resp.setCharacterEncoding("UTF-8");
+	        	outputRecordedDataIDs(resp.getWriter(), appman.getResourceAccess());
+	        	resp.setStatus(HttpServletResponse.SC_OK);
+	        	return;
+	        }
+	        String id = pathInfo.substring(1);
+	        RecordedDataStorage rds = rda.getRecordedDataStorage(id);
+	        if (rds == null) {
+	            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "no such recorded data series: " + id);
+	            return;
+	        }
+	        final Resource res;
+	        try {
+	        	res = appman.getResourceAccess().getResource(id);
+	        } catch (SecurityException e) {
+	        	resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+	        	return;
+	        }
+	        if (res == null) {
+	            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "no such resource: " + id);
+	            return;
+	        }
+	        long start = 0;
+	        long end = Long.MAX_VALUE;
+	        Matcher m1 = endsWithNumber.matcher(id);
+	        if (m1.matches()) {
+	            id = id.substring(0, id.length() - m1.group(1).length() - 1);
+	            Matcher m2 = endsWithNumber.matcher(id);
+	            if (m2.matches()) {
+	                start = parseTimestamp(m2.group(1));
+	                end = parseTimestamp(m1.group(1));
+	                id = id.substring(0, id.length() - m2.group(1).length() - 1);
+	            } else {
+	                start = parseTimestamp(m1.group(1));
+	            }
+	        }
+	        String startTimestamp = req.getParameter(PARAM_START);
+	        if (startTimestamp != null) 
+	            start = parseTimestamp(startTimestamp);
+	        String endTimestamp = req.getParameter(PARAM_END);
+	        if (endTimestamp != null)
+	            end = parseTimestamp(endTimestamp);
+	        long interval = rds.getConfiguration().getFixedInterval();
+	        ReductionMode mode = ReductionMode.NONE;
+	
+	        String pInterval = req.getParameter(PARAM_INTERVAL);
+	        String pMode = req.getParameter(PARAM_MODE);
+	
+	        if (pInterval != null) {
+	            try {
+	                interval = Long.parseLong(pInterval);
+	            } catch (NumberFormatException nfe) {
+	                String error = String.format("illegal value for parameter '%s': %s", PARAM_INTERVAL, pInterval);
+	                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, error);
+	                return;
+	            }
+	        }
+	
+	        if (pMode != null) {
+	            try {
+	                mode = ReductionMode.valueOf(pMode);
+	            } catch (IllegalArgumentException ex) {
+	                String error = String.format("illegal value for parameter '%s': %s", PARAM_MODE, pMode);
+	                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, error);
+	                return;
+	            }
+	        }
+	
+	        RestApp.logger.debug("return RecordedData '{}', {}, {}, {}, {}", id, start, end, interval, mode);
+	
+	        if (Utils.xmlOrJson(req)) {
+	        	resp.setContentType(Utils.XML);
+	            appman.getSerializationManager().writeXml(resp.getWriter(), res, rds, start, end, interval, mode);
+	        } else {
+	        	resp.setContentType(Utils.JSON);
+	            appman.getSerializationManager().writeJson(resp.getWriter(), res, rds, start, end, interval, mode);
+	        }
+	        resp.setStatus(HttpServletResponse.SC_OK);
+        } catch (SecurityException se) {
+			RestApp.logger.debug("Security exception in GET request ", se);
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+		} catch (Exception e) {
+			RestApp.logger.debug("Exception in GET request",e);
+			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+		}
     }
     
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
     	final ApplicationManager appman = restAcc.authenticate(req, resp);
-    	if (appman == null)
+		if (RestApp.logger.isTraceEnabled())
+			RestApp.logger.trace("POST request to recorded data servlet {}, authenticated: {}, parameters: {}", 
+					req.getPathInfo(), (appman != null), Utils.mapParameters(req));
+		if (appman == null)
             return;
-        final String pathInfo = req.getPathInfo();
-        if (pathInfo == null || pathInfo.isEmpty()) {
-        	resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-        	return;
-        }
-        final String content;
-        try (final BufferedReader reader = req.getReader()) {
-        	final StringBuilder sb = new StringBuilder();
-            char[] buffer = new char[1024];
-            int read;
-            while ((read = reader.read(buffer)) > 0) {
-            	sb.append(buffer, 0 , read);
-            	if (sb.length() > 1024) {
-            		resp.sendError(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE);
-            		return;
-            	}
-            }
-            content = sb.toString();
-        }
-        final JSONObject json;
-        try {
-        	json = new JSONObject(content);
-        } catch (JSONException e) {
-        	resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid JSON content");
-        	return;
-        }
-        final StorageType storageType = json.has("storageType") ? StorageType.valueOf(json.getString("storageType").toUpperCase()) : StorageType.ON_VALUE_UPDATE;
-        final long fixedInterval = storageType != StorageType.FIXED_INTERVAL ? 0 : json.has("fixedInterval") ? json.getLong("fixedInterval") : 300000; // default: 5 minutes
-        
-        String id = pathInfo.substring(1);
-        final Resource res;
-        try {
-        	res = appman.getResourceAccess().getResource(id); // TODO check for write access?
-        } catch (SecurityException e) {
-        	resp.sendError(HttpServletResponse.SC_FORBIDDEN);
-        	return;
-        }
-        if (!(res instanceof SingleValueResource) || res instanceof StringResource) {
-            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "No such single value resource: " + id);
-            return;
-        }
-        final RecordedData rd = getHistoricalData(res);
-        if (rd == null) {
-        	resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Historical data not found");
-        	return;
-        }
-        RecordedDataConfiguration config = rd.getConfiguration();
-        if (config == null)
-        	config = new RecordedDataConfiguration();
-        config.setStorageType(storageType);
-        config.setFixedInterval(fixedInterval);
-        rd.setConfiguration(config);
-        resp.setStatus(HttpServletResponse.SC_OK);
-        logger.info("Logging enabled for resource {} via REST interface. Configuration: {}", pathInfo, config);
+    	try {
+	        final String pathInfo = req.getPathInfo();
+	        if (pathInfo == null || pathInfo.isEmpty()) {
+	        	resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+	        	return;
+	        }
+	        final String content;
+	        try (final BufferedReader reader = req.getReader()) {
+	        	final StringBuilder sb = new StringBuilder();
+	            char[] buffer = new char[1024];
+	            int read;
+	            while ((read = reader.read(buffer)) > 0) {
+	            	sb.append(buffer, 0 , read);
+	            	if (sb.length() > 1024) {
+	            		resp.sendError(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE);
+	            		return;
+	            	}
+	            }
+	            content = sb.toString();
+	        }
+	        final JSONObject json;
+	        try {
+	        	json = new JSONObject(content);
+	        } catch (JSONException e) {
+	        	resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid JSON content");
+	        	return;
+	        }
+	        final StorageType storageType = json.has("storageType") ? StorageType.valueOf(json.getString("storageType").toUpperCase()) : StorageType.ON_VALUE_UPDATE;
+	        final long fixedInterval = storageType != StorageType.FIXED_INTERVAL ? 0 : json.has("fixedInterval") ? json.getLong("fixedInterval") : 300000; // default: 5 minutes
+	        
+	        String id = pathInfo.substring(1);
+	        final Resource res;
+	        try {
+	        	res = appman.getResourceAccess().getResource(id); // TODO check for write access?
+	        } catch (SecurityException e) {
+	        	resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+	        	return;
+	        }
+	        if (!(res instanceof SingleValueResource) || res instanceof StringResource) {
+	            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "No such single value resource: " + id);
+	            return;
+	        }
+	        final RecordedData rd = getHistoricalData(res);
+	        if (rd == null) {
+	        	resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Historical data not found");
+	        	return;
+	        }
+	        RecordedDataConfiguration config = rd.getConfiguration();
+	        if (config == null)
+	        	config = new RecordedDataConfiguration();
+	        config.setStorageType(storageType);
+	        config.setFixedInterval(fixedInterval);
+	        rd.setConfiguration(config);
+	        resp.setStatus(HttpServletResponse.SC_OK);
+	        RestApp.logger.info("Logging enabled for resource {} via REST interface. Configuration: {}", pathInfo, config);
+    	 } catch (SecurityException se) {
+ 			RestApp.logger.debug("Security exception in POST request ", se);
+ 			resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+ 		} catch (Exception e) {
+ 			RestApp.logger.debug("Exception in POST request",e);
+ 			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+ 		}
     }
     
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
     	final ApplicationManager appman = restAcc.authenticate(req, resp);
-    	if (appman == null)
+		if (RestApp.logger.isTraceEnabled())
+			RestApp.logger.trace("DELETE request to recorded data servlet {}, authenticated: {}, parameters: {}", 
+					req.getPathInfo(), (appman != null), Utils.mapParameters(req));
+		if (appman == null)
             return;
-        final String pathInfo = req.getPathInfo();
-        if (pathInfo == null || pathInfo.isEmpty()) {
-        	resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-        	return;
-        }
-        String id = pathInfo.substring(1);
-        final Resource res;
-        try {
-        	res = appman.getResourceAccess().getResource(id);
-        } catch (SecurityException e) {
-        	resp.sendError(HttpServletResponse.SC_FORBIDDEN);
-        	return;
-        }
-        if (res == null || !(res instanceof SingleValueResource) || res instanceof StringResource) {
-            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "no such resource: " + id);
-            return;
-        }
-        final RecordedData rd = getHistoricalData(res);
-        if (rd == null) {
-        	resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Historical data not found");
-        	return;
-        }
-        rd.setConfiguration(null);
-        resp.setStatus(HttpServletResponse.SC_OK);
-        logger.info("Logging disabled for resource {} via REST interface.", pathInfo);
+    	try {
+	        final String pathInfo = req.getPathInfo();
+	        if (pathInfo == null || pathInfo.isEmpty()) {
+	        	resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+	        	return;
+	        }
+	        String id = pathInfo.substring(1);
+	        final Resource res;
+	        try {
+	        	res = appman.getResourceAccess().getResource(id);
+	        } catch (SecurityException e) {
+	        	resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+	        	return;
+	        }
+	        if (res == null || !(res instanceof SingleValueResource) || res instanceof StringResource) {
+	            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "no such resource: " + id);
+	            return;
+	        }
+	        final RecordedData rd = getHistoricalData(res);
+	        if (rd == null) {
+	        	resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Historical data not found");
+	        	return;
+	        }
+	        rd.setConfiguration(null);
+	        resp.setStatus(HttpServletResponse.SC_OK);
+	        RestApp.logger.info("Logging disabled for resource {} via REST interface.", pathInfo);
+	     } catch (SecurityException se) {
+			RestApp.logger.debug("Security exception in DELETE request ", se);
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+		} catch (Exception e) {
+			RestApp.logger.debug("Exception in DELETE request",e);
+			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+		}
     }
     
     protected static long parseTimestamp(String ts) {

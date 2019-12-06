@@ -17,8 +17,8 @@ package org.ogema.tools.resourcemanipulator.model;
 
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
+import org.ogema.core.model.array.FloatArrayResource;
 import org.ogema.core.model.simple.BooleanResource;
-import org.ogema.core.model.simple.FloatResource;
 import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.model.simple.TimeResource;
 
@@ -58,4 +58,8 @@ public interface SumModel extends ResourceManipulatorModel {
      * @return update the the result whenever an input value is updated (default), or only on changed values?
      */
     BooleanResource callOnEveryUpdate();
+    
+    FloatArrayResource factors();
+    
+    FloatArrayResource offsets();
 }

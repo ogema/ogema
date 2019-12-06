@@ -133,7 +133,7 @@ public class ChannelManagerImpl implements ChannelAccess {
 			// create factory
 			// FIXME Class.forName is ugly... causes problems with OSGi class loaders, and should be generally avoided
 			Class<?> factoryClass = Class.forName(factoryName);
-			factory = (ReaderThreadFactory)factoryClass.newInstance();
+			factory = (ReaderThreadFactory)factoryClass.getDeclaredConstructor().newInstance();
 			logger.info("Using ReaderThreadFactory {} for driver {} ", factoryName,  driverId);
 		} else {
 			factory = readerThreadFactory;

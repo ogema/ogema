@@ -343,10 +343,8 @@ public class SimulationClock implements FrameworkClock {
     	float simulationFactor = 1.0F;
     	if (config.containsKey("simulationFactor")) {
 			final Object factor = config.get("simulationFactor");
-			if (factor instanceof Float)
-				simulationFactor = (Float) factor;
-			else if (factor instanceof Long)
-				simulationFactor = ((Long) factor).floatValue();
+			if (factor instanceof Number)
+				simulationFactor = ((Number) factor).floatValue();
 			else {
 				try {
 					simulationFactor = Float.parseFloat((String) config.get("simulationFactor"));

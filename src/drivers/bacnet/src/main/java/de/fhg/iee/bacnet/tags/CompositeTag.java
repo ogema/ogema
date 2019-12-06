@@ -15,7 +15,6 @@
  */
 package de.fhg.iee.bacnet.tags;
 
-import de.fhg.iee.bacnet.enumerations.BACnetObjectType;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.math.BigInteger;
@@ -25,15 +24,19 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 
+import de.fhg.iee.bacnet.BacnetDate;
+import de.fhg.iee.bacnet.BacnetTime;
+import de.fhg.iee.bacnet.enumerations.BACnetObjectType;
+
 /**
  *
  * @author jlapp
  */
-public class CompositeTag {
+public class CompositeTag implements CompositeTagBase {
 
     Tag basicTagData;
     ByteBuffer content;
-    Collection<CompositeTag> subTags = Collections.EMPTY_LIST;
+    Collection<CompositeTag> subTags = Collections.emptyList();
 
     public CompositeTag(ByteBuffer bb) {
         int sourcePosStart = bb.position();
@@ -83,17 +86,19 @@ public class CompositeTag {
         return basicTagData.isStructureTag();
     }
 
-    private boolean isOpeningTag() {
+    /*private boolean isOpeningTag() {
         return basicTagData.isStructureTag()
                 && ((basicTagData.lengthValueType & TagConstants.CONTEXT_OPENING_TAG) == TagConstants.CONTEXT_OPENING_TAG);
-    }
+    }*/
 
     private boolean isClosingTag() {
         return basicTagData.isStructureTag()
                 && ((basicTagData.lengthValueType & TagConstants.CONTEXT_CLOSING_TAG) == TagConstants.CONTEXT_CLOSING_TAG);
     }
 
-    public Collection<CompositeTag> getSubTags() {
+   @SuppressWarnings("unchecked")
+   @Override
+   public Collection<CompositeTag> getSubTags() {
         return Collections.unmodifiableCollection(subTags);
     }
 
@@ -160,6 +165,7 @@ public class CompositeTag {
     /**
      * @return the object type on an ObjectIdentifier tag.
      */
+    @Override
     public int getOidType() {
         if (content == null || content.limit() < 4) {
             throw new UnsupportedOperationException("tag content does not match OID type");
@@ -168,10 +174,15 @@ public class CompositeTag {
         content.rewind();
         return bits >> 22;
     }
-
+    
+    public Tag.TagClass getTagClass() {
+        return basicTagData.getTagClass();
+    }
+    
     /**
      * @return the instance number on an ObjectIdentifier tag.
      */
+    @Override
     public int getOidInstanceNumber() {
         if (content == null || content.limit() < 4) {
             throw new UnsupportedOperationException("tag content does not match OID type");
@@ -188,4 +199,45 @@ public class CompositeTag {
         return new BigInteger(1, bytes);
     }
 
+    public float getFloat() {
+        byte[] bytes = new byte[(int) basicTagData.getContentLength()];
+        content.get(bytes);
+        content.rewind();
+        return content.getFloat();
+    }
+
+    public double getDouble() {
+        byte[] bytes = new byte[(int) basicTagData.getContentLength()];
+        content.get(bytes);
+        content.rewind();
+        return content.getDouble();
+    }
+    
+	public long getContentLength() {
+		return basicTagData.getContentLength();
+	}
+    
+    public boolean getBooleanValue() {
+        return basicTagData.getTagClass() == Tag.TagClass.Application
+                ? basicTagData.getLengthValueType() == 0x001
+                : getUnsignedInt().intValue() == 1;
+    }
+    
+    public BitStringTag toBitStringTag() {
+        BitStringTag b = new BitStringTag(basicTagData.tagNumber, basicTagData.getTagClass(), content);
+        content.rewind();
+        return b;
+    }
+    
+    public ByteBuffer getContent() {
+        return content;
+    }
+
+	public BacnetDate getDate() {
+		return new BacnetDate(content);
+	}
+	
+	public BacnetTime getTime() {
+		return new BacnetTime(content);
+	}
 }

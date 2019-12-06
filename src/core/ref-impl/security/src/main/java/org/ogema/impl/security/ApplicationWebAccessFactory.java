@@ -55,6 +55,7 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
     final RestHttpContext restContext;
     final M2MLogin m2mLogin;
     private final LoginServlet loginServlet;
+    private final IconServlet iconServlet;
     private final AtomicReference<HttpConfigManagement> headerManagement;
 
     public ApplicationWebAccessFactory(PermissionManager pm, HttpService http, UserAdmin userAdmin, 
@@ -67,10 +68,12 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
 		//new RestAccess(permMan, admin);
 		this.m2mLogin = new M2MLogin(pm, userAdmin);
 		this.loginServlet = new LoginServlet(pm, userAdmin, config);
+		this.iconServlet = new IconServlet(config);
 		try {
 			this.http.registerResources("/login", "/web", null);
 			this.http.registerServlet(LoginServlet.LOGIN_SERVLET_PATH, loginServlet, null, null);
 			this.http.registerServlet("/m2mLogin", this.m2mLogin, null, restContext);
+			this.http.registerServlet("/ogema/icon", iconServlet, null, null);
 		} catch (NamespaceException | ServletException e) {
 			logger.error("registration failed", e);
 		}
@@ -86,6 +89,7 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
     
     void configChanged(Map<String, Object> config) {
     	loginServlet.configUpdate(config);
+    	iconServlet.configUpdate(config);
     }
 
     /*
@@ -101,6 +105,9 @@ public class ApplicationWebAccessFactory implements WebAccessManager {
     	} catch (Exception e) { /* ignore */ }
     	try {
     		http.unregister("/m2mLogin");
+    	} catch (Exception e) { /* ignore */ }
+    	try {
+    		http.unregister("/ogema/icon");
     	} catch (Exception e) { /* ignore */ }
     	Iterator<ApplicationWebAccessManager> it = appWAMs.values().iterator();
     	while (it.hasNext()) {

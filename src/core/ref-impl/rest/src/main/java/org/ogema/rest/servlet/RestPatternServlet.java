@@ -17,6 +17,7 @@ package org.ogema.rest.servlet;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.Objects;
 
 import javax.servlet.ServletException;
@@ -27,6 +28,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.RestAccess;
 import org.ogema.core.application.ApplicationManager;
+import org.ogema.rest.patternmimic.FakePattern;
 import org.ogema.rest.patternmimic.ResourcePatternWriters;
 import org.ogema.rest.patternmimic.ResourcePatternWriters.ResourcePatternWriter;
 
@@ -50,6 +52,9 @@ class RestPatternServlet extends HttpServlet  {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		final ApplicationManager appman = restAcc.authenticate(req, resp);
+		if (RestApp.logger.isTraceEnabled())
+			RestApp.logger.trace("GET request to REST pattern servlet {}, authenticated: {}, parameters: {}", 
+					req.getPathInfo(), (appman != null), Utils.mapParameters(req));
 		if (appman == null) {
 			return;
 		}
@@ -64,20 +69,25 @@ class RestPatternServlet extends HttpServlet  {
             reader.close();
         }
         String request = sb.toString();  
-        if (appman.getLogger().isTraceEnabled()) {
-        	appman.getLogger().trace("Pattern REST request:\n" + request + "\n");
+        if (RestApp.logger.isTraceEnabled()) {
+        	RestApp.logger.trace("Pattern REST request:\n" + request + "\n");
         }
-		
 		resp.setCharacterEncoding("UTF-8");
-
-		ResourcePatternWriter w = ResourcePatternWriters.forRequest(req, appman);
-		resp.setContentType(w.contentType());
 		try {
-			w.write(w.getPattern(request), resp.getWriter());
+			ResourcePatternWriter w = ResourcePatternWriters.forRequest(req, appman);
+			resp.setContentType(w.contentType());
+			final FakePattern p = w.getPattern(request);
+			w.write(p, resp.getWriter());
+			if (RestApp.logger.isTraceEnabled()) {
+				final StringWriter sw = new StringWriter();
+				w.write(p, sw);
+				RestApp.logger.trace("Response\n{}\n", sw.toString());
+			}
 		} catch (SecurityException se) {
+			RestApp.logger.debug("Pattern POST failed", se);
 			resp.sendError(HttpServletResponse.SC_FORBIDDEN);
 		} catch (Exception e) {
-			appman.getLogger().warn("REST pattern de-/serialization failed " + e);
+			RestApp.logger.warn("REST pattern de-/serialization failed " + e);
 			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 		} finally {
 			try {

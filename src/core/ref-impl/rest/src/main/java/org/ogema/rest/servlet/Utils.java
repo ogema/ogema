@@ -15,12 +15,19 @@
  */
 package org.ogema.rest.servlet;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
 import javax.servlet.http.HttpServletRequest;
+
+import org.ogema.accesscontrol.Constants;
 
 public class Utils {
 	
 	public static final String JSON = "application/json";
 	public static final String XML = "application/xml";
+	private static final List<String> PARAMS_NO_LOGGING  = Arrays.asList(Constants.OTPNAME, Constants.OTUNAME); 
 
 	public static boolean xmlOrJson(final HttpServletRequest req) {
 		String accept = req.getHeader("Accept");
@@ -33,14 +40,27 @@ public class Utils {
 				if (contentType.startsWith(JSON))
 					return false;
 			}
-			return true; // undetermined; xml as default
+			return false; // undetermined; json as default
 		}
 		accept = accept.toLowerCase();
-		if (accept.contains(JSON))
-			return false;
-//		if (accept.contains(XML))
-//			return true;
-		return true; // default: xml
+		if (accept.contains(XML))
+			return true;
+		return false; // default: json
+	}
+	
+	@SuppressWarnings("unchecked")
+	static StringBuilder mapParameters(final HttpServletRequest req) {
+		final StringBuilder sb = new StringBuilder();
+		boolean first = true;
+		for (Map.Entry<String, String[]> entry: ((Map<String, String[]>) req.getParameterMap()).entrySet()) {
+			if (PARAMS_NO_LOGGING.contains(entry.getKey()))
+				continue;
+			if (!first)
+				sb.append(',').append(' ');
+			first = false;
+			sb.append(entry.getKey()).append(':').append(Arrays.toString(entry.getValue()));
+		}
+		return sb;
 	}
 	
 }

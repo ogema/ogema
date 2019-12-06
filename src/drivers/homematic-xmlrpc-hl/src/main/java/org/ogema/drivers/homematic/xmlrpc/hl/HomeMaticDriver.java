@@ -234,7 +234,7 @@ public class HomeMaticDriver implements Application {
                 }
             }
         } catch (XmlRpcException ex) {
-            logger.error("failed to configure value resources for device " + dev.getPath()+ " address:"+address, ex);
+            logger.debug("failed to configure value resources for device " + dev.getPath()+ " address:"+address, ex);
         }
     }
 

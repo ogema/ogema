@@ -40,6 +40,10 @@ import org.ogema.serialization.JaxbResource;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
+import org.ogema.serialization.jaxb.SampledBoolean;
+import org.ogema.serialization.jaxb.SampledOpaque;
+import org.ogema.serialization.jaxb.SampledString;
+import org.ogema.serialization.jaxb.SampledTime;
 
 /**
  * Dummy implementation of a JAXB-compatible wrapper for OGEMA schedules.
@@ -53,9 +57,10 @@ import static org.ogema.serialization.JaxbResource.NS_OGEMA_REST;
 // @XmlRootElement(name = "resource", namespace = NS_OGEMA_REST)
 @XmlType(name = "ScheduleResource", namespace = NS_OGEMA_REST, propOrder = { "interpolationMode", "lastUpdateTime",
 		"lastCalculationTime", "start", "end", "entry" })
-// FIXME SampledInteger, etc.?
 @XmlSeeAlso( { ScheduleEntry.class, BooleanSchedule.class, FloatSchedule.class, IntegerSchedule.class,
-		OpaqueSchedule.class, StringSchedule.class, TimeSchedule.class, SampledValue.class, SampledFloat.class })
+		OpaqueSchedule.class, StringSchedule.class, TimeSchedule.class, SampledValue.class, 
+        SampledBoolean.class, SampledFloat.class, SampledInteger.class, SampledOpaque.class,
+        SampledString.class, SampledTime.class })
 public abstract class JaxbSchedule<T> extends JaxbResource {
 
 	protected long start = 0;
@@ -112,7 +117,7 @@ public abstract class JaxbSchedule<T> extends JaxbResource {
 		this.end = end;
 	}
 
-	@XmlElements({ @XmlElement(name = "entry", type = ScheduleEntry.class) })
+	@XmlElements({ @XmlElement(name = "entry", type = SampledValue.class) })
 	@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY)
 	public List<SampledValue> getEntry() {
 		final Schedule schedule = (Schedule) this.res;

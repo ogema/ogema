@@ -38,7 +38,7 @@ public class RadAssembler<T extends Resource, P extends ResourcePattern<T>> exte
 	public RadAssembler(ApplicationManager appMan, Logger logger, Class<P> radClass, AccessPriority writePriority, PatternListener<P> listener, 
 			PatternFactory<P> factory, Object container, PermissionManager permMan) {
         super(appMan, logger, radClass, writePriority, listener, factory, container, permMan);
-        m_primaryDemandListener = new PrimaryDemandListener<>(m_appMan, m_demandedModelType, m_radClass, m_primaryRadListener, factory);                
+        m_primaryDemandListener = new PrimaryDemandListener<>(m_appMan, m_logger, m_demandedModelType, m_radClass, m_primaryRadListener, factory);                
     }
 
     public void start() {

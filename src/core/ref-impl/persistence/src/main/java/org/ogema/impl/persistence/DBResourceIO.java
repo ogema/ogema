@@ -296,8 +296,8 @@ public class DBResourceIO {
 			if (!mf.isValid() || df == null) {
 				// The newest map file is invalid, try the older one.
 				mf.close();
+				newestMap = dirFiles.fileOld;
 				dirFiles.shiftB();
-				newestMap = dirFiles.fileNew;
 				mf = new MapFile(newestMap);
 				dataName = mf.dataFileName;
 				if (mf.isValid()) {
@@ -534,31 +534,31 @@ public class DBResourceIO {
 		if (!node.reference)
 			switch (typeKey) {
 			case DBConstants.TYPE_KEY_BOOLEAN:
-				setBValue(value.Z);
+				setBValue(node.isNonpersistent() ? false : value.Z);
 				node.footprint += 1;
 				break;
 			case DBConstants.TYPE_KEY_FLOAT:
-				setFValue(value.F);
+				setFValue(node.isNonpersistent() ? 0 : value.F);
 				node.footprint += 4;
 				break;
 			case DBConstants.TYPE_KEY_INT:
-				setIValue(value.I);
+				setIValue(node.isNonpersistent() ? 0 : value.I);
 				node.footprint += 4;
 				break;
 
 			case DBConstants.TYPE_KEY_LONG:
-				setJValue(value.J);
+				setJValue(node.isNonpersistent() ? 0 : value.J);
 				node.footprint += 8;
 				break;
 
 			case DBConstants.TYPE_KEY_STRING:
-				setUTF8(value.S);
+				setUTF8(node.isNonpersistent() ? null : value.S);
 				node.footprint += value.footprint;
 				break;
 			// set Primitive array resource values
 			case DBConstants.TYPE_KEY_BOOLEAN_ARR:
-				boolean zArr[] = value.aZ;
-				length = value.getArrayLength();
+				boolean zArr[] = node.isNonpersistent() ? null : value.aZ;
+				length = node.isNonpersistent() ? 0 : value.getArrayLength();
 				setIValue(length);
 				if (zArr != null)
 					for (boolean b : zArr) {
@@ -567,8 +567,8 @@ public class DBResourceIO {
 				node.footprint += value.footprint;
 				break;
 			case DBConstants.TYPE_KEY_FLOAT_ARR:
-				float fArr[] = value.aF;
-				length = value.getArrayLength();
+				float fArr[] = node.isNonpersistent() ? null : value.aF;
+				length = node.isNonpersistent() ? 0 : value.getArrayLength();
 				setIValue(length);
 				if (fArr != null)
 					for (float f : fArr) {
@@ -577,8 +577,8 @@ public class DBResourceIO {
 				node.footprint += value.footprint;
 				break;
 			case DBConstants.TYPE_KEY_INT_ARR:
-				int iArr[] = value.aI;
-				length = value.getArrayLength();
+				int iArr[] = node.isNonpersistent() ? null : value.aI;
+				length = node.isNonpersistent() ? 0 : value.getArrayLength();
 				setIValue(length);
 				if (iArr != null)
 					for (int I : iArr) {
@@ -587,8 +587,8 @@ public class DBResourceIO {
 				node.footprint += value.footprint;
 				break;
 			case DBConstants.TYPE_KEY_LONG_ARR:
-				long jArr[] = value.aJ;
-				length = value.getArrayLength();
+				long jArr[] = node.isNonpersistent() ? null : value.aJ;
+				length = node.isNonpersistent() ? 0 : value.getArrayLength();
 				setIValue(length);
 				if (jArr != null)
 					for (long l : jArr) {
@@ -597,8 +597,8 @@ public class DBResourceIO {
 				node.footprint += value.footprint;
 				break;
 			case DBConstants.TYPE_KEY_STRING_ARR:
-				String sArr[] = value.aS;
-				length = value.getArrayLength();
+				String sArr[] = node.isNonpersistent() ? null : value.aS;
+				length = node.isNonpersistent() ? 0 : value.getArrayLength();
 				setIValue(length);
 				if (sArr != null)
 					for (String s : sArr) {
@@ -607,8 +607,8 @@ public class DBResourceIO {
 				node.footprint += value.footprint;
 				break;
 			case DBConstants.TYPE_KEY_OPAQUE:
-				byte bArr[] = value.aB;
-				length = value.getArrayLength();
+				byte bArr[] = node.isNonpersistent() ? null : value.aB;
+				length = node.isNonpersistent() ? 0 : value.getArrayLength();
 				setIValue(length);
 				if (bArr != null)
 					for (byte b : bArr) {
@@ -1131,8 +1131,8 @@ public class DBResourceIO {
 			// info.
 			if (parent.typeKey == DBConstants.TYPE_KEY_COMPLEX_ARR && parent.type == DBConstants.CLASS_COMPLEX_ARR_TYPE
 					&& !e.name.equals("@elements")) {
-				//parent.type = e.type;
-            }
+				// parent.type = e.type;
+			}
 		}
 		// Check if the node is a reference
 		TreeElementImpl refered = null;

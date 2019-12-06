@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>ogema-tools</artifactId>
+        <groupId>org.ogema.tools</groupId>
+        <version>2.2.1</version>
+    </parent>
+
+    <artifactId>schedule-import</artifactId>
+    <name>OGEMA tools :: CSV schedule import</name>
+	<description>Imports CSV files and writes values to a schedule</description>
+    <packaging>bundle</packaging>
+  
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <configuration>
+               		<!-- make sure service descriptors in target/classes/OSGI-INF are available for tests -->
+               		<!-- FIXME for some reason the component is started multiple times in the test...  -->
+                	<exportScr>true</exportScr>
+                	<instructions>
+                		<Export-Package>
+                			org.ogema.tools.scheduleimporter.config
+                		</Export-Package>
+                	</instructions>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+    
+    <dependencies>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.core</artifactId>
+            <version>6.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.cmpn</artifactId>
+			<version>6.0.0</version>
+			<scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.core</groupId>
+            <artifactId>api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.tools</groupId>
+            <artifactId>resource-utils</artifactId>
+        </dependency>
+		<dependency>
+            <groupId>org.ogema.tools</groupId>
+            <artifactId>timeseries-import</artifactId>
+			<version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.ogema.ref-impl</groupId>
+            <artifactId>ogema-exam-base2</artifactId>
+            <version>${project.parent.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.framework</artifactId>
+            <version>5.6.10</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    
+</project>

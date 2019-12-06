@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.AdminPermission;
 import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.ResourceAccessRights;
@@ -85,7 +84,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	// resource demands registered by this app
 	private final Collection<ResourceDemandListenerRegistration> resourceDemands;
 	private final Cache<String, ResourceAccessRights> accessRights;
-
+	
 	public ApplicationResourceManager(ApplicationManager appMan, Application app, ResourceDBManager dbMan,	PermissionManager pManager) {
 		Objects.requireNonNull(appMan);
 		Objects.requireNonNull(app);
@@ -274,17 +273,17 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 
 	protected ResourceAccessRights getAccessRights(TreeElement el) {
 		TreeElement location = getLocationElement(el);
+		// here "no user" is treated as a special system user
 		final String user = permissionManager.getAccessManager().getCurrentUser();
-		// do not cache access rights if a user is in the call stack
-		if (!AccessManager.SYSTEM_ID.equals(user))  
-			return permissionManager.getAccessRights(app, el, user);
-		ResourceAccessRights r = accessRights.getIfPresent(location.getPath()); //XXX use cache loader
+		// since pound signs are not allowed in Java variable names they cannot appear in valid resource paths either;
+		// note however that there may exist hidden resources with invalid names; TODO ensure they do not conflict with this convention
+		final String userSpecificLocation = location.getPath() + "##" + user;
+		ResourceAccessRights r = accessRights.getIfPresent(userSpecificLocation);
 		if (r == null) {
-			r = permissionManager.getAccessRights(app, location);
-			accessRights.put(location.getPath(), r);
+			r = permissionManager.getAccessRights(app, location, user);
+			accessRights.put(userSpecificLocation, r);
 		}
 		return r;
-
 	}
 
 	protected final TreeElement getLocationElement(TreeElement el) {
@@ -567,7 +566,7 @@ public class ApplicationResourceManager implements ResourceManagement, ResourceA
 	}
 	
 	private final boolean isReadPermitted(final TreeElement element) {
-		return permissionManager.getAccessRights(app, element, permissionManager.getAccessManager().getCurrentUser()).isReadPermitted();
+		return getAccessRights(element).isReadPermitted();
 	}
 	
 	/*

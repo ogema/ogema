@@ -1,0 +1,16 @@
+(org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.osgi.framework.PackagePermission "org.ogema.core.*" "import")
+(org.osgi.framework.PackagePermission "org.ogema.model.*" "import")
+(org.osgi.framework.PackagePermission "org.osgi.framework" "import")
+(org.osgi.framework.PackagePermission "javax.servlet" "import")
+(org.osgi.framework.PackagePermission "javax.servlet.*" "import")
+(org.osgi.framework.PackagePermission "org.json" "import")
+(org.osgi.framework.PackagePermission "org.apache.commons.lang3" "import")
+
+(org.osgi.framework.AdminPermission "*" "*" )
+(org.ogema.accesscontrol.AdminPermission "*" "*")
+
+(org.ogema.accesscontrol.ResourcePermission "path=*" "read")
+(org.ogema.accesscontrol.WebAccessPermission "name=org.ogema.ref-impl.framework-administration")
+
+# note: reflection permissions would be required on top

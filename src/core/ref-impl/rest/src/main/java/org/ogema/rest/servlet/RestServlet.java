@@ -81,30 +81,32 @@ class RestServlet extends HttpServlet  {
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		final ApplicationManager appman = restAcc.authenticate(req, resp);
+		if (RestApp.logger.isTraceEnabled())
+			RestApp.logger.trace("GET request to REST servlet {}, authenticated: {}, parameters: {}", 
+					req.getPathInfo(), (appman != null), Utils.mapParameters(req));
 		if (appman == null) {
 			return;
 		}
-		resp.setCharacterEncoding("UTF-8");
-		final SerializationManager sman = getSerializationManager(req, resp, appman);
-		if (sman == null) {
-			return;
-		}
-		ResourceWriter w = ResourceWriters.forRequest(req, sman);
-		if (w == null) {
-			resp.sendError(HttpServletResponse.SC_NOT_ACCEPTABLE);
-			return;
-		}
-		resp.setContentType(w.contentType());
-
-		String path = req.getPathInfo();
-		if (path == null || path.equals("/")) {
-			ResourceWriters.forRequest(req, sman).write(new RootResource(appman), resp.getWriter());
-			return;
-		}
-
-		ResourceRequestInfo r;
 		try {
-			r = selectResource(req.getPathInfo(), appman);
+			resp.setCharacterEncoding("UTF-8");
+			final SerializationManager sman = getSerializationManager(req, resp, appman);
+			if (sman == null) {
+				return;
+			}
+			ResourceWriter w = ResourceWriters.forRequest(req, sman);
+			if (w == null) {
+				resp.sendError(HttpServletResponse.SC_NOT_ACCEPTABLE);
+				return;
+			}
+			resp.setContentType(w.contentType());
+	
+			String path = req.getPathInfo();
+			if (path == null || path.equals("/")) {
+				ResourceWriters.forRequest(req, sman).write(new RootResource(appman), resp.getWriter());
+				return;
+			}
+	
+			ResourceRequestInfo r = selectResource(req.getPathInfo(), appman, req);
 			if (r == null) {
 				resp.sendError(HttpServletResponse.SC_NOT_FOUND);
 			}
@@ -118,7 +120,11 @@ class RestServlet extends HttpServlet  {
 			}
 			resp.flushBuffer();
 		} catch (SecurityException se) {
+			RestApp.logger.debug("Security exception in GET request ", se);
 			resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+		} catch (Exception e) {
+			RestApp.logger.debug("Exception in GET request",e);
+			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 		} finally {
 			permMan.resetAccessContext();
 		}
@@ -126,8 +132,12 @@ class RestServlet extends HttpServlet  {
 
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		ApplicationManager appman = null;
 		try {
-			final ApplicationManager appman = restAcc.authenticate(req, resp);
+			appman = restAcc.authenticate(req, resp);
+			if (RestApp.logger.isTraceEnabled())
+				RestApp.logger.trace("PUT request to REST servlet {}, authenticated: {}, parameters: {}", 
+						req.getPathInfo(), (appman != null), Utils.mapParameters(req));
 			if (appman == null) {
 				return;
 			}
@@ -153,21 +163,29 @@ class RestServlet extends HttpServlet  {
 				w.write(r.getResource(), resp.getWriter());
 			}
 			resp.flushBuffer();
-			permMan.resetAccessContext();
+		} catch (SecurityException se) {
+			RestApp.logger.debug("Security exception in PUT request ", se);
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN);
 		} catch (Exception e) {
-			resp.setStatus(500);
-			e.printStackTrace(resp.getWriter());
+			RestApp.logger.debug("Exception in PUT request",e);
+			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+		} finally {
+			permMan.resetAccessContext();
 		}
 	}
 
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		ApplicationManager appman = null;
 		try {
 			if (resp.isCommitted()) {
 				return;
 			}
 			resp.setCharacterEncoding("UTF-8");
-			final ApplicationManager appman = restAcc.authenticate(req, resp);
+			appman = restAcc.authenticate(req, resp);
+			if (RestApp.logger.isTraceEnabled())
+				RestApp.logger.trace("POST request to REST servlet {}, authenticated: {}, parameters: {}", 
+						req.getPathInfo(), (appman != null), Utils.mapParameters(req));
 			if (appman == null) {
 				return;
 			}
@@ -191,17 +209,25 @@ class RestServlet extends HttpServlet  {
 					w.write(resource, resp.getWriter());
 				}
 			}
-			permMan.resetAccessContext();
+		} catch (SecurityException se) {
+			RestApp.logger.debug("Security exception in POST request ", se);
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN);
 		} catch (Exception e) {
-			resp.setStatus(500);
-			e.printStackTrace(resp.getWriter());
+			RestApp.logger.debug("Exception in POST request",e);
+			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+		} finally {
+			permMan.resetAccessContext();
 		}
 	}
 
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		ApplicationManager appman = null;
 		try {
-			final ApplicationManager appman = restAcc.authenticate(req, resp);
+			appman = restAcc.authenticate(req, resp);
+			if (RestApp.logger.isTraceEnabled())
+				RestApp.logger.trace("DELETE request to REST servlet {}, authenticated: {}, parameters: {}", 
+						req.getPathInfo(), (appman != null), Utils.mapParameters(req));
 			if (appman == null) {
 				return;
 			}
@@ -220,14 +246,22 @@ class RestServlet extends HttpServlet  {
 				r.resource.delete();
 				resp.sendError(HttpServletResponse.SC_OK);
 			}
-			permMan.resetAccessContext();
+		} catch (SecurityException se) {
+			RestApp.logger.debug("Security exception in DELETE request ", se);
+			resp.sendError(HttpServletResponse.SC_FORBIDDEN);
 		} catch (Exception e) {
-			resp.setStatus(500);
-			e.printStackTrace(resp.getWriter());
+			RestApp.logger.debug("Exception in DELETE request",e);
+			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+		} finally {
+			permMan.resetAccessContext();
 		}
 	}
 
-	protected static ResourceRequestInfo selectResource(String pathInfo, ApplicationManager appman) {
+	private static ResourceRequestInfo selectResource(String pathInfo, ApplicationManager appman) {
+		return selectResource(pathInfo, appman, null); 
+	}
+	
+	protected static ResourceRequestInfo selectResource(String pathInfo, ApplicationManager appman, HttpServletRequest req) {
 		if (pathInfo == null || pathInfo.isEmpty() || "/".equals(pathInfo)) {
 			return new ResourceRequestInfo(new RootResource(appman), false, 0, 0);
 		}
@@ -238,7 +272,8 @@ class RestServlet extends HttpServlet  {
 		if (path.length == 0 || path[0].isEmpty()) {
 			return new ResourceRequestInfo(new RootResource(appman), false, -1, -1);
 		}
-		Resource r = appman.getResourceAccess().getResource(path[0]);
+		/*
+		Resource r = appman.getResourceAccess().getResource(path[0]); // not possible permission-wise; schedule requests must be handled differently
 		for (int i = 1; i < path.length && r != null; i++) {
 			if (r instanceof Schedule) {
 				String next = path[i];
@@ -264,11 +299,17 @@ class RestServlet extends HttpServlet  {
 			}
 			r = r.getSubResource(path[i]);
 		}
+		*/
+		final Resource r = appman.getResourceAccess().getResource(pathInfo);
 		if (r == null || !r.exists()) {
 			return null;
 		}
 		if (Schedule.class.isAssignableFrom(r.getResourceType())) {
-			return new ResourceRequestInfo(r, true, -1, -1);
+			final String startParam = req != null ? req.getParameter(RecordedDataServlet.PARAM_START) : null;
+			final String endParam = req != null ? req.getParameter(RecordedDataServlet.PARAM_END) : null;
+			final long start = startParam != null ? RecordedDataServlet.parseTimestamp(startParam) : -1;
+			final long end = endParam != null ? RecordedDataServlet.parseTimestamp(endParam) : -1;
+			return new ResourceRequestInfo(r, true, start, end);
 		}
 		return new ResourceRequestInfo(r, false, 0, 0);
 	}

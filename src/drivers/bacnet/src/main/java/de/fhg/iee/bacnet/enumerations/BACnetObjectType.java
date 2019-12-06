@@ -63,6 +63,38 @@ public enum BACnetObjectType implements BACnetEnumeration {
     // see load_control  (28), 
     // see structured_view  (29), 
     // see access_door  (30), 
+    timer(31),
+    access_credential(32),
+    access_point(33),
+    access_rights(34),
+    access_user(35),
+    access_zone(36),
+    credential_data_input(37),
+    network_security(38),
+    bitstring_value(39),
+    characterstring_value(40),
+    datepattern_value(41),
+    date_value(42),
+    datetimepattern_value(43),
+    datetime_value(44),
+    integer_value(45),
+    large_analog_value(46),
+    octetstring_value(47),
+    positive_integer_value(48),
+    timepattern_value(49),
+    time_value(50),
+    notification_forwarder(51),
+    alert_enrollment(52),
+    channel(53),
+    lighting_output(54),
+    binary_lighting_output(55),
+    network_port(56),
+    elevator_group(57),
+    escalator(58),
+    lift(59),
+    custom(199),
+    hierarchy(200),
+	component(201)
     ;
 
     private final int code;
@@ -75,13 +107,19 @@ public enum BACnetObjectType implements BACnetEnumeration {
         return code;
     }
     
+    /** Get type value
+     * 
+     * @param val
+     * @return null if no type for the value is found. The value may correspond to a custom type.
+     */
     public static BACnetObjectType forEnumValue(int val) {
         for (BACnetObjectType o: values()) {
             if (val == o.getBACnetEnumValue()){
                 return o;
             }
         }
-        throw new IllegalArgumentException("unknown enum value: " + val);
+        return null;
+        //throw new IllegalArgumentException("unknown enum value: " + val);
     }
 
 }

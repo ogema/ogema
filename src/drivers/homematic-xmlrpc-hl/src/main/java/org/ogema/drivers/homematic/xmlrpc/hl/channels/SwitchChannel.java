@@ -131,7 +131,8 @@ public class SwitchChannel extends AbstractDeviceHandler {
     
     @Override
     public boolean accept(DeviceDescription desc) {
-        return "SWITCH".equalsIgnoreCase(desc.getType());
+        return "SWITCH".equalsIgnoreCase(desc.getType())||
+        		"SWITCH_TRANSMITTER".equalsIgnoreCase(desc.getType());
     }
     
     @Override

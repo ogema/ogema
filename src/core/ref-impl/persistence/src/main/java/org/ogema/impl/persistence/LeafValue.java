@@ -60,7 +60,7 @@ public class LeafValue implements SimpleResourceData {
 			throw new UnsupportedOperationException();
 		this.Z = z;
 		// inform persistence policy about the change
-		if (owner.db.activatePersistence)
+		if (owner.db.activatePersistence && !owner.isNonpersistent())
 			owner.store(ChangeInfo.VALUE_CHANGED);
 	}
 
@@ -78,7 +78,7 @@ public class LeafValue implements SimpleResourceData {
 		this.F = f;
 		// inform persistence policy about the change if the persistence is
 		// active
-		if (owner.db.activatePersistence)
+		if (owner.db.activatePersistence && !owner.isNonpersistent())
 			owner.store(ChangeInfo.VALUE_CHANGED);
 	}
 
@@ -95,7 +95,7 @@ public class LeafValue implements SimpleResourceData {
 			throw new UnsupportedOperationException();
 		this.I = i;
 		// inform persistence policy about the change
-		if (owner.db.activatePersistence)
+		if (owner.db.activatePersistence && !owner.isNonpersistent())
 			owner.store(ChangeInfo.VALUE_CHANGED);
 	}
 
@@ -112,7 +112,7 @@ public class LeafValue implements SimpleResourceData {
 			throw new UnsupportedOperationException();
 		this.J = j;
 		// inform persistence policy about the change
-		if (owner.db.activatePersistence)
+		if (owner.db.activatePersistence && !owner.isNonpersistent())
 			owner.store(ChangeInfo.VALUE_CHANGED);
 	}
 
@@ -129,7 +129,7 @@ public class LeafValue implements SimpleResourceData {
 			throw new UnsupportedOperationException();
 		this.S = s;
 		// inform persistence policy about the change
-		if (owner.db.activatePersistence)
+		if (owner.db.activatePersistence && !owner.isNonpersistent())
 			owner.store(ChangeInfo.VALUE_CHANGED);
 	}
 
@@ -147,7 +147,7 @@ public class LeafValue implements SimpleResourceData {
 		this.aZ = aZ;
 		this.footprint = aZ.length + 4;
 		// inform persistence policy about the change
-		if (owner.db.activatePersistence)
+		if (owner.db.activatePersistence && !owner.isNonpersistent())
 			owner.store(ChangeInfo.VALUE_CHANGED);
 	}
 
@@ -165,7 +165,7 @@ public class LeafValue implements SimpleResourceData {
 		this.aF = aF;
 		this.footprint = aF.length + 4;
 		// inform persistence policy about the change
-		if (owner.db.activatePersistence)
+		if (owner.db.activatePersistence && !owner.isNonpersistent())
 			owner.store(ChangeInfo.VALUE_CHANGED);
 	}
 
@@ -183,7 +183,7 @@ public class LeafValue implements SimpleResourceData {
 		this.aI = aI;
 		this.footprint = aI.length + 4;
 		// inform persistence policy about the change
-		if (owner.db.activatePersistence)
+		if (owner.db.activatePersistence && !owner.isNonpersistent())
 			owner.store(ChangeInfo.VALUE_CHANGED);
 	}
 
@@ -201,7 +201,7 @@ public class LeafValue implements SimpleResourceData {
 		this.aJ = aJ;
 		this.footprint = aJ.length + 4;
 		// inform persistence policy about the change
-		if (owner.db.activatePersistence)
+		if (owner.db.activatePersistence && !owner.isNonpersistent())
 			owner.store(ChangeInfo.VALUE_CHANGED);
 	}
 
@@ -226,7 +226,7 @@ public class LeafValue implements SimpleResourceData {
 		}
 		this.footprint = len + 4;
 		// inform persistence policy about the change
-		if (owner.db.activatePersistence)
+		if (owner.db.activatePersistence && !owner.isNonpersistent())
 			owner.store(ChangeInfo.VALUE_CHANGED);
 	}
 
@@ -244,7 +244,7 @@ public class LeafValue implements SimpleResourceData {
 		this.aB = aB;
 		this.footprint = aB.length + 4;
 		// inform persistence policy about the change
-		if (owner.db.activatePersistence)
+		if (owner.db.activatePersistence && !owner.isNonpersistent())
 			owner.store(ChangeInfo.VALUE_CHANGED);
 	}
 

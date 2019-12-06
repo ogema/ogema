@@ -98,7 +98,16 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		schedule.addValue(4L, new FloatValue(4f));
 		schedule.addValue(5L, new FloatValue(5f));
 	}
-
+	
+	private static JAXBContext createUnmarshallingContext() {
+		try {
+			return JAXBContext.newInstance("org.ogema.serialization.jaxb",
+					org.ogema.serialization.jaxb.Resource.class.getClassLoader());
+		} catch (JAXBException ex) {
+			throw new RuntimeException(ex);
+		}
+	}
+	
 	public static void validateOgemaXml(String input) throws SAXException, IOException {
 		SchemaUtil.getSchema().newValidator().validate(new StreamSource(new StringReader(input)));
 		System.out.println("validated");
@@ -121,7 +130,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		try {
 			sman.writeXml(output, sw.heatCapacity());
 			System.out.println("XML:\n" + output.toString());
-			JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+			JAXBContext ctx = createUnmarshallingContext();
 			validateOgemaXml(output.toString());
 			Unmarshaller u = ctx.createUnmarshaller();
 			FloatResource fr = unmarshal(u, output.toString());
@@ -139,7 +148,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		try {
 			sman.writeXml(output, sw.getSubResource("int"));
 			System.out.println("XML:\n" + output.toString());
-			JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+			JAXBContext ctx = createUnmarshallingContext();
 			validateOgemaXml(output.toString());
 			Unmarshaller u = ctx.createUnmarshaller();
 			org.ogema.serialization.jaxb.IntegerResource r = unmarshal(u, output.toString());
@@ -157,7 +166,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		try {
 			sman.writeXml(output, sw.stateControl());
 			System.out.println("XML:\n" + output.toString());
-			JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+			JAXBContext ctx = createUnmarshallingContext();
 			validateOgemaXml(output.toString());
 			Unmarshaller u = ctx.createUnmarshaller();
 			org.ogema.serialization.jaxb.BooleanResource r = unmarshal(u, output.toString());
@@ -176,7 +185,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 			sman.writeXml(output, sw.ratedValues().upperLimit());
 //                                      sw.comInfo().communicationAddress());
 			System.out.println("XML:\n" + output.toString());
-			JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+			JAXBContext ctx = createUnmarshallingContext();
 			validateOgemaXml(output.toString());
 			Unmarshaller u = ctx.createUnmarshaller();
 			org.ogema.serialization.jaxb.BooleanResource r = unmarshal(u, output.toString());
@@ -194,7 +203,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		try {
 			sman.writeXml(output, sw.timeBeforeSwitchOff());
 			System.out.println("XML:\n" + output.toString());
-			JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+			JAXBContext ctx = createUnmarshallingContext();
 			validateOgemaXml(output.toString());
 			Unmarshaller u = ctx.createUnmarshaller();
 			org.ogema.serialization.jaxb.TimeResource r = unmarshal(u, output.toString());
@@ -214,7 +223,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 			sman.writeXml(output, sched);
 			System.out.println("XML:\n" + output.toString());
 			validateOgemaXml(output.toString());
-			JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+			JAXBContext ctx = createUnmarshallingContext();
 			Unmarshaller u = ctx.createUnmarshaller();
 			org.ogema.serialization.jaxb.FloatSchedule r = unmarshal(u, output.toString());
 			// Assert.assertEquals(sw.timeBeforeSwitchOff().getValue(), r.getValue());
@@ -238,7 +247,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		try {
 			sman.writeXml(output, sw);
 			System.out.println("XML:\n" + output.toString());
-			JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+			JAXBContext ctx = createUnmarshallingContext();
 			validateOgemaXml(output.toString());
 			Unmarshaller u = ctx.createUnmarshaller();
 			org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
@@ -260,7 +269,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		StringWriter output = new StringWriter();
 		sman.writeXml(output, room);
 		System.out.println(output.toString());
-		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		JAXBContext ctx = createUnmarshallingContext();
 		validateOgemaXml(output.toString());
 		Unmarshaller u = ctx.createUnmarshaller();
 		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
@@ -278,7 +287,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		StringWriter output = new StringWriter();
 		sman.writeXml(output, room.workPlaces());
 		System.out.println(output.toString());
-		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		JAXBContext ctx = createUnmarshallingContext();
 		validateOgemaXml(output.toString());
 		Unmarshaller u = ctx.createUnmarshaller();
 		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
@@ -304,10 +313,9 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 
 		sman.writeJson(new OutputStreamWriter(System.out), arrays);
 
-		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
 		validateOgemaXml(output.toString());
 
-		Unmarshaller u = ctx.createUnmarshaller();
+		Unmarshaller u = createUnmarshallingContext().createUnmarshaller();
 		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
 
 		Assert.assertEquals(Arrays.asList(true, false, true), ((org.ogema.serialization.jaxb.BooleanArrayResource) r
@@ -336,7 +344,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		sman.writeXml(output, arrays);
 		System.out.println(output);
 
-		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		JAXBContext ctx = createUnmarshallingContext();
 		validateOgemaXml(output.toString());
 		Unmarshaller u = ctx.createUnmarshaller();
 		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
@@ -369,7 +377,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		sman.writeXml(output, arrays);
 		System.out.println(output);
 
-		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		JAXBContext ctx = createUnmarshallingContext();
 		validateOgemaXml(output.toString());
 		Unmarshaller u = ctx.createUnmarshaller();
 		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
@@ -400,7 +408,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		sman.writeXml(output, arrays);
 		System.out.println(output);
 
-		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		JAXBContext ctx = createUnmarshallingContext();
 		validateOgemaXml(output.toString());
 		Unmarshaller u = ctx.createUnmarshaller();
 		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
@@ -433,7 +441,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		sman.writeXml(output, arrays);
 		System.out.println(output);
 
-		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		JAXBContext ctx = createUnmarshallingContext();
 		validateOgemaXml(output.toString());
 		Unmarshaller u = ctx.createUnmarshaller();
 		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
@@ -466,7 +474,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		sman.writeXml(output, arrays);
 		System.out.println(output);
 
-		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		JAXBContext ctx = createUnmarshallingContext();
 		validateOgemaXml(output.toString());
 		Unmarshaller u = ctx.createUnmarshaller();
 		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());
@@ -497,7 +505,7 @@ public class XmlSerializationOsgiTest extends OsgiAppTestBase {
 		sman.writeXml(output, arrays);
 		System.out.println(output);
 
-		JAXBContext ctx = JAXBContext.newInstance(org.ogema.serialization.jaxb.Resource.class);
+		JAXBContext ctx = createUnmarshallingContext();
 		validateOgemaXml(output.toString());
 		Unmarshaller u = ctx.createUnmarshaller();
 		org.ogema.serialization.jaxb.Resource r = unmarshal(u, output.toString());

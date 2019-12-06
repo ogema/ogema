@@ -98,6 +98,10 @@ public class ResourceProxy {
 		this.accessMode = AccessMode.valueOf(accessMode);
 	}
 	
+	public void setAccessMode(AccessMode accessMode) {
+		this.accessMode = accessMode;
+	}
+	
 	@XmlElement(name="value")
 	public String getValue() {
 		return FakePatternAccess.getValue(res);

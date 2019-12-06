@@ -149,14 +149,18 @@ public interface RestConnection extends Resource {
     /**
      * remote REST user
      * @return
+     * @deprecated use RemoteOgemaAuth service instead.
      */
+    @Deprecated
     StringResource remoteUser();
     
     /**
      * Remote REST user pw
      * @return
+     * @deprecated use RemoteOgemaAuth service instead.
      */
     // TODO do not store in visible resource
+    @Deprecated
     StringResource remotePw();
     
     /** 
@@ -180,5 +184,13 @@ public interface RestConnection extends Resource {
      */
     @Deprecated
     ResourceList<RestPullConfig> pullConfigs();
+    
+    /**
+     * If this subresource is active and the value non-negative, then the connector will try to create the corresponding
+     * parents up to the specified levels up from the base resource (level 0 is the parent resource of the {@link RestConnection}
+     * resource, level 1 its parent, etc.).  
+     * @return
+     */
+    IntegerResource createParentsLevelOnInit();
     
 }

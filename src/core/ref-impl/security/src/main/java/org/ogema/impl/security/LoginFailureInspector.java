@@ -15,10 +15,10 @@
  */
 package org.ogema.impl.security;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LoginFailureInspector {
 	// used to block IPs when multiple logins failed ... preventing brute force attacks.
@@ -27,10 +27,10 @@ public class LoginFailureInspector {
 	// other possibility would be to use felix ExtHttpService but with that we would depend on
 	// an implementation... for now simply implementing it here:
 	// NOTE: do not store in session because this can be easily faked.
-	private static Map<String, IpLoginFailureInfo> loginFailureMap = new HashMap<String, IpLoginFailureInfo>();
+	private static Map<String, IpLoginFailureInfo> loginFailureMap = new ConcurrentHashMap<String, IpLoginFailureInfo>();
 	private static final int MAX_LOGIN_TRIES = 3;
 	private static final long LOGIN_BLOCK_TIME = 60 * 1000 * 10;
-
+	
 	public boolean isUserBlocked(String ip) {
 		IpLoginFailureInfo ipLoginFailureInfo = loginFailureMap.get(ip);
 		if (ipLoginFailureInfo == null) {

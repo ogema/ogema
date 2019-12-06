@@ -25,6 +25,7 @@ import java.util.Objects;
 import org.ogema.core.channelmanager.measurements.SampledValue;
 import org.ogema.core.timeseries.InterpolationMode;
 import org.ogema.tools.timeseries.iterator.impl.TimeSeriesMultiIteratorImpl;
+import org.ogema.tools.timeseries.iterator.impl.TimeSeriesMultiIteratorImplDiff;
 import org.ogema.tools.timeseries.iterator.impl.TimeSeriesMultiIteratorImplIntegrating;
 import org.ogema.tools.timeseries.iterator.impl.TimeSeriesMultiIteratorImplStepRuler;
 import org.ogema.tools.timeseries.iterator.impl.TimeSeriesMultiIteratorImplStepRulerIntegrating;
@@ -41,8 +42,12 @@ public class MultiTimeSeriesIteratorBuilder {
 	// may be null
 	private Map<Integer, SampledValue> upperBoundaryValues;
 	private int maxNrHistoricalValues;
+	// a value between 0 and 1. 0 means that values are associated to the earlier timestamp,
+	// 1 to the later timestamp, otherwise it is interpolated according to the value. 
+	private float timeInterpolation = 0.5F;
 	private boolean doAverage = false;
 	private boolean doIntegrate = false;
+	private boolean doDiff = false;
 	
 	// fixed step size
 	private Long stepSize = null;
@@ -67,6 +72,14 @@ public class MultiTimeSeriesIteratorBuilder {
 	}
 	
 	public MultiTimeSeriesIterator build() {
+		final MultiTimeSeriesIterator it = getIterator();
+		if (doDiff)
+			return new TimeSeriesMultiIteratorImplDiff(it, timeInterpolation);
+		else
+			return it;
+	}
+	
+	private final MultiTimeSeriesIterator getIterator() {
 		if (startTime != null)
 			return new TimeSeriesMultiIteratorImplStepSize(iterators, maxNrHistoricalValues, 
 					lowerBoundaryValues, upperBoundaryValues, globalMode, modes, doAverage, doIntegrate, stepSize, startTime);
@@ -83,7 +96,16 @@ public class MultiTimeSeriesIteratorBuilder {
 		return new TimeSeriesMultiIteratorImpl(iterators, maxNrHistoricalValues, 
 					lowerBoundaryValues, upperBoundaryValues, globalMode, modes, doAverage, doIntegrate);
 	}
-
+	
+//	private final Long getActualStartTime() {
+//		if (!doDiff || startTime == null || stepSize == null)
+//			return startTime;
+//		final long half = stepSize / 2;
+//		if (Long.MIN_VALUE + half <= startTime)
+//			return startTime - half;
+//		return startTime + half;
+//	}
+	
 	/**
 	 * Default value: null
 	 * @param lowerBoundaryValues
@@ -147,8 +169,10 @@ public class MultiTimeSeriesIteratorBuilder {
 	 */
 	public MultiTimeSeriesIteratorBuilder doAverage(boolean average) {
 		this.doAverage = average; 
-		if (average)
+		if (average) {
 			doIntegrate = false;
+			doDiff = false;
+		}
 		return this;
 	}
 	
@@ -160,8 +184,39 @@ public class MultiTimeSeriesIteratorBuilder {
 	 */
 	public MultiTimeSeriesIteratorBuilder doIntegrate(boolean integrate) {
 		this.doIntegrate = integrate;
-		if (integrate)
+		if (integrate) {
 			doAverage = false;
+			doDiff = false;
+		}
+		return this;
+	}
+	
+	/**
+	 * If this is set to true, then the values returned by the iterator will be obtained by subtracting the 
+	 * value at the start of the past interval from the value at the end of the interval.
+	 * 
+	 * See also {@link #doDiff(boolean, float)}, which allows to control the timestamp to which a difference value
+	 * will be associated.
+	 * @param diff
+	 */
+	public MultiTimeSeriesIteratorBuilder doDiff(boolean diff) {
+		return doDiff(diff, timeInterpolation);
+	}
+	
+	/**
+	 * If this is set to true, then the values returned by the iterator will be obtained by subtracting the 
+	 * value at the start of the past interval from the value at the end of the interval.
+	 * @param diff
+	 * @param timeInterpolation typically a value between 0 and 1. 0 means that values are associated to the earlier timestamp,
+	 * 		 1 to the later timestamp, an intermediate value leads to an interpolated timestamp. Default is 0.5.
+	 */
+	public MultiTimeSeriesIteratorBuilder doDiff(boolean diff, float timeInterpolation) {
+		this.doDiff = diff;
+		this.timeInterpolation = timeInterpolation;
+		if (diff) {
+			doAverage = false;
+			doIntegrate = false;
+		}
 		return this;
 	}
 	

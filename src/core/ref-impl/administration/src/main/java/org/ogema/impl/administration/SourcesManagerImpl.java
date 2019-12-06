@@ -45,11 +45,11 @@ public class SourcesManagerImpl implements SourcesManagement {
 	private PermissionManager pMan;
 	
 	protected synchronized void addSource(ApplicationSource source) {
-		appStores.put(source.getAddress(), source);
+		appStores.put(source.getName(), source);
 	}
 	
 	protected synchronized void removeSource(ApplicationSource source) {
-		appStores.remove(source.getAddress());
+		appStores.remove(source.getName());
 	}
 	
 	@Deactivate

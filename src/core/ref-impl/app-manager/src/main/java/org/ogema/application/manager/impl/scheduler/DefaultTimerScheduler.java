@@ -18,6 +18,7 @@ package org.ogema.application.manager.impl.scheduler;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 
 import org.apache.felix.scr.annotations.Activate;
 
@@ -86,7 +87,11 @@ public class DefaultTimerScheduler implements TimerScheduler, FrameworkClock.Clo
                 break;
             case RUNNING:
                 if (timer.isIdle()) {
-                    executeTimer(timer, executionTime);
+                	try {
+                		executeTimer(timer, executionTime);
+                	} catch (RejectedExecutionException e) {
+                		timer.logger.error("Failed to execute timer", e);
+                	}
                 }
                 timer.forward();
                 timers.offer(timer);

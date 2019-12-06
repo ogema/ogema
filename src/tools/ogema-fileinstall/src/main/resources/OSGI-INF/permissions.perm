@@ -1,0 +1,6 @@
+(java.util.PropertyPermission "user.dir" "read")
+(java.util.PropertyPermission "ogema.resourceinstall.*" "read")
+(java.io.FilePermission "<<ALL FILES>>" "read")
+${permissions;packages;services;capabilities}
+(org.osgi.framework.ServicePermission "org.ogema.core.application.Application" "register")
+(org.ogema.accesscontrol.ResourcePermission "path=*" "read,write,create,addsub,activity,delete")

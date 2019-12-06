@@ -47,7 +47,11 @@ class PersistentFileSet {
 		for (String name : files) {
 			if (name.startsWith(fileName)) {
 				suffix = name.substring(fileName.length());
-				tmpCounter = Integer.valueOf(suffix);
+				try {
+					tmpCounter = Integer.valueOf(suffix);
+				} catch (NumberFormatException e) {
+					continue;
+				}
 				if (tmpCounter > counter2) {
 					/*
 					 * Name is newer than name1 and name2. name1 can be deleted before it is overridden by the new name.
@@ -176,7 +180,7 @@ class PersistentFileSet {
 
 	public void shiftF() {
 		if (Configuration.LOGGING)
-			logger.debug("Create new file: {}",namePrefix);
+			logger.debug("Create new file: {}", namePrefix);
 		File newFile = new File(directory, namePrefix + String.valueOf(nameSuffix));
 		nameSuffix++;
 		/*

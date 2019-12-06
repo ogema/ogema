@@ -45,7 +45,7 @@ public class RoomController {
 		if (device.irradSensor.reading() != null || device.tempSens.reading() != null || device.country != null
 				|| device.city != null) {
 
-			final ResourceUtil util = new ResourceUtil(appMan, device.tempSens.reading(), device.irradSensor.reading());
+			final ResourceUtil util = new ResourceUtil(appMan, device);
 
 			task = new TimerTask() {
 

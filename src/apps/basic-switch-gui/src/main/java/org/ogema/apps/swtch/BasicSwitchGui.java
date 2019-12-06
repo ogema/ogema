@@ -47,9 +47,15 @@ public class BasicSwitchGui implements Application {
         servletPath = "/apps/ogema/" + appNameLowerCase;
         am.getWebAccessManager().registerWebResource(webResourceBrowserPath,webResourcePackagePath);
         am.getWebAccessManager().registerWebResource(servletPath, new BasicSwitchGuiServlet(am));
-        
-        Boolean testRes = Boolean.getBoolean("org.ogema.apps.createtestresources");
-        this.testResources = testRes ? new TestResourceManagement(am) : null;
+        try {
+        	if (Boolean.getBoolean("org.ogema.gui.usecdn")) {
+        		am.getWebAccessManager().registerStartUrl(webResourceBrowserPath + "/index2.html");
+        	}
+        } catch (SecurityException ok) {}
+        try {
+	        Boolean testRes = Boolean.getBoolean("org.ogema.apps.createtestresources");
+	        this.testResources = testRes ? new TestResourceManagement(am) : null;
+        } catch (SecurityException ok) {}
 	}
 
 	@Override

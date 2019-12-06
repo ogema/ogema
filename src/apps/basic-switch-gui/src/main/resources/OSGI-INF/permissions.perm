@@ -8,6 +8,7 @@
 (org.osgi.framework.PackagePermission "com.fasterxml.jackson" "import")
 (org.osgi.framework.PackagePermission "com.fasterxml.jackson.*" "import")
 (java.util.PropertyPermission "org.ogema.apps.createtestresources" "read")
+(java.util.PropertyPermission "org.ogema.gui.usecdn" "read")
 
 #(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.prototypes.PhysicalElement" "read,write,addsub,create,activity")
 #(org.ogema.accesscontrol.ResourcePermission "path=*,type=org.ogema.model.actors.OnOffSwitch" "read,write,addsub,create,activity")

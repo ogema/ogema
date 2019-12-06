@@ -4,20 +4,12 @@
     <parent>
         <artifactId>ogema-drivers</artifactId>
         <groupId>org.ogema.drivers</groupId>
-        <version>2.2.0</version>
+        <version>2.2.1</version>
     </parent>
 
     <artifactId>knx</artifactId>
-    <version>2.2.0</version>
+    <version>2.2.1</version>
     <packaging>bundle</packaging>
-
-    <repositories>
-        <repository>
-            <url>https://www.ogema-source.net/artifactory/external-opensource</url>
-            <name>external</name>
-            <id>iwes-external-opensource</id>
-        </repository>
-    </repositories>
 
     <name>OGEMA Drivers :: KNX</name>
     <description>Implementation of the KNX-Driver as a unified high-level plus low-level driver</description>

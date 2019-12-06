@@ -23,11 +23,14 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,16 +47,17 @@ import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.apache.felix.scr.annotations.ReferencePolicy;
 import org.apache.felix.scr.annotations.ReferencePolicyOption;
+import org.apache.felix.scr.annotations.References;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.felix.service.command.Descriptor;
 import org.apache.felix.service.command.Parameter;
-import org.ogema.core.application.Application;
-import org.ogema.core.application.ApplicationManager;
 import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import de.iwes.experimental.ogema.console.scripting.api.ScriptEngingExtension;
 
 /**
  * Starts a Groovy script engine that is accessible via the equinox OSGi console. Type {@code 'help'} on the OSGi
@@ -73,21 +77,34 @@ import org.slf4j.LoggerFactory;
  *
  */
 @Component(specVersion = "1.2", immediate = true, enabled = true)
-@Service(Application.class)
+@Service(ScriptCommandsGoGo.class)
 @Properties({ @Property(name = "osgi.command.scope", value = "ogs"),
 		@Property(name = "osgi.command.function", value = { "ogs", "run", "console", "init", "env", "listEngines" }) })
-@Reference(
-	cardinality = ReferenceCardinality.OPTIONAL_MULTIPLE,
-	policy=ReferencePolicy.DYNAMIC,
-	policyOption=ReferencePolicyOption.GREEDY,
-	referenceInterface = ScriptEngineFactory.class, 
-	bind = "addFactory", 
-	unbind = "removeFactory"
-)
-public class ScriptCommandsGoGo implements Application {
+@References({
+	@Reference(
+			cardinality = ReferenceCardinality.OPTIONAL_MULTIPLE,
+			policy=ReferencePolicy.DYNAMIC,
+			policyOption=ReferencePolicyOption.GREEDY,
+			referenceInterface = ScriptEngineFactory.class, 
+			bind = "addFactory", 
+			unbind = "removeFactory"
+		),
+	@Reference(
+			cardinality = ReferenceCardinality.OPTIONAL_MULTIPLE,
+			policy=ReferencePolicy.DYNAMIC,
+			policyOption=ReferencePolicyOption.GREEDY,
+			referenceInterface = ScriptEngingExtension.class, 
+			bind = "addExtension", 
+			unbind = "removeExtension"
+		)
+})
+public class ScriptCommandsGoGo {
 
 	@Reference
 	protected org.apache.felix.service.command.CommandProcessor cp;
+
+	// synchronized on itself
+	private final List<ScriptEngingExtension> extensions = new ArrayList<ScriptEngingExtension>(4);
     
 	protected volatile ScriptEngineManager manager = new ScriptEngineManager();
 	protected volatile ScriptEngine engine;
@@ -98,12 +115,28 @@ public class ScriptCommandsGoGo implements Application {
 	 * Map engine factory -&gt; service ranking
 	 */
 	// synchronized on this
-    protected final Map<ScriptEngineFactory, Integer> addedFactories = new HashMap<ScriptEngineFactory, Integer>();
+    protected final Map<ScriptEngineFactory, Integer> addedFactories = new HashMap<>();
     private List<ServiceReference<ScriptEngineFactory>> pendingFactories;
     
-	protected ApplicationManager appMan;
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
+	protected void addExtension(ScriptEngingExtension extension) {
+		synchronized (extensions) {
+			extensions.add(extension);
+			if (engine != null)
+				extension.newScriptEnging(engine);
+		}
+	}
+	
+	protected void removeExtension(ScriptEngingExtension extension) {
+		synchronized (extensions) {
+			extensions.remove(extension);
+			if (engine != null) {
+				extension.engineGone(engine);
+			}
+		}
+	}
+	
 	@Descriptor("evaluate string in script engine")
 	public Object ogs(String[] input) throws ScriptException {
 		StringBuilder sb = new StringBuilder();
@@ -120,26 +153,40 @@ public class ScriptCommandsGoGo implements Application {
 		String line = sb.toString();
 		return engine.eval(line);
 	}
+    
+    private ScriptEngine selectEngine(String filename) {
+        ScriptEngine fileEngine = engine;
+        int idxExt = filename.lastIndexOf('.');
+        String extension = idxExt != -1 && idxExt < filename.length() - 1 ?
+                filename.substring(idxExt + 1) : filename;
+        if (!fileEngine.getFactory().getExtensions().contains(extension)) {
+            fileEngine = manager.getEngineByExtension(extension);
+            setupBindings(fileEngine);
+        }
+        logger.trace("engine selected for file {}: {}", filename, fileEngine.getFactory().getEngineName());
+        return fileEngine;
+    }
 
 	@Descriptor("evaluate (run) file in script engine")
-	public Object run(String f) {
-		File file = new File(f);
+	public Object run(String filename) {
+		File file = new File(filename);
+        ScriptEngine fileEngine = selectEngine(filename);
 		InputStream is = null;
 		try {
 			if (file.exists()) {
 				try {
-					return evalIs(is = new FileInputStream(file));
+					return evalIs(fileEngine, is = new FileInputStream(file));
 				} catch (FileNotFoundException fe) {
 					System.out.println(fe.getMessage());
 				}
 			}
 			else {
-				is = getClass().getResourceAsStream(f);
+				is = getClass().getResourceAsStream(filename);
 				if (is == null) {
-					System.out.println("not found: " + f);
+					System.out.println("not found: " + filename);
 				}
 				else {
-					return evalIs(is);
+					return evalIs(fileEngine, is);
 				}
 			}
 		} finally {
@@ -158,7 +205,7 @@ public class ScriptCommandsGoGo implements Application {
 	@Descriptor("initialize a new script engine (e.g. 'javascript' or 'Groovy')")
 	public void init(String engineName) {
 		synchronized (this) {
-			initEngine(engineName);
+			engine = initEngine(engineName);
 		}
 	}
 
@@ -205,7 +252,7 @@ public class ScriptCommandsGoGo implements Application {
 		}
 	}
 
-	protected Object evalIs(InputStream is) {
+	protected Object evalIs(ScriptEngine engine, InputStream is) {
 		InputStreamReader reader = new InputStreamReader(is);
 		try {
 			return engine.eval(reader);
@@ -271,7 +318,7 @@ public class ScriptCommandsGoGo implements Application {
     	if (fac == null)
     		return;
     	Object rankProp = facRef.getProperty(Constants.SERVICE_RANKING);
-        final int rank = rankProp instanceof Integer ? ((Integer) rankProp).intValue() : 0;
+        final int rank = rankProp instanceof Integer ? ((Integer) rankProp) : 0;
         addFactoryInternal(fac, rank);
     }
     
@@ -295,7 +342,7 @@ public class ScriptCommandsGoGo implements Application {
 				    			if (unregisterMime(mimeType, fac)) {
 				    				registerNewMime(mimeType);
 				    			}
-							} catch (Exception e) {
+							} catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException e) {
 								logger.warn("Error removing script engine by mime type {}",fac,e);
 							}
 			    	    }
@@ -304,27 +351,16 @@ public class ScriptCommandsGoGo implements Application {
 				    			if (unregisterExtension(extension, fac)) {
 				    				registerNewExtension(extension);
 				    			}
-							} catch (Exception e) {
+							} catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException e) {
 								logger.warn("Error removing script engine by extension {}",fac,e);
 							}
 						}
-						/*
-						for (String name: fac.getNames()) {
-							try {
-				    			if (unregisterName(name, fac)) {
-				    				registerNewName(name);
-				    			}
-							} catch (Exception e) {
-								logger.warn("Error removing script engine by name {}",fac,e);
-							}
-						}
-						*/
 						final String name = fac.getLanguageName();
 						try {
 			    			if (unregisterName(name, fac)) {
 			    				registerNewName(name);
 			    			}
-						} catch (Exception e) {
+						} catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException e) {
 							logger.warn("Error removing script engine by name {}",fac,e);
 						}
 						return null;
@@ -382,22 +418,23 @@ public class ScriptCommandsGoGo implements Application {
     }
     
     // must be called in privileged block
-    private final boolean unregisterMime(final String mime, final ScriptEngineFactory fac) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+    private boolean unregisterMime(final String mime, final ScriptEngineFactory fac) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
     	return unregister(mime, fac, "mimeTypeAssociations");
     }
     
-    private final boolean unregisterExtension(final String extension, final ScriptEngineFactory fac) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+    private boolean unregisterExtension(final String extension, final ScriptEngineFactory fac) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
     	return unregister(extension, fac, "extensionAssociations");
     }
     
-    private final boolean unregisterName(final String name, final ScriptEngineFactory fac) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+    private boolean unregisterName(final String name, final ScriptEngineFactory fac) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
     	return unregister(name, fac, "nameAssociations");
     }
     
     // requires external sync on this
-    private final boolean unregister(final String id, final ScriptEngineFactory fac, final String fieldName) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+    private boolean unregister(final String id, final ScriptEngineFactory fac, final String fieldName) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
     	final Field f = ScriptEngineManager.class.getDeclaredField(fieldName);
     	f.setAccessible(true);
+        @SuppressWarnings("unchecked")
     	final Map<String, ScriptEngineFactory> map = (Map<String, ScriptEngineFactory>) f.get(manager);
     	// the maps in the manager class are protected by sync on this
    		if (map.get(id) != fac)
@@ -417,9 +454,10 @@ public class ScriptCommandsGoGo implements Application {
         try {
             @SuppressWarnings("unchecked")
             Class<ScriptEngineFactory> c = (Class<ScriptEngineFactory>) Class.forName("org.codehaus.groovy.jsr223.GroovyScriptEngineFactory");
-            ScriptEngineFactory f = c.newInstance();
+            Constructor<ScriptEngineFactory> constr = c.getConstructor((Class<?>[]) null);
+            ScriptEngineFactory f = constr.newInstance((Object[]) null);
             addFactoryInternal(f, 0);
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+        } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
             logger.debug("Groovy not available ({})", e.getMessage());
         }
         for (ScriptEngineFactory sef: manager.getEngineFactories()) {
@@ -429,32 +467,38 @@ public class ScriptCommandsGoGo implements Application {
             logger.debug("engine added: '{}', {}, {}", sef.getEngineName(), sef.getLanguageName(), sef.getExtensions());
         }
         if (manager.getEngineByName("Groovy") != null) {
-            initEngine("Groovy");
+            engine = initEngine("Groovy");
         } else {
-            initEngine("ECMAScript");
+            engine = initEngine("ECMAScript");
         }
         logger.debug("initialized {} engine", engine.getFactory().getLanguageName());
 	}
+    
+    protected void setupBindings(ScriptEngine e) {
+        e.put("ctx", ctx.getBundleContext());
+		e.put("bundle", ctx.getBundleContext().getBundle());
+		synchronized (extensions) {
+			for (ScriptEngingExtension ext : extensions) {
+				ext.newScriptEnging(e);
+			}
+		}
+    }
 
 	// requires external sync on this
-	protected void initEngine(String scriptname) {
-		engine = getEnginePrivileged(scriptname);
-		if (engine == null) {
+	protected ScriptEngine initEngine(String scriptname) {
+		ScriptEngine newEngine = getEnginePrivileged(scriptname);
+		if (newEngine == null) {
 			logger.warn("could not get script engine {} from manager, using ECMAScript", scriptname);
-			engine = manager.getEngineByExtension("js");
+			newEngine = manager.getEngineByExtension("js");
 		}
-		engine.put("ctx", ctx.getBundleContext());
-		engine.put("bundle", ctx.getBundleContext().getBundle());
-        if (appMan != null) {
-            engine.put("manager", appMan);
-        }
+		setupBindings(newEngine);
 
-		for (String ext : engine.getFactory().getExtensions()) {
+		for (String ext : newEngine.getFactory().getExtensions()) {
 			String name = "/initscripts/" + scriptname + "." + ext;
 			InputStream is = getClass().getResourceAsStream(name);
 			if (is != null) {
 				try {
-					engine.eval(new InputStreamReader(is));
+					newEngine.eval(new InputStreamReader(is));
 					logger.debug("sourced {}", name);
 				} catch (ScriptException ex) {
 					logger.error("error in init script", ex);
@@ -464,16 +508,16 @@ public class ScriptCommandsGoGo implements Application {
 				logger.debug("no init script ({})", name);
 			}
 		}
+                return newEngine;
 	}
 
 	protected synchronized void deactivate(ComponentContext ctx, Map<String, Object> config) {
-		try {
-			engine.put("manager",null); // try to remove appmanager reference from the engine
-		} catch (Exception e) {}
+		synchronized (extensions) {
+			for (ScriptEngingExtension ext: extensions) {
+				ext.engineGone(engine);
+			}
+		}
 		engine = null;
-		try {
-			stop(null);
-		} catch (Exception e) {}
 		addedFactories.clear();
 		history.clear();
 		manager = null;
@@ -489,16 +533,5 @@ public class ScriptCommandsGoGo implements Application {
             }
         });
     }
-
-	@Override
-	public void start(ApplicationManager appManager) {
-		this.appMan = appManager;
-		engine.put("manager", appManager);
-	}
-
-	@Override
-	public void stop(AppStopReason whatever) {
-		this.appMan = null;
-	}
 
 }

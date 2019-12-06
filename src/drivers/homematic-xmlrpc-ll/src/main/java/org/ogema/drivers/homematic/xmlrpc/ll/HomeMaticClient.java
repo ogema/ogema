@@ -124,7 +124,7 @@ public class HomeMaticClient implements HomeMatic {
         config.setEnabledForExceptions(true);
         client = new XmlRpcClient();
         client.setConfig(config);
-        // we cannot assume valid certificates in a home network
+        // we cannot expect valid certificates in a home network
         if ("https".equalsIgnoreCase(url.getProtocol())) {
         	disableSslChecks(client);
         }

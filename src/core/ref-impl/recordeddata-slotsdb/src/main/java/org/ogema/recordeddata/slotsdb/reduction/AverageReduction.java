@@ -33,6 +33,7 @@ public class AverageReduction implements Reduction {
 			toReturn.add(new SampledValue(DoubleValues.of(0.f), timestamp, Quality.BAD));
 		}
 		else {
+                    /*
 			double sum = 0;
 			for (SampledValue value : subIntervalValues) {
 				sum += value.getValue().getDoubleValue();
@@ -40,6 +41,15 @@ public class AverageReduction implements Reduction {
 
 			double average = sum / subIntervalValues.size();
 			toReturn.add(new SampledValue(new SampledValue(DoubleValues.of(average), timestamp, Quality.GOOD)));
+                        */
+			double avg = 0;
+			int i = 1;
+			// compute as running average
+			for (SampledValue value : subIntervalValues) {
+				avg = ( (i-1)*avg + value.getValue().getDoubleValue() ) / i;
+				i++;
+			}
+			toReturn.add(new SampledValue(new SampledValue(DoubleValues.of(avg), timestamp, Quality.GOOD)));
 		}
 
 		return toReturn;

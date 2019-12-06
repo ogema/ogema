@@ -37,14 +37,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
-    <!-- Reference to the OGEMA Artifactory -->
-    <repositories>
-        <repository>
-            <id>libs-release-local</id>
-            <url>https://www.ogema-source.net/artifactory/libs-release-local</url>
-        </repository>
-    </repositories>
-
     <build>
         <plugins>
             <plugin>

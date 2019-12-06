@@ -39,6 +39,7 @@ public class DefaultBooleanArrayResource extends ResourceBase implements Boolean
 
 	@Override
 	public boolean[] getValues() {
+		checkReadPermission();
 		return getEl().getData().getBooleanArr().clone();
 	}
 
@@ -62,6 +63,7 @@ public class DefaultBooleanArrayResource extends ResourceBase implements Boolean
 
 	@Override
 	public boolean getElementValue(int index) {
+        	checkReadPermission();
 		return getEl().getData().getBooleanArr()[index];
 	}
 

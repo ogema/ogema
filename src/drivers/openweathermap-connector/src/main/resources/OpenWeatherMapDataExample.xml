@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<og:resource xmlns:og="http://www.ogema-source.net/REST" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <name>OpenWeatherMapData</name>
+    <type>org.ogema.model.locations.Room</type>
+    <path>OpenWeatherMapData</path>
+    <decorating>false</decorating>
+    <active>true</active>
+    <resource>
+	    <name>humiditySensor</name>
+	    <type>org.ogema.model.sensors.HumiditySensor</type>
+	    <path>OpenWeatherMapData/humiditySensor</path>
+	    <decorating>false</decorating>
+	  	<active>true</active>
+	</resource>
+	<resource>
+	    <name>solarIrradiationSensor</name>
+	    <type>org.ogema.model.sensors.SolarIrradiationSensor</type>
+	    <path>OpenWeatherMapData/solarIrradiationSensor</path>
+	    <decorating>false</decorating>
+	   	<active>true</active>
+	</resource>
+	<resource>
+	    <name>windSensor</name>
+	    <type>org.ogema.model.devices.sensoractordevices.WindSensor</type>
+	    <path>OpenWeatherMapData/windSensor</path>
+	    <decorating>false</decorating>
+	   	<active>true</active>
+	</resource>
+	<resource>
+	   	<name>temperatureSensor</name>
+	    <type>org.ogema.model.sensors.TemperatureSensor</type>
+	    <path>OpenWeatherMapData/temperatureSensor</path>
+	    <decorating>false</decorating>
+	    <active>true</active>
+	</resource>
+    <resource>
+     	<name>location</name>
+        <type>org.ogema.model.locations.Location</type>
+       	<path>OpenWeatherMapData/location</path>
+        <decorating>false</decorating>
+    	<active>true</active>
+    	<resource>
+    		<name>geographicLocation</name>
+        	<type>org.ogema.model.locations.GeographicLocation</type>
+       		<path>OpenWeatherMapData/location/geographicLocation</path>
+        	<decorating>false</decorating>
+    		<active>true</active>
+    		<resource xsi:type="og:StringResource">
+    			<name>city</name>
+        		<type>org.ogema.core.model.simple.StringResource</type>
+       			<path>OpenWeatherMapData/location/geographicLocation/city</path>
+        		<decorating>false</decorating>
+    			<active>true</active>
+    			<value>Kassel</value>
+    		</resource>
+    		<resource xsi:type="og:StringResource">
+    			<name>country</name>
+        		<type>org.ogema.core.model.simple.StringResource</type>
+       			<path>OpenWeatherMapData/location/geographicLocation/country</path>
+        		<decorating>false</decorating>
+    			<active>true</active>
+    			<value>de</value>
+    		</resource>
+    	</resource>
+	</resource>
+</og:resource>

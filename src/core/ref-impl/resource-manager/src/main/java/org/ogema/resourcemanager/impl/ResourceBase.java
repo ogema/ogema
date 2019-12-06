@@ -26,7 +26,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import org.ogema.accesscontrol.PermissionManager;
 import org.ogema.accesscontrol.ResourceAccessRights;
+import org.ogema.accesscontrol.ResourcePermission;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.ResourceList;
 import org.ogema.core.model.simple.BooleanResource;
@@ -744,7 +746,7 @@ public abstract class ResourceBase implements ConnectedResource {
 					"cannot replace resource %s with a reference to itself (%s)", existingOptionalElement.getPath(),
 					newElement.getPath()));
 		}
-		checkAddPermission();
+		checkAddPermission(name, newElementType);
 		resMan.getDatabaseManager().lockStructureWrite();
 		try {
 			TreeElement newTreeElement = ((ResourceBase) newElement).getElInternal();
@@ -837,7 +839,8 @@ public abstract class ResourceBase implements ConnectedResource {
 			throw (new NoSuchResourceException("Name " + name
 					+ " is not a valid resource name. Will not add the element."));
 		}
-		checkAddPermission();
+		Class<? extends Resource> optionalElementType = getOptionalElementType(name);
+		checkAddPermission(name, optionalElementType);
 		VirtualTreeElement existingReference = null;
 
 		VirtualTreeElement existingChild = getEl().getChild(name);
@@ -850,7 +853,6 @@ public abstract class ResourceBase implements ConnectedResource {
 			}
 		}
 
-		Class<? extends Resource> optionalElementType = getOptionalElementType(name);
 		if (optionalElementType == null) {
 			throw (new NoSuchResourceException(String.format("type %s has no optional element named %s", getEl()
 					.getType(), name)));
@@ -932,14 +934,16 @@ public abstract class ResourceBase implements ConnectedResource {
 	/*
 	 check for ADDSUB permission and throw a SecurityException if it's not available
 	 */
-	protected void checkAddPermission() {
+	protected void checkAddPermission(final String name, final Class<? extends Resource> type) {
 		if (!getAccessRights().isAddsubPermitted()) {
-			throw new SecurityException(String.format(
+			final PermissionManager pm = resMan.permissionManager;
+			if (!pm.handleSecurity(pm.getAccessManager().getCurrentUser(), new ResourcePermission(path + "/" + name, type, 1)))
+				throw new SecurityException(String.format(
 					"Application '%s' does not have permission to add subresources to %s (path=%s)", resMan.getAppId(),
 					getLocation(), getPath()));
 		}
 	}
-
+	
 	protected void checkWritePermission() {
 		if (!getAccessRights().isWritePermitted()) {
 			throw new SecurityException(String.format(
@@ -973,7 +977,7 @@ public abstract class ResourceBase implements ConnectedResource {
 			throw (new NoSuchResourceException("Name " + name
 					+ " is not a valid resource name. Will not add the element."));
 		}
-		checkAddPermission();
+		checkAddPermission(name, resourceType);
 		Class<?> optionalElementType = getOptionalElementType(name);
 		if (optionalElementType != null) {
 			if (!optionalElementType.isAssignableFrom(resourceType)) {
@@ -1065,7 +1069,7 @@ public abstract class ResourceBase implements ConnectedResource {
             throw new VirtualResourceException(decorator.getPath() + " is virtual.");
         }
         if (!privileged)
-        	checkAddPermission();
+        	checkAddPermission(name, decorator.getResourceType());
 		Class<?> optionalElementType = getOptionalElementType(name);
 		if (optionalElementType != null) {
 			if (!optionalElementType.isAssignableFrom(decorator.getResourceType())) {
@@ -1289,7 +1293,7 @@ public abstract class ResourceBase implements ConnectedResource {
 				parent.create();
 			}
 			assert parent.exists();
-			((ResourceBase) getParent()).checkAddPermission();
+			((ResourceBase) getParent()).checkAddPermission(getName(), getResourceType());
 			getElInternal().create();
             revision = resMan.getDatabaseManager().incrementRevision(); //reference paths may need to be reloaded
 
@@ -1542,7 +1546,7 @@ public abstract class ResourceBase implements ConnectedResource {
 	protected void deleteTreeElement() {
 		resMan.getDatabaseManager().resourceDeleted(getElInternal());
 
-		((VirtualTreeElement) getElInternal()).delete();
+		getElInternal().delete();
 		resMan.getDatabaseManager().incrementRevision();
 	}
 

@@ -57,7 +57,7 @@ import org.slf4j.Logger;
 public class ApplicationTracker {
 
     public static final String WORKQUEUE_DRAIN_INTERVAL = "ogema.apps.workqueuedrain";
-    final long drain_interval = Long.getLong(WORKQUEUE_DRAIN_INTERVAL, 2000);
+    final long drain_interval = Long.getLong(WORKQUEUE_DRAIN_INTERVAL, 20000);
 
     @Reference
     protected TimerScheduler timerScheduler;
@@ -254,7 +254,7 @@ public class ApplicationTracker {
     protected void drainWorkQueues() {
         logger.trace("draining application manager work queues ({} apps)", apps.size());
         for (ApplicationManagerImpl ad : apps.values()) {
-            ad.drainWorkQueue();
+        	ad.submitEvent(ad.drainWorkQueueTask);
         }
     }
 

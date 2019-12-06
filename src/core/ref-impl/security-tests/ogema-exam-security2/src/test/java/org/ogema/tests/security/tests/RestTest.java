@@ -18,6 +18,7 @@ package org.ogema.tests.security.tests;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Dictionary;
 import java.util.Hashtable;
@@ -30,6 +31,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.entity.StringEntity;
 import org.junit.Test;
 import org.ogema.accesscontrol.AccessManager;
 import org.ogema.accesscontrol.Authenticator;
@@ -67,6 +69,25 @@ public class RestTest extends SecurityTestBase {
 				.addParameter("pw", user)
 				.build();
 		final Request get = Request.Get(url);
+		get.setHeader("Accept", "application/xml");
+		return get.execute().returnResponse();
+	}
+	
+	private HttpResponse sendPostRequest(String parentResource, final String user, final String xml) throws ClientProtocolException, IOException, URISyntaxException {
+		if (!parentResource.isEmpty() && parentResource.charAt(0) == '/')
+			parentResource = parentResource.substring(1);
+		final URI url = new URIBuilder()
+				.setScheme("http")
+				.setPort(HTTP_PORT)
+				.setHost("localhost")
+				.setPath("rest/resources/" + parentResource)
+				.addParameter("user", user)
+				.addParameter("pw", user)
+				.build();
+		final Request get = Request.Post(url)
+				.body(new StringEntity(xml, StandardCharsets.UTF_8));
+		get.setHeader("Content-Type", "application/xml");
+		get.setHeader("Accept", "application/xml");
 		return get.execute().returnResponse();
 	}
 	
@@ -84,6 +105,7 @@ public class RestTest extends SecurityTestBase {
 			}
 		}
 		final Request get = Request.Get(builder.build());
+		get.setHeader("Accept", "application/xml");
 		return get.execute().returnResponse();
 	}
 	
@@ -131,6 +153,43 @@ public class RestTest extends SecurityTestBase {
 		final HttpResponse response0 = sendRequest(r.getPath(), user.getName());
 		Assert.assertEquals(HttpServletResponse.SC_FORBIDDEN, response0.getStatusLine().getStatusCode());
 		r.getParent().delete();
+		getUnrestrictedAppManager().getAdministrationManager().removeUserAccount(user.getName());
+	}
+	
+	@Test
+	public void restAccessForSubresourceWorks2() throws InterruptedException, ClientProtocolException, IOException, URISyntaxException {
+		final String res = newResourceName();
+		String userName = newResourceName();
+		final Resource r = getUnrestrictedAppManager().getResourceManagement().<Room> createResource(res, Room.class).name().create();
+		// unprivileged natural user
+		final UserAccount user = SecurityTestUtils.createUser(userName, getUnrestrictedAppManager(), false, false);
+		SecurityTestUtils.addResourcePermissions(user.getName(), ctx, r.getPath(), null, ResourcePermission.READ);
+		final HttpResponse response0 = sendRequest(r.getPath(), user.getName());
+		Assert.assertEquals(HttpServletResponse.SC_OK, response0.getStatusLine().getStatusCode());
+		final HttpResponse response1 = sendRequest(r.getParent().getPath(), user.getName());
+		Assert.assertEquals(HttpServletResponse.SC_FORBIDDEN, response1.getStatusLine().getStatusCode());
+		r.getParent().delete();
+		getUnrestrictedAppManager().getAdministrationManager().removeUserAccount(user.getName());
+	}
+	
+	@Test
+	public void restCreateForSubresourceWorks() throws InterruptedException, ClientProtocolException, IOException, URISyntaxException {
+		final String res = newResourceName();
+		String userName = newResourceName();
+		final Resource r = getUnrestrictedAppManager().getResourceManagement().<Room> createResource(res, Room.class).create();
+		// unprivileged natural user
+		final UserAccount user = SecurityTestUtils.createUser(userName, getUnrestrictedAppManager(), false, false);
+		SecurityTestUtils.addResourcePermissions(user.getName(), ctx, r.getPath(), null, ResourcePermission.READ);
+		final String subname = "test";
+		SecurityTestUtils.addResourcePermissions(user.getName(), ctx, r.getPath() + "/" + subname, null, ResourcePermission.READ + "," + ResourcePermission.CREATE);
+		final String xml0 = getUnrestrictedAppManager().getSerializationManager().toXml(r);
+		final String xml1 = xml0.replace(r.getName(), subname);
+		final HttpResponse response0 = sendPostRequest(r.getPath(), user.getName(), xml1); // we have a create permission for the target resource
+		Assert.assertEquals(HttpServletResponse.SC_OK, response0.getStatusLine().getStatusCode());
+		final String xml2 = xml0.replace(r.getName(), "forbiddenres");
+		final HttpResponse response1 = sendPostRequest(r.getPath(), user.getName(), xml2);
+		Assert.assertEquals(HttpServletResponse.SC_FORBIDDEN, response1.getStatusLine().getStatusCode());
+		r.delete();
 		getUnrestrictedAppManager().getAdministrationManager().removeUserAccount(user.getName());
 	}
 	

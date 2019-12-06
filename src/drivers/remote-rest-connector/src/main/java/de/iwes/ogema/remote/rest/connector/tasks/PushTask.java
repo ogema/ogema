@@ -17,18 +17,19 @@ package de.iwes.ogema.remote.rest.connector.tasks;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.methods.HttpPut;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.util.EntityUtils;
 import org.ogema.core.application.ApplicationManager;
 import org.ogema.core.model.Resource;
 import org.ogema.core.model.simple.SingleValueResource;
 import org.ogema.core.resourcemanager.VirtualResourceException;
 import org.ogema.core.tools.SerializationManager;
 import org.ogema.tools.resource.util.SerializationUtils;
+import org.osgi.framework.BundleContext;
 
 import de.iwes.ogema.remote.rest.connector.model.RestConnection;
 import de.iwes.ogema.remote.rest.connector.model.RestPullConfig;
@@ -38,8 +39,8 @@ public class PushTask extends ConnectionTask {
     
     private final PushListener pushListener;
 	
-    public PushTask(final RestConnection con, final ApplicationManager appman, final TaskScheduler trigger) {
-        super(con, appman);
+    public PushTask(final RestConnection con, final ApplicationManager appman, BundleContext ctx, final TaskScheduler trigger) {
+        super(con, appman, ctx);
         this.pushListener = new PushListener(this, trigger);
     }
     
@@ -137,20 +138,20 @@ public class PushTask extends ConnectionTask {
     	String remotePath = getRemotePath();
     	if (relativePath != null && !relativePath.isEmpty())
     		remotePath = remotePath + "/" + relativePath;
-    	remotePath = appendUserInfo(remotePath);
-    	HttpPut put = new HttpPut(remotePath);
-        put.setEntity(new StringEntity(json, ContentType.APPLICATION_JSON));
-        HttpResponse resp = client.execute(put);
-        int code = resp.getStatusLine().getStatusCode();
-        logger.debug("pushed resource {} to {}: {}", getTargetResource().getPath(), getRemotePath(), code);
-        if(code <= 200) {
-        	increaseIfActive(con.consecutiveSuccessfulPushCounter());
-        	setZeroIfActive(con.consecutiveErrorPushCounter());
-        } else {
-            increaseIfActive(con.consecutiveErrorPushCounter());
-            setZeroIfActive(con.consecutiveSuccessfulPushCounter());        	
+        try (final CloseableHttpResponse resp = send(remotePath, client, "PUT", new StringEntity(json, ContentType.APPLICATION_JSON), null)) {
+	        int code = resp.getStatusLine().getStatusCode();
+	        logger.debug("pushed resource {} to {}: {}", getTargetResource().getPath(), getRemotePath(), code);
+	        if(code <= 200) {
+	        	increaseIfActive(con.consecutiveSuccessfulPushCounter());
+	        	setZeroIfActive(con.consecutiveErrorPushCounter());
+	        } else {
+	            increaseIfActive(con.consecutiveErrorPushCounter());
+	            setZeroIfActive(con.consecutiveSuccessfulPushCounter());
+	            if (logger.isTraceEnabled())
+	            	logger.trace("Response " + EntityUtils.toString(resp.getEntity(), "UTF-8"));
+	        }
+	        return code;
         }
-        return code;
     }
    
     

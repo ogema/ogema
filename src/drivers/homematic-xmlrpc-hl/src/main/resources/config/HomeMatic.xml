@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<og:resource xmlns:og="http://www.ogema-source.net/REST" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <name>HomeMatic</name>
+    <type>org.ogema.drivers.homematic.xmlrpc.hl.types.HmLogicInterface</type>
+    <active>true</active>
+    <resource xsi:type="og:StringResource">
+        <name>clientUrl</name>
+        <type>org.ogema.core.model.simple.StringResource</type>
+        <active>true</active>
+        <!-- URL of the remote HomeMatic service -->
+        <value>http://localhost:2001</value>
+    </resource>
+    <resource xsi:type="og:IntegerResource">
+        <name>port</name>
+        <type>org.ogema.core.model.simple.IntegerResource</type>
+        <active>true</active>
+        <!-- Port of the driver's XML-RPC service, i.e. the OSGi HttpService port -->
+        <value>8080</value>
+    </resource>
+    <resource xsi:type="og:StringResource">
+        <name>networkInterface</name>
+        <type>org.ogema.core.model.simple.StringResource</type>
+        <active>true</active>
+        <!-- Network interface of the driver's XML-RPC service; other examples: "wlan", "eth0", ... -->
+        <value>lo</value>
+    </resource>
+    <resource xsi:type="og:StringResource">
+        <name>alias</name>
+        <type>org.ogema.core.model.simple.StringResource</type>
+        <active>true</active>
+        <!-- Servlet alias of the driver's XML-RPC service -->
+        <value>/homematic</value>
+    </resource>
+</og:resource>

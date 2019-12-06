@@ -13,11 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.ogema.tools.resourcemanipulator.configurations;
 
 import java.util.Collection;
@@ -47,6 +42,19 @@ public interface Sum extends ManipulatorConfiguration {
 	 */
 	void setAddends(Collection<? extends SingleValueResource> addends, SingleValueResource sum);
 
+	/**
+	 * Sets the list of addends and the target resource where the result
+	 * is written to.
+	 * @param addends List of schedules to add up.
+	 * @param sum target schedule that the result is written to.
+	 * @param factors a list of factors to multiply the addends with; may be null, which is equivalent to all 1s
+	 * @param offsets a list of offsets to be added to the addends; may be null, which is equivalent to all 0s
+	 * @throws IllegalArgumentException if the size of the factors or offsets parameters does not 
+	 *  	match the size of the addends parameters (unless factors or offsets is null, which is allowed)
+	 * 
+	 */
+	void setAddends(List<? extends SingleValueResource> addends, List<Float> factors, List<Float> offsets, SingleValueResource sum);
+	
 	/**
 	 * Sets a delay time between changes in the inputs and the evaluation of the output.
 	 * this can be useful in situation where one expects multiple of the inputs

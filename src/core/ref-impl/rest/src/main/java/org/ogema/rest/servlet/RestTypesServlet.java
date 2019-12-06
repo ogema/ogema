@@ -64,30 +64,34 @@ class RestTypesServlet extends HttpServlet  {
 		if (appman == null) {
 			return;
 		}
-		resp.setCharacterEncoding("UTF-8");
-		ResourceTypeWriter w = ResourceTypeWriters.forRequest(req, appman);
-		if (w == null) {
-			resp.sendError(HttpServletResponse.SC_NOT_ACCEPTABLE);
-			return;
-		}
-		resp.setContentType(w.contentType());
-		String clazzName = req.getParameter(PARAM_TYPE);
-
-		Class<? extends Resource> type = null;
-		if (clazzName != null) {
-			try {
-				type = (Class<? extends Resource>) Class.forName(clazzName);  // TODO access available resource types?
-			} catch (ClassNotFoundException e) {} 
-		}
-		if (type == null) {
-			resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-			return;
-		}
-		w.write(type, resp.getWriter());
 		try {
+			resp.setCharacterEncoding("UTF-8");
+			ResourceTypeWriter w = ResourceTypeWriters.forRequest(req, appman);
+			if (w == null) {
+				resp.sendError(HttpServletResponse.SC_NOT_ACCEPTABLE);
+				return;
+			}
+			resp.setContentType(w.contentType());
+			String clazzName = req.getParameter(PARAM_TYPE);
+	
+			Class<? extends Resource> type = null;
+			if (clazzName != null) {
+				try {
+					type = (Class<? extends Resource>) Class.forName(clazzName);  // TODO access available resource types?
+				} catch (ClassNotFoundException e) {} 
+			}
+			if (type == null) {
+				resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+				return;
+			}
+			w.write(type, resp.getWriter());
 			resp.flushBuffer();
 		} catch (SecurityException se) {
+			RestApp.logger.debug("Security exception in GET request ", se);
 			resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+		} catch (Exception e) {
+			RestApp.logger.debug("Exception in GET request",e);
+			resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 		} finally {
 			permMan.resetAccessContext();
 		}

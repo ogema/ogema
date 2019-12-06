@@ -43,13 +43,27 @@ public class LoginServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 1l;
 
-	protected static final String LOGIN_PATH = "/web/login.html";
+	private static final String PROPERTY_USE_CDN = "org.ogema.gui.usecdn";
+	private static final String PROPERTY_START_PAGE = "org.ogema.gui.startpage";
+	
+	protected static final String LOGIN_PATH;
+	protected static final String LOGIN_PATH_LOCAL = "/web/login.html";
+	protected static final String LOGIN_PATH_REMOTE = "/web/login2.html";
 	protected static final String LOGIN_SERVLET_PATH = "/ogema/login";
 	protected static final String OLDREQ_ATTR_NAME = "requestBeforeLogin";
+	
+	private static final String START_PAGE;
 
 	private static final String LOGIN_FAILED_MSG = "Login failed: Username and/or Password wrong";
 	private static final String MAX_LOGIN_TRIES_EXCEEDED_MSG = "Max number of tries for login exceeded."
 			+ " Login is blocked for %s.";
+	
+	static {
+		final boolean useCdn = Boolean.getBoolean(PROPERTY_USE_CDN);
+		LOGIN_PATH = useCdn ? LOGIN_PATH_REMOTE : LOGIN_PATH_LOCAL;
+		final String startProp = System.getProperty(PROPERTY_START_PAGE);
+		START_PAGE = startProp != null ? startProp : useCdn ? "/ogema/index2.html" : "/ogema/index.html";
+	}
 	
 	private volatile String ICON;
 	private volatile String ICON_TYPE;
@@ -75,9 +89,9 @@ public class LoginServlet extends HttpServlet {
 
 			@Override
 			public Void run() {
-				Object iconObj = config.get(ConfigurationConstants.ICON_CONFIG);
+				Object iconObj = config.get(ConfigurationConstants.LOGIN_ICON_CONFIG);
 				final String icon = iconObj instanceof String ? (String) iconObj
-						: System.getProperty(ConfigurationConstants.DEFAULT_ICON_PROPERTY, "ogema.svg");
+						: System.getProperty(ConfigurationConstants.DEFAULT_LOGIN_ICON_PROPERTY, "ogema.svg");
 				URL test = LoginServlet.class.getResource("/web/" + icon);
 				if (test == null)
 					ICON = "/web/ogema.svg";
@@ -119,7 +133,7 @@ public class LoginServlet extends HttpServlet {
 		failureInspector.cleanUp();
 		HttpSession session = req.getSession();
 		if (session.getAttribute(Constants.AUTH_ATTRIBUTE_NAME) != null) {
-			resp.sendRedirect("/ogema/index.html");
+			resp.sendRedirect(START_PAGE);
 			return;
 		}
 		final String style = req.getParameter("style");
@@ -136,7 +150,7 @@ public class LoginServlet extends HttpServlet {
 			resource = getClass().getResource(ICON);
 			resp.setContentType("image/" + ICON_TYPE);
 		} else {
-			resource = getClass().getResource(LOGIN_PATH);
+			resource = getClass().getResource("false".equalsIgnoreCase(req.getParameter("usecdn")) ? LOGIN_PATH_LOCAL : LOGIN_PATH);
 		}
 		InputStream is;
 		OutputStream bout;
@@ -196,7 +210,7 @@ public class LoginServlet extends HttpServlet {
 			HttpSession session = req.getSession();
 			SessionAuth sauth = new SessionAuth(author,permissionManager.getAccessManager(), session);
 			// check if we had an old req to redirect to the originally requested URL before invalidating
-			String newLocation = "/ogema/index.html";
+			String newLocation = START_PAGE;
 			if (session.getAttribute(OLDREQ_ATTR_NAME) != null) {
 				newLocation = session.getAttribute(OLDREQ_ATTR_NAME).toString();
 			}

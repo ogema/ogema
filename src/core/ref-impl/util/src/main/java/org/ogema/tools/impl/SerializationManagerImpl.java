@@ -310,7 +310,7 @@ public class SerializationManagerImpl implements SerializationManager {
     @Override
     public void writeJson(Writer writer, Resource res, RecordedData data, long startTime, long endTime, long interval,
             ReductionMode mode) throws IOException {
-        try (@SuppressWarnings("deprecation") JsonGenerator jg = new JsonFactory().createJsonGenerator(writer).useDefaultPrettyPrinter()) {
+        try (@SuppressWarnings("deprecation") JsonGenerator jg = FastJsonGenerator.createJsonGenerator(writer)) {
             jg.writeStartObject();
             jg.writeStringField("@type", "RecordedData");
 

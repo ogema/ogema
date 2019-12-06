@@ -41,6 +41,14 @@ public class BitStringTag extends Tag {
         initFromBitSet(bits);
     }
     
+    public BitStringTag(int tagNumber, TagClass tagClass, ByteBuffer content) {
+        super(tagNumber, tagClass, 0);
+        unusedBits = content.get();
+        bits = new byte[content.remaining()];
+        content.get(bits);
+        lengthValueType = 1 + bits.length;
+    }
+    
     public BitStringTag(int tagNumber, TagClass tagClass, BACnetEnumeration ... values) {
         super(tagNumber, tagClass, 0);
         BitSet bs = new BitSet();

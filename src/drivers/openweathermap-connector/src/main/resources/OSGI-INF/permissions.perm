@@ -12,9 +12,12 @@
 
 (org.osgi.framework.ServicePermission "org.ogema.apps.openweathermap.OpenWeatherMapApplicationI" "register")
 (org.osgi.framework.PackagePermission "org.ogema.apps.openweathermap" "exportonly")
-(java.util.PropertyPermission "org.ogema.drivers.openweathermap.stdCity" "read")
-(java.util.PropertyPermission "org.ogema.drivers.openweathermap.stdCountry" "read")
+(java.util.PropertyPermission "org.ogema.drivers.openweathermap.*" "read")
 
-# TODO more specific resource permissions
-(org.ogema.accesscontrol.ResourcePermission "type=*" "*")
+(org.ogema.accesscontrol.ResourcePermission "type=org.ogema.model.locations.Room" "*")
+(java.net.SocketPermission "api.openweathermap.org:80" "connect,resolve")
+# Jackson nonsense -> not really usable with permissions
+(java.lang.RuntimePermission "accessDeclaredMembers")
+(java.lang.reflect.ReflectPermission "suppressAccessChecks")
+(java.util.PropertyPermission "com.fasterxml.jackson.*" "read")
 

@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.ogema.drivers</groupId>
 		<artifactId>ogema-drivers</artifactId>
-		<version>2.2.0</version>
+		<version>2.2.1</version>
 	</parent>
 	
     <artifactId>homematic-xmlrpc-hl</artifactId>
@@ -13,7 +13,6 @@
 
     <name>OGEMA Drivers :: HomeMatic XMLRPC OGEMA</name>
     <description>Homematic XML-RPC high-level driver for OGEMA</description>
-	<version>2.2.0_1</version>
 
     <properties>
         <maven.compiler.source>1.7</maven.compiler.source>

@@ -86,7 +86,14 @@ public class FrameworkAdministration implements Application {
 
 		String aliasHtml = appManager.getWebAccessManager().registerWebResource("/ogema/frameworkadminindex",
 				"org/ogema/frameworkadministration/gui");
-		appManager.getWebAccessManager().registerStartUrl("/ogema/frameworkadminindex/index.html");
+		boolean useCdn = false;
+		try {
+        	useCdn = Boolean.getBoolean("org.ogema.gui.usecdn");
+        } catch (SecurityException ok) {}
+		if (useCdn)
+			appManager.getWebAccessManager().registerStartUrl("/ogema/frameworkadminindex/index2.html");
+		else
+			appManager.getWebAccessManager().registerStartUrl("/ogema/frameworkadminindex/index.html");
 		String aliasLoggerServlet = appManager.getWebAccessManager().registerWebResource("/apps/ogema/frameworkadmin",
 				new FAServletLogger());
 

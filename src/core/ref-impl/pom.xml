@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.ogema.core</groupId>
         <artifactId>ogema-core</artifactId>
-        <version>2.2.0</version>
+        <version>2.2.1</version>
     </parent>
 
     <groupId>org.ogema.ref-impl</groupId>
@@ -20,15 +20,6 @@
     </description>
     <url>http://www.ogema-source.net</url>
     
-<!--    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.ogema.ref-impl</groupId>
-                <artifactId>ogema-exam-base</artifactId>
-            </dependency>
-        </dependencies>
-    </dependencyManagement> --> <!-- registered as dependency in parent project -->
-
     <!-- Subprojects: Please try to keep them in alphabetical order -->
     <modules>
         <module>administration</module>
@@ -46,15 +37,15 @@
         <module>ogema-security-manager</module>
         <module>permission-admin</module>
         <module>persistence</module>
-        <module>persistence-tests</module>
+        <!--  <module>persistence-tests</module> -->
         <module>recordeddata-slotsdb</module>
         <module>resource-access-advanced</module>
         <module>resource-manager</module>
-        <module>resource-manager-test-addons</module>
+        <!-- <module>resource-manager-test-addons</module> -->
         <module>rest</module>
         <module>security</module>
         <module>security-gui</module>
-				<module>security-http-config</module>
+        <module>security-http-config</module>
         <module>security-tests/ogema-exam-security</module>
         <module>security-tests/ogema-exam-security2</module>
         <module>util</module>

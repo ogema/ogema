@@ -73,7 +73,7 @@ public class CollectionsTest extends OsgiAppTestBase {
 	@Test
 	public void xmlSerializationWorks() throws Exception {
 		String xml = sman.toXml(resources);
-		// System.out.println("   ~~ xml: " + xml);
+		System.out.println("   ~~ xml: " + xml);
 		Assert.assertNotNull(xml);
 		Collection<Resource> list = sman.createResourcesFromXml(xml);
 		// FIXME

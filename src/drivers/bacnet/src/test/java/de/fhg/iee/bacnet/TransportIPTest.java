@@ -22,13 +22,12 @@ import de.fhg.iee.bacnet.services.IAmListener;
 import de.fhg.iee.bacnet.tags.ObjectIdentifierTag;
 import de.fhg.iee.bacnet.tags.UnsignedIntTag;
 import java.net.NetworkInterface;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
-import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertTrue;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.Before;
 import org.slf4j.Logger;
@@ -68,11 +67,12 @@ public class TransportIPTest {
     }
 
     @Test
+    @Ignore("does not work on CI server (firewall probably)")
     public void talkingToMyself() throws Exception {
         final int vendorId = 4711;
         IAmListener iam1 = new IAmListener(1, 1400, BACnetSegmentation.no_segmentation, vendorId);
         CountDownLatch iamReceived = new CountDownLatch(1);
-        IndicationListener iamListener = (in) -> {
+        IndicationListener<?> iamListener = (in) -> {
             if (in.getProtocolControlInfo().getServiceChoice() == BACnetUnconfirmedServiceChoice.i_Am.getBACnetEnumValue()) {
                 LOGGER.debug("IAM received from {}", in.getSource());
                 ByteBuffer data = in.getData();

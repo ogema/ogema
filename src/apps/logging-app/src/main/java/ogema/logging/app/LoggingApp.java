@@ -68,7 +68,11 @@ public class LoggingApp implements Application {
 
 		appManager.getWebAccessManager().registerWebResource(webResourceBrowserPath, webResourcePackagePath);
 		appManager.getWebAccessManager().registerWebResource(servletPath, new LoggingAppServlet(this));
-
+		try {
+        	if (Boolean.getBoolean("org.ogema.gui.usecdn")) {
+        		am.getWebAccessManager().registerStartUrl(webResourceBrowserPath + "/index2.html");
+        	}
+        } catch (SecurityException ok) {}
 		final Hashtable<String, Object> props = new Hashtable<String, Object>();
 		props.put("osgi.command.scope", "ogm");
 		props.put("osgi.command.function", new String[] { 

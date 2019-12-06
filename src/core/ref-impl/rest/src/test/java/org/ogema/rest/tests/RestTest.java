@@ -242,7 +242,7 @@ public class RestTest extends OsgiAppTestBase {
 		waitForServer();
 		final String url =baseUrl + "/" + schedule.getPath("/");
 
-		Request req = Request.Get(appendUserInfo(url + "/3")).addHeader("Accept", "application/xml");
+		Request req = Request.Get(appendUserInfo(url) + "&start=3").addHeader("Accept", "application/xml");
 		String xml = req.execute().returnContent().asString();
 
 		System.out.println(xml);

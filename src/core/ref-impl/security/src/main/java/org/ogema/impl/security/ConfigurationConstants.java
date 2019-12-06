@@ -44,9 +44,16 @@ public class ConfigurationConstants {
 	 * Login icon file name within src/main/resources/web folder. Default is "ogema.svg", which
 	 * is delivered with this bundle. Other icons can be made available via fragment bundles. 
 	 */
-	public static final String ICON_CONFIG = "loginIcon";  // e.g.: "ogema.svg"
+	public static final String LOGIN_ICON_CONFIG = "loginIcon";  // e.g.: "ogema.svg"
 	
-	public static final String DEFAULT_ICON_PROPERTY = "org.ogema.login.icon";
+	/**
+	 * Configuration property for the icon shown in apps/the menu. 
+	 * Icon file name within src/main/resources/web folder. Default is "ogema_nosubline.svg", which
+	 * is delivered with this bundle. Other icons can be made available via fragment bundles. 
+	 */
+	public static final String ICON_CONFIG = "icon";
+	
+	public static final String DEFAULT_LOGIN_ICON_PROPERTY = "org.ogema.login.icon";
 	
 	/**
 	 * Optional configuration property for the general appearance of the login page.

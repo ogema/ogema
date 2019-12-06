@@ -44,6 +44,7 @@ import org.ogema.serialization.JaxbFactory;
 import org.ogema.serialization.JaxbLink;
 import org.ogema.serialization.JaxbResource;
 import org.ogema.serialization.SerializationStatus;
+import org.ogema.serialization.schedules.ScheduleEntry;
 
 /**
  *
@@ -54,7 +55,8 @@ import org.ogema.serialization.SerializationStatus;
 @XmlSeeAlso( { JaxbResourceList.class, JaxbBoolean.class, JaxbFloat.class, JaxbInteger.class, JaxbOpaque.class,
 	JaxbString.class, JaxbTime.class, JaxbLink.class, BooleanSchedule.class, FloatSchedule.class,
 	IntegerSchedule.class, StringSchedule.class, TimeSchedule.class, JaxbBooleanArray.class, JaxbByteArray.class,
-	JaxbFloatArray.class, JaxbIntegerArray.class, JaxbStringArray.class, JaxbTimeArray.class })
+	JaxbFloatArray.class, JaxbIntegerArray.class, JaxbStringArray.class, JaxbTimeArray.class,
+    ScheduleEntry.class})
 @JsonSubTypes( { @JsonSubTypes.Type(org.ogema.serialization.jaxb.Resource.class),
 	@JsonSubTypes.Type(org.ogema.serialization.jaxb.ResourceList.class),
 	@JsonSubTypes.Type(org.ogema.serialization.jaxb.BooleanResource.class),

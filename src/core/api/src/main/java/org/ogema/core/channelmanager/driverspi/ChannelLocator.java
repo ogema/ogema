@@ -16,17 +16,17 @@
 package org.ogema.core.channelmanager.driverspi;
 
 /**
- * The unique description of a channel. 
- * This can be seen as the system wide unique address of a channel. 
- * It consists of a low-level driver specific channel address and a DeviceLocator instance.
+ * The unique description of a channel. This can be seen as the system wide unique address of a channel. It consists of
+ * a low-level driver specific channel address and a DeviceLocator instance.
  */
 public final class ChannelLocator {
 
 	private final String channelAddress;
 	private final DeviceLocator deviceLocator;
+	private String locatorString;
 
 	public ChannelLocator(String channelAddress, DeviceLocator deviceLocator) {
-		
+
 		if (deviceLocator == null)
 			throw new NullPointerException();
 
@@ -66,18 +66,22 @@ public final class ChannelLocator {
 		if (channelAddress == null) {
 			if (other.channelAddress != null)
 				return false;
-		} else if (!channelAddress.equals(other.channelAddress))
+		}
+		else if (!channelAddress.equals(other.channelAddress))
 			return false;
 		if (deviceLocator == null) {
 			if (other.deviceLocator != null)
 				return false;
-		} else if (!deviceLocator.equals(other.deviceLocator))
+		}
+		else if (!deviceLocator.equals(other.deviceLocator))
 			return false;
 		return true;
 	}
 
 	@Override
 	public String toString() {
-		return deviceLocator.toString() + ":" + channelAddress;
+		if (locatorString == null)
+			locatorString = deviceLocator.toString() + ":" + channelAddress;
+		return locatorString;
 	}
 }

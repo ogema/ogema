@@ -52,6 +52,8 @@ import org.osgi.framework.BundleContext;
 @ExamReactorStrategy(AllConfinedStagedReactorFactory.class)
 // @ExamReactorStrategy(EagerSingleStagedReactorFactory.class)
 public class ResourceIOTest {
+    
+    protected static final String MOXY_VERSION = "2.7.4";
 
 	String ogemaVersion = MavenUtils.asInProject().getVersion("org.ogema.core", "api");
 
@@ -170,6 +172,14 @@ public class ResourceIOTest {
 		// resMan = appResMan;
 		// resAcc = appResMan;
 	}
+    
+    protected static int getJavaVersion() {
+		String version = System.getProperty("java.specification.version");
+		final int idx = version.indexOf('.');
+		if (idx > 0)
+			version = version.substring(idx + 1);
+		return Integer.parseInt(version); 
+	}
 
 	@Configuration
 	public Option[] configure() {
@@ -183,6 +193,15 @@ public class ResourceIOTest {
 				CoreOptions.systemProperty(DBConstants.PROP_NAME_PERSISTENCE_COMPACTION_START_SIZE_GARBAGE).value("64"),
 				CoreOptions.systemProperty(DBConstants.PROP_NAME_PERSISTENCE_COMPACTION_START_SIZE).value("512"),
 				CoreOptions.systemProperty(DBConstants.PROP_NAME_PERSISTENCE_DEBUG).value("true"), junitBundles(),
+                CoreOptions.when(getJavaVersion() >= 11).useOptions(
+						CoreOptions.mavenBundle("com.sun.activation", "javax.activation", "1.2.0"),
+						CoreOptions.mavenBundle("javax.annotation", "javax.annotation-api", "1.3.2"),
+						CoreOptions.mavenBundle("javax.xml.bind", "jaxb-api", "2.4.0-b180830.0359"),
+						CoreOptions.mavenBundle("org.eclipse.persistence", "org.eclipse.persistence.asm", MOXY_VERSION),
+						CoreOptions.mavenBundle("org.eclipse.persistence", "org.eclipse.persistence.core", MOXY_VERSION),
+						CoreOptions.mavenBundle("org.eclipse.persistence", "org.eclipse.persistence.moxy", MOXY_VERSION),
+                        CoreOptions.mavenBundle("org.apache.servicemix.bundles", "org.apache.servicemix.bundles.javax.mail", "1.4.1_5")
+				),
 				CoreOptions.bundle("reference:file:target/classes/"), // (this bundle)
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.scr", "1.6.2").start(),
 				CoreOptions.mavenBundle("org.apache.felix", "org.apache.felix.framework.security").versionAsInProject().start(),

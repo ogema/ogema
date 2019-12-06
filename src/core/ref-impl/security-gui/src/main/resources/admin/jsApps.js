@@ -6,18 +6,18 @@ var ind = 10; // index for additional permissions
 var currentSelectedResourceNode;
 var currentTreeID;
 
-$(function() {
+$(function () {
 	if (window.location.href.indexOf('apps') != -1) {
 		// sets heading for current store
 		$("div#buttonSet > button").button();
 		$("button#install").button({
-			icons : {
-				primary : "ui-icon-arrowthickstop-1-s"
+			icons: {
+				primary: "ui-icon-arrowthickstop-1-s"
 			}
 		});
 		$("#store").html(curStore);
-		$("#market").html("Bundles in the Marketplace "+curStore);
-		$("#marketLogin").html("Marketplace "+curStore);
+		$("#market").html("Bundles in the Marketplace " + curStore);
+		$("#marketLogin").html("Marketplace " + curStore);
 		/**
 		 * get json data (apps for the current store) and put them in dialog
 		 *
@@ -25,82 +25,82 @@ $(function() {
 		 *            curStore Current appstore
 		 */
 		$.getJSON(
-				"/security/config/apps?name=" + curStore+"&user=" + otusr + "&pw=" + otpwd,
-				function(json) {
+			"/security/config/apps?name=" + curStore + "&user=" + otusr + "&pw=" + otpwd,
+			function (json) {
 
-					for (var v = 0; v < json.apps.length; v++) {
-						$("div#sortableNewApps").append(
-								"<div class='column'> <div class='portlet'> <div class='portlet-header' id='" + v + "'>" +
-									"<img class='portlet-images' src='/security/config/getappstoreicon?loc="+json.apps[v+1]+"' ></div>" +
-									" <div class='portlet-content'>" + json.apps[v] + "</div> </div></div>");
-						v++;
+				for (var v = 0; v < json.apps.length; v++) {
+					$("div#sortableNewApps").append(
+						"<div class='column'> <div class='portlet'> <div class='portlet-header' id='" + v + "'>" +
+						"<img class='portlet-images' src='/security/config/getappstoreicon?user=" + otusr + "&pw=" + otpwd + "&loc=" + json.apps[v + 1] + "' ></div>" +
+						" <div class='portlet-content'>" + json.apps[v] + "</div> </div></div>");
+					v++;
+				}
+				$(".column").sortable({
+					connectWith: ".column",
+					handle: ".portlet-header",
+					cancel: ".portlet-toggle",
+					placeholder: "portlet-placeholder ui-corner-all"
+				});
+				$(".portlet").addClass("ui-widget ui-widget-content ui-helper-clearfix ui-corner-all").find(".portlet-header").addClass(
+					"ui-widget-header ui-corner-all").prepend("<span class='ui-icon ui-icon-minusthick portlet-toggle'></span>");
+				$(".portlet-toggle").click(function () {
+					var icon = $(this);
+					icon.toggleClass("ui-icon-minusthick ui-icon-plusthick");
+					icon.closest(".portlet").find(".portlet-content").toggle();
+				});
+
+				$("div.portlet-header>span").removeClass("ui-icon");
+
+				$("div#sortableNewApps").append("<ul id='contextMenu'><li onclick='install()'>Install Bundle</li></ul>")
+
+				$("#contextMenu").menu({
+					select: function (event, ui) {
+						$("#contextMenu").hide();
 					}
-					$(".column").sortable({
-						connectWith : ".column",
-						handle : ".portlet-header",
-						cancel : ".portlet-toggle",
-						placeholder : "portlet-placeholder ui-corner-all"
+				});
+
+				$("div.portlet-header").dblclick(function () {
+					$("div.portlet-header").removeClass("selectedPortlet");
+					$(this).addClass("selectedPortlet");
+
+					$(".ui-dialog-content").dialog("close");
+					selectedApp = $(this).parent().find(".portlet-content").text();
+				});
+
+				// Clicking anywhere in
+				// sortableAppsWrapper causes
+				// deselection
+				$("#sortableNewApps").click(function () {
+					$("div.portlet-header").removeClass("selectedPortlet");
+					selectedApp = "";
+					$("#contextMenu").hide();
+					$("#contextMenu").removeData();
+				});
+
+
+				$(".portlet-header").on("contextmenu", function (event) {
+					$("div.portlet-header").removeClass("selectedPortlet");
+					$("#contextMenu").show();
+					$("#contextMenu").data('originalElement', this);
+					$("#contextMenu").position({
+						collision: "none",
+						my: "left top",
+						of: event
 					});
-					$(".portlet").addClass("ui-widget ui-widget-content ui-helper-clearfix ui-corner-all").find(".portlet-header").addClass(
-							"ui-widget-header ui-corner-all").prepend("<span class='ui-icon ui-icon-minusthick portlet-toggle'></span>");
-					$(".portlet-toggle").click(function() {
-						var icon = $(this);
-						icon.toggleClass("ui-icon-minusthick ui-icon-plusthick");
-						icon.closest(".portlet").find(".portlet-content").toggle();
-					});
+					return false;
+				});
 
-					$("div.portlet-header>span").removeClass("ui-icon");
-
-					$("div#sortableNewApps").append("<ul id='contextMenu'><li onclick='install()'>Install Bundle</li></ul>")
-
-					$("#contextMenu").menu({
-						select: function(event, ui){
-						$("#contextMenu").hide();
-						}
-					});
-
-					$("div.portlet-header").dblclick(function() {
-						$("div.portlet-header").removeClass("selectedPortlet");
-						$(this).addClass("selectedPortlet");
-
-						$(".ui-dialog-content").dialog("close");
-						selectedApp = $(this).parent().find(".portlet-content").text();
-					});
-
-					// Clicking anywhere in
-					// sortableAppsWrapper causes
-					// deselection
-					$("#sortableNewApps").click(function() {
-						$("div.portlet-header").removeClass("selectedPortlet");
-						selectedApp = "";
-						$("#contextMenu").hide();
-						$("#contextMenu").removeData();
-					});
+				$("#sysApps").click(function () {
+					$("#contextMenu").hide();
+					$("#contextMenu").removeData();
+				});
 
 
-					$(".portlet-header").on("contextmenu", function (event) {
-						$("div.portlet-header").removeClass("selectedPortlet");
-						$("#contextMenu").show();
-						$("#contextMenu").data('originalElement', this);
-				        $("#contextMenu").position({
-				        	collision: "none",
-				            my: "left top",
-				            of: event
-				        });
-				        return false;
-				    });
-
-					$("#sysApps").click(function() {
-						$("#contextMenu").hide();
-						$("#contextMenu").removeData();
-					});
-
-
-				})
-		// if there are no apps, so no ajax possible
-		.fail(function() {
-			$("#market").html("Sorry. No apps found in this marketplace. <br> <a href='../security-gui/index.html'> Zur&uuml;ck </a>");
-		});
+			})
+			// if there are no apps, so no ajax possible
+			.fail(function () {
+				$("#market").html("Sorry. No apps found in this marketplace. <br> <a href='../security-gui/index.html'> Zur&uuml;ck </a>");
+			});
 
 		// }
 	}
@@ -109,11 +109,11 @@ $(function() {
 // --------------------------------- F U N C T I O N S
 // -------------------------------------
 
-function loginRequired(){
-	if (curStore!="localAppDirectory"){
+function loginRequired() {
+	if (curStore != "localAppDirectory") {
 		$("#sysApps").hide();
 		$("#appsLogin").show();
-	}else{
+	} else {
 		/*$("#sysApps").show();
 		$("#appsLogin").hide();*/
 		$("#sysApps").hide();
@@ -121,21 +121,21 @@ function loginRequired(){
 	}
 }
 
-function submitLogin(){
+function submitLogin() {
 	var user = $("#user").val();
 	var pwd = $("#password").val();
 
-	$.post("/security/config/appstorelogin?usr="+user+"&store="+curStore+"&pwd="+pwd +"&user=" + otusr + "&pw=" + otpwd,{
+	$.post("/security/config/appstorelogin?usr=" + user + "&store=" + curStore + "&pwd=" + pwd + "&user=" + otusr + "&pw=" + otpwd, {
 
-	}, function(data, status){
-		if(data=="Success"){
+	}, function (data, status) {
+		if (data == "Success") {
 			$("#sysApps").show();
 			$("#appsLogin").hide();
-		}else{
+		} else {
 			$("#login_failed_div").html(data);
 			$("#login_failed_div").show();
 		}
-		}).fail(function(xhr, textStatus, errorThrown) {
+	}).fail(function (xhr, textStatus, errorThrown) {
 		// if http-post fails
 		if (textStatus != "" && errorThrown != "") {
 			alert("Somthing went wrong: " + textStatus + "\nError: " + errorThrown);
@@ -261,15 +261,15 @@ function getPermMethod(permStr) {
 		return nothing;
 	}
 }
-function install(){
-	if ($(".selectedPortlet")[0] || $("#contextMenu").data('originalElement')!=undefined) {
-		if($(".selectedPortlet")[0]){
+function install() {
+	if ($(".selectedPortlet")[0] || $("#contextMenu").data('originalElement') != undefined) {
+		if ($(".selectedPortlet")[0]) {
 			var portlet = $(".selectedPortlet")[0];
 		} else {
 			var portlet = $("#contextMenu").data('originalElement');
 			$("#contextMenu").removeData();
 		}
-		var portletName =$(portlet).next().html();
+		var portletName = $(portlet).next().html();
 		openDia(curStore, portletName);
 	} else {
 		alert("Wählen Sie ein Bundle!");
@@ -299,9 +299,9 @@ function openDia(store, app) {
 		 *            "/security/config/app?appstore=" + curStore + "&name=" +
 		 *            appName appstore and appname.
 		 */
-		$.getJSON("/security/config/app?appstore=" + store + "&name=" + app+"&user=" + otusr + "&pw=" + otpwd, function(json, xhr) {
+		$.getJSON("/security/config/app?appstore=" + store + "&name=" + app + "&user=" + otusr + "&pw=" + otpwd, function (json, xhr) {
 			installPermsByID(json.id);
-		}).fail(function(jqXHR, textStatus, error) {
+		}).fail(function (jqXHR, textStatus, error) {
 			var err = textStatus + ", " + error;
 			alert("Error occured: " + err);
 			return false;

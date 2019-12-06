@@ -34,8 +34,6 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlSeeAlso;
 import javax.xml.bind.annotation.XmlType;
 
-import org.ogema.serialization.JaxbResourceCollection;
-
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
@@ -120,7 +118,7 @@ public class ResourceCollection {
 	 */
 	public List<Object> getSubresources() {
 		if (subresources == null) {
-			subresources = new ArrayList<Object>();
+			subresources = new ArrayList<>();
 		}
 		return this.subresources;
 	}

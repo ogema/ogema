@@ -13,11 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.ogema.apps.openweathermap.dao;
 
 import org.ogema.apps.openweathermap.OpenWeatherMapApplication;
@@ -39,11 +34,11 @@ public class OpenWeatherMapREST {
 	public static void main(String[] args) {
 		// System.setProperty("openweathermapKEY", "");
 		OpenWeatherMapREST rest = OpenWeatherMapREST.getInstance();
-		ForecastData result = rest.getWeatherForcast("Kassel", "de");
-
-		int intervallInMinutes = 1;
-		result = rest.util.interpolateForecast(result, intervallInMinutes);
-		System.out.println(rest.util.toString(result) + "--------------------\n");
+		ForecastData data = rest.getWeatherForcast("Kassel", "de");
+		
+		rest.util.calculateIrradiation(data);
+		
+		System.out.println(rest.util.toString(data) + "--------------------\n");
 		CurrentData current = rest.getWeatherCurrent("Kassel", "de");
 		System.out.println(rest.util.toString(current));
 	}
@@ -73,6 +68,8 @@ public class OpenWeatherMapREST {
 			url += "&APPID=" + API_KEY;
 		}
 		String json = util.call(url);
+		if (json == null)
+			return null;
 		ObjectMapper mapper = new ObjectMapper();
 		try {
 			ForecastData data = mapper.readValue(json, ForecastData.class);
@@ -92,6 +89,8 @@ public class OpenWeatherMapREST {
 			url += "&APPID=" + API_KEY;
 		}
 		String json = util.call(url);
+		if (json == null)
+			return null;
 		ObjectMapper mapper = new ObjectMapper();
 		try {
 			CurrentData data = mapper.readValue(json, CurrentData.class);

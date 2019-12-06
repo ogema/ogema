@@ -208,7 +208,7 @@ public class SlotsDb implements DataRecorder, ClockChangeListener {
 			baseFolder = baseFolder.substring(0, baseFolder.length()-1);
 		dbRootFolder = baseFolder;
 		SLOTS_DB_STORAGE_ID_PATH = baseFolder + "/slotsDbStorageIDs.ser";
-		this.proxy = new FileObjectProxy(baseFolder, null);
+		this.proxy = new FileObjectProxy(baseFolder, clock);
 		readPersistedSlotsDbStorages();
 	}
 

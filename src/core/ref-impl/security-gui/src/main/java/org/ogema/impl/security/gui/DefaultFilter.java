@@ -34,8 +34,8 @@ import java.util.PropertyPermission;
 import javax.net.ssl.SSLPermission;
 
 import org.ogema.accesscontrol.FilterValue;
-import org.ogema.accesscontrol.Util;
 import org.ogema.core.security.AppPermission;
+import org.ogema.util.Util;
 import org.osgi.framework.AdaptPermission;
 import org.osgi.framework.AdminPermission;
 import org.osgi.framework.PackagePermission;

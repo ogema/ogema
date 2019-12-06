@@ -41,7 +41,7 @@ import org.ogema.core.resourcemanager.pattern.ResourcePatternAccess;
  * 
  * @author brequardt
  */
-@Component(specVersion = "1.2", immediate = true)
+@Component(specVersion = "1.2")
 @Service({ Application.class, OpenWeatherMapApplicationI.class })
 public class OpenWeatherMapApplication implements OpenWeatherMapApplicationI {
 
@@ -53,7 +53,7 @@ public class OpenWeatherMapApplication implements OpenWeatherMapApplicationI {
 	/**
 	 * Default value ({@value} ) for {@link #UPDATE_INTERVAL}.
 	 */
-	public static final long UPDATE_INTERVAL_DEFAULT = 10 * 60 * 1000L;
+	public static final long UPDATE_INTERVAL_DEFAULT = 3 * 60 * 60 * 1000L;
 
 	public OgemaLogger logger;
 	protected ApplicationManager appMan;
@@ -62,7 +62,7 @@ public class OpenWeatherMapApplication implements OpenWeatherMapApplicationI {
 	// private ConfigurationAdmin configurationAdmin;
 	public static OpenWeatherMapApplication instance;
 	EnvironmentCreater envCreater;
-	private List<RoomController> roomConntrollers = new ArrayList<>();
+	private List<RoomController> roomControllers = new ArrayList<>();
 	private ResourcePatternAccess advAcc;
 
 	@Override
@@ -72,10 +72,15 @@ public class OpenWeatherMapApplication implements OpenWeatherMapApplicationI {
 		this.appMan = appManager;
 		this.logger = appManager.getLogger();
 		this.resMan = appManager.getResourceManagement();
-		envCreater = EnvironmentCreater.getInstance();
-		envCreater.init(appManager);
-		String stdCity = System.getProperty("org.ogema.drivers.openweathermap.stdCity");
-		String stdCountry = System.getProperty("org.ogema.drivers.openweathermap.stdCountry");
+		envCreater = new EnvironmentCreater(appManager);
+		String stdCity = null;
+		String stdCountry = null;
+		try {
+			stdCity = System.getProperty("org.ogema.drivers.openweathermap.stdCity");
+			stdCountry = System.getProperty("org.ogema.drivers.openweathermap.stdCountry");
+		} catch (SecurityException e) {
+			logger.warn("Permission denied to access init properties",e);
+		}
 		if ((stdCity != null) && (stdCountry != null)) {
 			envCreater.createResource("OpenWeatherMapData", stdCity, stdCountry);
 		}
@@ -86,9 +91,11 @@ public class OpenWeatherMapApplication implements OpenWeatherMapApplicationI {
 	@Override
 	public void stop(AppStopReason reason) {
 
-		for (RoomController controller : roomConntrollers) {
+		for (RoomController controller : roomControllers) {
 			controller.stop();
 		}
+		roomControllers.clear();
+		advAcc.removePatternDemand(RoomRad.class, roomListener);
 	}
 
 	/**
@@ -113,14 +120,14 @@ public class OpenWeatherMapApplication implements OpenWeatherMapApplicationI {
 		@Override
 		public void patternAvailable(RoomRad rad) {
 			final RoomController newController = new RoomController(appMan, rad);
-			roomConntrollers.add(newController);
+			roomControllers.add(newController);
 			newController.start();
 		}
-
+		
 		@Override
 		public void patternUnavailable(RoomRad rad) {
 			RoomController controller = null;
-			for (RoomController existingController : roomConntrollers) {
+			for (RoomController existingController : roomControllers) {
 				if (existingController.isControllingDevice(rad)) {
 					controller = existingController;
 					break;
@@ -131,7 +138,7 @@ public class OpenWeatherMapApplication implements OpenWeatherMapApplicationI {
 				return;
 			}
 			controller.stop();
-			roomConntrollers.remove(controller);
+			roomControllers.remove(controller);
 		}
 	};
 

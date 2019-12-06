@@ -641,6 +641,35 @@ public class MultiTimeSeriesTest extends OsgiAppTestBase {
 		}
 		Assert.assertTrue(cnt > 3);
 	}
+
+	@Test
+	public void averagingWorksWithFixedStepSize2() {
+		final FloatTimeSeries t = new FloatTreeTimeSeries();
+		t.addValue(5, new FloatValue(10));
+		t.addValue(15, new FloatValue(20));
+		t.addValue(40, new FloatValue(20));
+		final MultiTimeSeriesIterator it = MultiTimeSeriesIteratorBuilder.newBuilder(Arrays.asList(t.iterator()))
+				.setGlobalInterpolationMode(InterpolationMode.LINEAR)
+				.setStepSize(0, 10)
+				.doAverage(true)
+				.build();
+		Assert.assertTrue(it.hasNext());
+		final SampledValueDataPoint first = it.next();
+		Assert.assertEquals(10, first.getTimestamp());
+		Assert.assertEquals(12.5, first.getElements().get(0).getValue().getFloatValue(), 0.1F);
+		Assert.assertTrue(it.hasNext());
+		final SampledValueDataPoint second = it.next();
+		Assert.assertEquals(20, second.getTimestamp());
+		Assert.assertEquals((17.5 + 20)/2, second.getElements().get(0).getValue().getFloatValue(), 0.1F);
+		final SampledValueDataPoint third = it.next();
+		Assert.assertEquals(30, third.getTimestamp());
+		Assert.assertEquals(20, third.getElements().get(0).getValue().getFloatValue(), 0.1F);
+		final SampledValueDataPoint fourth = it.next();
+		Assert.assertEquals(40, fourth.getTimestamp());
+		Assert.assertEquals(20, fourth.getElements().get(0).getValue().getFloatValue(), 0.1F);
+		Assert.assertFalse(it.hasNext());
+	}
+	
 	
 	@Test
 	public void averagingWorksWithStepRulers() {
@@ -671,6 +700,99 @@ public class MultiTimeSeriesTest extends OsgiAppTestBase {
 			Assert.assertEquals("Averaging failed", 0, map.get(1).getValue().getFloatValue(), 1);
 		}
 		Assert.assertTrue(cnt > 3);
+	}
+	
+	@Test
+	public void diffIterationWorks() {
+		final FloatTimeSeries t = new FloatTreeTimeSeries();
+		t.addValues(TimeSeriesUtils.createStepFunction(3, 0, 10, 0, 10)); // step function from 0 to 20
+		t.setInterpolationMode(InterpolationMode.LINEAR);
+		final MultiTimeSeriesIterator it = MultiTimeSeriesIteratorBuilder.newBuilder(Collections.singletonList(t.iterator()))
+			.doDiff(true)
+			.build();
+		final float expected = 10;
+		long t0 = -5;
+		int cnt = 0;
+		while (it.hasNext()) {
+			t0 = t0 + 10;
+			cnt++;
+			final SampledValueDataPoint point = it.next();
+			final SampledValue sv = point.getElements().get(0);
+			final long time = sv.getTimestamp();
+			final float v = sv.getValue().getFloatValue();
+			Assert.assertEquals(expected, v, 0.1F);
+			Assert.assertEquals(t0, time);
+		}
+		Assert.assertEquals(2, cnt);
+	}
+	
+	@Test
+	public void diffIterationStepSizeWorks() {
+		final FloatTimeSeries t = new FloatTreeTimeSeries();
+		t.addValue(0, new FloatValue(10));
+		t.addValue(10, FloatValue.ZERO);
+		t.addValue(15, new FloatValue(10));
+		t.addValue(30, new FloatValue(40));
+		t.setInterpolationMode(InterpolationMode.LINEAR);
+		final MultiTimeSeriesIterator it = MultiTimeSeriesIteratorBuilder.newBuilder(Collections.singletonList(t.iterator()))
+			.doDiff(true, 1)
+			.setStepSize(0, 10)
+			.setGlobalInterpolationMode(InterpolationMode.LINEAR)
+			.build();
+		Assert.assertTrue(it.hasNext());
+		final SampledValueDataPoint first = it.next();
+		final SampledValue firstSv = first.getElements().get(0);
+		Assert.assertEquals(-10, firstSv.getValue().getFloatValue(), 0.1);
+		Assert.assertEquals(10, first.getTimestamp());
+		
+		Assert.assertTrue(it.hasNext());
+		final SampledValueDataPoint second = it.next();
+		final SampledValue secondSv = second.getElements().get(0);
+		Assert.assertEquals(20, secondSv.getValue().getFloatValue(), 0.1);
+		Assert.assertEquals(20, secondSv.getTimestamp());
+		
+		Assert.assertTrue(it.hasNext());
+		final SampledValueDataPoint third = it.next();
+		final SampledValue thirdSv = third.getElements().get(0);
+		Assert.assertEquals(20, thirdSv.getValue().getFloatValue(), 0.1);
+		Assert.assertEquals(30, thirdSv.getTimestamp());
+		
+		Assert.assertFalse(it.hasNext());
+	}
+	
+	@Test
+	public void diffIterationStepSizeWorks2() {
+		final FloatTimeSeries t = new FloatTreeTimeSeries();
+		t.addValue(-10, new FloatValue(10));
+		t.addValue(10, FloatValue.ZERO);
+		t.addValue(20, new FloatValue(10));
+		t.addValue(30, new FloatValue(40));
+		t.addValue(40, new FloatValue(40));
+		t.addValue(60, new FloatValue(60));
+		t.addValue(210, new FloatValue(210));
+		t.setInterpolationMode(InterpolationMode.LINEAR);
+		final MultiTimeSeriesIterator it = MultiTimeSeriesIteratorBuilder.newBuilder(Collections.singletonList(t.iterator()))
+			.doDiff(true, 0)
+			.setStepSize(0, 50)
+			.setGlobalInterpolationMode(InterpolationMode.LINEAR)
+			.build();
+		Assert.assertTrue(it.hasNext());
+		final SampledValueDataPoint first = it.next();
+		final SampledValue firstSv = first.getElements().get(0);
+		Assert.assertEquals(45, firstSv.getValue().getFloatValue(), 0.1);
+		Assert.assertEquals(0, first.getTimestamp());
+		
+		Assert.assertTrue(it.hasNext());
+		final SampledValueDataPoint second = it.next();
+		final SampledValue secondSv = second.getElements().get(0);
+		Assert.assertEquals(50, secondSv.getValue().getFloatValue(), 0.1);
+		Assert.assertEquals(50, second.getTimestamp());
+		
+		Assert.assertTrue(it.hasNext());
+		final SampledValueDataPoint third = it.next();
+		final SampledValue thirdSv = third.getElements().get(0);
+		Assert.assertEquals(50, thirdSv.getValue().getFloatValue(), 0.1);
+		Assert.assertEquals(100, third.getTimestamp());
 	}
 	
 	private static SampledValueDataPoint assertPointMatches(MultiTimeSeriesIterator iterator, int[] expectedIndices) {

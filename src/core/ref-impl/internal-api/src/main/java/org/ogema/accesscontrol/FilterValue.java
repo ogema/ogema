@@ -17,6 +17,8 @@ package org.ogema.accesscontrol;
 
 import java.util.StringTokenizer;
 
+import org.ogema.util.Util;
+
 public class FilterValue {
 	/*
 	 * This value is used when queried permissions created

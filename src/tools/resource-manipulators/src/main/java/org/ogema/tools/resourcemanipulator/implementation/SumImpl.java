@@ -36,6 +36,8 @@ public class SumImpl implements Sum {
 
 	private final ResourceManipulatorImpl m_base;
 	private List<SingleValueResource> m_inputs;
+	private float[] factors;
+	private float[] offsets;
 	private Resource m_output;
 	private long m_delay;
 	private boolean m_deactivateEmtpySum;
@@ -89,7 +91,14 @@ public class SumImpl implements Sum {
 		m_config.delay().setValue(m_delay);
 		m_config.deactivateEmptySum().create();
 		m_config.deactivateEmptySum().setValue(m_deactivateEmtpySum);
-
+		if (factors != null) {
+			m_config.factors().create();
+			m_config.factors().setValues(factors);
+		}
+		if (offsets != null) {
+			m_config.offsets().create();
+			m_config.offsets().setValues(offsets);
+		}
 		m_config.activate(true);
 		return true;
 	}
@@ -103,10 +112,52 @@ public class SumImpl implements Sum {
 
 	@Override
     public void setAddends(Collection<? extends SingleValueResource> addends, SingleValueResource sum) {
-        m_inputs = new ArrayList<>(addends);
+        setAddends(new ArrayList<>(addends), null, null, sum);
+    }
+	
+	@Override
+	public void setAddends(List<? extends SingleValueResource> addends, List<Float> factors, List<Float> offsets, SingleValueResource sum) {
+		m_inputs = new ArrayList<>(addends);
         m_output = sum;
         m_delay = 0;
-    }
+        if (factors != null || offsets != null) {
+        	if ((factors != null && factors.size() != addends.size()) ||
+        			(offsets != null && offsets.size() != addends.size()))
+        		throw new IllegalArgumentException("Factors and/or offsets size does not match addends size");
+        	if (factors != null) {
+        		final float[] arr = new float[addends.size()];
+        		boolean required= false;
+        		int cnt = 0;
+        		for (Float f : factors) {
+        			if (f != null && f != 1) {
+        				arr[cnt] = f;
+        				required = true;
+        			} else {
+        				arr[cnt] = 1;
+        			}
+        			cnt++;
+        		}
+        		if (required)
+        			this.factors = arr;
+        	}
+        	if (offsets != null) {
+        		final float[] arr = new float[addends.size()];
+        		boolean required= false;
+        		int cnt = 0;
+        		for (Float f : offsets) {
+        			if (f != null && f != 0) {
+        				arr[cnt] = f;
+        				required = true;
+        			} else {
+        				arr[cnt] = 0;
+        			}
+        			cnt++;
+        		}
+        		if (required)
+        			this.offsets = arr;
+        	}
+        }
+	}
 
 	@Override
 	public void setDelay(long delayTime) {
