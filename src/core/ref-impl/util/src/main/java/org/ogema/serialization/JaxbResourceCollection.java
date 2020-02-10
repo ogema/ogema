@@ -90,10 +90,10 @@ public class JaxbResourceCollection {
         final List<Object> result = new ArrayList<>();
 
         for (Resource subres : resources) {
-            if (status.linkResource(subres)) {
+            if (status != null && status.linkResource(subres)) {
                 result.add(new JaxbLink(subres));
             } else {
-            	SerializationStatus newStatus = ((SerializationStatus) status.clone()).increaseDepth();
+            	SerializationStatus newStatus = status == null ? null : ((SerializationStatus) status.clone()).increaseDepth();
                 result.add(JaxbFactory.createJaxbResource(subres, newStatus));
             }
         }

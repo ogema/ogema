@@ -83,7 +83,8 @@ public class JaxbResource {
 	protected JaxbResource(Resource res, SerializationStatus status) {
 		this.res = res;
 		this.status = status;
-		status.addParsedLocation(res.getLocation("/"));
+		if (status != null)
+			status.addParsedLocation(res.getLocation("/"));
 	}
 
 	public JaxbResource() {
@@ -144,10 +145,10 @@ public class JaxbResource {
             subresources = iterationOrder;
         }
         for (Resource subres : subresources) {
-            if (status.linkResource(subres)) {
+            if (status != null && status.linkResource(subres)) {
                 result.add(new JaxbLink(subres));
             } else {
-                result.add(JaxbFactory.createJaxbResource(subres, status.increaseDepth()));
+                result.add(JaxbFactory.createJaxbResource(subres, status == null ? null : status.increaseDepth()));
             }
         }
         //status.increaseDepth();

@@ -6,6 +6,7 @@
 
     <name>OGEMA ref-impl :: util</name>
     <url>http://www.ogema-source.net</url>
+    <version>2.2.1_1</version><!-- FIXME -->
 
     <parent>
         <groupId>org.ogema.ref-impl</groupId>

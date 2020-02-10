@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.ogema.core.model.Resource;
 import org.ogema.core.resourcemanager.ResourceManagement;
@@ -79,7 +78,6 @@ public class ObjectToJsonTest extends OsgiAppTestBase {
 	}
 
 	@Test
-	@Ignore
 	public void toJsonWithResourceAttribute() {
 		TestObjectWithResourceAttribute test = new TestObjectWithResourceAttribute();
 		String json = sman.toJson(test);
@@ -103,6 +101,7 @@ public class ObjectToJsonTest extends OsgiAppTestBase {
 		return valid;
 	}
 
+	@SuppressWarnings("unused")
 	private class TestObjectWithoutResourceAttribute {
 		// all fields public because we're checking in the test via reflection ...
 		public float myFloat = 1.0f;
@@ -163,6 +162,7 @@ public class ObjectToJsonTest extends OsgiAppTestBase {
 		}
 	}
 
+	@SuppressWarnings("unused")
 	private class TestObjectWithResourceAttribute {
 		// all fields public because we're checking in the test via reflection ...
 		public float myFloat = 1.0f;
